@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="180" y1="120" x2="870" y2="920" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A6D9FF"/>
+      <stop offset="0.55" stop-color="#5AAAF7"/>
+      <stop offset="1" stop-color="#2F78E6"/>
+    </linearGradient>
+    <radialGradient id="bgGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(500 380) rotate(90) scale(540 520)">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="paperGrad" x1="332" y1="208" x2="770" y2="628" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F9FBFF"/>
+      <stop offset="0.55" stop-color="#D6E8FA"/>
+      <stop offset="1" stop-color="#8ABBF0"/>
+    </linearGradient>
+    <linearGradient id="paperShadow" x1="650" y1="260" x2="800" y2="520" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#CFE2F8"/>
+    </linearGradient>
+    <linearGradient id="ribbonGrad" x1="270" y1="300" x2="800" y2="760" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EAF3FF"/>
+    </linearGradient>
+    <linearGradient id="holeGrad" x1="380" y1="720" x2="590" y2="600" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#DDEAF8"/>
+      <stop offset="1" stop-color="#2C73DF"/>
+    </linearGradient>
+    <linearGradient id="waveGrad" x1="370" y1="796" x2="710" y2="840" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A7D8FF"/>
+      <stop offset="1" stop-color="#7EC6FF"/>
+    </linearGradient>
+    <filter id="softShadow" x="110" y="90" width="804" height="844" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#2256A5" flood-opacity="0.18"/>
+    </filter>
+    <filter id="innerBlur" x="120" y="120" width="784" height="784" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#softShadow)">
+    <rect x="128" y="128" width="768" height="768" rx="112" fill="url(#bgGrad)"/>
+    <rect x="128" y="128" width="768" height="768" rx="112" fill="url(#bgGlow)"/>
+    <rect x="128" y="128" width="768" height="768" rx="112" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
+  </g>
+
+  <g opacity="0.12" filter="url(#innerBlur)">
+    <rect x="148" y="148" width="728" height="728" rx="100" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Paper -->
+  <g filter="url(#softShadow)">
+    <path d="M334 256C334 221.758 361.758 194 396 194H586.649C605.992 194 624.603 201.424 638.65 214.735L739.001 309.809C751.447 321.603 758.5 337.991 758.5 355.14V618C758.5 652.242 730.742 680 696.5 680H396C361.758 680 334 652.242 334 618V256Z" fill="url(#paperGrad)"/>
+    <path d="M588.5 194V284C588.5 321.555 618.945 352 656.5 352H758.5" fill="url(#paperShadow)"/>
+    <path d="M588.5 194V284C588.5 321.555 618.945 352 656.5 352H758.5" stroke="#F7FBFF" stroke-width="1.5"/>
+  </g>
+
+  <!-- Text lines -->
+  <rect x="404" y="272" width="155" height="16" rx="8" fill="#9FD0FC"/>
+  <rect x="404" y="324" width="177" height="16" rx="8" fill="#9FD0FC"/>
+  <rect x="468" y="382" width="119" height="16" rx="8" fill="#9FD0FC"/>
+
+  <!-- Inner blue cutout -->
+  <path d="M314 660C314 613.072 352.072 575 399 575H420C470.258 575 518.458 594.965 554 630.5L626 702.5C664.59 741.09 692.078 788.538 705 840H475C386.634 840 314 768.366 314 680V660Z" fill="url(#holeGrad)"/>
+
+  <!-- N ribbon -->
+  <g filter="url(#softShadow)">
+    <path d="M308 405C308 371.863 334.863 345 368 345H387C446.025 345 502.632 368.448 546.603 410.204L647.123 505.672C668.214 525.702 682.426 553.667 687.5 583.99V427C687.5 393.863 714.363 367 747.5 367H759C792.137 367 819 393.863 819 427V700C819 733.137 792.137 760 759 760H722C679.442 760 638.593 743.323 607.795 713.525L430.734 542.278C415.663 527.706 398.929 515.514 381 505.985V700C381 733.137 354.137 760 321 760H309C275.863 760 249 733.137 249 700V465C249 431.863 275.863 405 309 405H308Z" fill="url(#ribbonGrad)"/>
+  </g>
+
+  <!-- Decorative waves -->
+  <path d="M365 816C412 772 469 758 532 777C574 789 614 811 671 812C717 813 756 800 791 774" stroke="url(#waveGrad)" stroke-width="20" stroke-linecap="round" fill="none" opacity="0.95"/>
+  <path d="M384 846C427 808 481 798 539 815C579 827 617 844 665 843C701 842 734 832 767 810" stroke="url(#waveGrad)" stroke-width="14" stroke-linecap="round" fill="none" opacity="0.85"/>
+
+</svg>
