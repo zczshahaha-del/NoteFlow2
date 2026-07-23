@@ -14,6 +14,7 @@ export function useEditorSlice() {
     reindexNote: state.reindexNote,
     restoreNoteVersion: state.restoreNoteVersion,
     activeEditPreview: state.activeEditPreview,
+    editPreviewError: state.editPreviewError,
     createEditPreviewRequest: state.createEditPreviewRequest,
     reviseEditPreviewRequest: state.reviseEditPreviewRequest,
     restoreEditPreviewRevisionRequest: state.restoreEditPreviewRevisionRequest,

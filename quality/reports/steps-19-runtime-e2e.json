@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-07-17T15:58:00Z",
+  "environment": "isolated release candidate",
+  "newArchitectureDefaults": {
+    "agent": "langgraph",
+    "rag": "llamaindex",
+    "ragV2Index": true,
+    "memory": "mem0",
+    "draft": "langgraph",
+    "edit": "langgraph"
+  },
+  "passed": true,
+  "checks": {
+    "login": "cookie_session_ok",
+    "agent": "real_ai_stream_with_tool_trace_ok",
+    "note": "create_and_index_ok",
+    "search": "result_found",
+    "askNotes": "rag_context_and_citation_source_ok",
+    "draft": "create_confirm_assemble_save_ok",
+    "edit": "preview_revision_apply_ok",
+    "memory": "create_search_update_delete_ok",
+    "multiDeviceConflict": "409_detected",
+    "sessionRefresh": "ok"
+  }
+}

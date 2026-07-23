@@ -1,0 +1,112 @@
+{
+  "version": "2026-07-17-v1",
+  "description": "NoteFlow legacy RAG 固定评测集；所有语料都是测试数据，不含用户真实笔记。",
+  "corpus": [
+    {
+      "key": "redis_avalanche",
+      "owner": "alpha",
+      "title": "Redis 缓存故障处理",
+      "tags": ["Redis", "缓存"],
+      "content": "# 缓存雪崩\n\n缓存雪崩是大量缓存键在同一时间失效，导致请求直接冲击数据库。常见措施包括随机过期时间、限流、熔断和缓存预热。"
+    },
+    {
+      "key": "rag_architecture",
+      "owner": "alpha",
+      "title": "RAG Architecture Notes",
+      "tags": ["RAG", "retrieval"],
+      "content": "# Retrieval-Augmented Generation\n\nRAG combines retrieval with generation. The retriever returns evidence chunks and the generator answers with citations.\n\n## Hybrid retrieval\n\nBM25 and vector search can be fused with reciprocal rank fusion."
+    },
+    {
+      "key": "python_context_manager",
+      "owner": "alpha",
+      "title": "Python 上下文管理器",
+      "tags": ["Python", "code"],
+      "content": "# Context Manager\n\nPython 的上下文管理器实现 `__enter__` 和 `__exit__`。`with` 语句会在进入代码块时调用 `__enter__`，离开时调用 `__exit__`。"
+    },
+    {
+      "key": "weekly_current",
+      "owner": "alpha",
+      "title": "项目周报",
+      "tags": ["周报", "current"],
+      "content": "# 2026 年第 29 周\n\nNoteFlow 当前决定使用 LangGraph 负责全局编排，LlamaIndex 作为 RAG 模块。"
+    },
+    {
+      "key": "weekly_old_deleted",
+      "owner": "alpha",
+      "title": "项目周报",
+      "tags": ["周报", "obsolete"],
+      "deleted": true,
+      "content": "# 过期方案\n\n旧方案计划使用 Qdrant 并让 LlamaIndex 控制全局流程。"
+    },
+    {
+      "key": "markdown_parser",
+      "owner": "alpha",
+      "title": "Markdown AST 解析",
+      "tags": ["Markdown", "AST"],
+      "content": "# Parser\n\n正式解析应使用 CommonMark AST，保留标题层级、列表、表格和 fenced code block 边界。"
+    },
+    {
+      "key": "private_beta",
+      "owner": "beta",
+      "title": "Beta 私密发布密钥",
+      "tags": ["private"],
+      "content": "# 私密资料\n\n跨用户隔离探针：BETA_ONLY_NEPTUNE_7429。Alpha 用户绝不能检索到这段文字。"
+    }
+  ],
+  "cases": [
+    {
+      "id": "zh-short-query",
+      "owner": "alpha",
+      "query": "缓存雪崩怎么办",
+      "expectedNoteKeys": ["redis_avalanche"],
+      "expectedKeywords": ["随机过期时间", "限流", "熔断"]
+    },
+    {
+      "id": "english-acronym",
+      "owner": "alpha",
+      "query": "RAG hybrid retrieval",
+      "expectedNoteKeys": ["rag_architecture"],
+      "expectedKeywords": ["BM25", "vector search", "reciprocal rank fusion"]
+    },
+    {
+      "id": "code-symbol",
+      "owner": "alpha",
+      "query": "__enter__ 和 __exit__ 是什么",
+      "expectedNoteKeys": ["python_context_manager"],
+      "expectedKeywords": ["__enter__", "__exit__", "with"]
+    },
+    {
+      "id": "same-title-current",
+      "owner": "alpha",
+      "query": "项目周报里现在的全局编排方案",
+      "expectedNoteKeys": ["weekly_current"],
+      "forbiddenNoteKeys": ["weekly_old_deleted"],
+      "expectedKeywords": ["LangGraph", "LlamaIndex"]
+    },
+    {
+      "id": "markdown-parser",
+      "owner": "alpha",
+      "query": "Markdown 的 fenced code block 应该怎么解析",
+      "expectedNoteKeys": ["markdown_parser"],
+      "expectedKeywords": ["CommonMark", "AST", "fenced code block"]
+    },
+    {
+      "id": "no-answer",
+      "owner": "alpha",
+      "query": "量子纠错表面码阈值是多少",
+      "expectedNoteKeys": [],
+      "expectedKeywords": [],
+      "expectNoResults": true
+    },
+    {
+      "id": "cross-user-probe",
+      "owner": "alpha",
+      "query": "BETA_ONLY_NEPTUNE_7429",
+      "expectedNoteKeys": [],
+      "forbiddenNoteKeys": ["private_beta"],
+      "expectedKeywords": [],
+      "expectNoResults": true,
+      "securityCritical": true
+    }
+  ]
+}

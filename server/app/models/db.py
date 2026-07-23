@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.services.pgvector import Vector
@@ -129,6 +129,8 @@ class Note(Base):
     is_pinned: Mapped[bool] = mapped_column("is_pinned", Boolean, nullable=False, default=False)
     is_favorite: Mapped[bool] = mapped_column("is_favorite", Boolean, nullable=False, default=False)
     index_status: Mapped[str] = mapped_column("index_status", String(50), nullable=False, default="pending")
+    index_version: Mapped[Optional[str]] = mapped_column("index_version", String(128), nullable=True)
+    idempotency_key: Mapped[Optional[str]] = mapped_column("idempotency_key", String(160), nullable=True)
     created_at: Mapped[datetime] = mapped_column("created_at", DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column("updated_at", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at: Mapped[Optional[datetime]] = mapped_column("deleted_at", DateTime, nullable=True)
@@ -229,9 +231,91 @@ class NoteIndexJob(Base):
     retry_count: Mapped[int] = mapped_column("retry_count", Integer, nullable=False, default=0)
     max_retries: Mapped[int] = mapped_column("max_retries", Integer, nullable=False, default=3)
     next_attempt_at: Mapped[Optional[datetime]] = mapped_column("next_attempt_at", DateTime, nullable=True, index=True)
+    claim_owner: Mapped[Optional[str]] = mapped_column("claim_owner", String(160), nullable=True, index=True)
+    claimed_at: Mapped[Optional[datetime]] = mapped_column("claimed_at", DateTime, nullable=True)
+    heartbeat_at: Mapped[Optional[datetime]] = mapped_column("heartbeat_at", DateTime, nullable=True, index=True)
+    error_code: Mapped[Optional[str]] = mapped_column("error_code", String(80), nullable=True)
+    source_version: Mapped[Optional[str]] = mapped_column("source_version", String(128), nullable=True)
+    idempotency_key: Mapped[Optional[str]] = mapped_column("idempotency_key", String(200), nullable=True)
+    parser_version: Mapped[Optional[str]] = mapped_column("parser_version", String(80), nullable=True)
+    chunker_version: Mapped[Optional[str]] = mapped_column("chunker_version", String(80), nullable=True)
+    embedding_version: Mapped[Optional[str]] = mapped_column("embedding_version", String(120), nullable=True)
+    graph_version: Mapped[Optional[str]] = mapped_column("graph_version", String(80), nullable=True)
     created_at: Mapped[datetime] = mapped_column("created_at", DateTime, default=datetime.utcnow)
     started_at: Mapped[Optional[datetime]] = mapped_column("started_at", DateTime, nullable=True)
     finished_at: Mapped[Optional[datetime]] = mapped_column("finished_at", DateTime, nullable=True)
+
+
+class RagV2IndexState(Base):
+    """Atomic pointer to the only source version visible to RAG v2."""
+
+    __tablename__ = "rag_v2_index_states"
+
+    note_id: Mapped[str] = mapped_column("note_id", String(64), ForeignKey("notes.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[str] = mapped_column("user_id", String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_version: Mapped[str] = mapped_column("source_version", String(128), nullable=False, default="")
+    parser_version: Mapped[str] = mapped_column("parser_version", String(80), nullable=False, default="")
+    chunker_version: Mapped[str] = mapped_column("chunker_version", String(80), nullable=False, default="")
+    embedding_version: Mapped[str] = mapped_column("embedding_version", String(120), nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", index=True)
+    node_count: Mapped[int] = mapped_column("node_count", Integer, nullable=False, default=0)
+    error_code: Mapped[Optional[str]] = mapped_column("error_code", String(80), nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column("error_message", Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column("created_at", DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column("updated_at", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    indexed_at: Mapped[Optional[datetime]] = mapped_column("indexed_at", DateTime, nullable=True)
+
+
+class RagV2Node(Base):
+    """Versioned, structured Markdown node used only by the v2 retriever."""
+
+    __tablename__ = "rag_v2_nodes"
+    __table_args__ = (
+        Index("ix_rag_v2_nodes_visible", "user_id", "active", "source_version"),
+        Index("ix_rag_v2_nodes_note_section", "note_id", "section_key"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    note_id: Mapped[str] = mapped_column("note_id", String(64), ForeignKey("notes.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column("user_id", String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    section_key: Mapped[str] = mapped_column("section_key", String(64), nullable=False, index=True)
+    section_path: Mapped[list] = mapped_column("section_path", JSON, nullable=False, default=lambda: [])
+    node_type: Mapped[str] = mapped_column("node_type", String(32), nullable=False, default="text")
+    node_index: Mapped[int] = mapped_column("node_index", Integer, nullable=False, default=0)
+    content: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    token_count: Mapped[int] = mapped_column("token_count", Integer, nullable=False, default=0)
+    content_hash: Mapped[str] = mapped_column("content_hash", String(64), nullable=False, index=True)
+    source_version: Mapped[str] = mapped_column("source_version", String(128), nullable=False, index=True)
+    parser_version: Mapped[str] = mapped_column("parser_version", String(80), nullable=False)
+    chunker_version: Mapped[str] = mapped_column("chunker_version", String(80), nullable=False)
+    block_types: Mapped[list] = mapped_column("block_types", JSON, nullable=False, default=lambda: [])
+    node_metadata: Mapped[dict] = mapped_column("node_metadata", JSON, nullable=False, default=lambda: {})
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    created_at: Mapped[datetime] = mapped_column("created_at", DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column("updated_at", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class RagV2Embedding(Base):
+    __tablename__ = "rag_v2_embeddings"
+    __table_args__ = (
+        UniqueConstraint("node_id", "provider", "embedding_model", "embedding_dim", name="uq_rag_v2_embedding_version"),
+        Index("ix_rag_v2_embeddings_vector_ready", "user_id", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    node_id: Mapped[str] = mapped_column("node_id", String(64), ForeignKey("rag_v2_nodes.id", ondelete="CASCADE"), nullable=False, index=True)
+    note_id: Mapped[str] = mapped_column("note_id", String(64), ForeignKey("notes.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column("user_id", String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(String(50), nullable=False)
+    embedding_model: Mapped[str] = mapped_column("embedding_model", String(100), nullable=False)
+    embedding_dim: Mapped[int] = mapped_column("embedding_dim", Integer, nullable=False)
+    content_hash: Mapped[str] = mapped_column("content_hash", String(64), nullable=False, index=True)
+    embedding: Mapped[list] = mapped_column(Vector(EMBEDDING_DIMENSIONS), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    error_message: Mapped[Optional[str]] = mapped_column("error_message", Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column("created_at", DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column("updated_at", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    indexed_at: Mapped[Optional[datetime]] = mapped_column("indexed_at", DateTime, nullable=True)
 
 
 class NoteDraft(Base):
@@ -254,6 +338,9 @@ class NoteDraft(Base):
     assembled_content: Mapped[str] = mapped_column("assembled_content", LONGTEXT, nullable=False, default="")
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="configuring")
     saved_note_id: Mapped[Optional[str]] = mapped_column("saved_note_id", String(64), ForeignKey("notes.id", ondelete="SET NULL"), nullable=True)
+    idempotency_key: Mapped[Optional[str]] = mapped_column("idempotency_key", String(160), nullable=True)
+    runtime: Mapped[str] = mapped_column(String(32), nullable=False, default="legacy")
+    graph_thread_id: Mapped[Optional[str]] = mapped_column("graph_thread_id", String(160), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column("created_at", DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column("updated_at", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     canceled_at: Mapped[Optional[datetime]] = mapped_column("canceled_at", DateTime, nullable=True)
@@ -275,6 +362,8 @@ class NoteDraftSection(Base):
     outline_text: Mapped[str] = mapped_column("outline_text", LONGTEXT, nullable=False, default="")
     content: Mapped[str] = mapped_column(LONGTEXT, nullable=False, default="")
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="outline_only")
+    generation_key: Mapped[Optional[str]] = mapped_column("generation_key", String(160), nullable=True)
+    retry_count: Mapped[int] = mapped_column("retry_count", Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column("created_at", DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column("updated_at", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at: Mapped[Optional[datetime]] = mapped_column("deleted_at", DateTime, nullable=True)
@@ -311,6 +400,12 @@ class NoteEditPreview(Base):
     instruction: Mapped[str] = mapped_column(Text, nullable=False, default="")
     change_summary: Mapped[list] = mapped_column("change_summary", JSON, nullable=False, default=lambda: [])
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="preview")
+    idempotency_key: Mapped[Optional[str]] = mapped_column("idempotency_key", String(160), nullable=True)
+    apply_idempotency_key: Mapped[Optional[str]] = mapped_column("apply_idempotency_key", String(160), nullable=True)
+    runtime: Mapped[str] = mapped_column(String(32), nullable=False, default="legacy")
+    graph_thread_id: Mapped[Optional[str]] = mapped_column("graph_thread_id", String(160), nullable=True, index=True)
+    source_content_hash: Mapped[str] = mapped_column("source_content_hash", String(64), nullable=False, default="")
+    applied_content_hash: Mapped[Optional[str]] = mapped_column("applied_content_hash", String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column("created_at", DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column("updated_at", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     applied_at: Mapped[Optional[datetime]] = mapped_column("applied_at", DateTime, nullable=True)
@@ -345,6 +440,14 @@ class UserMemory(Base):
     scope: Mapped[str] = mapped_column(String(50), nullable=False, default="global")
     tags: Mapped[list] = mapped_column(JSON, nullable=False, default=lambda: [])
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="active")
+    external_provider: Mapped[Optional[str]] = mapped_column("external_provider", String(50), nullable=True)
+    external_id: Mapped[Optional[str]] = mapped_column("external_id", String(160), nullable=True)
+    canonical_key: Mapped[Optional[str]] = mapped_column("canonical_key", String(120), nullable=True)
+    memory_layer: Mapped[Optional[str]] = mapped_column("memory_layer", String(50), nullable=True)
+    expires_at: Mapped[Optional[datetime]] = mapped_column("expires_at", DateTime, nullable=True, index=True)
+    source_ref: Mapped[Optional[str]] = mapped_column("source_ref", String(255), nullable=True)
+    provider_metadata: Mapped[dict] = mapped_column("provider_metadata", JSON, nullable=False, default=lambda: {})
+    idempotency_key: Mapped[Optional[str]] = mapped_column("idempotency_key", String(160), nullable=True)
     last_used_at: Mapped[Optional[datetime]] = mapped_column("last_used_at", DateTime, nullable=True)
     access_count: Mapped[int] = mapped_column("access_count", Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column("created_at", DateTime, default=datetime.utcnow)
@@ -421,6 +524,9 @@ class AgentRun(Base):
     input_text: Mapped[str] = mapped_column("input_text", LONGTEXT, nullable=False, default="")
     output_text: Mapped[str] = mapped_column("output_text", LONGTEXT, nullable=False, default="")
     error_message: Mapped[Optional[str]] = mapped_column("error_message", Text, nullable=True)
+    request_id: Mapped[Optional[str]] = mapped_column("request_id", String(64), nullable=True, index=True)
+    trace_id: Mapped[Optional[str]] = mapped_column("trace_id", String(64), nullable=True, index=True)
+    idempotency_key: Mapped[Optional[str]] = mapped_column("idempotency_key", String(160), nullable=True)
     metadata_json: Mapped[dict] = mapped_column("metadata_json", JSON, nullable=False, default=lambda: {})
     started_at: Mapped[datetime] = mapped_column("started_at", DateTime, default=datetime.utcnow)
     finished_at: Mapped[Optional[datetime]] = mapped_column("finished_at", DateTime, nullable=True)
@@ -444,6 +550,7 @@ class AgentStep(Base):
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="running")
     input_summary: Mapped[Optional[str]] = mapped_column("input_summary", Text, nullable=True)
     output_summary: Mapped[Optional[str]] = mapped_column("output_summary", Text, nullable=True)
+    trace_id: Mapped[Optional[str]] = mapped_column("trace_id", String(64), nullable=True, index=True)
     metadata_json: Mapped[dict] = mapped_column("metadata_json", JSON, nullable=False, default=lambda: {})
     started_at: Mapped[datetime] = mapped_column("started_at", DateTime, default=datetime.utcnow)
     finished_at: Mapped[Optional[datetime]] = mapped_column("finished_at", DateTime, nullable=True)
@@ -466,6 +573,7 @@ class AgentToolTrace(Base):
     duration_ms: Mapped[int] = mapped_column("duration_ms", Integer, nullable=False, default=0)
     input_summary: Mapped[Optional[str]] = mapped_column("input_summary", Text, nullable=True)
     output_summary: Mapped[Optional[str]] = mapped_column("output_summary", Text, nullable=True)
+    trace_id: Mapped[Optional[str]] = mapped_column("trace_id", String(64), nullable=True, index=True)
     metadata_json: Mapped[dict] = mapped_column("metadata_json", JSON, nullable=False, default=lambda: {})
     created_at: Mapped[datetime] = mapped_column("created_at", DateTime, default=datetime.utcnow)
 
@@ -492,3 +600,119 @@ class AgentCheckpoint(Base):
     user: Mapped["User"] = relationship(back_populates="agent_checkpoints")
     run: Mapped["AgentRun"] = relationship(back_populates="checkpoints")
     session: Mapped["ChatSession"] = relationship(back_populates="checkpoints")
+
+
+class AgentShadowRun(Base):
+    __tablename__ = "agent_shadow_runs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[Optional[str]] = mapped_column(String(64), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    request_id: Mapped[Optional[str]] = mapped_column(String(80), nullable=True, index=True)
+    trace_id: Mapped[Optional[str]] = mapped_column(String(80), nullable=True, index=True)
+    input_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    legacy_intent: Mapped[str] = mapped_column(String(80), nullable=False)
+    graph_intent: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    legacy_route: Mapped[str] = mapped_column(String(80), nullable=False)
+    graph_route: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    legacy_requires_sources: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    graph_requires_sources: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    hard_violation: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="running", index=True)
+    differences: Mapped[dict] = mapped_column(JSON, nullable=False, default=lambda: {})
+    graph_summary: Mapped[dict] = mapped_column(JSON, nullable=False, default=lambda: {})
+    duration_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error_code: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
+class MemoryShadowRun(Base):
+    __tablename__ = "memory_shadow_runs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[Optional[str]] = mapped_column(String(64), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    memory_id: Mapped[Optional[str]] = mapped_column(String(64), ForeignKey("user_memories.id", ondelete="SET NULL"), nullable=True, index=True)
+    operation: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    query_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    legacy_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=lambda: [])
+    mem0_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=lambda: [])
+    overlap_ratio: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    hard_violation: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="success", index=True)
+    error_code: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    details: Mapped[dict] = mapped_column(JSON, nullable=False, default=lambda: {})
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
+class IntegrationOutbox(Base):
+    __tablename__ = "integration_outbox"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[Optional[str]] = mapped_column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    topic: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    aggregate_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    aggregate_id: Mapped[str] = mapped_column(String(160), nullable=False, index=True)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=lambda: {})
+    idempotency_key: Mapped[str] = mapped_column(String(240), nullable=False, unique=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", index=True)
+    available_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    locked_by: Mapped[Optional[str]] = mapped_column(String(160), nullable=True, index=True)
+    locked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    heartbeat_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=8)
+    error_code: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    trace_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
+class RagQueryLog(Base):
+    __tablename__ = "rag_query_logs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[Optional[str]] = mapped_column(String(64), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    query_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    query_preview: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    provider: Mapped[str] = mapped_column(String(50), nullable=False, default="legacy")
+    mode: Mapped[str] = mapped_column(String(50), nullable=False, default="hybrid")
+    candidate_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    result_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    trace_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    run_id: Mapped[Optional[str]] = mapped_column(String(64), ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True, index=True)
+    metrics: Mapped[dict] = mapped_column(JSON, nullable=False, default=lambda: {})
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
+class RagEvalCase(Base):
+    __tablename__ = "rag_eval_cases"
+    __table_args__ = (Index("uq_rag_eval_case_version_name", "dataset_version", "name", unique=True),)
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    dataset_version: Mapped[str] = mapped_column(String(80), nullable=False, default="v1")
+    input_data: Mapped[dict] = mapped_column(JSON, nullable=False, default=lambda: {})
+    expected: Mapped[dict] = mapped_column(JSON, nullable=False, default=lambda: {})
+    tags: Mapped[list] = mapped_column(JSON, nullable=False, default=lambda: [])
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class RagEvalRun(Base):
+    __tablename__ = "rag_eval_runs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    case_id: Mapped[Optional[str]] = mapped_column(String(64), ForeignKey("rag_eval_cases.id", ondelete="SET NULL"), nullable=True, index=True)
+    provider: Mapped[str] = mapped_column(String(50), nullable=False, default="legacy")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="running", index=True)
+    parameters: Mapped[dict] = mapped_column(JSON, nullable=False, default=lambda: {})
+    result: Mapped[dict] = mapped_column(JSON, nullable=False, default=lambda: {})
+    metrics: Mapped[dict] = mapped_column(JSON, nullable=False, default=lambda: {})
+    trace_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

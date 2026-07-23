@@ -73,18 +73,40 @@ async def get_current_user(
 
 # ── Redis rate limiter ──
 
+_user_rate_windows: dict[str, tuple[int, int]] = {}
+
+
+def _local_rate_count(store: dict[str, tuple[int, int]], key: str, bucket: int) -> int:
+    previous_bucket, previous_count = store.get(key, (bucket, 0))
+    count = previous_count + 1 if previous_bucket == bucket else 1
+    store[key] = (bucket, count)
+    if len(store) > 4096:
+        for item in [name for name, (item_bucket, _) in store.items() if item_bucket < bucket]:
+            store.pop(item, None)
+    return count
+
 def redis_rate_limit(prefix: str, limit: int, window_seconds: int = 60):
     async def _rate_limit(request: Request, user: CurrentUser = Depends(get_current_user)):
-        if db.redis_client is None or limit <= 0:
+        if limit <= 0:
             return user
 
         bucket = int(time.time()) // window_seconds
         key = f"noteflow:rate:{prefix}:{user.id}:{bucket}"
-        count = await db.redis_client.incr(key)
-        if count == 1:
-            await db.redis_client.expire(key, window_seconds + 1)
+        if db.redis_client is not None:
+            try:
+                count = await db.redis_client.incr(key)
+                if count == 1:
+                    await db.redis_client.expire(key, window_seconds + 1)
+            except Exception:
+                count = _local_rate_count(_user_rate_windows, key, bucket)
+        else:
+            count = _local_rate_count(_user_rate_windows, key, bucket)
         if count > limit:
-            raise HTTPException(status_code=429, detail="too many AI requests, please try again later")
+            raise HTTPException(
+                status_code=429,
+                detail="AI 请求较多，请稍等十几秒后重试。",
+                headers={"Retry-After": str(window_seconds)},
+            )
 
         return user
 
@@ -103,21 +125,14 @@ def public_rate_limit(prefix: str, limit: int, window_seconds: int = 300):
         key = f"noteflow:rate:{prefix}:{address}:{bucket}"
 
         if db.redis_client is not None:
-            count = await db.redis_client.incr(key)
-            if count == 1:
-                await db.redis_client.expire(key, window_seconds + 1)
+            try:
+                count = await db.redis_client.incr(key)
+                if count == 1:
+                    await db.redis_client.expire(key, window_seconds + 1)
+            except Exception:
+                count = _local_rate_count(_public_rate_windows, key, bucket)
         else:
-            previous_bucket, previous_count = _public_rate_windows.get(key, (bucket, 0))
-            count = previous_count + 1 if previous_bucket == bucket else 1
-            _public_rate_windows[key] = (bucket, count)
-            if len(_public_rate_windows) > 2048:
-                stale_keys = [
-                    item
-                    for item, (item_bucket, _) in _public_rate_windows.items()
-                    if item_bucket < bucket
-                ]
-                for item in stale_keys:
-                    _public_rate_windows.pop(item, None)
+            count = _local_rate_count(_public_rate_windows, key, bucket)
 
         if count > limit:
             raise HTTPException(

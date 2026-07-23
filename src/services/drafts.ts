@@ -49,6 +49,7 @@ export interface NoteDraftRecord {
   includeExercises: boolean;
   extraRequest: string;
   draftConfig: Record<string, unknown>;
+  bodyInstruction: string;
   outline: string;
   assembledContent: string;
   status: NoteDraftStatus;
@@ -84,6 +85,7 @@ export interface DraftCreatePayload {
   draftConfig?: Record<string, unknown>;
   outline?: string;
   sections?: DraftSectionPayload[];
+  bodyInstruction?: string;
 }
 
 export interface DraftUpdatePayload {
@@ -93,6 +95,9 @@ export interface DraftUpdatePayload {
   assembledContent?: string;
   status?: NoteDraftStatus;
   sections?: DraftSectionPayload[];
+  bodyInstruction?: string;
+  regenerateGenerated?: boolean;
+  sectionOrder?: string[];
 }
 
 export interface DraftSectionUpdatePayload {
@@ -150,6 +155,20 @@ export async function updateDraftSection(
       body: JSON.stringify(payload),
     }
   );
+  if (!response.ok) throw new Error(await readApiError(response));
+  const data = await readApiJson<{ draft: NoteDraftRecord }>(response);
+  return data.draft;
+}
+
+export async function createDraftSection(
+  draftId: string,
+  payload: DraftSectionPayload
+): Promise<NoteDraftRecord> {
+  const response = await apiFetch(`/api/note-drafts/${encodeURIComponent(draftId)}/sections`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
   if (!response.ok) throw new Error(await readApiError(response));
   const data = await readApiJson<{ draft: NoteDraftRecord }>(response);
   return data.draft;

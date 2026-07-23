@@ -9,11 +9,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import cfg
 from app.database import init_db, init_redis
-from app.routers import auth, knowledge, notes, drafts, edits, memories, ai, agent, health, settings, attachments
+from app.routers import auth, knowledge, notes, drafts, edits, memories, ai, agent, health, settings, attachments, langgraph_poc, chat_sessions
 from app.schemas.common import API_ERROR_RESPONSES
 from app.services.observability import install_observability
 from app.services.index_worker import start_index_worker, stop_index_worker
 from app.services.draft_worker import start_draft_worker, stop_draft_worker
+from app.workers.outbox_worker import start_outbox_worker, stop_outbox_worker
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -26,8 +27,10 @@ async def lifespan(app: FastAPI):
     await init_redis()
     await start_index_worker()
     await start_draft_worker()
+    await start_outbox_worker()
     logger.info("NoteFlow API started")
     yield
+    await stop_outbox_worker()
     await stop_draft_worker()
     await stop_index_worker()
 
@@ -46,8 +49,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cfg.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "PUT", "POST", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-File-Name", "X-Note-Id", "X-Content-Type"],
+    allow_methods=["GET", "PUT", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-File-Name", "X-Note-Id", "X-Content-Type", "X-Request-Id", "X-Trace-Id"],
+    expose_headers=["X-Request-Id", "X-Trace-Id"],
 )
 
 # Routes
@@ -62,6 +66,8 @@ app.include_router(memories.router, prefix="/api")
 app.include_router(settings.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(agent.router, prefix="/api")
+app.include_router(chat_sessions.router, prefix="/api")
+app.include_router(langgraph_poc.router, prefix="/api")
 
 
 def _find_free_port(preferred: int, max_steps: int = 50) -> int:

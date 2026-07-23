@@ -1,6 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { Fragment, useState, useRef, useEffect, useCallback } from "react";
 import {
-  Sparkles,
   Send,
   FileText,
   BookOpen,
@@ -16,6 +15,11 @@ import {
   RotateCcw,
   Square,
   XCircle,
+  Plus,
+  Pencil,
+  Trash2,
+  Check,
+  X,
 } from "lucide-react";
 import {
   useAgentSlice,
@@ -29,7 +33,7 @@ import { handleRenderedCodeBlockAction, renderChatMarkdown } from "../utils/chat
 import { shouldSubmitChatInput } from "../utils/inputComposition";
 import type { AgentToolTrace, ChatMessage, ChatSource } from "../types";
 import { resolveAgentCheckpoint, type AgentTaskSnapshot } from "../services/agent";
-import { getNoteDraft, stopAllDraftSections } from "../services/drafts";
+import { getNoteDraft } from "../services/drafts";
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
@@ -117,6 +121,19 @@ function displayedSources(
   sources: ChatSource[] | undefined
 ): Array<{ source: ChatSource; index: number }> {
   return referencedSources(text, sources);
+}
+
+function chatSessionGroup(value: string | null): string {
+  if (!value) return "更早";
+  const date = new Date(value);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const day = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const difference = Math.round((today - day) / 86_400_000);
+  if (difference <= 0) return "今天";
+  if (difference === 1) return "昨天";
+  if (difference < 7) return "近 7 天";
+  return "更早";
 }
 
 function toolTraceName(trace: AgentToolTrace): string {
@@ -296,6 +313,12 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
   const {
     chatMessages,
     chatLoading,
+    chatSessions,
+    chatSessionsLoading,
+    newChatSession,
+    switchChatSession,
+    renameChatSession,
+    deleteChatSession,
     sendMessage,
     stopGeneration,
     chatSelection,
@@ -318,7 +341,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
     openPendingDraft,
     requestDraftCommand,
   } = useDraftSlice();
-  const { agentTask, agentRunHistory, agentTaskDetailOpen, retryAgentTask, setAgentTaskDetailOpen } = useAgentSlice();
+  const { agentSessionId, agentTask, agentRunHistory, agentTaskDetailOpen } = useAgentSlice();
   const { selectedFileId, treeData, reloadWorkspace } = useWorkspaceSlice();
   const [input, setInput] = useState("");
   const [composerMode, setComposerMode] = useState<"chat" | "ask_notes">("chat");
@@ -332,32 +355,124 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [voiceListening, setVoiceListening] = useState(false);
   const [voiceError, setVoiceError] = useState("");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingSessionTitle, setEditingSessionTitle] = useState("");
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [sessionActionBusy, setSessionActionBusy] = useState(false);
+  const [sessionActionError, setSessionActionError] = useState("");
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollChatRef = useRef(true);
   const previousMessageCountRef = useRef(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const modeMenuRef = useRef<HTMLDivElement>(null);
+  const historyMenuRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const voiceBaseInputRef = useRef("");
   const voiceFinalTextRef = useRef("");
   const voiceSessionIdRef = useRef(0);
   const voiceRestartTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
-
   const selectedFile = selectedFileId
     ? findFileById(treeData, selectedFileId)
     : undefined;
   const activeCheckpoint = pendingCheckpoint ?? agentTask?.checkpoint ?? null;
-  const taskVisible = Boolean(
-    agentTask &&
-      (chatLoading ||
-        activeCheckpoint ||
-        agentTask.run.status === "failed" ||
-        agentTask.run.status === "cancelled")
+  const currentSession = chatSessions.find((session) => session.id === agentSessionId) ?? null;
+  const filteredChatSessions = chatSessions.filter((session) =>
+    session.title.toLocaleLowerCase().includes(historyQuery.trim().toLocaleLowerCase())
   );
-  const taskTraces = agentTask?.run.toolTraces ?? [];
-  const taskStatus = activeCheckpoint ? "waiting_user_confirm" : agentTask?.run.status;
   const currentNoteTitle = selectedFile?.name.replace(/\.md$/i, "") ?? "";
+  const draftCardVisible = activeCheckpoint?.checkpointType === "draft_workspace" || Boolean(activeDraftContext);
+  const outlineGenerating = !activeDraftContext || activeDraftContext.stage === "configuring";
+  const outlineFailed = activeDraftContext?.stage === "failed";
+  const outlineCanOpen = Boolean(
+    activeDraftContext && ["outline_ready", "generating", "assembled"].includes(activeDraftContext.stage)
+  );
+  const renderDraftConversationCard = (
+    card: NonNullable<ChatMessage["draftCard"]>,
+    className = "mt-3 w-[92%]"
+  ) => {
+    const isCurrent = Boolean(
+      draftCardVisible &&
+      ((card.checkpointId && activeCheckpoint?.id === card.checkpointId) ||
+        (!card.checkpointId && activeDraftContext?.topic === card.seed))
+    );
+    const context = isCurrent ? activeDraftContext : null;
+    const historicalText = card.status === "resolved"
+      ? "该大纲已完成并保存。"
+      : card.status === "cancelled"
+        ? "该大纲任务已取消。"
+        : "这是当时生成的大纲记录。";
+    const historicalAction = card.status === "resolved"
+      ? "已完成"
+      : card.status === "cancelled"
+        ? "已取消"
+        : "历史大纲";
+
+    return (
+    <section className={`${className} overflow-hidden rounded-2xl border border-[#dfe7ec] bg-[#fbfcfd] shadow-[0_8px_24px_rgba(45,65,80,0.06)]`} aria-label="AI 笔记大纲">
+      <div className="px-4 pb-3 pt-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold tracking-wide text-[#748694]">AI 笔记大纲</p>
+            <h3 className="mt-1 truncate text-[14px] font-semibold text-jelly-text">
+              {context?.title || card.seed}
+            </h3>
+          </div>
+          {context?.totalSections ? (
+            <span className="shrink-0 rounded-full bg-[#eef7fb] px-2 py-1 text-[10px] font-semibold text-jelly-blue-deep">
+              {context.stage === "generating" || context.stage === "assembled"
+                ? `${context.completedSections}/${context.totalSections}`
+                : `${context.totalSections} 章`}
+            </span>
+          ) : null}
+        </div>
+        <p className={`mt-2 text-[12px] leading-relaxed ${context?.errorText ? "text-jelly-red" : "text-jelly-text-muted"}`}>
+          {!isCurrent ? historicalText : context?.errorText ||
+            (context?.stage === "outline_ready"
+              ? "大纲已经准备好，请打开完整查看后再确认生成。"
+              : context?.stage === "generating"
+                ? context.statusText || "正在按章节生成正文。"
+                : context?.stage === "assembled"
+                  ? "所有章节已生成，可以打开检查并保存为正式笔记。"
+                  : "正在根据你的要求生成大纲…")}
+        </p>
+        {context?.totalSections ? (
+          <div className="mt-3 h-1 overflow-hidden rounded-full bg-[#e7eef2]">
+            <div
+              className="h-full rounded-full bg-jelly-blue transition-[width] duration-300"
+              style={{ width: `${Math.round((context.completedSections / context.totalSections) * 100)}%` }}
+            />
+          </div>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          if (!isCurrent) return;
+          if (outlineFailed) {
+            requestDraftCommand("generate_outline");
+            return;
+          }
+          openPendingDraft();
+        }}
+        disabled={!isCurrent || centerMode === "draft" || outlineGenerating || (!outlineFailed && !outlineCanOpen)}
+        className="flex h-10 w-full items-center justify-center border-t border-[#e8edf0] bg-white text-[12px] font-semibold text-jelly-blue-deep transition-colors hover:bg-[#f2f8fb] disabled:cursor-not-allowed disabled:text-jelly-text-muted"
+      >
+        {!isCurrent
+          ? historicalAction
+          : outlineFailed
+          ? "重新生成大纲"
+          : outlineGenerating
+            ? "大纲生成中…"
+            : activeDraftContext?.stage === "generating" || activeDraftContext?.stage === "assembled"
+              ? "查看草稿"
+              : "查看大纲"}
+      </button>
+    </section>
+    );
+  };
 
   useEffect(() => {
     setCurrentNoteReferenced(Boolean(selectedFileId));
@@ -382,6 +497,92 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [modeMenuOpen]);
+
+  useEffect(() => {
+    if (!historyOpen) return;
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!historyMenuRef.current?.contains(event.target as Node)) {
+        setHistoryOpen(false);
+        setEditingSessionId(null);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setHistoryOpen(false);
+        setEditingSessionId(null);
+      }
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick, true);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick, true);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [historyOpen]);
+
+  const handleNewChat = async () => {
+    if (sessionActionBusy) return;
+    setSessionActionBusy(true);
+    setSessionActionError("");
+    try {
+      await newChatSession();
+      setHistoryOpen(false);
+      setHistoryQuery("");
+      requestAnimationFrame(() => inputRef.current?.focus());
+    } catch (error) {
+      setSessionActionError(error instanceof Error ? error.message : "新建对话失败");
+    } finally {
+      setSessionActionBusy(false);
+    }
+  };
+
+  const handleSwitchChat = async (sessionId: string) => {
+    if (sessionActionBusy || sessionId === agentSessionId) {
+      setHistoryOpen(false);
+      return;
+    }
+    setSessionActionBusy(true);
+    setSessionActionError("");
+    try {
+      await switchChatSession(sessionId);
+      setHistoryOpen(false);
+      setHistoryQuery("");
+    } catch (error) {
+      setSessionActionError(error instanceof Error ? error.message : "读取对话失败");
+    } finally {
+      setSessionActionBusy(false);
+    }
+  };
+
+  const handleRenameChat = async (sessionId: string) => {
+    const title = editingSessionTitle.trim();
+    if (!title || sessionActionBusy) return;
+    setSessionActionBusy(true);
+    setSessionActionError("");
+    try {
+      await renameChatSession(sessionId, title);
+      setEditingSessionId(null);
+    } catch (error) {
+      setSessionActionError(error instanceof Error ? error.message : "重命名失败");
+    } finally {
+      setSessionActionBusy(false);
+    }
+  };
+
+  const handleDeleteChat = async () => {
+    if (!deletingSessionId || sessionActionBusy) return;
+    setSessionActionBusy(true);
+    setSessionActionError("");
+    try {
+      await deleteChatSession(deletingSessionId);
+      setDeletingSessionId(null);
+      setHistoryOpen(false);
+    } catch (error) {
+      setSessionActionError(error instanceof Error ? error.message : "删除对话失败");
+    } finally {
+      setSessionActionBusy(false);
+    }
+  };
 
   const setChatAutoScroll = useCallback((enabled: boolean) => {
     shouldAutoScrollChatRef.current = enabled;
@@ -422,10 +623,6 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
   }, [chatMessages, scrollChatToBottom]);
 
   useEffect(() => {
-    if (chatSelection) inputRef.current?.focus();
-  }, [chatSelection?.id]);
-
-  useEffect(() => {
     if (
       centerMode === "draft" ||
       activeDraftContext?.stage !== "generating" ||
@@ -456,10 +653,17 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
           id: latest.id,
           title: latest.title,
           topic: latest.topic,
-          stage: latest.status === "failed" ? "failed" : "generating",
+          stage:
+            latest.status === "failed"
+              ? "failed"
+              : latest.status === "assembled"
+                ? "assembled"
+                : "generating",
           busy: false,
           statusText:
-            typeof generationJob.currentSectionTitle === "string"
+            latest.status === "assembled"
+              ? "所有章节已生成，等待检查并保存为正式笔记。"
+              : typeof generationJob.currentSectionTitle === "string"
               ? `正在后台生成：${generationJob.currentSectionTitle}`
               : "后台正在继续生成，刷新或关闭页面不会中断。",
           errorText:
@@ -700,271 +904,135 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
   }, []);
 
   return (
-    <aside className="ai-side-panel relative flex h-full flex-col border-l border-[#e9edf1] bg-white/80 px-5 pb-5 pt-7">
-      {/* Header */}
-      <div className="shrink-0">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="truncate text-[19px] font-semibold tracking-normal text-jelly-text">AI 助手</h2>
-            <p className="mt-1 truncate text-[12px] text-jelly-text-muted">直接说你想做什么</p>
+    <aside className="ai-side-panel relative flex h-full flex-col border-l border-[#e9edf1] bg-white/80 px-5 pb-5 pt-3">
+      <div className="relative z-40 flex h-10 shrink-0 items-center justify-between gap-2" ref={historyMenuRef}>
+        <button
+          type="button"
+          onClick={() => setHistoryOpen((open) => !open)}
+          className="flex min-w-0 max-w-[calc(100%-80px)] items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-[14px] font-semibold text-jelly-text transition-colors hover:bg-[#f2f6f8]"
+          aria-expanded={historyOpen}
+          aria-haspopup="menu"
+          title={currentSession?.title ?? "新对话"}
+        >
+          <span className="truncate">{currentSession?.title ?? "新对话"}</span>
+          <ChevronDown size={14} className={`shrink-0 transition-transform ${historyOpen ? "rotate-180" : ""}`} />
+        </button>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <div className="group/new-chat relative">
+            <button
+              type="button"
+              onClick={() => void handleNewChat()}
+              disabled={sessionActionBusy}
+              className="grid h-8 w-8 place-items-center rounded-lg text-jelly-text-muted transition-colors hover:bg-[#eef5f8] hover:text-jelly-blue-deep disabled:opacity-50"
+              aria-label="新建对话"
+              aria-describedby="new-chat-tooltip"
+            >
+              <Plus size={18} strokeWidth={1.9} />
+            </button>
+            <span
+              id="new-chat-tooltip"
+              role="tooltip"
+              className="pointer-events-none absolute left-1/2 top-full z-50 mt-1.5 -translate-x-1/2 -translate-y-1 whitespace-nowrap rounded-md border border-jelly-border bg-white px-2.5 py-1 text-[12px] font-medium text-jelly-text-soft opacity-0 shadow-[0_6px_18px_rgba(30,44,56,0.08)] transition-all duration-150 group-hover/new-chat:translate-y-0 group-hover/new-chat:opacity-100 group-focus-within/new-chat:translate-y-0 group-focus-within/new-chat:opacity-100"
+            >
+              新建对话
+            </span>
           </div>
-          <Sparkles size={19} className="shrink-0 text-jelly-blue-deep" strokeWidth={1.8} />
-        </div>
-      </div>
-
-      {taskVisible && agentTask && (
-        <div className="shrink-0 border-b border-jelly-border bg-jelly-surface px-4 py-2.5">
-          <div className="rounded-md border border-jelly-border bg-white px-3 py-2">
-            <div className="flex min-w-0 items-center justify-between gap-2">
-              <div className="flex min-w-0 items-center gap-2">
-                {taskStatus === "running" ? (
-                  <Loader2 size={14} className="shrink-0 animate-spin text-jelly-blue-deep" strokeWidth={1.8} />
-                ) : taskStatus === "failed" ? (
-                  <XCircle size={14} className="shrink-0 text-jelly-red" strokeWidth={1.8} />
-                ) : (
-                  <Clock3 size={14} className="shrink-0 text-jelly-blue-deep" strokeWidth={1.8} />
-                )}
-                <div className="min-w-0">
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <span className="truncate text-[12px] font-semibold text-jelly-text">
-                      {activeCheckpoint ? checkpointLabel(activeCheckpoint.checkpointType) : intentLabel(agentTask.run.intent)}
-                    </span>
-                    <span
-                      className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[11px] font-medium ${
-                        taskStatus === "failed"
-                          ? "border-jelly-red/25 bg-jelly-red-bg text-jelly-red"
-                          : taskStatus === "cancelled"
-                            ? "border-jelly-border bg-jelly-surface text-jelly-text-muted"
-                            : "border-jelly-blue/20 bg-jelly-blue-pale text-jelly-blue-deep"
-                      }`}
-                    >
-                      {runStatusLabel(taskStatus)}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 line-clamp-1 text-[12px] leading-relaxed text-jelly-text-muted">
-                    {agentTask.run.errorMessage || agentTask.run.inputText || "等待下一步操作"}
-                  </p>
-                </div>
-              </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                {taskStatus === "running" && (
-                  <button
-                    type="button"
-                    onClick={stopGeneration}
-                    className="inline-flex h-7 items-center gap-1 rounded-md border border-jelly-red/25 bg-jelly-red-bg px-2 text-[12px] font-medium text-jelly-red transition-colors hover:border-jelly-red/40"
-                  >
-                    <Square size={10} fill="currentColor" strokeWidth={2.4} />
-                    停止
-                  </button>
-                )}
-                {activeCheckpoint?.checkpointType === "edit_preview" && (
-                  <>
-                    {activeEditPreview ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={cancelEditPreviewRequest}
-                          disabled={chatLoading}
-                          className="inline-flex h-7 items-center rounded-md border border-jelly-border bg-white px-2 text-[12px] font-medium text-jelly-text-soft transition-colors hover:border-jelly-red/25 hover:bg-jelly-red-bg hover:text-jelly-red disabled:cursor-not-allowed disabled:opacity-55"
-                        >
-                          取消
-                        </button>
-                        <button
-                          type="button"
-                          onClick={applyEditPreviewRequest}
-                          disabled={chatLoading}
-                          className="inline-flex h-7 items-center rounded-md bg-jelly-blue px-2 text-[12px] font-semibold text-white transition-colors hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-55"
-                        >
-                          应用
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          onClick={openPendingEditPreview}
-                          disabled={chatLoading}
-                          className="inline-flex h-7 items-center rounded-md bg-jelly-blue px-2 text-[12px] font-semibold text-white transition-colors hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-55"
-                        >
-                          打开
-                        </button>
-                        <button
-                          type="button"
-                          onClick={cancelEditPreviewRequest}
-                          disabled={chatLoading}
-                          className="inline-flex h-7 items-center rounded-md border border-jelly-border bg-white px-2 text-[12px] font-medium text-jelly-text-soft transition-colors hover:border-jelly-red/25 hover:bg-jelly-red-bg hover:text-jelly-red disabled:cursor-not-allowed disabled:opacity-55"
-                        >
-                          取消
-                        </button>
-                      </>
-                    )}
-                  </>
-                )}
-                {activeCheckpoint?.checkpointType === "draft_workspace" && centerMode !== "draft" && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={openPendingDraft}
-                      disabled={chatLoading}
-                      className="inline-flex h-7 items-center rounded-md bg-jelly-blue px-2 text-[12px] font-semibold text-white transition-colors hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-55"
-                    >
-                      打开
-                    </button>
-                    <button
-                      type="button"
-                      onClick={closeDraft}
-                      disabled={chatLoading}
-                      className="inline-flex h-7 items-center rounded-md border border-jelly-border bg-white px-2 text-[12px] font-medium text-jelly-text-soft transition-colors hover:border-jelly-red/25 hover:bg-jelly-red-bg hover:text-jelly-red disabled:cursor-not-allowed disabled:opacity-55"
-                    >
-                      取消
-                    </button>
-                  </>
-                )}
-                {(taskStatus === "failed" || taskStatus === "cancelled") && agentTask.run.inputText && (
-                  <button
-                    type="button"
-                    onClick={retryAgentTask}
-                    disabled={chatLoading}
-                    className="inline-flex h-7 items-center gap-1 rounded-md border border-jelly-border bg-white px-2 text-[12px] font-medium text-jelly-text-soft transition-colors hover:border-jelly-blue/25 hover:bg-jelly-blue-pale hover:text-jelly-blue-deep disabled:cursor-not-allowed disabled:opacity-55"
-                  >
-                    <RotateCcw size={11} strokeWidth={1.8} />
-                    重试
-                  </button>
-                )}
-              </div>
-            </div>
-            {visibleToolTraces(taskTraces).length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {visibleToolTraces(taskTraces).slice(-3).map((trace, traceIndex) => (
-                  <span
-                    key={`${trace.id ?? trace.toolName}-${traceIndex}-task`}
-                    className="rounded-md border border-jelly-border bg-jelly-surface px-1.5 py-0.5 text-[11px] text-jelly-text-muted"
-                    title={trace.outputSummary ?? trace.action}
-                  >
-                    {toolTraceDescription(trace)}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {(centerMode === "draft" || activeDraftContext?.stage === "generating") && activeDraftContext && (
-        <section className="course-planning-card mt-4 shrink-0 rounded-xl border border-[#dfe7ec] bg-[#f8fbfc] p-3" aria-label="课程生成控制">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold tracking-wide text-[#6f8290]">课程方案</p>
-              <h3 className="mt-1 truncate text-[14px] font-semibold text-jelly-text">
-                {activeDraftContext.title}
-              </h3>
-            </div>
-            {activeDraftContext.totalSections > 0 && (
-              <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] text-jelly-text-muted">
-                {activeDraftContext.completedSections}/{activeDraftContext.totalSections}
-              </span>
-            )}
-          </div>
-
-          {(activeDraftContext.statusText || activeDraftContext.errorText) && (
-            <p className={`mt-2 text-[12px] leading-relaxed ${activeDraftContext.errorText ? "text-jelly-red" : "text-jelly-text-muted"}`}>
-              {activeDraftContext.errorText || activeDraftContext.statusText}
-            </p>
+          {onCollapse && (
+            <button
+              type="button"
+              onClick={onCollapse}
+              className="grid h-8 w-8 place-items-center rounded-lg text-jelly-text-muted transition-colors hover:bg-[#eef5f8] hover:text-jelly-blue-deep"
+              aria-label="收起 AI 助手"
+              title="收起 AI 助手"
+            >
+              <ChevronsRight size={17} strokeWidth={1.9} />
+            </button>
           )}
+        </div>
 
-          {activeDraftContext.totalSections > 0 && (
-            <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#e7eef2]" aria-label="课程生成进度">
-              <div
-                className="h-full rounded-full bg-jelly-blue transition-[width] duration-300"
-                style={{
-                  width: `${Math.round((activeDraftContext.completedSections / activeDraftContext.totalSections) * 100)}%`,
-                }}
+        {historyOpen && (
+          <div className="absolute left-0 top-11 w-[min(340px,calc(100vw-32px))] overflow-hidden rounded-2xl border border-[#dfe7ec] bg-white p-2 shadow-[0_18px_50px_rgba(35,52,65,0.16)]" role="menu">
+            <div className="flex items-center gap-2 rounded-xl bg-[#f6f8fa] px-3">
+              <Search size={15} className="shrink-0 text-jelly-text-muted" />
+              <input
+                value={historyQuery}
+                onChange={(event) => setHistoryQuery(event.target.value)}
+                placeholder="搜索历史对话"
+                className="h-9 min-w-0 flex-1 border-0 bg-transparent text-[13px] text-jelly-text outline-none placeholder:text-[#9aa5ad]"
+                autoFocus
               />
             </div>
-          )}
-
-          <div className="mt-3 flex flex-wrap gap-2">
-            {activeDraftContext.stage === "configuring" && (
-              <button
-                type="button"
-                className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg bg-jelly-blue px-3 text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-55"
-                onClick={() => requestDraftCommand("generate_outline")}
-                disabled={activeDraftContext.busy}
-              >
-                {activeDraftContext.busy && <Loader2 size={13} className="animate-spin" />}
-                生成课程目录
-              </button>
-            )}
-
-            {activeDraftContext.stage === "outline_ready" && (
-              <>
-                <button
-                  type="button"
-                  className="inline-flex h-8 flex-1 items-center justify-center rounded-lg bg-jelly-blue px-3 text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-55"
-                  onClick={() => requestDraftCommand("generate_all")}
-                  disabled={activeDraftContext.busy || activeDraftContext.totalSections === 0}
-                >
-                  生成完整课程
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex h-8 items-center justify-center rounded-lg border border-jelly-border bg-white px-3 text-[12px] text-jelly-text-soft disabled:opacity-55"
-                  onClick={() => requestDraftCommand("regenerate_outline", "请重新审视课程目标并优化总目录")}
-                  disabled={activeDraftContext.busy}
-                >
-                  重新规划
-                </button>
-              </>
-            )}
-
-            {activeDraftContext.stage === "generating" && (
-              <>
-                {centerMode !== "draft" && (
-                  <button
-                    type="button"
-                    className="inline-flex h-8 flex-1 items-center justify-center rounded-lg bg-jelly-blue px-3 text-[12px] font-semibold text-white"
-                    onClick={openPendingDraft}
-                  >
-                    查看生成内容
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-jelly-red/25 bg-jelly-red-bg px-3 text-[12px] font-medium text-jelly-red"
-                  onClick={() => {
-                    if (centerMode === "draft") requestDraftCommand("stop");
-                    else void stopAllDraftSections(activeDraftContext.id);
-                  }}
-                >
-                  <Square size={11} fill="currentColor" />
-                  停止生成
-                </button>
-              </>
-            )}
-
-            {activeDraftContext.stage === "failed" && (
-              <button
-                type="button"
-                className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg bg-jelly-blue px-3 text-[12px] font-semibold text-white"
-                onClick={() => requestDraftCommand(activeDraftContext.totalSections ? "generate_all" : "generate_outline")}
-              >
-                <RotateCcw size={12} />
-                继续重试
-              </button>
-            )}
-
-            {!activeDraftContext.busy && centerMode === "draft" && (
-              <button
-                type="button"
-                className="inline-flex h-8 items-center justify-center rounded-lg px-2.5 text-[12px] text-jelly-text-muted hover:bg-white hover:text-jelly-red"
-                onClick={() => requestDraftCommand("cancel")}
-              >
-                取消
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => void handleNewChat()}
+              className="mt-1.5 flex h-9 w-full items-center gap-2 rounded-xl px-3 text-[13px] font-medium text-jelly-blue-deep transition-colors hover:bg-[#eef6fa]"
+            >
+              <Plus size={15} />
+              新建对话
+            </button>
+            <div className="mt-1 max-h-[360px] overflow-y-auto overscroll-contain pr-0.5">
+              {chatSessionsLoading && filteredChatSessions.length === 0 ? (
+                <div className="flex h-20 items-center justify-center text-[12px] text-jelly-text-muted">
+                  <Loader2 size={15} className="mr-2 animate-spin" />读取中
+                </div>
+              ) : filteredChatSessions.length === 0 ? (
+                <p className="px-3 py-8 text-center text-[12px] text-jelly-text-muted">没有找到对话</p>
+              ) : filteredChatSessions.map((session, index) => {
+                const group = chatSessionGroup(session.lastMessageAt ?? session.updatedAt);
+                const previous = index > 0
+                  ? chatSessionGroup(filteredChatSessions[index - 1].lastMessageAt ?? filteredChatSessions[index - 1].updatedAt)
+                  : null;
+                const editing = editingSessionId === session.id;
+                return (
+                  <Fragment key={session.id}>
+                    {group !== previous && (
+                      <p className="px-3 pb-1 pt-3 text-[10px] font-semibold tracking-wide text-[#94a0a9]">{group}</p>
+                    )}
+                    <div className={`group flex min-h-10 items-center rounded-xl px-2 transition-colors ${session.id === agentSessionId ? "bg-[#edf6fa]" : "hover:bg-[#f6f8fa]"}`}>
+                      {editing ? (
+                        <>
+                          <input
+                            value={editingSessionTitle}
+                            onChange={(event) => setEditingSessionTitle(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") void handleRenameChat(session.id);
+                              if (event.key === "Escape") setEditingSessionId(null);
+                            }}
+                            className="h-8 min-w-0 flex-1 rounded-lg border border-[#ccdbe4] bg-white px-2 text-[13px] outline-none"
+                            autoFocus
+                          />
+                          <button type="button" onClick={() => void handleRenameChat(session.id)} className="grid h-7 w-7 place-items-center text-jelly-blue-deep" aria-label="保存名称"><Check size={14} /></button>
+                          <button type="button" onClick={() => setEditingSessionId(null)} className="grid h-7 w-7 place-items-center text-jelly-text-muted" aria-label="取消重命名"><X size={14} /></button>
+                        </>
+                      ) : (
+                        <>
+                          <button type="button" onClick={() => void handleSwitchChat(session.id)} className="min-w-0 flex-1 truncate px-1 py-2 text-left text-[13px] text-jelly-text" title={session.title}>
+                            {session.title}
+                          </button>
+                          {session.id === agentSessionId && <Check size={13} className="mr-1 shrink-0 text-jelly-blue-deep" />}
+                          <button
+                            type="button"
+                            onClick={() => { setEditingSessionId(session.id); setEditingSessionTitle(session.title); }}
+                            className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-jelly-text-muted opacity-0 transition-opacity hover:bg-white hover:text-jelly-blue-deep group-hover:opacity-100"
+                            aria-label={`重命名${session.title}`}
+                          ><Pencil size={13} /></button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingSessionId(session.id)}
+                            className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-jelly-text-muted opacity-0 transition-opacity hover:bg-[#fff2f0] hover:text-jelly-red group-hover:opacity-100"
+                            aria-label={`删除${session.title}`}
+                          ><Trash2 size={13} /></button>
+                        </>
+                      )}
+                    </div>
+                  </Fragment>
+                );
+              })}
+            </div>
+            {sessionActionError && <p className="px-3 pb-1 pt-2 text-[11px] text-jelly-red">{sessionActionError}</p>}
           </div>
-        </section>
-      )}
+        )}
+      </div>
 
       {false && agentTaskDetailOpen && (
         <AgentTaskDetailPanel currentTask={agentTask} history={agentRunHistory} />
@@ -996,10 +1064,8 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
             return null;
           })();
           return (
-          <div
-            key={msg.id}
-            className={`flex ${msg.role === "user" ? "justify-end" : ""}`}
-          >
+          <Fragment key={msg.id}>
+          <div className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
             <div
               className={`
                 rounded-xl border px-4 py-3 text-[14px] leading-relaxed
@@ -1094,7 +1160,10 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
                 </div>
               )}
             </div>
+            {msg.role === "assistant" && msg.draftCard &&
+              renderDraftConversationCard(msg.draftCard)}
           </div>
+          </Fragment>
           );
         })}
         {chatLoading && chatMessages[chatMessages.length - 1]?.role !== "assistant" && (
@@ -1133,12 +1202,11 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
                 <span className="min-w-0 truncate">{currentNoteTitle}</span>
                 <button
                   type="button"
-                  className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-[#edf0f2] text-[12px] leading-none text-[#67717c] opacity-0 transition-opacity group-hover:opacity-100"
+                  className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#edf0f2] text-[#67717c] opacity-0 transition-opacity group-hover:opacity-100"
                   onClick={() => setCurrentNoteReferenced(false)}
                   aria-label="移除当前笔记引用"
-                  title="移除当前笔记引用"
                 >
-                  ×
+                  <X size={12} strokeWidth={2} />
                 </button>
               </span>
             )}
@@ -1147,12 +1215,11 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
                 <span className="min-w-0 truncate">引用：{chatSelection.text}</span>
                 <button
                   type="button"
-                  className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-[#e5eef4] text-[12px] leading-none text-[#607483] opacity-0 transition-opacity group-hover:opacity-100"
+                  className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#e5eef4] text-[#607483] opacity-0 transition-opacity group-hover:opacity-100"
                   onClick={clearChatSelection}
                   aria-label="移除选中文字引用"
-                  title="移除选中文字引用"
                 >
-                  ×
+                  <X size={12} strokeWidth={2} />
                 </button>
               </span>
             )}
@@ -1267,20 +1334,30 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
         )}
       </div>
 
-      {false && onCollapse && (
-        <div className="group/collapse absolute left-2 top-1/2 z-30 -translate-y-1/2">
-          <button
-            className="flex h-14 w-6 items-center justify-center rounded-full border border-jelly-border bg-white/80 text-jelly-text-muted opacity-55 shadow-[0_8px_22px_rgba(22,34,45,0.08)] backdrop-blur-sm transition-all duration-200 hover:translate-x-0.5 hover:border-jelly-blue/25 hover:bg-white hover:text-jelly-blue-deep hover:opacity-100"
-            onClick={onCollapse}
-            aria-label="收起 AI 助手"
-          >
-            <ChevronsRight size={14} strokeWidth={1.8} />
-          </button>
-          <span className="pointer-events-none absolute left-8 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-jelly-blue-deep px-2.5 py-1 text-[12px] font-medium text-white opacity-0 transition-opacity duration-150 group-hover/collapse:opacity-100">
-            收起 AI 助手
-          </span>
+      {deletingSessionId && (
+        <div className="fixed inset-0 z-[120] grid place-items-center bg-[#26343d]/20 p-5 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-label="删除对话">
+          <div className="w-full max-w-sm rounded-2xl border border-[#dfe5e9] bg-white p-5 shadow-[0_24px_70px_rgba(25,39,50,0.22)]">
+            <div className="flex items-start gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#fff1ef] text-jelly-red"><Trash2 size={19} /></span>
+              <div className="min-w-0">
+                <h3 className="text-[16px] font-semibold text-jelly-text">删除这段对话？</h3>
+                <p className="mt-1 line-clamp-2 text-[13px] leading-6 text-jelly-text-muted">
+                  {chatSessions.find((session) => session.id === deletingSessionId)?.title ?? "这段对话"}将从历史记录中移除，已经保存的笔记不会受到影响。
+                </p>
+              </div>
+            </div>
+            {sessionActionError && <p className="mt-3 text-[12px] text-jelly-red">{sessionActionError}</p>}
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setDeletingSessionId(null)} disabled={sessionActionBusy} className="h-9 rounded-xl border border-[#dfe5e9] px-4 text-[13px] font-medium text-jelly-text-soft hover:bg-[#f6f8fa] disabled:opacity-50">取消</button>
+              <button type="button" onClick={() => void handleDeleteChat()} disabled={sessionActionBusy} className="inline-flex h-9 items-center rounded-xl bg-jelly-red px-4 text-[13px] font-semibold text-white hover:brightness-95 disabled:opacity-50">
+                {sessionActionBusy && <Loader2 size={14} className="mr-1.5 animate-spin" />}
+                删除
+              </button>
+            </div>
+          </div>
         </div>
       )}
+
     </aside>
   );
 }

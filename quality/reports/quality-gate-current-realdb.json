@@ -1,0 +1,372 @@
+{
+  "generatedAt": "2026-07-23T04:54:34.781269+00:00",
+  "profile": "full",
+  "summary": {
+    "total": 26,
+    "passed": 24,
+    "failed": 2,
+    "durationSeconds": 14.559
+  },
+  "results": [
+    {
+      "category": "frontend",
+      "name": "editor-roundtrip",
+      "command": [
+        "npm",
+        "run",
+        "test:editor-roundtrip"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.409,
+      "outputTail": "> noteflow@1.0.0 test:editor-roundtrip\n> node scripts/editor-roundtrip.mjs\n\n{\"ok\":true,\"fixtureCount\":8,\"results\":[{\"name\":\"headings-inline-links\",\"ok\":true,\"outputLength\":64},{\"name\":\"lists-and-quote\",\"ok\":true,\"outputLength\":53},{\"name\":\"gfm-table\",\"ok\":true,\"outputLength\":51},{\"name\":\"fenced-code\",\"ok\":true,\"outputLength\":65},{\"name\":\"editor-html-marks\",\"ok\":true,\"outputLength\":72},{\"name\":\"task-list\",\"ok\":true,\"outputLength\":28},{\"name\":\"image-and-escaped-text\",\"ok\":true,\"outputLength\":74},{\"name\":\"blank-lines-and-mixed-html\",\"ok\":true,\"outputLength\":30}],\"knownGaps\":[\"contentEditable still depends on deprecated execCommand for selection formatting\",\"complex merged-cell tables are flattened to a rectangular GFM table\",\"selection and native undo history require browser-level integration tests\"]}"
+    },
+    {
+      "category": "frontend",
+      "name": "tiptap-codec",
+      "command": [
+        "npm",
+        "run",
+        "test:tiptap-codec"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.782,
+      "outputTail": "> noteflow@1.0.0 test:tiptap-codec\n> node --experimental-strip-types scripts/tiptap-codec-roundtrip.ts\n\n{\"ok\":true,\"codec\":\"tiptap-markdown\",\"fixtureCount\":8,\"results\":[{\"name\":\"headings-inline-links\",\"ok\":true,\"outputLength\":64},{\"name\":\"lists-and-quote\",\"ok\":true,\"outputLength\":43},{\"name\":\"gfm-table\",\"ok\":true,\"outputLength\":57},{\"name\":\"fenced-code\",\"ok\":true,\"outputLength\":57},{\"name\":\"editor-html-marks\",\"ok\":true,\"outputLength\":72},{\"name\":\"task-list\",\"ok\":true,\"outputLength\":28},{\"name\":\"image-and-escaped-text\",\"ok\":true,\"outputLength\":74},{\"name\":\"blank-lines-and-mixed-html\",\"ok\":true,\"outputLength\":32}]}"
+    },
+    {
+      "category": "frontend",
+      "name": "tiptap-selection",
+      "command": [
+        "npm",
+        "run",
+        "test:tiptap-selection"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.52,
+      "outputTail": "> noteflow@1.0.0 test:tiptap-selection\n> node --experimental-strip-types scripts/tiptap-selection-test.ts\n\n{\"ok\":true,\"caseCount\":5,\"results\":[{\"target\":\"跨格式中文 与 链接文字\",\"range\":{\"from\":5,\"to\":17}},{\"target\":\"第二段包含 emoji 🎯 和结尾。\",\"range\":{\"from\":20,\"to\":39}},{\"target\":\"emoji 🎯\",\"range\":{\"from\":26,\"to\":34}},{\"target\":\"链接文字。 第二段包含 emoji\",\"range\":{\"from\":13,\"to\":31}}]}"
+    },
+    {
+      "category": "frontend",
+      "name": "editor-compatibility",
+      "command": [
+        "npm",
+        "run",
+        "test:editor-compatibility"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.197,
+      "outputTail": "> noteflow@1.0.0 test:editor-compatibility\n> node --experimental-strip-types scripts/editor-compatibility-test.ts\n\n{\"ok\":true,\"autoOpenMaxChars\":40000,\"longDocumentFallback\":true,\"collapsibleSourcesFallback\":true}"
+    },
+    {
+      "category": "frontend",
+      "name": "editor-ui-contract",
+      "command": [
+        "npm",
+        "run",
+        "test:editor-ui"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.158,
+      "outputTail": "> noteflow@1.0.0 test:editor-ui\n> node scripts/editor-ui-contract-test.mjs\n\n{\"ok\":true,\"hiddenTechnicalControls\":6,\"focusStyle\":\"no-click-frame\",\"chatComposer\":\"large-context-composer\",\"chatContext\":\"dialog-or-library-search\",\"chatSources\":\"compact-click-through\"}"
+    },
+    {
+      "category": "frontend",
+      "name": "wiki-links",
+      "command": [
+        "npm",
+        "run",
+        "test:wiki-links"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.184,
+      "outputTail": "> noteflow@1.0.0 test:wiki-links\n> node --experimental-strip-types scripts/wiki-links-test.ts\n\n{\"ok\":true,\"parsedLinks\":2,\"backlinkCount\":1}"
+    },
+    {
+      "category": "frontend",
+      "name": "knowledge-import",
+      "command": [
+        "npm",
+        "run",
+        "test:knowledge-import"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.2,
+      "outputTail": "> noteflow@1.0.0 test:knowledge-import\n> node --experimental-strip-types scripts/knowledge-import-test.ts\n\n{\"ok\":true,\"imported\":2}"
+    },
+    {
+      "category": "frontend",
+      "name": "markdown-diff",
+      "command": [
+        "npm",
+        "run",
+        "test:markdown-diff"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.179,
+      "outputTail": "> noteflow@1.0.0 test:markdown-diff\n> node --experimental-strip-types scripts/markdown-diff-test.ts\n\n{\"ok\":true,\"rows\":6,\"added\":2,\"removed\":1}"
+    },
+    {
+      "category": "frontend",
+      "name": "offline-conflict",
+      "command": [
+        "npm",
+        "run",
+        "test:offline-conflict"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.193,
+      "outputTail": "> noteflow@1.0.0 test:offline-conflict\n> node --experimental-strip-types scripts/offline-conflict-test.ts\n\n{\"ok\":true,\"conflictDetected\":true}"
+    },
+    {
+      "category": "frontend",
+      "name": "component-store",
+      "command": [
+        "npm",
+        "run",
+        "test:frontend"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.865,
+      "outputTail": "> noteflow@1.0.0 test:frontend\n> node scripts/frontend-component-store-test.mjs\n\n{\"ok\":true,\"storeAssertions\":10,\"componentAssertions\":12,\"components\":[\"LoginPage\",\"NoteMetadataControls\",\"NoteEditor\",\"EditPreviewWorkspace\"]}\n(node:53457) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.\n(Use `node --trace-deprecation ...` to show where the warning was created)"
+    },
+    {
+      "category": "frontend",
+      "name": "pwa",
+      "command": [
+        "npm",
+        "run",
+        "test:pwa"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.149,
+      "outputTail": "> noteflow@1.0.0 test:pwa\n> node scripts/pwa-installability-test.mjs\n\n{\"ok\":true,\"display\":\"standalone\",\"icons\":[{\"width\":192,\"height\":192},{\"width\":512,\"height\":512}],\"offlineShellAssets\":true}"
+    },
+    {
+      "category": "frontend",
+      "name": "editor-selection",
+      "command": [
+        "npm",
+        "run",
+        "test:editor-selection"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.436,
+      "outputTail": "> noteflow@1.0.0 test:editor-selection\n> node --experimental-strip-types scripts/dom-selection-test.ts\n\n{\"ok\":true,\"cases\":3}"
+    },
+    {
+      "category": "frontend",
+      "name": "input-composition",
+      "command": [
+        "npm",
+        "run",
+        "test:input-composition"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.193,
+      "outputTail": "> noteflow@1.0.0 test:input-composition\n> node --experimental-strip-types scripts/input-composition-test.ts\n\n{\"ok\":true,\"cases\":6}"
+    },
+    {
+      "category": "backend-unit",
+      "name": "unittest-discovery",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_*.py"
+      ],
+      "cwd": "server",
+      "status": "failed",
+      "exitCode": 1,
+      "durationSeconds": 1.608,
+      "outputTail": "..........s...s..2026-07-23 12:54:25,643 INFO {\"event\": \"http_request\", \"request_id\": \"test-request-1\", \"trace_id\": \"c884be114bdd4213bbb5e40b83612129\", \"method\": \"GET\", \"route\": \"/conflict\", \"status\": 409, \"durationMs\": 0.21}\n2026-07-23 12:54:25,643 INFO HTTP Request: GET http://testserver/conflict \"HTTP/1.1 409 Conflict\"\n..2026-07-23 12:54:25,652 INFO {\"event\": \"http_request\", \"request_id\": \"7dcafb8f1cff4ae7a00a405ab4eafac1\", \"trace_id\": \"fce0814024b947e5bc645adc44b988e6\", \"method\": \"GET\", \"route\": \"/ok\", \"status\": 200, \"durationMs\": 0.15}\n2026-07-23 12:54:25,653 INFO HTTP Request: GET http://testserver/ok \"HTTP/1.1 200 OK\"\n.F.......................sssssssss../Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020\n  warnings.warn(\n.......................................................................\n======================================================================\nFAIL: test_legacy_flags_are_safe_defaults (test_architecture_contracts.ArchitectureContractTest)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/zhangcheng/Desktop/NoteFlow/server/tests/test_architecture_contracts.py\", line 42, in test_legacy_flags_are_safe_defaults\n    self.assertEqual(cfg.AGENT_RUNTIME, \"legacy\")\nAssertionError: 'langgraph' != 'legacy'\n- langgraph\n+ legacy\n\n\n----------------------------------------------------------------------\nRan 126 tests in 0.527s\n\nFAILED (failures=1, skipped=11)\n/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py:681: ResourceWarning: unclosed event loop <_UnixSelectorEventLoop running=False closed=False debug=False>"
+    },
+    {
+      "category": "backend-contract",
+      "name": "context-planner",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "check_context_planner.py"
+      ],
+      "cwd": "server",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.629,
+      "outputTail": "context planner matrix checks passed"
+    },
+    {
+      "category": "backend-contract",
+      "name": "runtime-events",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "check_runtime_events.py"
+      ],
+      "cwd": "server",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.52,
+      "outputTail": "runtime event contract checks passed"
+    },
+    {
+      "category": "backend-contract",
+      "name": "diagnostics",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "check_diagnostics.py"
+      ],
+      "cwd": "server",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.21,
+      "outputTail": "diagnostics checks passed"
+    },
+    {
+      "category": "backend-memory",
+      "name": "memory-stage1",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "check_memory_stage1.py"
+      ],
+      "cwd": "server",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.5,
+      "outputTail": "memory stage1 checks passed"
+    },
+    {
+      "category": "backend-memory",
+      "name": "memory-stage2",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "check_memory_stage2.py"
+      ],
+      "cwd": "server",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.495,
+      "outputTail": "memory stage2 checks passed"
+    },
+    {
+      "category": "backend-memory",
+      "name": "memory-stage3",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "check_memory_stage3.py"
+      ],
+      "cwd": "server",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.498,
+      "outputTail": "memory stage3 checks passed"
+    },
+    {
+      "category": "backend-memory",
+      "name": "memory-stage4",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "check_memory_stage4.py"
+      ],
+      "cwd": "server",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.498,
+      "outputTail": "memory stage4 checks passed"
+    },
+    {
+      "category": "database",
+      "name": "postgres-pgvector-integration",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "-m",
+        "unittest",
+        "tests.test_database_integration"
+      ],
+      "cwd": "server",
+      "status": "failed",
+      "exitCode": 1,
+      "durationSeconds": 1.124,
+      "outputTail": "./Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020\n  warnings.warn(\n....s..F\n======================================================================\nFAIL: test_runtime_tables_match_sqlalchemy_metadata (tests.test_database_integration.DatabaseIntegrationTest)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/zhangcheng/Desktop/NoteFlow/server/tests/test_database_integration.py\", line 498, in test_runtime_tables_match_sqlalchemy_metadata\n    self.assertEqual(self.snapshot[\"tables\"] - {\"alembic_version\"} - library_owned, set(Base.metadata.tables))\nAssertionError: Items in the first set but not the second:\n'mem0migrations'\n'noteflow_mem0_v1'\n\n----------------------------------------------------------------------\nRan 9 tests in 0.594s\n\nFAILED (failures=1, skipped=1)\n/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py:681: ResourceWarning: unclosed event loop <_UnixSelectorEventLoop running=False closed=False debug=False>"
+    },
+    {
+      "category": "rag",
+      "name": "legacy-fixed-eval",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "scripts/run_rag_baseline.py"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.697,
+      "outputTail": "{\"recallAt5\": 0.8, \"mrr\": 0.8, \"nDcgAt5\": 0.8, \"citationCoverage\": 1.0, \"noAnswerAccuracy\": 1.0, \"crossUserLeakage\": 0, \"coldHotConsistent\": true}"
+    },
+    {
+      "category": "rag",
+      "name": "rag-v2-fixed-eval",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "scripts/run_rag_v2_eval.py"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.726,
+      "outputTail": "{\"recallAt5\": 1.0, \"mrr\": 1.0, \"nDcgAt5\": 1.0, \"noAnswerAccuracy\": 1.0, \"crossUserLeakage\": 0, \"nonInferior\": true}"
+    },
+    {
+      "category": "memory",
+      "name": "memory-safety-eval",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "scripts/run_memory_safety_eval.py"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.512,
+      "outputTail": "{\"total\": 12, \"passed\": 12, \"knownGaps\": 0, \"unexpectedFailures\": 0}"
+    },
+    {
+      "category": "build",
+      "name": "production-build",
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 2.072,
+      "outputTail": "> noteflow@1.0.0 build\n> tsc -b && vite build\n\nvite v8.1.4 building client environment for production...\n\u001b[2K\ntransforming...✓ 1891 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/index.html                                0.96 kB │ gzip:   0.47 kB\ndist/assets/index-BFeyGpp1.css               118.42 kB │ gzip:  20.80 kB\ndist/assets/refresh-cw-BZ-uK11h.js             0.31 kB │ gzip:   0.22 kB\ndist/assets/rolldown-runtime-Bh1tDfsg.js       0.56 kB │ gzip:   0.36 kB\ndist/assets/VersionHistoryPanel-wkcaoCfG.js    8.05 kB │ gzip:   3.01 kB\ndist/assets/tiptap-prosemirror-f3Kzu1u1.js    50.12 kB │ gzip:  16.00 kB\ndist/assets/app-store-DLx8YcBc.js             64.89 kB │ gzip:  17.33 kB\ndist/assets/TiptapPilotEditor-CruDv_6a.js    169.96 kB │ gzip:  55.38 kB\ndist/assets/tiptap-markdown-CsBriAva.js      345.62 kB │ gzip: 104.83 kB\ndist/assets/index-CEXp1aVd.js                492.62 kB │ gzip: 145.52 kB\n\n✓ built in 211ms\n(node:57552) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.\n(Use `node --trace-deprecation ...` to show where the warning was created)"
+    }
+  ]
+}

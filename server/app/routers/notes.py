@@ -1,15 +1,16 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, func, select, update
-
 from app.database import AsyncSessionLocal
 from app.deps import CurrentUser, get_current_user
-from app.models.db import Note, NoteCategory, NoteEmbedding, NoteIndexJob, NoteSection, NoteVersion
+from app.models.db import Note, NoteCategory, NoteIndexJob, NoteSection, NoteVersion
+from app.repositories.index_jobs import IndexJobRepository
+from app.repositories.notes import NoteRepository
 from app.services.markdown_index import index_note_now
 from app.services.note_library import (
     build_note_context,
@@ -41,6 +42,7 @@ class NotePayload(BaseModel):
     content: str = ""
     isPinned: bool = False
     isFavorite: bool = False
+    idempotencyKey: Optional[str] = None
 
 
 class NoteUpdatePayload(BaseModel):
@@ -55,10 +57,17 @@ class NoteUpdatePayload(BaseModel):
     source: str = "manual_edit"
     changeSummary: Optional[str] = None
     expectedUpdatedAt: Optional[str] = None
+    expectedContentHash: Optional[str] = None
 
 
 class ReindexPayload(BaseModel):
     reason: str = "manual"
+
+
+class RagV2ReindexPayload(BaseModel):
+    noteId: Optional[str] = None
+    force: bool = False
+    limit: int = 500
 
 
 class NoteSearchPayload(BaseModel):
@@ -115,6 +124,14 @@ def _has_note_version_conflict(expected_updated_at: Optional[str], current_updat
     )
 
 
+def _content_hash(content: str) -> str:
+    return hashlib.sha256((content or "").encode("utf-8")).hexdigest()
+
+
+def _has_note_content_conflict(expected_content_hash: Optional[str], current_content: str) -> bool:
+    return bool(expected_content_hash and expected_content_hash != _content_hash(current_content))
+
+
 def _clean_title(value: str) -> str:
     title = value.strip().removesuffix(".md").strip()
     return title[:255] or "未命名笔记"
@@ -149,6 +166,7 @@ def _note_out(note: Note) -> dict:
         "summary": note.summary,
         "tags": note.tags or [],
         "content": note.content or "",
+        "contentHash": _content_hash(note.content or ""),
         "isPinned": note.is_pinned,
         "isFavorite": note.is_favorite,
         "indexStatus": note.index_status,
@@ -198,29 +216,23 @@ def _index_job_out(job: NoteIndexJob) -> dict:
         "createdAt": _dt(job.created_at),
         "startedAt": _dt(job.started_at),
         "finishedAt": _dt(job.finished_at),
+        "sourceVersion": job.source_version,
+        "parserVersion": job.parser_version,
+        "chunkerVersion": job.chunker_version,
+        "embeddingVersion": job.embedding_version,
+        "graphVersion": job.graph_version,
     }
 
 
 async def _ensure_category(session, user_id: str, category_id: Optional[str]):
     if not category_id:
         return
-    result = await session.execute(
-        select(NoteCategory).where(
-            NoteCategory.id == category_id,
-            NoteCategory.user_id == user_id,
-            NoteCategory.deleted_at.is_(None),
-        )
-    )
-    if result.scalar_one_or_none() is None:
+    if await NoteRepository(session).get_category(user_id, category_id) is None:
         raise HTTPException(status_code=404, detail="category not found")
 
 
 async def _get_note(session, user_id: str, note_id: str, include_deleted: bool = False) -> Note:
-    conditions = [Note.id == note_id, Note.user_id == user_id]
-    if not include_deleted:
-        conditions.append(Note.deleted_at.is_(None))
-    result = await session.execute(select(Note).where(and_(*conditions)))
-    note = result.scalar_one_or_none()
+    note = await NoteRepository(session).get(user_id, note_id, include_deleted=include_deleted)
     if note is None:
         raise HTTPException(status_code=404, detail="note not found")
     return note
@@ -232,36 +244,18 @@ async def _get_category(
     category_id: str,
     include_deleted: bool = False,
 ) -> NoteCategory:
-    conditions = [NoteCategory.id == category_id, NoteCategory.user_id == user_id]
-    if not include_deleted:
-        conditions.append(NoteCategory.deleted_at.is_(None))
-    result = await session.execute(select(NoteCategory).where(and_(*conditions)))
-    category = result.scalar_one_or_none()
+    category = await NoteRepository(session).get_category(
+        user_id,
+        category_id,
+        include_deleted=include_deleted,
+    )
     if category is None:
         raise HTTPException(status_code=404, detail="category not found")
     return category
 
 
 async def _descendant_category_ids(session, user_id: str, category_id: str) -> set[str]:
-    result = await session.execute(
-        select(NoteCategory.id, NoteCategory.parent_id).where(
-            NoteCategory.user_id == user_id,
-            NoteCategory.deleted_at.is_(None),
-        )
-    )
-    children_by_parent: dict[Optional[str], list[str]] = {}
-    for item_id, parent_id in result.all():
-        children_by_parent.setdefault(parent_id, []).append(item_id)
-
-    collected: set[str] = set()
-    stack = [category_id]
-    while stack:
-        current = stack.pop()
-        if current in collected:
-            continue
-        collected.add(current)
-        stack.extend(children_by_parent.get(current, []))
-    return collected
+    return await NoteRepository(session).descendant_category_ids(user_id, category_id)
 
 
 def _make_version(note: Note, source: str, change_summary: Optional[str]) -> NoteVersion:
@@ -282,15 +276,8 @@ async def list_categories(
     user: CurrentUser = Depends(get_current_user),
 ):
     async with AsyncSessionLocal() as session:
-        conditions = [NoteCategory.user_id == user.id]
-        if not includeDeleted:
-            conditions.append(NoteCategory.deleted_at.is_(None))
-        result = await session.execute(
-            select(NoteCategory)
-            .where(and_(*conditions))
-            .order_by(NoteCategory.sort_order, NoteCategory.created_at)
-        )
-        return {"categories": [_category_out(category) for category in result.scalars().all()]}
+        categories = await NoteRepository(session).list_categories(user.id, include_deleted=includeDeleted)
+        return {"categories": [_category_out(category) for category in categories]}
 
 
 @router.post("/categories")
@@ -351,16 +338,7 @@ async def delete_category(
         await _get_category(session, user.id, category_id)
         ids = await _descendant_category_ids(session, user.id, category_id)
         deleted_at = _now()
-        await session.execute(
-            update(NoteCategory)
-            .where(NoteCategory.user_id == user.id, NoteCategory.id.in_(ids))
-            .values(deleted_at=deleted_at)
-        )
-        await session.execute(
-            update(Note)
-            .where(Note.user_id == user.id, Note.category_id.in_(ids), Note.deleted_at.is_(None))
-            .values(deleted_at=deleted_at)
-        )
+        await NoteRepository(session).soft_delete_categories_and_notes(user.id, ids, deleted_at)
         await session.commit()
         return {"ok": True, "deletedCategoryIds": sorted(ids)}
 
@@ -371,13 +349,8 @@ async def list_notes(
     user: CurrentUser = Depends(get_current_user),
 ):
     async with AsyncSessionLocal() as session:
-        conditions = [Note.user_id == user.id]
-        if not includeDeleted:
-            conditions.append(Note.deleted_at.is_(None))
-        result = await session.execute(
-            select(Note).where(and_(*conditions)).order_by(Note.is_pinned.desc(), Note.updated_at.desc())
-        )
-        return {"notes": [_note_out(note) for note in result.scalars().all()]}
+        notes = await NoteRepository(session).list(user.id, include_deleted=includeDeleted)
+        return {"notes": [_note_out(note) for note in notes]}
 
 
 @router.post("/notes/search")
@@ -501,6 +474,13 @@ async def create_note(
 ):
     async with AsyncSessionLocal() as session:
         await _ensure_category(session, user.id, payload.categoryId)
+        idempotency_key = (payload.idempotencyKey or "").strip()[:160] or None
+        if idempotency_key:
+            existing = await NoteRepository(session).get_active_by_idempotency_key(
+                user.id, idempotency_key
+            )
+            if existing is not None:
+                return {"note": _note_out(existing)}
         note = Note(
             id=(payload.id or random_id())[:64],
             user_id=user.id,
@@ -512,6 +492,7 @@ async def create_note(
             is_pinned=payload.isPinned,
             is_favorite=payload.isFavorite,
             index_status="pending",
+            idempotency_key=idempotency_key,
         )
         session.add(note)
         await session.flush()
@@ -581,13 +562,19 @@ async def update_note(
         if category_provided and payload.categoryId is not None:
             await _ensure_category(session, user.id, payload.categoryId)
 
-        if _has_note_version_conflict(payload.expectedUpdatedAt, note.updated_at):
+        content_conflict = (
+            _has_note_content_conflict(payload.expectedContentHash, note.content or "")
+            if payload.expectedContentHash
+            else _has_note_version_conflict(payload.expectedUpdatedAt, note.updated_at)
+        )
+        if content_conflict:
             raise HTTPException(
                 status_code=409,
                 detail={
                     "code": "NOTE_VERSION_CONFLICT",
                     "message": "笔记已在其他设备更新，请先处理同步冲突。",
                     "currentUpdatedAt": note.updated_at.isoformat(),
+                    "currentContentHash": _content_hash(note.content or ""),
                 },
             )
 
@@ -652,12 +639,8 @@ async def list_note_versions(
 ):
     async with AsyncSessionLocal() as session:
         await _get_note(session, user.id, note_id, include_deleted=True)
-        result = await session.execute(
-            select(NoteVersion)
-            .where(NoteVersion.note_id == note_id, NoteVersion.user_id == user.id)
-            .order_by(NoteVersion.created_at.desc())
-        )
-        return {"versions": [_version_out(version) for version in result.scalars().all()]}
+        versions = await NoteRepository(session).list_versions(user.id, note_id)
+        return {"versions": [_version_out(version) for version in versions]}
 
 
 @router.post("/notes/{note_id}/versions/{version_id}/restore")
@@ -668,14 +651,7 @@ async def restore_note_version(
 ):
     async with AsyncSessionLocal() as session:
         note = await _get_note(session, user.id, note_id, include_deleted=True)
-        result = await session.execute(
-            select(NoteVersion).where(
-                NoteVersion.id == version_id,
-                NoteVersion.note_id == note_id,
-                NoteVersion.user_id == user.id,
-            )
-        )
-        version = result.scalar_one_or_none()
+        version = await NoteRepository(session).get_version(user.id, note_id, version_id)
         if version is None:
             raise HTTPException(status_code=404, detail="version not found")
 
@@ -711,15 +687,11 @@ async def get_note_outline(
 ):
     async with AsyncSessionLocal() as session:
         note = await _get_note(session, user.id, note_id)
-        result = await session.execute(
-            select(NoteSection)
-            .where(NoteSection.note_id == note.id, NoteSection.user_id == user.id)
-            .order_by(NoteSection.sort_order)
-        )
+        sections = await NoteRepository(session).list_sections(user.id, note.id)
         return {
             "noteId": note.id,
             "indexStatus": note.index_status,
-            "sections": [_section_out(section) for section in result.scalars().all()],
+            "sections": [_section_out(section) for section in sections],
         }
 
 
@@ -730,22 +702,11 @@ async def get_note_embedding_status(
 ):
     async with AsyncSessionLocal() as session:
         note = await _get_note(session, user.id, note_id)
-        counts_result = await session.execute(
-            select(NoteEmbedding.status, func.count(NoteEmbedding.id))
-            .where(NoteEmbedding.note_id == note.id, NoteEmbedding.user_id == user.id)
-            .group_by(NoteEmbedding.status)
-        )
-        latest_result = await session.execute(
-            select(NoteEmbedding)
-            .where(NoteEmbedding.note_id == note.id, NoteEmbedding.user_id == user.id)
-            .order_by(NoteEmbedding.created_at.desc())
-            .limit(1)
-        )
-        latest = latest_result.scalar_one_or_none()
+        counts, latest = await NoteRepository(session).embedding_status(user.id, note.id)
         return {
             "noteId": note.id,
             "indexStatus": note.index_status,
-            "embeddingCounts": {status: count for status, count in counts_result.all()},
+            "embeddingCounts": counts,
             "provider": latest.provider if latest else None,
             "model": latest.embedding_model if latest else None,
             "dimensions": latest.embedding_dim if latest else None,
@@ -772,13 +733,41 @@ async def list_index_jobs(
     user: CurrentUser = Depends(get_current_user),
 ):
     async with AsyncSessionLocal() as session:
-        conditions = [NoteIndexJob.user_id == user.id]
-        if noteId:
-            conditions.append(NoteIndexJob.note_id == noteId)
-        result = await session.execute(
-            select(NoteIndexJob)
-            .where(and_(*conditions))
-            .order_by(NoteIndexJob.created_at.desc())
-            .limit(50)
+        jobs = await IndexJobRepository(session).list(user.id, note_id=noteId, limit=50)
+        return {"jobs": [_index_job_out(job) for job in jobs]}
+
+
+@router.post("/rag-v2/reindex")
+async def reindex_rag_v2(
+    payload: RagV2ReindexPayload,
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.rag.v2.indexer import enqueue_rag_v2_rebuild
+    from app.services.index_worker import notify_index_worker
+
+    async with AsyncSessionLocal() as session:
+        jobs = await enqueue_rag_v2_rebuild(
+            session,
+            user.id,
+            note_id=payload.noteId,
+            force=payload.force,
+            limit=payload.limit,
         )
-        return {"jobs": [_index_job_out(job) for job in result.scalars().all()]}
+        if payload.noteId and not jobs:
+            raise HTTPException(status_code=404, detail="note not found")
+        await session.commit()
+        notify_index_worker()
+        return {"queued": len(jobs), "jobs": [_index_job_out(job) for job in jobs]}
+
+
+@router.get("/rag-v2/index-status")
+async def rag_v2_index_status(
+    noteId: Optional[str] = Query(None),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.rag.v2.indexer import v2_index_diagnostics
+
+    async with AsyncSessionLocal() as session:
+        if noteId:
+            await _get_note(session, user.id, noteId)
+        return await v2_index_diagnostics(session, user.id, note_id=noteId)

@@ -10,17 +10,12 @@ from typing import Optional
 from urllib.parse import unquote
 
 from fastapi import APIRouter, Body, Depends, Header, HTTPException, Response
-from sqlalchemy import and_, select
-
 from app.config import cfg
-from app.database import AsyncSessionLocal
 from app.deps import CurrentUser, get_current_user
-from app.models.db import Note, NoteAttachment
-from app.services.object_storage import build_object_storage
-from app.utils import random_id
+from app.models.db import NoteAttachment
+from app.services.attachment_service import AttachmentService
 
 router = APIRouter(tags=["attachments"])
-storage = build_object_storage(cfg.ATTACHMENT_STORAGE_ROOT)
 
 
 def _dt(value: Optional[datetime]) -> Optional[str]:
@@ -76,100 +71,65 @@ async def upload_attachment(
     if content_type.startswith(("text/html", "image/svg")):
         raise HTTPException(status_code=415, detail="active HTML/SVG attachments are not allowed")
 
-    async with AsyncSessionLocal() as session:
-        if x_note_id:
-            note = await session.scalar(
-                select(Note).where(and_(Note.id == x_note_id, Note.user_id == user.id, Note.deleted_at.is_(None)))
-            )
-            if note is None:
-                raise HTTPException(status_code=404, detail="note not found")
-
-        attachment_id = f"att_{random_id()}"
-        suffix = Path(file_name).suffix.lower()[:16]
-        key = f"{user.id}/{attachment_id}{suffix}"
-        stored = await storage.put(key, content)
-        item = NoteAttachment(
-            id=attachment_id,
+    try:
+        item = await AttachmentService().create(
             user_id=user.id,
             note_id=x_note_id,
             file_name=file_name,
             content_type=content_type,
-            size=stored.size,
-            sha256=stored.sha256,
-            storage_key=stored.key,
+            content=content,
         )
-        session.add(item)
-        await session.commit()
-        await session.refresh(item)
-        return {"attachment": _attachment_out(item)}
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    return {"attachment": _attachment_out(item)}
 
 
 @router.get("/notes/{note_id}/attachments")
 async def list_note_attachments(note_id: str, user: CurrentUser = Depends(get_current_user)):
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(NoteAttachment)
-            .where(and_(NoteAttachment.note_id == note_id, NoteAttachment.user_id == user.id))
-            .order_by(NoteAttachment.created_at.desc())
-        )
-        return {"attachments": [_attachment_out(item) for item in result.scalars().all()]}
+    items = await AttachmentService().list_for_note(user.id, note_id)
+    return {"attachments": [_attachment_out(item) for item in items]}
 
 
 @router.get("/attachments/{attachment_id}")
 async def download_attachment(attachment_id: str, user: CurrentUser = Depends(get_current_user)):
-    async with AsyncSessionLocal() as session:
-        item = await session.scalar(
-            select(NoteAttachment).where(
-                and_(NoteAttachment.id == attachment_id, NoteAttachment.user_id == user.id)
-            )
-        )
-        if item is None:
-            raise HTTPException(status_code=404, detail="attachment not found")
-        try:
-            content = await storage.get(item.storage_key)
-        except FileNotFoundError as error:
-            raise HTTPException(status_code=410, detail="attachment content is missing") from error
-        return Response(
-            content=content,
-            media_type=item.content_type,
-            headers={"Content-Disposition": f'inline; filename="{item.file_name.encode("ascii", "ignore").decode() or "attachment"}"'},
-        )
+    try:
+        item, content = await AttachmentService().read(user.id, attachment_id)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=410, detail="attachment content is missing") from error
+    return Response(
+        content=content,
+        media_type=item.content_type,
+        headers={"Content-Disposition": f'inline; filename="{item.file_name.encode("ascii", "ignore").decode() or "attachment"}"'},
+    )
 
 
 @router.get("/attachments/{attachment_id}/content")
 async def read_signed_attachment(attachment_id: str, sig: str):
     if not hmac.compare_digest(sig, _attachment_signature(attachment_id)):
         raise HTTPException(status_code=403, detail="invalid attachment signature")
-    async with AsyncSessionLocal() as session:
-        item = await session.scalar(select(NoteAttachment).where(NoteAttachment.id == attachment_id))
-        if item is None:
-            raise HTTPException(status_code=404, detail="attachment not found")
-        try:
-            content = await storage.get(item.storage_key)
-        except FileNotFoundError as error:
-            raise HTTPException(status_code=410, detail="attachment content is missing") from error
-        return Response(
-            content=content,
-            media_type=item.content_type,
-            headers={
-                "Cache-Control": "private, max-age=3600",
-                "Content-Disposition": f'inline; filename="{item.file_name.encode("ascii", "ignore").decode() or "attachment"}"',
-                "X-Content-Type-Options": "nosniff",
-            },
-        )
+    try:
+        item, content = await AttachmentService().read_signed(attachment_id)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=410, detail="attachment content is missing") from error
+    return Response(
+        content=content,
+        media_type=item.content_type,
+        headers={
+            "Cache-Control": "private, max-age=3600",
+            "Content-Disposition": f'inline; filename="{item.file_name.encode("ascii", "ignore").decode() or "attachment"}"',
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @router.delete("/attachments/{attachment_id}")
 async def delete_attachment(attachment_id: str, user: CurrentUser = Depends(get_current_user)):
-    async with AsyncSessionLocal() as session:
-        item = await session.scalar(
-            select(NoteAttachment).where(
-                and_(NoteAttachment.id == attachment_id, NoteAttachment.user_id == user.id)
-            )
-        )
-        if item is None:
-            raise HTTPException(status_code=404, detail="attachment not found")
-        await storage.delete(item.storage_key)
-        await session.delete(item)
-        await session.commit()
-        return {"ok": True}
+    try:
+        await AttachmentService().delete(user.id, attachment_id)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    return {"ok": True}

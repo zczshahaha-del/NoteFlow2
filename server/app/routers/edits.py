@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -7,8 +8,6 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import and_, select
-
 from app.database import AsyncSessionLocal
 from app.deps import CurrentUser, get_current_user
 from app.models.db import (
@@ -19,10 +18,15 @@ from app.models.db import (
     NoteSection,
     NoteVersion,
 )
+from app.repositories.edits import EditRepository
+from app.repositories.index_jobs import IndexJobRepository
+from app.repositories.notes import NoteRepository
 from app.services.markdown_index import HEADING_RE, index_note_now
 from app.services.memory import build_memory_context
 from app.services.note_edit import generate_edit_preview, revise_edit_preview
 from app.services.user_settings import is_user_memory_enabled
+from app.agent.rollout import select_child_runtime
+from app.agent.write_runtime import initialize_edit_graph, resume_edit_graph
 from app.utils import random_id
 
 router = APIRouter(tags=["edits"])
@@ -53,6 +57,7 @@ class EditPreviewPayload(BaseModel):
     instruction: str
     keepStyle: bool = True
     memoryEnabled: bool = True
+    idempotencyKey: Optional[str] = None
 
 
 class RevisePreviewPayload(BaseModel):
@@ -82,6 +87,7 @@ def _note_out(note: Note) -> dict:
         "summary": note.summary,
         "tags": note.tags or [],
         "content": note.content or "",
+        "contentHash": hashlib.sha256((note.content or "").encode("utf-8")).hexdigest(),
         "isPinned": note.is_pinned,
         "isFavorite": note.is_favorite,
         "indexStatus": note.index_status,
@@ -117,6 +123,8 @@ def _edit_out(preview: NoteEditPreview) -> dict:
         "instruction": preview.instruction,
         "changeSummary": preview.change_summary or [],
         "status": preview.status,
+        "runtime": preview.runtime,
+        "sourceContentHash": preview.source_content_hash,
         "createdAt": _dt(preview.created_at),
         "updatedAt": _dt(preview.updated_at),
         "appliedAt": _dt(preview.applied_at),
@@ -149,35 +157,21 @@ def _make_edit_revision(preview: NoteEditPreview, *, source: str) -> NoteEditPre
 
 
 async def _get_note(session, user_id: str, note_id: str) -> Note:
-    result = await session.execute(
-        select(Note).where(Note.id == note_id, Note.user_id == user_id, Note.deleted_at.is_(None))
-    )
-    note = result.scalar_one_or_none()
+    note = await NoteRepository(session).get_active(user_id, note_id)
     if note is None:
         raise HTTPException(status_code=404, detail="note not found")
     return note
 
 
 async def _get_preview(session, user_id: str, edit_id: str) -> NoteEditPreview:
-    result = await session.execute(
-        select(NoteEditPreview).where(
-            NoteEditPreview.id == edit_id,
-            NoteEditPreview.user_id == user_id,
-        )
-    )
-    preview = result.scalar_one_or_none()
+    preview = await EditRepository(session).get(user_id, edit_id)
     if preview is None:
         raise HTTPException(status_code=404, detail="edit preview not found")
     return preview
 
 
 async def _get_sections(session, user_id: str, note_id: str) -> list[NoteSection]:
-    result = await session.execute(
-        select(NoteSection)
-        .where(NoteSection.user_id == user_id, NoteSection.note_id == note_id)
-        .order_by(NoteSection.sort_order)
-    )
-    return list(result.scalars().all())
+    return await NoteRepository(session).list_sections(user_id, note_id)
 
 
 async def _get_section(
@@ -186,14 +180,7 @@ async def _get_section(
     note_id: str,
     section_id: str,
 ) -> NoteSection:
-    result = await session.execute(
-        select(NoteSection).where(
-            NoteSection.id == section_id,
-            NoteSection.user_id == user_id,
-            NoteSection.note_id == note_id,
-        )
-    )
-    section = result.scalar_one_or_none()
+    section = await NoteRepository(session).get_section(user_id, note_id, section_id)
     if section is None:
         raise HTTPException(status_code=404, detail="section not found")
     return section
@@ -356,10 +343,20 @@ def _current_section_content(note_content: str, section: NoteSection, selected: 
 def _normalized_match_text(value: str) -> tuple[str, list[int]]:
     chars: list[str] = []
     source_indexes: list[int] = []
-    for index, char in enumerate(value):
-        if char.isalnum():
-            chars.append(char.lower())
-            source_indexes.append(index)
+    source_offset = 0
+    line_prefix_pattern = re.compile(
+        r"^[\t ]*(?:(?:#{1,6}|>|[-+*]|\d{1,3}[.)、）])[\t ]+)+"
+    )
+    for line in value.splitlines(keepends=True):
+        prefix = line_prefix_pattern.match(line)
+        content_start = prefix.end() if prefix else 0
+        for line_index, char in enumerate(line):
+            if line_index < content_start:
+                continue
+            if char.isalnum():
+                chars.append(char.lower())
+                source_indexes.append(source_offset + line_index)
+        source_offset += len(line)
     return "".join(chars), source_indexes
 
 
@@ -576,6 +573,11 @@ async def create_edit_preview(
         raise HTTPException(status_code=400, detail="instruction is required")
 
     async with AsyncSessionLocal() as session:
+        idempotency_key = (payload.idempotencyKey or "").strip()
+        if idempotency_key:
+            existing = await EditRepository(session).get_by_idempotency_key(user.id, idempotency_key)
+            if existing is not None:
+                return {"preview": _edit_out(existing), "idempotentReplay": True}
         note = await _get_note(session, user.id, payload.noteId)
         target_type, section_id, old_content, target_label = await _resolve_target(
             session,
@@ -619,11 +621,28 @@ async def create_edit_preview(
             instruction=payload.instruction.strip(),
             change_summary=change_summary,
             status="preview",
+            idempotency_key=idempotency_key or None,
+            runtime=select_child_runtime("edit"),
+            graph_thread_id=f"edit-{random_id()}" if select_child_runtime("edit") == "langgraph" else None,
+            source_content_hash=hashlib.sha256((note.content or "").encode()).hexdigest(),
         )
         session.add(preview)
         session.add(_make_edit_revision(preview, source="generated"))
         await session.commit()
         await session.refresh(preview)
+        if preview.runtime == "langgraph" and preview.graph_thread_id:
+            initialized = await initialize_edit_graph(
+                user_id=user.id, thread_id=preview.graph_thread_id,
+                note_id=preview.note_id, instruction=preview.instruction,
+                preview_id=preview.id, target_type=preview.target_type,
+                section_id=preview.section_id or "", selected_text=payload.selectedText,
+                source_content_hash=preview.source_content_hash,
+            )
+            if not initialized:
+                preview.runtime = "legacy"
+                preview.graph_thread_id = None
+                await session.commit()
+                await session.refresh(preview)
         return {"preview": _edit_out(preview)}
 
 
@@ -644,15 +663,8 @@ async def list_edit_preview_revisions(
 ):
     async with AsyncSessionLocal() as session:
         await _get_preview(session, user.id, edit_id)
-        result = await session.execute(
-            select(NoteEditPreviewRevision)
-            .where(
-                NoteEditPreviewRevision.edit_id == edit_id,
-                NoteEditPreviewRevision.user_id == user.id,
-            )
-            .order_by(NoteEditPreviewRevision.created_at, NoteEditPreviewRevision.id)
-        )
-        return {"revisions": [_edit_revision_out(item) for item in result.scalars().all()]}
+        revisions = await EditRepository(session).list_revisions(user.id, edit_id)
+        return {"revisions": [_edit_revision_out(item) for item in revisions]}
 
 
 @router.post("/note-edit-previews/{edit_id}/restore-revision")
@@ -665,14 +677,7 @@ async def restore_edit_preview_revision(
         preview = await _get_preview(session, user.id, edit_id)
         if preview.status != "preview":
             raise HTTPException(status_code=409, detail="edit preview is not active")
-        result = await session.execute(
-            select(NoteEditPreviewRevision).where(
-                NoteEditPreviewRevision.id == payload.revisionId,
-                NoteEditPreviewRevision.edit_id == edit_id,
-                NoteEditPreviewRevision.user_id == user.id,
-            )
-        )
-        revision = result.scalar_one_or_none()
+        revision = await EditRepository(session).get_revision(user.id, edit_id, payload.revisionId)
         if revision is None:
             raise HTTPException(status_code=404, detail="edit preview revision not found")
         preview.new_content = revision.new_content
@@ -680,6 +685,11 @@ async def restore_edit_preview_revision(
         preview.instruction = revision.instruction
         await session.commit()
         await session.refresh(preview)
+        if preview.runtime == "langgraph" and preview.graph_thread_id:
+            await resume_edit_graph(
+                thread_id=preview.graph_thread_id, action="restore",
+                payload={"revisionId": payload.revisionId},
+            )
         return {"preview": _edit_out(preview)}
 
 
@@ -721,6 +731,11 @@ async def revise_preview(
         session.add(_make_edit_revision(preview, source="revision"))
         await session.commit()
         await session.refresh(preview)
+        if preview.runtime == "langgraph" and preview.graph_thread_id:
+            await resume_edit_graph(
+                thread_id=preview.graph_thread_id, action="revise",
+                payload={"instruction": payload.instruction},
+            )
         return {"preview": _edit_out(preview)}
 
 
@@ -730,12 +745,30 @@ async def apply_preview(
     user: CurrentUser = Depends(get_current_user),
 ):
     async with AsyncSessionLocal() as session:
-        preview = await _get_preview(session, user.id, edit_id)
+        preview = await EditRepository(session).get_for_update(user.id, edit_id)
+        if preview is None:
+            raise HTTPException(status_code=404, detail="edit preview not found")
+        if preview.status == "applied":
+            note = await _get_note(session, user.id, preview.note_id)
+            job = await IndexJobRepository(session).latest_for_note(user.id, note.id)
+            return {
+                "preview": _edit_out(preview), "note": _note_out(note),
+                "job": _index_job_out(job) if job else None, "idempotentReplay": True,
+            }
         if preview.status != "preview":
             raise HTTPException(status_code=409, detail="edit preview is not active")
-        note = await _get_note(session, user.id, preview.note_id)
+        note = await NoteRepository(session).get_active_for_update(user.id, preview.note_id)
+        if note is None:
+            raise HTTPException(status_code=404, detail="note not found")
+        current_hash = hashlib.sha256((note.content or "").encode()).hexdigest()
+        if preview.source_content_hash and current_hash != preview.source_content_hash:
+            raise HTTPException(
+                status_code=409,
+                detail="笔记已在预览生成后发生变化，请重新生成修改预览。",
+            )
         session.add(_make_version(note, preview))
         note.content = _apply_preview_content(note, preview)
+        preview.applied_content_hash = hashlib.sha256((note.content or "").encode()).hexdigest()
         note.index_status = "pending"
         job = await index_note_now(session, note)
         preview.status = "applied"
@@ -744,6 +777,8 @@ async def apply_preview(
         await session.refresh(preview)
         await session.refresh(note)
         await session.refresh(job)
+        if preview.runtime == "langgraph" and preview.graph_thread_id:
+            await resume_edit_graph(thread_id=preview.graph_thread_id, action="apply")
         return {
             "preview": _edit_out(preview),
             "note": _note_out(note),
@@ -764,4 +799,6 @@ async def cancel_preview(
         preview.cancelled_at = datetime.utcnow()
         await session.commit()
         await session.refresh(preview)
+        if preview.runtime == "langgraph" and preview.graph_thread_id:
+            await resume_edit_graph(thread_id=preview.graph_thread_id, action="cancel")
         return {"preview": _edit_out(preview)}

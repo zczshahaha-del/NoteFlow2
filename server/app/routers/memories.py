@@ -5,31 +5,21 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import select
-
-from app.database import AsyncSessionLocal
-from app.deps import CurrentUser, get_current_user
+from app.config import cfg
+from app.deps import CurrentUser, get_current_user, redis_rate_limit
+from app.memory.rollout import effective_memory_provider, mem0_shadow_selected
 from app.models.db import UserMemory
 from app.services.ai import ChatMessage
 from app.services.memory import (
-    add_memory_event,
-    build_memory_context,
-    clamp_importance,
-    extract_memory_candidates,
-    find_memories,
-    mark_memories_used,
     memory_canonical_key,
     memory_layer,
-    memory_layer_tags,
     memory_value,
-    normalize_memory_layer,
-    normalize_memory_type,
-    normalize_scope,
 )
 from app.services.memory_llm import extract_memory_candidates_smart
-from app.utils import random_id
+from app.services.memory_service import MemoryService
 
 router = APIRouter(tags=["memories"])
+memory_user = redis_rate_limit("memory", cfg.MEMORY_RATE_LIMIT)
 
 
 class MemoryPayload(BaseModel):
@@ -114,57 +104,35 @@ def _candidate_out(candidate) -> dict:
     }
 
 
-async def _get_memory(session, user_id: str, memory_id: str) -> UserMemory:
-    result = await session.execute(
-        select(UserMemory).where(UserMemory.id == memory_id, UserMemory.user_id == user_id)
-    )
-    memory = result.scalar_one_or_none()
-    if memory is None:
-        raise HTTPException(status_code=404, detail="memory not found")
-    return memory
-
-
 @router.get("/memories")
 async def list_memories(
     includeDeleted: bool = Query(False),
     memoryTypes: list[str] = Query(default=[]),
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(memory_user),
 ):
-    async with AsyncSessionLocal() as session:
-        memories = await find_memories(
-            session,
-            user.id,
-            memory_types=memoryTypes,
-            include_deleted=includeDeleted,
-            limit=50,
-        )
-        return {"memories": [_memory_out(memory) for memory in memories]}
+    memories = await MemoryService().list(user.id, memory_types=memoryTypes, include_deleted=includeDeleted)
+    return {"memories": [_memory_out(memory) for memory in memories]}
 
 
 @router.post("/memories/search")
 async def search_memories(
     payload: MemorySearchPayload,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(memory_user),
 ):
-    async with AsyncSessionLocal() as session:
-        memories = await find_memories(
-            session,
+    memories = await MemoryService().search(
             user.id,
             query=payload.query,
             memory_types=payload.memoryTypes,
             scopes=payload.scopes,
             limit=payload.limit,
-        )
-        active_memories = [memory for memory in memories if memory.status == "active"]
-        await mark_memories_used(session, user.id, active_memories, reason="search_memory")
-        await session.commit()
-        return {"memories": [_memory_out(memory) for memory in active_memories]}
+    )
+    return {"memories": [_memory_out(memory) for memory in memories]}
 
 
 @router.post("/memories/extract")
 async def extract_memory(
     payload: MemoryExtractPayload,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(memory_user),
 ):
     history = [
         ChatMessage(role=str(item.get("role") or "user"), text=str(item.get("text") or ""))
@@ -181,123 +149,57 @@ async def extract_memory(
 @router.post("/memories")
 async def create_memory(
     payload: MemoryPayload,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(memory_user),
 ):
-    content = payload.content.strip()
-    if not content:
-        raise HTTPException(status_code=400, detail="content is required")
-
-    async with AsyncSessionLocal() as session:
-        memory_type = normalize_memory_type(payload.memoryType)
-        memory = UserMemory(
-            id=random_id(),
-            user_id=user.id,
-            memory_type=memory_type,
-            content=content[:2000],
-            importance=clamp_importance(payload.importance),
-            confidence=payload.confidence,
-            source=(payload.source or "user_explicit")[:50],
-            scope=normalize_scope(payload.scope),
-            tags=memory_layer_tags(normalize_memory_layer(None, memory_type), payload.tags),
-            status="active",
-        )
-        session.add(memory)
-        add_memory_event(
-            session,
-            memory=memory,
-            user_id=user.id,
-            event_type="created",
-            new_content=memory.content,
-            reason="save_memory",
-        )
-        await session.commit()
-        await session.refresh(memory)
-        return {"memory": _memory_out(memory)}
+    try:
+        memory = await MemoryService().create(user.id, payload)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return {"memory": _memory_out(memory)}
 
 
 @router.put("/memories/{memory_id}")
 async def update_memory(
     memory_id: str,
     payload: MemoryUpdatePayload,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(memory_user),
 ):
-    async with AsyncSessionLocal() as session:
-        memory = await _get_memory(session, user.id, memory_id)
-        old_content = memory.content
-
-        if payload.memoryType is not None:
-            memory.memory_type = normalize_memory_type(payload.memoryType)
-        if payload.content is not None:
-            content = payload.content.strip()
-            if not content:
-                raise HTTPException(status_code=400, detail="content is required")
-            memory.content = content[:2000]
-        if payload.importance is not None:
-            memory.importance = clamp_importance(payload.importance)
-        if payload.confidence is not None:
-            memory.confidence = payload.confidence
-        if payload.source is not None:
-            memory.source = (payload.source or "user_explicit")[:50]
-        if payload.scope is not None:
-            memory.scope = normalize_scope(payload.scope)
-        if payload.tags is not None:
-            memory.tags = memory_layer_tags(normalize_memory_layer(None, memory.memory_type), payload.tags)
-        elif payload.memoryType is not None:
-            memory.tags = memory_layer_tags(normalize_memory_layer(None, memory.memory_type), memory.tags or [])
-        if payload.status is not None:
-            status = payload.status.strip()
-            if status not in {"active", "pending", "archived", "deleted"}:
-                raise HTTPException(status_code=400, detail="invalid status")
-            memory.status = status
-            memory.deleted_at = datetime.utcnow() if status == "deleted" else None
-
-        add_memory_event(
-            session,
-            memory=memory,
-            user_id=user.id,
-            event_type="updated" if memory.status != "deleted" else "deleted",
-            old_content=old_content,
-            new_content=memory.content,
-            reason=payload.reason,
-        )
-        await session.commit()
-        await session.refresh(memory)
-        return {"memory": _memory_out(memory)}
+    try:
+        memory = await MemoryService().update(user.id, memory_id, payload)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return {"memory": _memory_out(memory)}
 
 
 @router.delete("/memories/{memory_id}")
 async def delete_memory(
     memory_id: str,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(memory_user),
 ):
-    async with AsyncSessionLocal() as session:
-        memory = await _get_memory(session, user.id, memory_id)
-        memory.status = "deleted"
-        memory.deleted_at = datetime.utcnow()
-        add_memory_event(
-            session,
-            memory=memory,
-            user_id=user.id,
-            event_type="deleted",
-            old_content=memory.content,
-            reason="delete_memory",
-        )
-        await session.commit()
-        await session.refresh(memory)
-        return {"memory": _memory_out(memory)}
+    try:
+        memory = await MemoryService().delete(user.id, memory_id)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    return {"memory": _memory_out(memory)}
 
 
 @router.get("/memories/context")
 async def get_memory_context(
     query: str = "",
     scopes: list[str] = Query(default=[]),
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(memory_user),
 ):
-    async with AsyncSessionLocal() as session:
-        context = await build_memory_context(
-            session,
-            user.id,
-            query=query,
-            scopes=scopes,
-        )
-        return {"context": context}
+    context = await MemoryService().context(user.id, query=query, scopes=scopes)
+    return {"context": context}
+
+
+@router.get("/memories/provider")
+async def get_memory_provider(user: CurrentUser = Depends(memory_user)):
+    return {
+        "provider": effective_memory_provider(user.id),
+        "configuredProvider": cfg.MEMORY_PROVIDER,
+        "shadow": mem0_shadow_selected(user.id),
+        "memoryEnabledByDefault": True,
+    }

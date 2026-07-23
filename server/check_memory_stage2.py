@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from app.routers.agent import (
     _classify_intent,
-    _patch_working_memory_status,
-    _working_memory_payload,
     AgentChatPayload,
+)
+from app.services.agent_checkpoints import (
+    patch_working_memory_status as _patch_working_memory_status,
+    working_memory_payload as _working_memory_payload,
 )
 
 

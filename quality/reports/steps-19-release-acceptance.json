@@ -1,0 +1,159 @@
+{
+  "generatedAt": "2026-07-17T15:47:23.170096+00:00",
+  "baseUrl": "http://noteflow-rc-backend-1921-c:8080",
+  "workload": {
+    "notes": 20,
+    "longNoteCharacters": 114007,
+    "concurrency": 8
+  },
+  "latency": {
+    "createNote": {
+      "samples": 20,
+      "p50Ms": 3.29,
+      "p95Ms": 6.94,
+      "maxMs": 11.06
+    },
+    "index": {
+      "samples": 21,
+      "p50Ms": 226.9,
+      "p95Ms": 342.58,
+      "maxMs": 3762.14
+    },
+    "search": {
+      "samples": 20,
+      "p50Ms": 250.2,
+      "p95Ms": 277.81,
+      "maxMs": 300.23
+    },
+    "concurrentList": {
+      "samples": 60,
+      "p50Ms": 16.36,
+      "p95Ms": 81.25,
+      "maxMs": 83.36
+    },
+    "longNote": {
+      "samples": 1,
+      "p50Ms": 17.54,
+      "p95Ms": 17.54,
+      "maxMs": 17.54
+    }
+  },
+  "providerUsage": {
+    "deepseek.completion": {
+      "calls": 2,
+      "cacheHits": 0,
+      "failures": 0,
+      "inputTokens": 1748,
+      "outputTokens": 1060,
+      "estimatedCostUsd": 0.0
+    },
+    "deepseek.chat": {
+      "calls": 1,
+      "cacheHits": 0,
+      "failures": 0,
+      "inputTokens": 435,
+      "outputTokens": 3,
+      "estimatedCostUsd": 0.0
+    },
+    "dashscope.embedding": {
+      "calls": 53,
+      "cacheHits": 0,
+      "failures": 0,
+      "inputTokens": 62996,
+      "outputTokens": 0,
+      "estimatedCostUsd": 0.0
+    }
+  },
+  "domainMetrics": {
+    "api.request": {
+      "operations": 242,
+      "failures": 0,
+      "averageDurationMs": 84.68,
+      "samples": 242,
+      "p50Ms": 7.14,
+      "p95Ms": 245.97
+    },
+    "provider.completion": {
+      "operations": 2,
+      "failures": 0,
+      "averageDurationMs": 10250.0,
+      "samples": 2,
+      "p50Ms": 10250.0,
+      "p95Ms": 13038.0
+    },
+    "agent.run_started": {
+      "operations": 1,
+      "failures": 0,
+      "averageDurationMs": 0.0,
+      "samples": 1,
+      "p50Ms": 0,
+      "p95Ms": 0
+    },
+    "provider.chat": {
+      "operations": 1,
+      "failures": 0,
+      "averageDurationMs": 1431.0,
+      "samples": 1,
+      "p50Ms": 1431.0,
+      "p95Ms": 1431.0
+    },
+    "agent.run_finished": {
+      "operations": 1,
+      "failures": 0,
+      "averageDurationMs": 0.0,
+      "samples": 1,
+      "p50Ms": 0,
+      "p95Ms": 0
+    },
+    "provider.embedding": {
+      "operations": 53,
+      "failures": 0,
+      "averageDurationMs": 278.39,
+      "samples": 53,
+      "p50Ms": 248.37,
+      "p95Ms": 470.72
+    },
+    "index.note": {
+      "operations": 25,
+      "failures": 0,
+      "averageDurationMs": 404.2,
+      "samples": 25,
+      "p50Ms": 259.49,
+      "p95Ms": 457.83
+    },
+    "memory.create": {
+      "operations": 1,
+      "failures": 0,
+      "averageDurationMs": 0.0,
+      "samples": 1,
+      "p50Ms": 0,
+      "p95Ms": 0
+    },
+    "outbox.dispatch": {
+      "operations": 3,
+      "failures": 0,
+      "averageDurationMs": 0.0,
+      "samples": 3,
+      "p50Ms": 0,
+      "p95Ms": 0
+    },
+    "memory.update": {
+      "operations": 1,
+      "failures": 0,
+      "averageDurationMs": 0.0,
+      "samples": 1,
+      "p50Ms": 0,
+      "p95Ms": 0
+    },
+    "memory.delete": {
+      "operations": 1,
+      "failures": 0,
+      "averageDurationMs": 0.0,
+      "samples": 1,
+      "p50Ms": 0,
+      "p95Ms": 0
+    }
+  },
+  "errors": [],
+  "passed": true
+}

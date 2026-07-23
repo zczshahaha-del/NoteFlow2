@@ -496,6 +496,17 @@ export default function DirectoryTree({
   }, [newMenuOpen]);
 
   useEffect(() => {
+    if (!trashOpen) return;
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setTrashOpen(false);
+    }
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [trashOpen]);
+
+  useEffect(() => {
     const query = searchQuery.trim();
     if (!query) {
       setSearchResults([]);
@@ -941,73 +952,106 @@ export default function DirectoryTree({
         )}
       </div>
 
-      <div
-        className={`border-t border-jelly-border bg-white/65 ${
-          expanded ? "px-3 py-2" : "flex justify-center px-2 py-2"
-        }`}
-      >
-        {expanded ? (
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="flex h-8 min-w-0 flex-1 items-center justify-between rounded-md px-2 text-[12px] text-jelly-text-soft transition-colors hover:bg-white hover:text-jelly-text"
-              onClick={() => setTrashOpen((open) => !open)}
-            >
-              <span className="flex min-w-0 items-center gap-2">
-                <Trash2 size={14} className="shrink-0" strokeWidth={1.8} />
-                <span className="truncate">回收站</span>
-              </span>
-              <span className="status-chip border-transparent bg-jelly-blue-pale text-jelly-blue-deep">
-                {deletedNotes.length}
-              </span>
-            </button>
-            <AccountMenu
-              compact
-              themeMode={themeMode}
-              onThemeModeChange={onThemeModeChange}
-              userEmail={userEmail}
-              userName={userName}
-              onSignOut={onSignOut}
-            />
-          </div>
-        ) : (
-          <AccountMenu
-            compact
-            themeMode={themeMode}
-            onThemeModeChange={onThemeModeChange}
-            userEmail={userEmail}
-            userName={userName}
-            onSignOut={onSignOut}
-          />
-        )}
+      <div className={`border-t border-jelly-border bg-white/65 ${expanded ? "px-3 py-2" : "flex justify-center px-2 py-2"}`}>
+        <AccountMenu
+          compact={!expanded}
+          themeMode={themeMode}
+          onThemeModeChange={onThemeModeChange}
+          userEmail={userEmail}
+          userName={userName}
+          onSignOut={onSignOut}
+          trashCount={deletedNotes.length}
+          onOpenTrash={() => setTrashOpen(true)}
+        />
+      </div>
 
-          {expanded && trashOpen && (
-            <div className="mt-1.5 max-h-36 space-y-1 overflow-y-auto">
+      {trashOpen && (
+        <div
+          className="fixed inset-0 z-[85] flex items-center justify-center bg-black/15 p-4 backdrop-blur-[1px]"
+          role="presentation"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default"
+            onClick={() => setTrashOpen(false)}
+            aria-label="关闭回收站"
+          />
+          <section
+            className="panel-surface relative z-10 flex max-h-[min(680px,calc(100vh-32px))] w-[min(560px,calc(100vw-32px))] flex-col overflow-hidden shadow-[0_24px_70px_rgba(22,34,45,0.18)]"
+            role="dialog"
+            aria-modal="true"
+            aria-label="回收站"
+          >
+            <div className="flex shrink-0 items-center justify-between gap-4 border-b border-jelly-border px-5 py-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-jelly-blue-pale text-jelly-blue-deep">
+                  <Trash2 size={18} strokeWidth={1.8} />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-[16px] font-semibold text-jelly-text">回收站</h2>
+                  <p className="mt-0.5 text-[12px] text-jelly-text-muted">
+                    {deletedNotes.length > 0
+                      ? `${deletedNotes.length} 篇已删除笔记`
+                      : "没有已删除的笔记"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-jelly-text-muted transition-colors hover:bg-jelly-blue-pale hover:text-jelly-text"
+                onClick={() => setTrashOpen(false)}
+                aria-label="关闭回收站"
+              >
+                <X size={16} strokeWidth={1.9} />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
               {deletedNotes.length === 0 ? (
-                <p className="px-2 py-2 text-[12px] text-jelly-text-muted">暂无已删除笔记</p>
-              ) : (
-                deletedNotes.map((note) => (
-                  <div
-                    key={note.id}
-                    className="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-[12px] text-jelly-text-soft hover:bg-white"
-                  >
-                    <FileText size={13} strokeWidth={1.7} className="shrink-0" />
-                    <span className="min-w-0 flex-1 truncate">{note.title}</span>
-                    <button
-                      type="button"
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-jelly-text-muted hover:bg-jelly-blue-pale hover:text-jelly-blue-deep"
-                      onClick={() => restoreDeletedNote(note.id)}
-                      aria-label={`恢复 ${note.title}`}
-                      title="恢复"
-                    >
-                      <RotateCcw size={13} strokeWidth={1.8} />
-                    </button>
+                <div className="flex min-h-44 flex-col items-center justify-center px-6 text-center">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-jelly-blue-pale text-jelly-blue-deep">
+                    <Trash2 size={20} strokeWidth={1.6} />
                   </div>
-                ))
+                  <p className="mt-3 text-[14px] font-medium text-jelly-text">回收站是空的</p>
+                  <p className="mt-1 text-[12px] text-jelly-text-muted">
+                    删除的笔记会集中显示在这里
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {deletedNotes.map((note) => (
+                    <div
+                      key={note.id}
+                      className="flex min-w-0 items-center gap-3 rounded-lg border border-jelly-border bg-white px-3.5 py-3"
+                    >
+                      <FileText
+                        size={17}
+                        strokeWidth={1.7}
+                        className="shrink-0 text-jelly-text-muted"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-medium text-jelly-text">
+                          {note.title}
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-jelly-text-muted">已移至回收站</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="ui-button ui-button-secondary h-8 shrink-0 gap-1.5 px-3 text-[12px]"
+                        onClick={() => restoreDeletedNote(note.id)}
+                        aria-label={`恢复 ${note.title}`}
+                      >
+                        <RotateCcw size={13} strokeWidth={1.8} />
+                        恢复
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
-          )}
+          </section>
         </div>
+      )}
 
       {movingNode && expanded && (
         <div className="border-t border-jelly-border bg-white px-4 py-3">

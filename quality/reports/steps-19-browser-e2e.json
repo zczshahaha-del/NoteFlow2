@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-07-17T15:52:00Z",
+  "url": "http://127.0.0.1:15173/",
+  "passed": true,
+  "checks": {
+    "registerAndLogin": true,
+    "folderCreateAndRename": true,
+    "noteCreate": true,
+    "titleEdit": true,
+    "bodyEdit": true,
+    "aiPanelExpand": true,
+    "realAiReply": "BROWSER_AI_OK",
+    "consoleErrors": 0
+  }
+}

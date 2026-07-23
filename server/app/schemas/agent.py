@@ -51,3 +51,11 @@ class CheckpointResolvePayload(BaseModel):
 
 class RunCancelPayload(BaseModel):
     reason: str = "user_cancelled"
+
+
+class ChatSessionCreatePayload(BaseModel):
+    currentNoteId: Optional[str] = None
+
+
+class ChatSessionUpdatePayload(BaseModel):
+    title: str = Field(min_length=1, max_length=255)

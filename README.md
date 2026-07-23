@@ -25,6 +25,17 @@ Standalone AI generation and settings pages are retained only as migration proto
 - HttpOnly Cookie authentication with short-lived JWT access tokens and revocable server sessions
 - Docker Compose deployment
 - Nginx static hosting and `/api` reverse proxy
+- LangGraph agent workflows, LlamaIndex RAG v2, and Mem0 OSS long-term-memory adapters behind independent rollout flags
+
+## Quality and release
+
+```bash
+python3 scripts/quality_gate.py --profile full
+python3 scripts/run_release_acceptance.py --base-url http://127.0.0.1:8080
+python3 scripts/release_rollout.py --stage internal --base-url http://127.0.0.1:8080 --candidate-drill
+```
+
+The first two commands validate a release candidate. The rollout command is intentionally read-only: it reports target flags and blockers but never mutates production. See [production rollout runbook](docs/operations/production-rollout-runbook.md).
 
 ## Engineering Baseline
 

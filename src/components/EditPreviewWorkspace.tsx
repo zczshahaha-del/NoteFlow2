@@ -45,6 +45,7 @@ function PreviewMarkdown({ content }: { content: string }) {
 export default function EditPreviewWorkspace() {
   const {
     activeEditPreview,
+    editPreviewError,
     applyEditPreviewRequest,
     cancelEditPreviewRequest,
     reviseEditPreviewRequest,
@@ -184,6 +185,15 @@ export default function EditPreviewWorkspace() {
         </div>
       </div>
 
+      {editPreviewError && (
+        <div
+          role="alert"
+          className="mx-5 mt-4 rounded-md border border-jelly-red/30 bg-jelly-red-bg px-4 py-3 text-[13px] leading-relaxed text-jelly-red"
+        >
+          {editPreviewError}
+        </div>
+      )}
+
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
         <div className="mb-4 rounded-md border border-jelly-border bg-white px-4 py-3">
           <div className="mb-2 flex items-center gap-2 text-[12px] font-semibold text-jelly-text">
@@ -290,7 +300,7 @@ export default function EditPreviewWorkspace() {
               value={currentRevisionIndex >= 0 ? revisions[currentRevisionIndex]?.id : ""}
               onChange={(event) => void restoreRevision(event.target.value)}
               disabled={revisions.length === 0 || chatLoading}
-              className="h-8 min-w-0 max-w-[260px] rounded-md border border-jelly-border bg-white px-2 text-[12px] text-jelly-text-soft outline-none focus:border-jelly-blue/40 disabled:opacity-50"
+              className="h-8 min-w-0 max-w-[260px] rounded-md border border-jelly-border bg-white px-2 text-[12px] text-jelly-text-soft outline-none disabled:opacity-50"
             >
               <option value="">选择预览版本</option>
               {revisions.map((revision, index) => (
@@ -308,7 +318,7 @@ export default function EditPreviewWorkspace() {
             onChange={(event) => setRevisionText(event.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="继续调整这份预览，例如：再通俗一点，补一个项目例子..."
-            className="min-h-16 flex-1 resize-none rounded-md border border-jelly-border bg-white px-3 py-2 text-[13px] leading-relaxed text-jelly-text outline-none transition-colors placeholder:text-jelly-text-muted focus:border-jelly-blue/35 focus:shadow-[0_0_0_3px_rgba(122,175,207,0.08)]"
+            className="min-h-16 flex-1 resize-none rounded-md border border-jelly-border bg-white px-3 py-2 text-[13px] leading-relaxed text-jelly-text outline-none transition-colors placeholder:text-jelly-text-muted"
           />
           <button
             type="button"

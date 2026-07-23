@@ -1,0 +1,372 @@
+{
+  "generatedAt": "2026-07-23T04:54:05.207313+00:00",
+  "profile": "full",
+  "summary": {
+    "total": 26,
+    "passed": 22,
+    "failed": 4,
+    "durationSeconds": 14.286
+  },
+  "results": [
+    {
+      "category": "frontend",
+      "name": "editor-roundtrip",
+      "command": [
+        "npm",
+        "run",
+        "test:editor-roundtrip"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.591,
+      "outputTail": "> noteflow@1.0.0 test:editor-roundtrip\n> node scripts/editor-roundtrip.mjs\n\n{\"ok\":true,\"fixtureCount\":8,\"results\":[{\"name\":\"headings-inline-links\",\"ok\":true,\"outputLength\":64},{\"name\":\"lists-and-quote\",\"ok\":true,\"outputLength\":53},{\"name\":\"gfm-table\",\"ok\":true,\"outputLength\":51},{\"name\":\"fenced-code\",\"ok\":true,\"outputLength\":65},{\"name\":\"editor-html-marks\",\"ok\":true,\"outputLength\":72},{\"name\":\"task-list\",\"ok\":true,\"outputLength\":28},{\"name\":\"image-and-escaped-text\",\"ok\":true,\"outputLength\":74},{\"name\":\"blank-lines-and-mixed-html\",\"ok\":true,\"outputLength\":30}],\"knownGaps\":[\"contentEditable still depends on deprecated execCommand for selection formatting\",\"complex merged-cell tables are flattened to a rectangular GFM table\",\"selection and native undo history require browser-level integration tests\"]}"
+    },
+    {
+      "category": "frontend",
+      "name": "tiptap-codec",
+      "command": [
+        "npm",
+        "run",
+        "test:tiptap-codec"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.876,
+      "outputTail": "> noteflow@1.0.0 test:tiptap-codec\n> node --experimental-strip-types scripts/tiptap-codec-roundtrip.ts\n\n{\"ok\":true,\"codec\":\"tiptap-markdown\",\"fixtureCount\":8,\"results\":[{\"name\":\"headings-inline-links\",\"ok\":true,\"outputLength\":64},{\"name\":\"lists-and-quote\",\"ok\":true,\"outputLength\":43},{\"name\":\"gfm-table\",\"ok\":true,\"outputLength\":57},{\"name\":\"fenced-code\",\"ok\":true,\"outputLength\":57},{\"name\":\"editor-html-marks\",\"ok\":true,\"outputLength\":72},{\"name\":\"task-list\",\"ok\":true,\"outputLength\":28},{\"name\":\"image-and-escaped-text\",\"ok\":true,\"outputLength\":74},{\"name\":\"blank-lines-and-mixed-html\",\"ok\":true,\"outputLength\":32}]}"
+    },
+    {
+      "category": "frontend",
+      "name": "tiptap-selection",
+      "command": [
+        "npm",
+        "run",
+        "test:tiptap-selection"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.551,
+      "outputTail": "> noteflow@1.0.0 test:tiptap-selection\n> node --experimental-strip-types scripts/tiptap-selection-test.ts\n\n{\"ok\":true,\"caseCount\":5,\"results\":[{\"target\":\"跨格式中文 与 链接文字\",\"range\":{\"from\":5,\"to\":17}},{\"target\":\"第二段包含 emoji 🎯 和结尾。\",\"range\":{\"from\":20,\"to\":39}},{\"target\":\"emoji 🎯\",\"range\":{\"from\":26,\"to\":34}},{\"target\":\"链接文字。 第二段包含 emoji\",\"range\":{\"from\":13,\"to\":31}}]}"
+    },
+    {
+      "category": "frontend",
+      "name": "editor-compatibility",
+      "command": [
+        "npm",
+        "run",
+        "test:editor-compatibility"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.265,
+      "outputTail": "> noteflow@1.0.0 test:editor-compatibility\n> node --experimental-strip-types scripts/editor-compatibility-test.ts\n\n{\"ok\":true,\"autoOpenMaxChars\":40000,\"longDocumentFallback\":true,\"collapsibleSourcesFallback\":true}"
+    },
+    {
+      "category": "frontend",
+      "name": "editor-ui-contract",
+      "command": [
+        "npm",
+        "run",
+        "test:editor-ui"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.208,
+      "outputTail": "> noteflow@1.0.0 test:editor-ui\n> node scripts/editor-ui-contract-test.mjs\n\n{\"ok\":true,\"hiddenTechnicalControls\":6,\"focusStyle\":\"no-click-frame\",\"chatComposer\":\"large-context-composer\",\"chatContext\":\"dialog-or-library-search\",\"chatSources\":\"compact-click-through\"}"
+    },
+    {
+      "category": "frontend",
+      "name": "wiki-links",
+      "command": [
+        "npm",
+        "run",
+        "test:wiki-links"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.223,
+      "outputTail": "> noteflow@1.0.0 test:wiki-links\n> node --experimental-strip-types scripts/wiki-links-test.ts\n\n{\"ok\":true,\"parsedLinks\":2,\"backlinkCount\":1}"
+    },
+    {
+      "category": "frontend",
+      "name": "knowledge-import",
+      "command": [
+        "npm",
+        "run",
+        "test:knowledge-import"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.251,
+      "outputTail": "> noteflow@1.0.0 test:knowledge-import\n> node --experimental-strip-types scripts/knowledge-import-test.ts\n\n{\"ok\":true,\"imported\":2}"
+    },
+    {
+      "category": "frontend",
+      "name": "markdown-diff",
+      "command": [
+        "npm",
+        "run",
+        "test:markdown-diff"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.285,
+      "outputTail": "> noteflow@1.0.0 test:markdown-diff\n> node --experimental-strip-types scripts/markdown-diff-test.ts\n\n{\"ok\":true,\"rows\":6,\"added\":2,\"removed\":1}"
+    },
+    {
+      "category": "frontend",
+      "name": "offline-conflict",
+      "command": [
+        "npm",
+        "run",
+        "test:offline-conflict"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.251,
+      "outputTail": "> noteflow@1.0.0 test:offline-conflict\n> node --experimental-strip-types scripts/offline-conflict-test.ts\n\n{\"ok\":true,\"conflictDetected\":true}"
+    },
+    {
+      "category": "frontend",
+      "name": "component-store",
+      "command": [
+        "npm",
+        "run",
+        "test:frontend"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.845,
+      "outputTail": "> noteflow@1.0.0 test:frontend\n> node scripts/frontend-component-store-test.mjs\n\n{\"ok\":true,\"storeAssertions\":10,\"componentAssertions\":12,\"components\":[\"LoginPage\",\"NoteMetadataControls\",\"NoteEditor\",\"EditPreviewWorkspace\"]}\n(node:39208) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.\n(Use `node --trace-deprecation ...` to show where the warning was created)"
+    },
+    {
+      "category": "frontend",
+      "name": "pwa",
+      "command": [
+        "npm",
+        "run",
+        "test:pwa"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.213,
+      "outputTail": "> noteflow@1.0.0 test:pwa\n> node scripts/pwa-installability-test.mjs\n\n{\"ok\":true,\"display\":\"standalone\",\"icons\":[{\"width\":192,\"height\":192},{\"width\":512,\"height\":512}],\"offlineShellAssets\":true}"
+    },
+    {
+      "category": "frontend",
+      "name": "editor-selection",
+      "command": [
+        "npm",
+        "run",
+        "test:editor-selection"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.488,
+      "outputTail": "> noteflow@1.0.0 test:editor-selection\n> node --experimental-strip-types scripts/dom-selection-test.ts\n\n{\"ok\":true,\"cases\":3}"
+    },
+    {
+      "category": "frontend",
+      "name": "input-composition",
+      "command": [
+        "npm",
+        "run",
+        "test:input-composition"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.232,
+      "outputTail": "> noteflow@1.0.0 test:input-composition\n> node --experimental-strip-types scripts/input-composition-test.ts\n\n{\"ok\":true,\"cases\":6}"
+    },
+    {
+      "category": "backend-unit",
+      "name": "unittest-discovery",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_*.py"
+      ],
+      "cwd": "server",
+      "status": "failed",
+      "exitCode": 1,
+      "durationSeconds": 1.638,
+      "outputTail": "..........s...s..2026-07-23 12:53:57,181 INFO {\"event\": \"http_request\", \"request_id\": \"test-request-1\", \"trace_id\": \"68a7c8d81fba40fb904ad7d6da95fd09\", \"method\": \"GET\", \"route\": \"/conflict\", \"status\": 409, \"durationMs\": 0.2}\n2026-07-23 12:53:57,181 INFO HTTP Request: GET http://testserver/conflict \"HTTP/1.1 409 Conflict\"\n..2026-07-23 12:53:57,191 INFO {\"event\": \"http_request\", \"request_id\": \"a322e336d8724f1ab0c0e4d5f04839cb\", \"trace_id\": \"7066001d0809492bba87c81259c64145\", \"method\": \"GET\", \"route\": \"/ok\", \"status\": 200, \"durationMs\": 0.16}\n2026-07-23 12:53:57,191 INFO HTTP Request: GET http://testserver/ok \"HTTP/1.1 200 OK\"\n.F.......................sssssssss../Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020\n  warnings.warn(\n.......................................................................\n======================================================================\nFAIL: test_legacy_flags_are_safe_defaults (test_architecture_contracts.ArchitectureContractTest)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/zhangcheng/Desktop/NoteFlow/server/tests/test_architecture_contracts.py\", line 42, in test_legacy_flags_are_safe_defaults\n    self.assertEqual(cfg.AGENT_RUNTIME, \"legacy\")\nAssertionError: 'langgraph' != 'legacy'\n- langgraph\n+ legacy\n\n\n----------------------------------------------------------------------\nRan 126 tests in 0.564s\n\nFAILED (failures=1, skipped=11)\n/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py:681: ResourceWarning: unclosed event loop <_UnixSelectorEventLoop running=False closed=False debug=False>"
+    },
+    {
+      "category": "backend-contract",
+      "name": "context-planner",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "check_context_planner.py"
+      ],
+      "cwd": "server",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.525,
+      "outputTail": "context planner matrix checks passed"
+    },
+    {
+      "category": "backend-contract",
+      "name": "runtime-events",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "check_runtime_events.py"
+      ],
+      "cwd": "server",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.511,
+      "outputTail": "runtime event contract checks passed"
+    },
+    {
+      "category": "backend-contract",
+      "name": "diagnostics",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "check_diagnostics.py"
+      ],
+      "cwd": "server",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.21,
+      "outputTail": "diagnostics checks passed"
+    },
+    {
+      "category": "backend-memory",
+      "name": "memory-stage1",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "check_memory_stage1.py"
+      ],
+      "cwd": "server",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.504,
+      "outputTail": "memory stage1 checks passed"
+    },
+    {
+      "category": "backend-memory",
+      "name": "memory-stage2",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "check_memory_stage2.py"
+      ],
+      "cwd": "server",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.509,
+      "outputTail": "memory stage2 checks passed"
+    },
+    {
+      "category": "backend-memory",
+      "name": "memory-stage3",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "check_memory_stage3.py"
+      ],
+      "cwd": "server",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.513,
+      "outputTail": "memory stage3 checks passed"
+    },
+    {
+      "category": "backend-memory",
+      "name": "memory-stage4",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "check_memory_stage4.py"
+      ],
+      "cwd": "server",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.519,
+      "outputTail": "memory stage4 checks passed"
+    },
+    {
+      "category": "database",
+      "name": "postgres-pgvector-integration",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "-m",
+        "unittest",
+        "tests.test_database_integration"
+      ],
+      "cwd": "server",
+      "status": "failed",
+      "exitCode": 1,
+      "durationSeconds": 0.507,
+      "outputTail": "E\n======================================================================\nERROR: setUpClass (tests.test_database_integration.DatabaseIntegrationTest)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/zhangcheng/Desktop/NoteFlow/server/tests/test_database_integration.py\", line 494, in setUpClass\n    cls.snapshot = asyncio.run(_database_snapshot())\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/runners.py\", line 44, in run\n    return loop.run_until_complete(main)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py\", line 642, in run_until_complete\n    return future.result()\n  File \"/Users/zhangcheng/Desktop/NoteFlow/server/tests/test_database_integration.py\", line 66, in _database_snapshot\n    connection = await asyncpg.connect(\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py\", line 2421, in connect\n    return await connect_utils._connect(\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/asyncpg/connect_utils.py\", line 1075, in _connect\n    raise last_error or exceptions.TargetServerAttributeNotMatched(\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/asyncpg/connect_utils.py\", line 1049, in _connect\n    conn = await _connect_addr(\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/asyncpg/connect_utils.py\", line 886, in _connect_addr\n    return await __connect_addr(params, True, *args)\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/asyncpg/connect_utils.py\", line 931, in __connect_addr\n    tr, pr = await connector\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/asyncpg/connect_utils.py\", line 802, in _create_ssl_connection\n    tr, pr = await loop.create_connection(\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py\", line 1056, in create_connection\n    raise exceptions[0]\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py\", line 1041, in create_connection\n    sock = await self._connect_sock(\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py\", line 955, in _connect_sock\n    await self.sock_connect(sock, address)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/selector_events.py\", line 502, in sock_connect\n    return await fut\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/selector_events.py\", line 507, in _sock_connect\n    sock.connect(address)\nPermissionError: [Errno 1] Operation not permitted\n\n----------------------------------------------------------------------\nRan 0 tests in 0.006s\n\nFAILED (errors=1)"
+    },
+    {
+      "category": "rag",
+      "name": "legacy-fixed-eval",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "scripts/run_rag_baseline.py"
+      ],
+      "cwd": ".",
+      "status": "failed",
+      "exitCode": 1,
+      "durationSeconds": 0.517,
+      "outputTail": "anghelpers.py\", line 146, in __exit__\n    raise exc_value.with_traceback(exc_tb)\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/pool/impl.py\", line 177, in _do_get\n    return self._create_connection()\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/pool/base.py\", line 390, in _create_connection\n    return _ConnectionRecord(self)\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/pool/base.py\", line 674, in __init__\n    self.__connect()\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/pool/base.py\", line 901, in __connect\n    pool.logger.debug(\"Error on connect(): %s\", e)\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/util/langhelpers.py\", line 146, in __exit__\n    raise exc_value.with_traceback(exc_tb)\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/pool/base.py\", line 896, in __connect\n    self.dbapi_connection = connection = pool._invoke_creator(self)\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/engine/create.py\", line 643, in connect\n    return dialect.connect(*cargs, **cparams)\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/engine/default.py\", line 621, in connect\n    return self.loaded_dbapi.connect(*cargs, **cparams)\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py\", line 949, in connect\n    await_only(creator_fn(*arg, **kw)),\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/util/_concurrency_py3k.py\", line 132, in await_only\n    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/util/_concurrency_py3k.py\", line 196, in greenlet_spawn\n    value = await result\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py\", line 2421, in connect\n    return await connect_utils._connect(\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/asyncpg/connect_utils.py\", line 1075, in _connect\n    raise last_error or exceptions.TargetServerAttributeNotMatched(\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/asyncpg/connect_utils.py\", line 1049, in _connect\n    conn = await _connect_addr(\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/asyncpg/connect_utils.py\", line 886, in _connect_addr\n    return await __connect_addr(params, True, *args)\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/asyncpg/connect_utils.py\", line 931, in __connect_addr\n    tr, pr = await connector\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/asyncpg/connect_utils.py\", line 802, in _create_ssl_connection\n    tr, pr = await loop.create_connection(\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py\", line 1056, in create_connection\n    raise exceptions[0]\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py\", line 1041, in create_connection\n    sock = await self._connect_sock(\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py\", line 955, in _connect_sock\n    await self.sock_connect(sock, address)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/selector_events.py\", line 502, in sock_connect\n    return await fut\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/selector_events.py\", line 507, in _sock_connect\n    sock.connect(address)\nPermissionError: [Errno 1] Operation not permitted"
+    },
+    {
+      "category": "rag",
+      "name": "rag-v2-fixed-eval",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "scripts/run_rag_v2_eval.py"
+      ],
+      "cwd": ".",
+      "status": "failed",
+      "exitCode": 1,
+      "durationSeconds": 0.525,
+      "outputTail": "anghelpers.py\", line 146, in __exit__\n    raise exc_value.with_traceback(exc_tb)\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/pool/impl.py\", line 177, in _do_get\n    return self._create_connection()\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/pool/base.py\", line 390, in _create_connection\n    return _ConnectionRecord(self)\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/pool/base.py\", line 674, in __init__\n    self.__connect()\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/pool/base.py\", line 901, in __connect\n    pool.logger.debug(\"Error on connect(): %s\", e)\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/util/langhelpers.py\", line 146, in __exit__\n    raise exc_value.with_traceback(exc_tb)\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/pool/base.py\", line 896, in __connect\n    self.dbapi_connection = connection = pool._invoke_creator(self)\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/engine/create.py\", line 643, in connect\n    return dialect.connect(*cargs, **cparams)\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/engine/default.py\", line 621, in connect\n    return self.loaded_dbapi.connect(*cargs, **cparams)\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py\", line 949, in connect\n    await_only(creator_fn(*arg, **kw)),\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/util/_concurrency_py3k.py\", line 132, in await_only\n    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/sqlalchemy/util/_concurrency_py3k.py\", line 196, in greenlet_spawn\n    value = await result\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py\", line 2421, in connect\n    return await connect_utils._connect(\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/asyncpg/connect_utils.py\", line 1075, in _connect\n    raise last_error or exceptions.TargetServerAttributeNotMatched(\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/asyncpg/connect_utils.py\", line 1049, in _connect\n    conn = await _connect_addr(\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/asyncpg/connect_utils.py\", line 886, in _connect_addr\n    return await __connect_addr(params, True, *args)\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/asyncpg/connect_utils.py\", line 931, in __connect_addr\n    tr, pr = await connector\n  File \"/Users/zhangcheng/Library/Python/3.9/lib/python/site-packages/asyncpg/connect_utils.py\", line 802, in _create_ssl_connection\n    tr, pr = await loop.create_connection(\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py\", line 1056, in create_connection\n    raise exceptions[0]\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py\", line 1041, in create_connection\n    sock = await self._connect_sock(\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py\", line 955, in _connect_sock\n    await self.sock_connect(sock, address)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/selector_events.py\", line 502, in sock_connect\n    return await fut\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/selector_events.py\", line 507, in _sock_connect\n    sock.connect(address)\nPermissionError: [Errno 1] Operation not permitted"
+    },
+    {
+      "category": "memory",
+      "name": "memory-safety-eval",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "scripts/run_memory_safety_eval.py"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 0.476,
+      "outputTail": "{\"total\": 12, \"passed\": 12, \"knownGaps\": 0, \"unexpectedFailures\": 0}"
+    },
+    {
+      "category": "build",
+      "name": "production-build",
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "cwd": ".",
+      "status": "passed",
+      "exitCode": 0,
+      "durationSeconds": 2.052,
+      "outputTail": "> noteflow@1.0.0 build\n> tsc -b && vite build\n\nvite v8.1.4 building client environment for production...\n\u001b[2K\ntransforming...✓ 1891 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/index.html                                0.96 kB │ gzip:   0.47 kB\ndist/assets/index-BFeyGpp1.css               118.42 kB │ gzip:  20.80 kB\ndist/assets/refresh-cw-BZ-uK11h.js             0.31 kB │ gzip:   0.22 kB\ndist/assets/rolldown-runtime-Bh1tDfsg.js       0.56 kB │ gzip:   0.36 kB\ndist/assets/VersionHistoryPanel-wkcaoCfG.js    8.05 kB │ gzip:   3.01 kB\ndist/assets/tiptap-prosemirror-f3Kzu1u1.js    50.12 kB │ gzip:  16.00 kB\ndist/assets/app-store-DLx8YcBc.js             64.89 kB │ gzip:  17.33 kB\ndist/assets/TiptapPilotEditor-CruDv_6a.js    169.96 kB │ gzip:  55.38 kB\ndist/assets/tiptap-markdown-CsBriAva.js      345.62 kB │ gzip: 104.83 kB\ndist/assets/index-CEXp1aVd.js                492.62 kB │ gzip: 145.52 kB\n\n✓ built in 217ms\n(node:40458) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.\n(Use `node --trace-deprecation ...` to show where the warning was created)"
+    }
+  ]
+}

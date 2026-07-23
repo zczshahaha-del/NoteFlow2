@@ -12,6 +12,7 @@ from app.models.db import Note, NoteChunk, NoteEmbedding, NoteIndexJob, NoteSect
 from app.services.embedding_index import index_note_chunk_embeddings
 from app.services.embeddings import chunk_embedding_text, content_hash, embedding_enabled
 from app.utils import random_id
+from app.services.observability import record_metric
 
 HEADING_RE = re.compile(r"^(#{1,4})\s+(.+?)\s*#*\s*$")
 MAX_CHUNK_CHARS = 1600
@@ -156,6 +157,7 @@ def split_section_chunks(content: str, max_chars: int = MAX_CHUNK_CHARS) -> list
 
 
 async def create_index_job(session: AsyncSession, note: Note) -> NoteIndexJob:
+    source_version = content_hash(getattr(note, "content", "") or "")
     existing_result = await session.execute(
         select(NoteIndexJob)
         .where(
@@ -169,6 +171,10 @@ async def create_index_job(session: AsyncSession, note: Note) -> NoteIndexJob:
     existing = existing_result.scalar_one_or_none()
     if existing is not None:
         existing.next_attempt_at = None
+        existing.source_version = source_version
+        existing.parser_version = "markdown-v1"
+        existing.chunker_version = f"chars-{MAX_CHUNK_CHARS}"
+        existing.embedding_version = f"{cfg.EMBEDDING_PROVIDER}:{cfg.EMBEDDING_MODEL}:{cfg.EMBEDDING_DIMENSIONS}"
         note.index_status = "outdated"
         await session.flush()
         return existing
@@ -179,6 +185,10 @@ async def create_index_job(session: AsyncSession, note: Note) -> NoteIndexJob:
         status="pending",
         retry_count=0,
         max_retries=3,
+        source_version=source_version,
+        parser_version="markdown-v1",
+        chunker_version=f"chars-{MAX_CHUNK_CHARS}",
+        embedding_version=f"{cfg.EMBEDDING_PROVIDER}:{cfg.EMBEDDING_MODEL}:{cfg.EMBEDDING_DIMENSIONS}",
     )
     note.index_status = "outdated"
     session.add(job)
@@ -189,6 +199,7 @@ async def create_index_job(session: AsyncSession, note: Note) -> NoteIndexJob:
 async def run_index_job(session: AsyncSession, note: Note, job: NoteIndexJob) -> NoteIndexJob:
     job.status = "running"
     job.started_at = datetime.utcnow()
+    job.error_code = None
     note.index_status = "indexing"
     await session.flush()
 
@@ -259,6 +270,12 @@ async def run_index_job(session: AsyncSession, note: Note, job: NoteIndexJob) ->
             section_rows.append(row)
             section_by_parsed_id[section.id] = row
             session.add(row)
+
+        # Persist every reused/new section without a parent first. SQLAlchemy does
+        # not have an ORM relationship for this self-reference, so assigning raw
+        # parent_id values before the initial flush can emit child updates before
+        # newly-created parent rows and violate the FK constraint.
+        await session.flush()
 
         for section in parsed_sections:
             row = section_by_parsed_id[section.id]
@@ -336,11 +353,17 @@ async def run_index_job(session: AsyncSession, note: Note, job: NoteIndexJob) ->
             "failed": stats.failed,
         }
         job.finished_at = datetime.utcnow()
+        job.claim_owner = None
+        job.claimed_at = None
+        job.heartbeat_at = None
         note.index_status = "indexed"
+        note.index_version = job.source_version or content_hash(note.content or "")
+        record_metric("index", "note", duration_ms=(datetime.utcnow() - job.started_at).total_seconds() * 1000)
         await session.flush()
         return job
     except Exception as exc:
         schedule_index_retry(note, job, exc)
+        record_metric("index", "note", status="failed", duration_ms=(datetime.utcnow() - job.started_at).total_seconds() * 1000)
         await session.flush()
         return job
 
@@ -348,6 +371,10 @@ async def run_index_job(session: AsyncSession, note: Note, job: NoteIndexJob) ->
 def schedule_index_retry(note: Note, job: NoteIndexJob, error: Exception, now: datetime | None = None) -> None:
     current_time = now or datetime.utcnow()
     job.error_message = str(error)
+    job.error_code = type(error).__name__[:80]
+    job.claim_owner = None
+    job.claimed_at = None
+    job.heartbeat_at = None
     job.retry_count = (job.retry_count or 0) + 1
     if job.retry_count <= (job.max_retries or 3):
         job.status = "pending"
@@ -363,6 +390,10 @@ def schedule_index_retry(note: Note, job: NoteIndexJob, error: Exception, now: d
 
 async def index_note_now(session: AsyncSession, note: Note) -> NoteIndexJob:
     job = await create_index_job(session, note)
+    if cfg.RAG_V2_INDEX_ENABLED:
+        from app.rag.v2.indexer import create_rag_v2_index_job
+
+        await create_rag_v2_index_job(session, note)
     from app.services.index_worker import notify_index_worker
 
     notify_index_worker()

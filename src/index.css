@@ -126,8 +126,8 @@ button,
 }
 
 :where(button, input, select, textarea, [contenteditable="true"], [tabindex]):focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-jelly-blue) 72%, white);
-  outline-offset: 2px;
+  outline: none;
+  outline-offset: 0;
 }
 
 /* The editor already has a visible caret; a focus ring around the whole document looks like a stray box. */
@@ -196,6 +196,13 @@ button,
 .directory-tree .ui-input:focus-within {
   border-color: var(--color-jelly-border);
   box-shadow: none;
+}
+
+.draft-modal-shell .draft-control-no-focus-ring:focus,
+.draft-modal-shell .draft-control-no-focus-ring:focus-visible {
+  outline: none !important;
+  border-color: var(--color-jelly-border);
+  box-shadow: none !important;
 }
 
 .app-frame {
@@ -2623,7 +2630,7 @@ body,
   gap: 8px !important;
   padding: 0 9px !important;
   border-radius: 8px !important;
-  background: #f2f1ef !important;
+  background: transparent !important;
   color: #737674 !important;
   font-size: 14px !important;
   font-weight: 650 !important;
@@ -2647,10 +2654,23 @@ body,
   border-width: 0 1.8px 1.8px 0 !important;
 }
 
-.document-canvas .note-content .code-language-trigger:hover,
+.document-canvas .note-content .code-language-trigger:hover {
+  background: #f7f6f4 !important;
+  color: #626664 !important;
+}
+
 .document-canvas .note-content .code-language-menu.is-open .code-language-trigger {
   background: #ecebe8 !important;
   color: #555957 !important;
+}
+
+/* Tiptap/Floating UI already calculates the menu's exact top-left coordinates. */
+.tiptap-selection-toolbar {
+  transform: none;
+}
+
+.tiptap-selection-toolbar::after {
+  bottom: -5px;
 }
 
 .document-canvas .note-content .code-copy-button {
@@ -3010,7 +3030,7 @@ body,
   width: 100%;
   min-width: 0;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 9px;
   border: 0;
   background: transparent;
@@ -3067,7 +3087,7 @@ body,
 
 .chapter-rail-label {
   overflow: hidden;
-  text-align: right;
+  text-align: left;
   text-overflow: ellipsis;
 }
 

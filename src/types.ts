@@ -4,6 +4,7 @@ export interface FileNode {
   type: "folder" | "file";
   children?: FileNode[];
   content?: string;
+  contentHash?: string;
   createdAt?: string;
   updatedAt?: string;
   summary?: string;
@@ -29,6 +30,23 @@ export interface ChatMessage {
   agentSessionId?: string;
   agentRunId?: string;
   toolTraces?: AgentToolTrace[];
+  draftCard?: {
+    seed: string;
+    checkpointId?: string | null;
+    draftId?: string | null;
+    status?: string | null;
+  };
+  createdAt?: string | null;
+}
+
+export interface ChatSessionSummary {
+  id: string;
+  title: string;
+  status: string;
+  currentNoteId: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  lastMessageAt: string | null;
 }
 
 export interface ChatSource {

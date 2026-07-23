@@ -11,6 +11,7 @@ export function useDraftSlice() {
     pendingCheckpoint: state.pendingCheckpoint,
     startDraft: state.startDraft,
     openPendingDraft: state.openPendingDraft,
+    dismissDraftWorkspace: state.dismissDraftWorkspace,
     openPendingEditPreview: state.openPendingEditPreview,
     setActiveDraftContext: state.setActiveDraftContext,
     requestDraftCommand: state.requestDraftCommand,

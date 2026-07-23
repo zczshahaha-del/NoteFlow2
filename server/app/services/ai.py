@@ -18,6 +18,7 @@ from app.services.ai_cache import (
     set_cached_ai_text,
 )
 from app.services.prompts import NoteGenerateRequest, build_note_generate_prompt
+from app.services.observability import record_metric, record_provider_usage
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,21 @@ ERR_RATE_LIMITED = "AI_RATE_LIMITED"
 
 MAX_DOC_RUNES = 12000
 MAX_HISTORY = 8
+
+
+def _estimate_tokens(value: str) -> int:
+    return max(1, (len(value or "") + 3) // 4)
+
+
+def _message_tokens(messages: list[dict]) -> int:
+    return sum(_estimate_tokens(str(message.get("content") or "")) for message in messages)
+
+
+def _llm_cost(input_tokens: int, output_tokens: int) -> float:
+    return (
+        input_tokens * cfg.LLM_INPUT_USD_PER_MILLION_TOKENS
+        + output_tokens * cfg.LLM_OUTPUT_USD_PER_MILLION_TOKENS
+    ) / 1_000_000
 
 
 @dataclass
@@ -156,6 +172,7 @@ def _completion_body(
     stream: bool,
     max_tokens: int,
     temperature: float,
+    thinking: str | None = None,
 ) -> dict:
     body: dict = {
         "model": cfg.DEEPSEEK_MODEL,
@@ -165,6 +182,8 @@ def _completion_body(
     }
     if max_tokens > 0:
         body["max_tokens"] = max_tokens
+    if thinking in {"enabled", "disabled"}:
+        body["thinking"] = {"type": thinking}
     return body
 
 
@@ -230,6 +249,7 @@ async def stream_chat(payload: ChatRequest) -> AsyncIterator[dict]:
     cache_key = ai_cache_key("stream-chat", body)
     cached = await get_cached_ai_text(cache_key)
     if cached is not None:
+        record_provider_usage("deepseek", "chat", cache_hit=True)
         yield cached_delta(cached)
         yield cached_stop_delta()
         return
@@ -240,16 +260,30 @@ async def stream_chat(payload: ChatRequest) -> AsyncIterator[dict]:
     async with ai_cache_lock(cache_key):
         cached = await get_cached_ai_text(cache_key)
         if cached is not None:
+            record_provider_usage("deepseek", "chat", cache_hit=True)
             yield cached_delta(cached)
             yield cached_stop_delta()
             return
 
         parts: list[str] = []
-        async for chunk in _stream_deepseek(body):
-            text = _delta_text(chunk)
-            if text:
-                parts.append(text)
-            yield chunk
+        started = asyncio.get_running_loop().time()
+        try:
+            async for chunk in _stream_deepseek(body):
+                text = _delta_text(chunk)
+                if text:
+                    parts.append(text)
+                yield chunk
+        except Exception:
+            record_provider_usage("deepseek", "chat", failed=True)
+            record_metric("provider", "chat", status="failed", duration_ms=(asyncio.get_running_loop().time() - started) * 1000)
+            raise
+        input_tokens = _message_tokens(messages)
+        output_tokens = _estimate_tokens("".join(parts))
+        record_provider_usage(
+            "deepseek", "chat", input_tokens=input_tokens, output_tokens=output_tokens,
+            estimated_cost_usd=_llm_cost(input_tokens, output_tokens),
+        )
+        record_metric("provider", "chat", duration_ms=(asyncio.get_running_loop().time() - started) * 1000)
         await set_cached_ai_text(cache_key, "".join(parts).strip())
 
 
@@ -258,6 +292,7 @@ async def complete_chat(
     *,
     max_tokens: int = 1200,
     temperature: float = 0.0,
+    thinking: str | None = None,
 ) -> str:
     if not messages:
         raise ValueError("messages are required")
@@ -268,10 +303,12 @@ async def complete_chat(
         stream=False,
         max_tokens=normalized_max_tokens,
         temperature=_clamp_temperature(temperature),
+        thinking=thinking,
     )
     cache_key = ai_cache_key("complete-chat", body)
     cached = await get_cached_ai_text(cache_key)
     if cached is not None:
+        record_provider_usage("deepseek", "completion", cache_hit=True)
         return cached
 
     if not cfg.DEEPSEEK_API_KEY:
@@ -280,8 +317,10 @@ async def complete_chat(
     async with ai_cache_lock(cache_key):
         cached = await get_cached_ai_text(cache_key)
         if cached is not None:
+            record_provider_usage("deepseek", "completion", cache_hit=True)
             return cached
 
+        started = asyncio.get_running_loop().time()
         async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
             resp = await client.post(
                 f"{cfg.DEEPSEEK_BASE_URL}/chat/completions",
@@ -291,6 +330,14 @@ async def complete_chat(
             if resp.status_code != 200:
                 raise ValueError(f"DeepSeek API error: {resp.text}")
             data = resp.json()
+            usage = data.get("usage") or {}
+            input_tokens = int(usage.get("prompt_tokens") or _message_tokens(messages))
+            output_tokens = int(usage.get("completion_tokens") or 0)
+            record_provider_usage(
+                "deepseek", "completion", input_tokens=input_tokens, output_tokens=output_tokens,
+                estimated_cost_usd=_llm_cost(input_tokens, output_tokens),
+            )
+            record_metric("provider", "completion", duration_ms=(asyncio.get_running_loop().time() - started) * 1000)
             choices = data.get("choices") or []
             if not choices:
                 return ""
@@ -313,6 +360,7 @@ async def stream_note_generate(req: NoteGenerateRequest) -> AsyncIterator[dict]:
         stream=True,
         max_tokens=max_tokens,
         temperature=temperature,
+        thinking="disabled",
     )
     cache_key = ai_cache_key("stream-note", body)
     cached = await get_cached_ai_text(cache_key)

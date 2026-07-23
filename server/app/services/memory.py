@@ -9,6 +9,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.db import UserMemory, UserMemoryEvent
+from app.memory.policy import classify_memory_content, filter_eligible_memories
 from app.utils import random_id
 
 MEMORY_TYPES = {
@@ -280,6 +281,10 @@ def is_episodic_memory(memory: UserMemory) -> bool:
 
 
 def memory_candidate_status(candidate: MemoryCandidate) -> str:
+    policy = classify_memory_content(candidate.content or candidate.value)
+    if not policy.allowed:
+        candidate.reason = policy.reason
+        return "rejected"
     if not candidate.value and not candidate.content:
         return "rejected"
     if candidate.operation == "reject" or not candidate.should_save:
@@ -685,6 +690,7 @@ async def build_memory_context(
         limit=limit,
     )
     active = [memory for memory in memories if memory.status == "active"]
+    active = filter_eligible_memories(active, limit=limit)
     if not active:
         return ""
     lines = [
