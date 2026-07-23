@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-07-17T16:00:00Z",
+  "releaseCandidate": "steps-19-21",
+  "passed": true,
+  "highSeverityDefects": 0,
+  "checks": {
+    "cleanBackendImageBuild": "passed",
+    "cleanFrontendNpmCiAndBuild": "passed",
+    "frontendSuites": {"passed": 13, "failed": 0},
+    "backendUnit": {"passed": 107, "skipped": 9, "failed": 0},
+    "databaseIntegration": {"passed": 9, "failed": 0},
+    "legacyRuntimeE2E": "passed",
+    "newArchitectureRuntimeE2E": "passed",
+    "browserE2E": "passed",
+    "ragLegacy": {"recallAt5": 0.8, "mrr": 0.8, "crossUserLeakage": 0},
+    "ragV2": {"recallAt5": 1.0, "mrr": 1.0, "crossUserLeakage": 0, "nonInferior": true},
+    "memorySafety": {"passed": 12, "total": 12},
+    "performanceAndCost": "passed",
+    "processRestart": "passed",
+    "backupRestoreAndFaultDrill": "passed (steps-16-18-resilience-drill)"
+  },
+  "productionDefaultChanged": false
+}

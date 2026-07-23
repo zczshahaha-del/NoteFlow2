@@ -1,0 +1,42 @@
+{
+  "generatedAt": "2026-07-17T14:47:03.786137+00:00",
+  "temporaryDatabase": "noteflow_drill_18762e205f",
+  "durationSeconds": 6.929,
+  "summary": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0
+  },
+  "checks": [
+    {
+      "name": "backup",
+      "passed": true,
+      "detail": "3 个备份对象，数据库 dump 8098106 bytes"
+    },
+    {
+      "name": "checksums",
+      "passed": true,
+      "detail": "数据库、附件、配置结构 SHA-256 全部匹配；未包含运行时密钥"
+    },
+    {
+      "name": "restore",
+      "passed": true,
+      "detail": "notes,user_memories 计数一致：16,12"
+    },
+    {
+      "name": "migration-roundtrip",
+      "passed": true,
+      "detail": "20260717_0009 → 20260717_0008 → 20260717_0009"
+    },
+    {
+      "name": "fault-and-safety",
+      "passed": true,
+      "detail": "Mem0 timeout/circuit、跨用户裁决、敏感信息与灰度默认关闭测试通过"
+    },
+    {
+      "name": "cleanup",
+      "passed": true,
+      "detail": "临时恢复数据库已删除"
+    }
+  ]
+}

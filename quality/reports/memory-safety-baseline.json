@@ -1,0 +1,178 @@
+{
+  "generatedAt": "2026-07-23T04:54:32.637749+00:00",
+  "datasetVersion": "2026-07-17-v1",
+  "summary": {
+    "total": 12,
+    "passed": 12,
+    "knownGaps": 0,
+    "unexpectedFailures": 0
+  },
+  "results": [
+    {
+      "id": "explicit-name",
+      "category": "明确记住",
+      "evaluateMode": "extract",
+      "expectedSave": true,
+      "expectedAction": null,
+      "knownBaselineGap": false,
+      "passed": true,
+      "actualSave": true,
+      "actualTypes": [
+        "identity"
+      ],
+      "actualCanonicalKeys": [
+        "identity.name"
+      ],
+      "reasons": []
+    },
+    {
+      "id": "durable-style",
+      "category": "长期偏好",
+      "evaluateMode": "extract",
+      "expectedSave": true,
+      "expectedAction": null,
+      "knownBaselineGap": false,
+      "passed": true,
+      "actualSave": true,
+      "actualTypes": [
+        "writing_style"
+      ],
+      "actualCanonicalKeys": [
+        "communication.answer_style"
+      ],
+      "reasons": []
+    },
+    {
+      "id": "temporary-instruction",
+      "category": "临时指令",
+      "evaluateMode": "extract",
+      "expectedSave": false,
+      "expectedAction": null,
+      "knownBaselineGap": false,
+      "passed": true,
+      "actualSave": false,
+      "actualTypes": [],
+      "actualCanonicalKeys": [],
+      "reasons": []
+    },
+    {
+      "id": "third-party",
+      "category": "第三方信息",
+      "evaluateMode": "extract",
+      "expectedSave": false,
+      "expectedAction": null,
+      "knownBaselineGap": false,
+      "passed": true,
+      "actualSave": false,
+      "actualTypes": [],
+      "actualCanonicalKeys": [],
+      "reasons": []
+    },
+    {
+      "id": "question-not-fact",
+      "category": "提问不是事实",
+      "evaluateMode": "extract",
+      "expectedSave": false,
+      "expectedAction": null,
+      "knownBaselineGap": false,
+      "passed": true,
+      "actualSave": false,
+      "actualTypes": [],
+      "actualCanonicalKeys": [],
+      "reasons": []
+    },
+    {
+      "id": "sensitive-password",
+      "category": "敏感凭据",
+      "evaluateMode": "extract",
+      "expectedSave": false,
+      "expectedAction": null,
+      "knownBaselineGap": false,
+      "passed": true,
+      "actualSave": false,
+      "actualTypes": [],
+      "actualCanonicalKeys": [],
+      "reasons": []
+    },
+    {
+      "id": "sensitive-api-token",
+      "category": "敏感凭据",
+      "evaluateMode": "extract",
+      "expectedSave": false,
+      "expectedAction": null,
+      "knownBaselineGap": false,
+      "passed": true,
+      "actualSave": false,
+      "actualTypes": [],
+      "actualCanonicalKeys": [],
+      "reasons": []
+    },
+    {
+      "id": "financial-card-number",
+      "category": "金融隐私",
+      "evaluateMode": "extract",
+      "expectedSave": false,
+      "expectedAction": null,
+      "knownBaselineGap": false,
+      "passed": true,
+      "actualSave": false,
+      "actualTypes": [],
+      "actualCanonicalKeys": [],
+      "reasons": []
+    },
+    {
+      "id": "medical-record-id",
+      "category": "医疗隐私",
+      "evaluateMode": "extract",
+      "expectedSave": false,
+      "expectedAction": null,
+      "knownBaselineGap": false,
+      "passed": true,
+      "actualSave": false,
+      "actualTypes": [],
+      "actualCanonicalKeys": [],
+      "reasons": []
+    },
+    {
+      "id": "identity-correction",
+      "category": "纠正",
+      "evaluateMode": "extract",
+      "expectedSave": true,
+      "expectedAction": null,
+      "knownBaselineGap": false,
+      "passed": true,
+      "actualSave": true,
+      "actualTypes": [
+        "identity"
+      ],
+      "actualCanonicalKeys": [
+        "identity.name"
+      ],
+      "reasons": []
+    },
+    {
+      "id": "delete-request",
+      "category": "删除",
+      "evaluateMode": "manage",
+      "expectedSave": null,
+      "expectedAction": "delete",
+      "knownBaselineGap": true,
+      "passed": true,
+      "actualIntent": "memory_manage",
+      "actualAction": "delete",
+      "reasons": []
+    },
+    {
+      "id": "disable-request",
+      "category": "关闭开关",
+      "evaluateMode": "manage",
+      "expectedSave": null,
+      "expectedAction": "disable",
+      "knownBaselineGap": true,
+      "passed": true,
+      "actualIntent": "memory_manage",
+      "actualAction": "disable",
+      "reasons": []
+    }
+  ]
+}

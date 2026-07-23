@@ -8,6 +8,7 @@ export interface NoteRecord {
   summary: string | null;
   tags: string[];
   content: string;
+  contentHash: string;
   isPinned: boolean;
   isFavorite: boolean;
   indexStatus: string;
@@ -75,6 +76,7 @@ export interface NotePayload {
   content?: string;
   isPinned?: boolean;
   isFavorite?: boolean;
+  idempotencyKey?: string;
 }
 
 export interface NoteUpdatePayload {
@@ -89,6 +91,7 @@ export interface NoteUpdatePayload {
   source?: "manual_edit" | "auto_save" | "restore";
   changeSummary?: string | null;
   expectedUpdatedAt?: string | null;
+  expectedContentHash?: string | null;
 }
 
 export async function listNotes(includeDeleted = false): Promise<NoteRecord[]> {

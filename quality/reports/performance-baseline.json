@@ -1,0 +1,49 @@
+{
+  "generatedAt": "2026-07-17T08:13:28.573613+00:00",
+  "baseUrl": "http://127.0.0.1:8081",
+  "samples": 3,
+  "latencyMs": {
+    "healthApi": {
+      "samples": 9,
+      "p50": 2.49,
+      "p95": 5.76,
+      "min": 2.28,
+      "max": 5.76
+    },
+    "authenticatedNotesApi": {
+      "samples": 9,
+      "p50": 4.26,
+      "p95": 8.18,
+      "min": 3.59,
+      "max": 8.18
+    },
+    "retrievalApi": {
+      "samples": 9,
+      "p50": 8.39,
+      "p95": 23.91,
+      "min": 7.39,
+      "max": 23.91
+    },
+    "workerIndexWithoutEmbedding": {
+      "samples": 3,
+      "p50": 131.47,
+      "p95": 137.1,
+      "min": 122.25,
+      "max": 137.1
+    },
+    "embeddingExternal": {
+      "samples": 3,
+      "p50": 297.45,
+      "p95": 335.16,
+      "min": 265.1,
+      "max": 335.16
+    },
+    "firstTokenExternal": {
+      "samples": 3,
+      "p50": 1420.04,
+      "p95": 1472.7,
+      "min": 1400.03,
+      "max": 1472.7
+    }
+  }
+}

@@ -54,6 +54,7 @@ const vite = await createServer({
 
 try {
   const {
+    reconcilePersistedNoteRecord,
     useAppStore,
     useWorkspaceSlice,
     LoginPage,
@@ -87,10 +88,53 @@ try {
   assert.equal(useAppStore.getState().selectedFileId, note.id);
   assert.equal(useAppStore.getState().fileContents[note.id], note.content);
 
+  const reconciledTree = reconcilePersistedNoteRecord(
+    [{ ...note, contentHash: "hash-before" }],
+    {
+      id: note.id,
+      title: "组件测试笔记",
+      categoryId: null,
+      summary: null,
+      tags: note.tags,
+      content: "# 组件测试\n\n第一次保存",
+      contentHash: "hash-after-first-save",
+      isPinned: false,
+      isFavorite: true,
+      indexStatus: "pending",
+      createdAt: note.createdAt,
+      updatedAt: "2026-07-15T02:00:00.000Z",
+      deletedAt: null,
+    },
+    "# 组件测试\n\n第一次保存后继续输入"
+  );
+  assert.equal(reconciledTree[0].content, "# 组件测试\n\n第一次保存后继续输入");
+  assert.equal(reconciledTree[0].contentHash, "hash-after-first-save");
+  assert.equal(reconciledTree[0].updatedAt, "2026-07-15T02:00:00.000Z");
+
   useAppStore.getState().startDraft("测试主题");
-  assert.equal(useAppStore.getState().centerMode, "draft");
+  assert.equal(useAppStore.getState().centerMode, "note");
   assert.equal(useAppStore.getState().draftSeed, "测试主题");
-  assert.match(useAppStore.getState().chatMessages.at(-1)?.text ?? "", /整理这篇笔记/);
+  assert.match(useAppStore.getState().chatMessages.at(-1)?.text ?? "", /整理一份大纲/);
+  assert.equal(useAppStore.getState().chatMessages.at(-1)?.draftCard?.seed, "测试主题");
+  useAppStore.getState().dismissDraftWorkspace();
+  assert.equal(useAppStore.getState().centerMode, "note");
+  assert.equal(useAppStore.getState().draftSeed, "测试主题");
+  useAppStore.getState().openPendingDraft();
+  assert.equal(useAppStore.getState().centerMode, "note");
+  useAppStore.getState().setActiveDraftContext({
+    ...useAppStore.getState().activeDraftContext,
+    id: "draft-test-1",
+    title: "测试主题",
+    topic: "测试主题",
+    stage: "outline_ready",
+    busy: false,
+    statusText: "大纲已生成。",
+    errorText: "",
+    completedSections: 0,
+    totalSections: 3,
+  });
+  useAppStore.getState().openPendingDraft();
+  assert.equal(useAppStore.getState().centerMode, "draft");
   useAppStore.getState().closeDraft();
   assert.equal(useAppStore.getState().centerMode, "note");
 

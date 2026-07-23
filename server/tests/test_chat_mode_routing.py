@@ -1,6 +1,7 @@
 import unittest
 
 from app.routers.agent import AgentChatPayload, AgentChatPageState, _chat_mode_plan, _classify_intent, _should_use_memory_plan
+from app.services.context_planner import ContextPlan, apply_context_policy
 from app.services.memory_read import MemoryReadPlan
 
 
@@ -31,6 +32,24 @@ class ChatModeRoutingTests(unittest.TestCase):
         )
 
         self.assertEqual(intent, "note_draft_create")
+
+    def test_explicit_learning_note_request_never_gets_stuck_in_clarification(self):
+        planned_clarification = ContextPlan(
+            primary_intent="clarify",
+            confidence=0.94,
+            reply_surface="chat_bubble",
+            should_ask_clarification=True,
+            clarification_question="请先告诉我你的基础和学习方向。",
+            source="llm",
+        )
+
+        result = apply_context_policy(planned_clarification, "帮我生成一份 Python 学习笔记")
+
+        self.assertEqual(result.primary_intent, "note_draft_create")
+        self.assertEqual(result.reply_surface, "draft_workspace")
+        self.assertEqual(result.draft_request["topic"], "Python")
+        self.assertFalse(result.should_ask_clarification)
+        self.assertEqual(result.tool_plan[0]["action"], "open_draft_workspace")
 
     def test_chat_mode_does_not_silently_use_full_library_search(self):
         intent = _classify_intent(

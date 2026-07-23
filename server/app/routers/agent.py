@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import json
+import logging
 import re
 import time
 from datetime import datetime
@@ -8,24 +8,23 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
-
 from app.config import cfg
 from app.database import AsyncSessionLocal
 from app.deps import CurrentUser, get_current_user, redis_rate_limit
-from app.models.db import (
-    AgentCheckpoint,
-    AgentRun,
-)
+from app.memory.service import LegacyMemoryService
+from app.rag.service import RagRequest, configured_rag_service
+from app.repositories.runs import RunRepository
 from app.services.ai import ChatMessage, ChatRequest, stream_chat
 from app.services.context_planner import ContextPlan, fallback_context_plan, plan_context_smart
-from app.services.note_library import (
-    build_library_context,
-    source_to_dict,
-)
 from app.services.memory_read import MemoryReadPlan, plan_memory_read_smart
 from app.services.runtime_errors import public_error_message
-from app.services.user_settings import is_user_memory_enabled
+from app.services.run_service import RunService
+from app.agent.sse import encode_event
+from app.observability.context import trace_scope
+from app.agent.shadow import schedule_langgraph_shadow
+from app.agent.canary import stream_canary
+from app.agent.langgraph_readonly import new_readonly_state, stream_readonly_graph
+from app.agent.rollout import select_agent_runtime, select_child_runtime
 from app.services.agent_runtime import (
     finish_agent_run as _finish_agent_run,
     record_tool_trace as _record_tool_trace,
@@ -50,6 +49,8 @@ from app.services.agent_memory import (
     query_memories_for_agent as _query_memories_for_agent,
     save_episode_memory as _save_episode_memory,
     save_memory_from_question as _save_memory_from_question,
+    delete_memories_from_question as _delete_memories_from_question,
+    disable_memory_for_user as _disable_memory_for_user,
 )
 from app.schemas.agent import (
     AgentChatPageState,
@@ -61,10 +62,145 @@ from app.schemas.agent import (
 )
 
 router = APIRouter(prefix="/agent", tags=["agent"])
+logger = logging.getLogger(__name__)
+
+
+def _event_delta_text(data: dict[str, Any]) -> str:
+    choices = data.get("choices") or []
+    if not choices or not isinstance(choices[0], dict):
+        return ""
+    delta = choices[0].get("delta") or {}
+    return str(delta.get("content") or "") if isinstance(delta, dict) else ""
+
+
+def _langgraph_canary_response(
+    *, payload: AgentChatPayload, user_id: str, intent: str,
+    run_state: dict[str, Any], decision,
+) -> StreamingResponse:
+    session_id = run_state["session_id"]
+    run_id = run_state["run_id"]
+    route_step_id = run_state["route_step_id"]
+    state = new_readonly_state(
+        user_id=user_id,
+        question=payload.question,
+        mode=payload.mode,
+        history=[item.model_dump() for item in payload.history],
+        page_state=_page_state_dict(payload.pageState) or {},
+        memory_enabled=payload.memoryEnabled,
+        session_id=session_id,
+        run_id=run_id,
+        trace_id=run_state.get("trace_id") or "",
+        thread_id=session_id,
+    )
+
+    async def stream():
+        answer_parts: list[str] = []
+        sources: list[dict] = []
+        context_mode: Optional[str] = None
+        failed = False
+        error_message = ""
+        with trace_scope(
+            trace_id=run_state.get("trace_id") or "",
+            session_id=session_id, run_id=run_id, node="langgraph_canary",
+        ):
+            trace = await _record_tool_trace(
+                user_id=user_id, run_id=run_id, step_id=route_step_id,
+                tool_name="runtime_rollout", action="langgraph_readonly",
+                status="success", duration_ms=0,
+                input_summary=payload.question,
+                output_summary=f"canary={decision.reason};bucket={decision.bucket}",
+                metadata={
+                    "runtime": "langgraph", "ragProvider": "llamaindex",
+                    "reason": decision.reason, "bucket": decision.bucket,
+                },
+            )
+            yield _sse_format(trace)
+            buffered_events: list[dict[str, Any]] = []
+            user_payload_started = False
+            fallback_before_payload = False
+            try:
+                async for event in stream_canary(state):
+                    data = event.to_wire()
+                    event_type = event.type
+                    if not user_payload_started and event_type == "context":
+                        context_mode = data.get("contextMode")
+                        sources = list(data.get("sources") or [])
+                        buffered_events.append(data)
+                        continue
+                    if not user_payload_started and event_type not in {"choices", "agent_error"}:
+                        buffered_events.append(data)
+                        continue
+                    if event_type == "agent_error" and not user_payload_started:
+                        fallback_before_payload = True
+                        failed = False
+                        error_message = ""
+                        break
+                    if not user_payload_started:
+                        user_payload_started = True
+                        for buffered in buffered_events:
+                            yield _sse_format(buffered)
+                        buffered_events.clear()
+                    if event_type == "agent_session":
+                        data.setdefault("intent", intent)
+                    elif event_type == "choices":
+                        answer_parts.append(_event_delta_text(data))
+                    elif event_type == "context":
+                        context_mode = data.get("contextMode")
+                        sources = list(data.get("sources") or [])
+                    elif event_type == "agent_error":
+                        failed = True
+                        error_message = str(data.get("message") or "LangGraph canary failed")
+                    yield _sse_format(data)
+            except Exception as exc:
+                if not user_payload_started:
+                    fallback_before_payload = True
+                else:
+                    failed = True
+                    error_message = public_error_message(exc)
+                    yield _sse_format(_agent_error_event(session_id, run_id, error_message))
+                    yield _sse_format(_choice_delta(error_message))
+                    answer_parts.append(error_message)
+                    yield _sse_format(_agent_done_event(session_id, run_id, "failed"))
+
+            if fallback_before_payload:
+                fallback_trace = await _record_tool_trace(
+                    user_id=user_id, run_id=run_id, step_id=route_step_id,
+                    tool_name="runtime_rollout", action="fallback_legacy_readonly",
+                    status="success", duration_ms=0,
+                    input_summary=payload.question,
+                    output_summary="LangGraph 在首个用户可见事件前失败，已自动回退",
+                    metadata={"runtime": "legacy", "fallbackFrom": "langgraph"},
+                )
+                yield _sse_format(fallback_trace)
+                async for event in stream_readonly_graph(state):
+                    data = event.to_wire()
+                    if event.type == "choices":
+                        answer_parts.append(_event_delta_text(data))
+                    elif event.type == "context":
+                        context_mode = data.get("contextMode")
+                        sources = list(data.get("sources") or [])
+                    elif event.type == "agent_error":
+                        failed = True
+                        error_message = str(data.get("message") or "Legacy fallback failed")
+                    yield _sse_format(data)
+
+            answer = "".join(answer_parts).strip()
+            await _finish_agent_run(
+                user_id=user_id, session_id=session_id, run_id=run_id,
+                status="failed" if failed else "completed", answer=answer,
+                context_mode=context_mode, sources=sources,
+                error_message=error_message or None,
+            )
+            yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream(), media_type="text/event-stream; charset=utf-8",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
 
 
 def _sse_format(data: dict) -> str:
-    return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+    return encode_event(data)
 
 
 def _short(text: str, limit: int = 180) -> str:
@@ -174,10 +310,7 @@ async def _checkpoint_for_plan(user_id: str, session_id: Optional[str], intent: 
 
 
 async def _effective_memory_enabled(user_id: str, requested: bool) -> bool:
-    if not requested:
-        return False
-    async with AsyncSessionLocal() as db:
-        return await is_user_memory_enabled(db, user_id)
+    return await LegacyMemoryService().enabled(user_id=user_id, requested=requested)
 
 
 async def _resolve_checkpoint_by_id(
@@ -188,8 +321,8 @@ async def _resolve_checkpoint_by_id(
     payload_patch: Optional[dict] = None,
 ) -> Optional[dict]:
     async with AsyncSessionLocal() as db:
-        checkpoint = await db.get(AgentCheckpoint, checkpoint_id)
-        if checkpoint is None or checkpoint.user_id != user_id:
+        checkpoint = await RunRepository(db).get_checkpoint(user_id, checkpoint_id)
+        if checkpoint is None:
             return None
         if checkpoint.status != "waiting_user_confirm" and status == "cancelled":
             return _checkpoint_out(checkpoint)
@@ -344,6 +477,7 @@ async def _complete_tool_only_run(
     input_summary: str,
     output_summary: str,
     metadata: Optional[dict] = None,
+    message_metadata: Optional[dict] = None,
 ) -> dict:
     trace = await _record_tool_trace(
         user_id=user_id,
@@ -363,6 +497,7 @@ async def _complete_tool_only_run(
         run_id=run_id,
         status="completed",
         answer=answer,
+        message_metadata=message_metadata,
     )
     return trace
 
@@ -399,30 +534,8 @@ async def cancel_run(
     payload: RunCancelPayload,
     user: CurrentUser = Depends(get_current_user),
 ):
-    now = datetime.utcnow()
-    async with AsyncSessionLocal() as db:
-        run = await db.get(AgentRun, run_id)
-        if run is None or run.user_id != user.id:
-            return {"task": None}
-
-        if run.status == "running":
-            run.status = "cancelled"
-            run.error_message = payload.reason or "user_cancelled"
-            run.finished_at = now
-
-        checkpoint_result = await db.execute(
-            select(AgentCheckpoint).where(
-                AgentCheckpoint.user_id == user.id,
-                AgentCheckpoint.run_id == run_id,
-                AgentCheckpoint.status == "waiting_user_confirm",
-            )
-        )
-        for checkpoint in checkpoint_result.scalars().all():
-            checkpoint.status = "cancelled"
-            checkpoint.resolved_at = now
-            checkpoint.updated_at = now
-
-        await db.commit()
+    if not await RunService().cancel(user.id, run_id, payload.reason):
+        return {"task": None}
 
     return await _agent_task_snapshot(user.id, run_id=run_id)
 
@@ -488,8 +601,25 @@ async def chat(
     session_id = run_state["session_id"]
     run_id = run_state["run_id"]
     route_step_id = run_state["route_step_id"]
+    schedule_langgraph_shadow(
+        user_id=user.id,
+        question=payload.question,
+        mode=payload.mode,
+        history=[item.model_dump() for item in payload.history],
+        page_state=_page_state_dict(payload.pageState) or {},
+        legacy_intent=intent,
+        legacy_requires_sources=force_note_answer or bool(context_plan.context_plan.get("search_note_library")),
+    )
+    runtime_decision = select_agent_runtime(
+        user_id=user.id, intent=intent, mode=payload.mode,
+    )
+    if runtime_decision.runtime == "langgraph":
+        return _langgraph_canary_response(
+            payload=payload, user_id=user.id, intent=intent,
+            run_state=run_state, decision=runtime_decision,
+        )
 
-    async def _stream():
+    async def _stream_impl():
         answer_parts: list[str] = []
         context_mode: Optional[str] = None
         sources: list[dict] = []
@@ -848,7 +978,7 @@ async def chat(
                     return
 
                 started = time.perf_counter()
-                memory_action = context_plan.memory_action if context_plan.memory_action in {"read", "list", "write"} else "read"
+                memory_action = context_plan.memory_action if context_plan.memory_action in {"read", "list", "write", "delete", "disable"} else "read"
                 if memory_action == "list":
                     tool_summary, memories = await _list_memories_for_agent(user.id)
                     action = "list_memories"
@@ -857,6 +987,14 @@ async def chat(
                     tool_summary, memories = await _query_memories_for_agent(user.id, payload.question, payload.history)
                     action = "list_memories"
                     output_summary = f"读取 {len(memories)} 条长期记忆"
+                elif memory_action == "delete":
+                    tool_summary, memories = await _delete_memories_from_question(user.id, payload.question)
+                    action = "delete_memories"
+                    output_summary = tool_summary
+                elif memory_action == "disable":
+                    tool_summary, memories = await _disable_memory_for_user(user.id)
+                    action = "disable_memory"
+                    output_summary = tool_summary
                 else:
                     tool_summary, memories = await _save_memory_from_question(user.id, payload.question, payload.history)
                     action = "save_memory"
@@ -1015,6 +1153,7 @@ async def chat(
                 return
 
             if intent == "note_draft_create":
+                draft_runtime = select_child_runtime("draft")
                 draft_seed = _draft_seed_from_plan(context_plan, payload.question)
                 planned_brief = _short(
                     str((context_plan.draft_request or {}).get("brief") or ""),
@@ -1026,7 +1165,10 @@ async def chat(
                 if memory_enabled and context_plan.context_plan.get("read_user_memory"):
                     _, draft_memories = await _query_memories_for_agent(user.id, payload.question, payload.history)
                     draft_memory_context = _memory_context_from_records(draft_memories)
-                answer = f"好，我来帮你整理《{draft_seed or '这篇'}》笔记。"
+                answer = (
+                    f"好，我会先为《{draft_seed or '这篇'}》整理一份大纲。"
+                    "准备好后，你可以打开完整查看和调整。"
+                )
                 checkpoint = await _create_checkpoint(
                     user_id=user.id,
                     session_id=session_id,
@@ -1038,6 +1180,7 @@ async def chat(
                         "rawRequest": draft_raw_request,
                         "draftRequest": context_plan.draft_request,
                         "memoryContext": draft_memory_context,
+                        "runtime": draft_runtime,
                     },
                 )
                 trace = await _complete_tool_only_run(
@@ -1055,6 +1198,13 @@ async def chat(
                         "rawRequest": draft_raw_request,
                         "draftRequest": context_plan.draft_request,
                         "memoryCount": len(draft_memories),
+                        "runtime": draft_runtime,
+                    },
+                    message_metadata={
+                        "draftCard": {
+                            "seed": draft_seed,
+                            "checkpointId": checkpoint["id"],
+                        }
                     },
                 )
                 yield _sse_format(trace)
@@ -1069,6 +1219,8 @@ async def chat(
                             "draftRequest": context_plan.draft_request,
                             "memoryContext": draft_memory_context,
                             "checkpointId": checkpoint["id"],
+                            "checkpoint": checkpoint,
+                            "runtime": draft_runtime,
                         },
                         answer,
                     )
@@ -1086,6 +1238,7 @@ async def chat(
                 return
 
             if intent == "note_edit_create":
+                edit_runtime = select_child_runtime("edit")
                 if not page_state or not page_state.currentNoteId:
                     answer = "请先打开一篇正式笔记，再让我生成修改预览。"
                     yield _sse_format(_choice_delta(answer))
@@ -1113,6 +1266,7 @@ async def chat(
                         "selectedText": page_state.selectedText,
                         "sectionId": page_state.currentSectionId,
                         "targetType": _infer_edit_target_type(payload.question),
+                        "runtime": edit_runtime,
                     },
                 )
                 trace = await _complete_tool_only_run(
@@ -1125,7 +1279,7 @@ async def chat(
                     answer=answer,
                     input_summary=payload.question,
                     output_summary="创建 AI 修改预览",
-                    metadata={"noteId": page_state.currentNoteId},
+                    metadata={"noteId": page_state.currentNoteId, "runtime": edit_runtime},
                 )
                 yield _sse_format(trace)
                 yield _sse_format({"type": "checkpoint", "checkpoint": checkpoint})
@@ -1140,6 +1294,7 @@ async def chat(
                             "sectionId": page_state.currentSectionId,
                             "targetType": _infer_edit_target_type(payload.question),
                             "checkpointId": checkpoint["id"],
+                            "runtime": edit_runtime,
                         },
                         answer,
                     )
@@ -1158,17 +1313,13 @@ async def chat(
 
             if intent == "note_search":
                 started = time.perf_counter()
-                async with AsyncSessionLocal() as db:
-                    context = await build_library_context(
-                        db,
-                        user.id,
-                        question=payload.question,
-                        fallback_query="",
-                    )
+                context = await configured_rag_service().retrieve(
+                    RagRequest(user_id=user.id, question=payload.question)
+                )
                 document_title = "NoteFlow 本地笔记库"
                 document_content = context.context_text
                 context_mode = context.context_mode
-                sources = [source_to_dict(source) for source in context.sources]
+                sources = context.sources
                 trace = await _record_tool_trace(
                     user_id=user.id,
                     run_id=run_id,
@@ -1251,6 +1402,7 @@ async def chat(
                 }
             )
         except Exception as e:
+            logger.exception("Agent chat failed for run %s (intent=%s)", run_id, intent)
             error_text = _public_error_message(e)
             trace = await _record_tool_trace(
                 user_id=user.id,
@@ -1280,6 +1432,16 @@ async def chat(
             yield _sse_format(_agent_done_event(session_id, run_id, "failed"))
 
         yield "data: [DONE]\n\n"
+
+    async def _stream():
+        with trace_scope(
+            trace_id=run_state.get("trace_id") or "",
+            session_id=session_id,
+            run_id=run_id,
+            node="agent_stream",
+        ):
+            async for frame in _stream_impl():
+                yield frame
 
     return StreamingResponse(
         _stream(),

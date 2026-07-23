@@ -34,7 +34,7 @@ REPLY_SURFACES = {
     "none",
 }
 
-MEMORY_ACTIONS = {"none", "read", "list", "write"}
+MEMORY_ACTIONS = {"none", "read", "list", "write", "delete", "disable"}
 
 TOOL_NAMES = {
     "ai_chat",
@@ -303,7 +303,7 @@ def _validate_plan(plan: ContextPlan) -> ContextPlan:
         if plan.memory_action == "none":
             plan.memory_action = "read"
         plan.context_plan["read_user_memory"] = plan.memory_action in {"read", "list"}
-        plan.context_plan["write_user_memory"] = plan.memory_action == "write"
+        plan.context_plan["write_user_memory"] = plan.memory_action in {"write", "delete", "disable"}
     elif plan.primary_intent in {"confirm_action", "cancel_action"}:
         plan.reply_surface = "none"
     elif plan.primary_intent == "resume_work":
@@ -364,7 +364,7 @@ def _build_messages(
 - note_edit_revise：继续调整已有修改预览。
 - note_context_qa：基于当前笔记或选中文本回答。只有用户明确把问题指向当前笔记/选中文本/这段内容时才用；仅仅打开笔记不算。
 - note_search：搜索用户本地笔记库。用户问“我的笔记里有没有/文章里面有相关的吗/查一下笔记/搜索笔记”属于这个意图。
-- memory_manage：用户在问你记不记得关于他的事，或明确要求保存个人信息。
+- memory_manage：用户在问你记不记得关于他的事，或明确要求保存、删除个人信息、关闭记忆。
 - history_recall：用户问过去聊天或过去任务，例如“那天我们聊过什么/上次那个项目”。
 - resume_work：继续上次任务。
 - confirm_action / cancel_action：确认或取消当前等待操作。
@@ -375,11 +375,11 @@ def _build_messages(
 2. “SSE 是什么”通常是 general_chat，不要自动创建笔记。
 3. “根据这篇笔记解释 SSE”才是 note_context_qa；如果 selected_text 存在，用户问“这段/它/什么意思”也可以用选中内容。
 4. “我的笔记里有缓存雪崩相关内容吗”是 note_search，不是联网，也不是普通聊天。
-5. “你还记得我作息/名字/金山面试吗”是 memory_manage，memory_action=read。
+5. “你还记得我作息/名字/金山面试吗”是 memory_manage，memory_action=read；“忘掉我的年龄”用 delete；“关闭长期记忆”用 disable。
 6. 用户自然分享“我作息很乱/我最近在找工作”通常 primary_intent=general_chat，同时 context_plan.write_user_memory=true；不要把它当成笔记问答。
 7. 如果用户要“基于我的经历写一篇笔记”，可以 primary_intent=note_draft_create，同时 context_plan.read_user_memory=true。
 8. 如果当前有 draft_workspace 任务，用户说“大纲不够详细/重新生成大纲/换个结构/章节太少/再详细一点”，必须是 note_draft_continue，tool_plan 使用 note_draft_tool/regenerate_outline，不要在聊天气泡里直接生成正文。
-9. 如果用户要生成一门较宽的学习课程或学习笔记，但从当前输入和最近对话里还看不出他的基础、学习目标或希望的深度，不要急着打开草稿。此时 primary_intent=clarify，should_ask_clarification=true，并自然地追问最影响课程结构的缺失信息。一次只问一组真正有用的问题，不要让用户填写表格。若信息已经足够，就直接 note_draft_create，不要为了追问而追问。创建草稿时，draft_request.topic 必须是简洁准确的课程名，不能取用户回答的开头；draft_request.brief 要综合最近对话中已经确认的基础、目标、深度、重点和内容偏好，不能只复制当前一句。
+9. 用户只要明确说“生成/写/整理一份某主题学习笔记、教程或文档”，就直接使用 note_draft_create 并采用合理默认值生成大纲；不要为了基础、方向、深度或格式继续追问。只有用户明确要创建内容却完全没有提供任何主题时，才使用 clarify。创建草稿时，draft_request.topic 必须是简洁准确的课程名，不能取用户回答的开头；draft_request.brief 要综合最近对话中已经确认的基础、目标、深度、重点和内容偏好。
 10. 输出必须是 JSON 对象，不能有 markdown，不能有解释文字。
 
 返回格式：
@@ -490,6 +490,15 @@ def _is_draft_feedback_question(question: str) -> bool:
     )
 
 
+def _is_explicit_draft_request(question: str) -> bool:
+    return bool(
+        re.search(
+            r"(生成|创建|新建|写|整理).{0,50}(笔记|文档|教程|学习资料)|(?:笔记|文档|教程).{0,30}(生成|创建|新建|写|整理)",
+            question or "",
+        )
+    )
+
+
 def _draft_continue_plan(*, reason: str, source: str, confidence: float = 0.68) -> ContextPlan:
     return _validate_plan(
         ContextPlan(
@@ -566,6 +575,29 @@ def apply_context_policy(
         if _is_draft_feedback_question(question):
             return _draft_continue_plan(reason=f"{plan.reason};policy:draft_feedback" if plan.reason else "policy:draft_feedback", source=plan.source, confidence=max(plan.confidence, 0.68))
 
+    if plan.primary_intent in {"clarify", "general_chat"} and _is_explicit_draft_request(question):
+        topic = _infer_draft_topic(question)
+        return _with_policy_reason(
+            _validate_plan(
+                ContextPlan(
+                    "note_draft_create",
+                    max(plan.confidence, 0.8),
+                    "draft_workspace",
+                    context_plan={"topic": topic, "focus": f"创建 {topic} 笔记草稿"},
+                    draft_request={
+                        "topic": topic,
+                        "note_type": "智能笔记",
+                        "source_mode": "model_knowledge",
+                        "style": "按用户需求自动组织",
+                        "brief": _clean(question, 2000),
+                    },
+                    reason=plan.reason,
+                    source=plan.source,
+                )
+            ),
+            "policy:explicit_draft_request",
+        )
+
     return _validate_plan(plan)
 
 
@@ -623,7 +655,7 @@ def fallback_context_plan(
     ):
         return ContextPlan("resume_work", 0.65, "chat_bubble", reason="fallback:resume", source="fallback")
 
-    if re.search(r"(生成|创建|新建|写|整理).{0,50}(笔记|文档|教程|学习资料)|(?:笔记|文档|教程).{0,30}(生成|创建|新建|写|整理)", q):
+    if _is_explicit_draft_request(q):
         topic = _infer_draft_topic(q)
         return _validate_plan(
             ContextPlan(
@@ -644,6 +676,22 @@ def fallback_context_plan(
         q,
     ):
         return ContextPlan("history_recall", 0.6, "chat_bubble", reason="fallback:history_recall", source="fallback")
+
+    if re.search(r"(关闭|停用|禁用).{0,8}(长期)?记忆|(?:以后|后面).{0,8}(不要|别).{0,8}(保存|记录).{0,8}(个人信息|记忆)", q):
+        return _validate_plan(
+            ContextPlan(
+                "memory_manage", 0.9, "chat_bubble", memory_action="disable",
+                context_plan={"write_user_memory": True}, reason="fallback:memory_disable", source="fallback",
+            )
+        )
+
+    if re.search(r"(忘掉|删除|删掉|移除|不要再记).{0,24}(年龄|名字|称呼|作息|偏好|兴趣|目标|记忆|个人信息)", q):
+        return _validate_plan(
+            ContextPlan(
+                "memory_manage", 0.88, "chat_bubble", memory_action="delete",
+                context_plan={"write_user_memory": True}, reason="fallback:memory_delete", source="fallback",
+            )
+        )
 
     if re.search(r"(记住.*哪些|记住.*什么|你.*记住.*什么|长期记忆|记忆列表|查看记忆|关于我.*记得|你.*了解我)", q):
         return _validate_plan(

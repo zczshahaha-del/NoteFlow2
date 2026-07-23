@@ -4,6 +4,7 @@ export interface OfflineNoteEdit {
   noteId: string;
   content: string;
   baseUpdatedAt: string | null;
+  baseContentHash?: string | null;
   queuedAt: string;
 }
 
@@ -77,11 +78,15 @@ export async function removeOfflineNoteEdit(userId: string, noteId: string): Pro
 }
 
 export function hasRemoteConflict(
+  baseContentHash: string | null | undefined,
+  currentContentHash: string | null | undefined,
   baseUpdatedAt: string | null,
   currentUpdatedAt: string | null,
   remoteContent: string,
   localContent: string
 ): boolean {
-  if (remoteContent === localContent || !baseUpdatedAt || !currentUpdatedAt) return false;
+  if (remoteContent === localContent) return false;
+  if (baseContentHash && currentContentHash) return baseContentHash !== currentContentHash;
+  if (!baseUpdatedAt || !currentUpdatedAt) return false;
   return new Date(currentUpdatedAt).getTime() !== new Date(baseUpdatedAt).getTime();
 }

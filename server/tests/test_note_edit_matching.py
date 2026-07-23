@@ -139,6 +139,28 @@ NESTED_SECTION_CONTENT = NESTED_MARKDOWN_NOTE.split("\n## 大模型虽然聪明"
 NESTED_SECTION_CONTENT = f"## 大模型虽然聪明{NESTED_SECTION_CONTENT}".strip()
 
 
+NUMBERED_MARKDOWN_NOTE = """## Redis 学习笔记
+
+正文内容。
+
+### 七、最后几点建议
+
+1. **缓存一致性**：更新数据库后，要同步删除或更新缓存。
+2. **安全配置**：生产环境请设置密码（`requirepass`），并限制 `FLUSHALL`、`KEYS`、`CONFIG` 等危险命令。
+3. **别把 Redis 当万能药**：需要强事务和复杂查询时，关系型数据库通常更合适。
+
+## 八、总结
+
+后文保留。
+"""
+
+
+NUMBERED_RENDERED_SELECTION = """七、最后几点建议
+缓存一致性：更新数据库后，要同步删除或更新缓存。
+安全配置：生产环境请设置密码（requirepass），并限制 FLUSHALL、KEYS、CONFIG 等危险命令。
+别把 Redis 当万能药：需要强事务和复杂查询时，关系型数据库通常更合适。"""
+
+
 class NoteEditMatchingTest(unittest.TestCase):
     def test_edit_revision_captures_current_preview_snapshot(self) -> None:
         preview = SimpleNamespace(
@@ -215,6 +237,19 @@ class NoteEditMatchingTest(unittest.TestCase):
         self.assertIn("前文保留。", result)
         self.assertIn("后文保留。", result)
         self.assertNotIn("**缺私有知识**", result)
+
+    def test_rendered_selection_without_ordered_list_numbers_can_be_replaced(self) -> None:
+        replacement = "### 七、最后几点建议\n\n这一部分已按要求改写。"
+
+        resolved = _resolve_selected_content(NUMBERED_MARKDOWN_NOTE, NUMBERED_RENDERED_SELECTION)
+        result = _replace_once(NUMBERED_MARKDOWN_NOTE, NUMBERED_RENDERED_SELECTION, replacement)
+
+        self.assertTrue(resolved.startswith("### 七、最后几点建议"))
+        self.assertIn("1. **缓存一致性**", resolved)
+        self.assertIn("3. **别把 Redis 当万能药**", resolved)
+        self.assertIn(replacement, result)
+        self.assertIn("## 八、总结", result)
+        self.assertNotIn("1. **缓存一致性**", result)
 
     def test_section_intent_expands_selected_title_to_whole_section(self) -> None:
         note = SimpleNamespace(id="note-1", content=SHORT_MARKDOWN_NOTE)

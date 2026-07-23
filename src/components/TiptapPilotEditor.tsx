@@ -14,6 +14,7 @@ import {
   Italic,
   Link,
   List,
+  ListTree,
   ListChecks,
   ListOrdered,
   Menu,
@@ -52,9 +53,9 @@ const selectionToolbarShouldShow = ({
 const selectionToolbarOptions = {
   strategy: "fixed",
   placement: "top",
-  offset: 8,
-  flip: true,
-  shift: true,
+  offset: 10,
+  flip: false,
+  shift: { padding: 12 },
 } as const;
 
 interface TiptapHeading {
@@ -215,7 +216,6 @@ export default function TiptapPilotEditor() {
   );
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
-  const [outlineCollapsed, setOutlineCollapsed] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkDraft, setLinkDraft] = useState("");
   const [backendSections, setBackendSections] = useState<NoteSectionRecord[]>([]);
@@ -414,31 +414,27 @@ export default function TiptapPilotEditor() {
       headings={headings}
       activeId={activeId}
       onHeadingClick={scrollToHeading}
-      onClose={() => {
-        if (isMobile) setMobileOutlineOpen(false);
-        else setOutlineCollapsed(true);
-      }}
+      onClose={() => setMobileOutlineOpen(false)}
     />
   );
 
   return (
     <main className="document-editor document-canvas relative flex min-w-0 flex-1 flex-col overflow-hidden bg-white">
       <div className="relative flex min-h-0 flex-1">
-        {false && !isMobile && !outlineCollapsed && <aside className="w-[220px] shrink-0 border-r border-jelly-border bg-jelly-surface">{outline}</aside>}
-        {false && (isMobile || outlineCollapsed) && !mobileOutlineOpen && (
+        {isMobile && headings.length > 1 && !mobileOutlineOpen && (
           <button
             type="button"
             className="floating-launcher absolute left-3 top-3 z-40 flex h-10 w-10 items-center justify-center text-jelly-text-soft"
-            onClick={() => (isMobile ? setMobileOutlineOpen(true) : setOutlineCollapsed(false))}
+            onClick={() => setMobileOutlineOpen(true)}
             aria-label="展开目录"
           >
             <Menu size={18} />
           </button>
         )}
-        {isMobile && mobileOutlineOpen && (
-          <div className="absolute inset-0 z-[65] flex" role="dialog" aria-modal="true" aria-label="本文目录">
+        {mobileOutlineOpen && (
+          <div className="absolute inset-0 z-[65] flex justify-end" role="dialog" aria-modal="true" aria-label="本文目录">
             <button type="button" className="drawer-backdrop absolute inset-0" onClick={() => setMobileOutlineOpen(false)} aria-label="关闭本文目录" />
-            <aside className="drawer-surface relative h-full w-[300px] max-w-[86vw] border-r border-jelly-border">{outline}</aside>
+            <aside className="drawer-surface relative h-full w-[340px] max-w-[86vw] border-l border-jelly-border shadow-[-18px_0_46px_rgba(15,23,42,0.08)]">{outline}</aside>
           </div>
         )}
 
@@ -589,6 +585,34 @@ export default function TiptapPilotEditor() {
           </div>
         </section>
       </div>
+
+      {!isMobile && headings.length > 1 && !mobileOutlineOpen && (
+        <nav className="chapter-rail" aria-label="章节快速导航">
+          <button
+            type="button"
+            className="chapter-rail-toc"
+            onClick={() => setMobileOutlineOpen(true)}
+            aria-label="打开本文目录"
+          >
+            <ListTree size={15} strokeWidth={1.8} />
+            <span>本文目录</span>
+          </button>
+          <div className="chapter-rail-track">
+            {headings.map((heading) => (
+              <button
+                key={heading.id}
+                type="button"
+                className={`chapter-rail-item ${activeId === heading.id ? "is-active" : ""}`}
+                onClick={() => scrollToHeading(heading.id)}
+                title={heading.text}
+              >
+                <span className="chapter-rail-mark" />
+                <span className="chapter-rail-label">{heading.text}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
+      )}
 
       {versionHistoryOpen && (
         <Suspense fallback={<div className="absolute inset-0 z-[55] flex items-center justify-center bg-white/70 text-sm text-jelly-text-muted">正在加载版本历史…</div>}>

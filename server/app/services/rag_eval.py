@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 from typing import Optional
@@ -96,6 +97,57 @@ def _ratio(count: int, total: int) -> float:
     return round(count / total, 4) if total else 0.0
 
 
+def _expected_target_ids(case: RagEvalCase) -> list[str]:
+    if case.expected_chunk_ids:
+        return case.expected_chunk_ids
+    if case.expected_section_ids:
+        return case.expected_section_ids
+    return case.expected_note_ids
+
+
+def _source_target_id(case: RagEvalCase, source: LibrarySource) -> Optional[str]:
+    if case.expected_chunk_ids:
+        return source.chunk_id
+    if case.expected_section_ids:
+        return source.section_id
+    return source.note_id
+
+
+def _recall_at(case: RagEvalCase, sources: list[LibrarySource], k: int) -> Optional[float]:
+    expected = set(_expected_target_ids(case))
+    if not expected:
+        return None
+    found = {
+        target_id
+        for source in sources[:k]
+        if (target_id := _source_target_id(case, source)) in expected
+    }
+    return round(len(found) / len(expected), 4)
+
+
+def _ndcg_at(case: RagEvalCase, sources: list[LibrarySource], k: int) -> Optional[float]:
+    expected = set(_expected_target_ids(case))
+    if not expected:
+        return None
+    seen: set[str] = set()
+    dcg = 0.0
+    for rank, source in enumerate(sources[:k], start=1):
+        target_id = _source_target_id(case, source)
+        if target_id in expected and target_id not in seen:
+            seen.add(target_id)
+            dcg += 1.0 / math.log2(rank + 1)
+    ideal_count = min(k, len(expected))
+    idcg = sum(1.0 / math.log2(rank + 1) for rank in range(1, ideal_count + 1))
+    return round(dcg / idcg, 4) if idcg else 0.0
+
+
+def _citation_coverage(sources: list[LibrarySource]) -> float:
+    if not sources:
+        return 1.0
+    cited = sum(1 for source in sources if source.note_id and source.snippet.strip())
+    return round(cited / len(sources), 4)
+
+
 def evaluate_rag_sources(
     case: RagEvalCase,
     sources: list[LibrarySource],
@@ -167,6 +219,7 @@ def evaluate_rag_sources(
         },
         "metrics": {
             "resultCount": len(sources),
+            "noResult": len(sources) == 0,
             "noteRank": note_rank,
             "sectionRank": section_rank,
             "chunkRank": chunk_rank,
@@ -175,6 +228,11 @@ def evaluate_rag_sources(
             "hitAt3": target_rank is not None and target_rank <= 3 if has_expected_ids else None,
             "hitAt5": target_rank is not None and target_rank <= 5 if has_expected_ids else None,
             "mrr": round(1 / target_rank, 4) if target_rank else (0.0 if has_expected_ids else None),
+            "recallAt1": _recall_at(case, sources, 1),
+            "recallAt3": _recall_at(case, sources, 3),
+            "recallAt5": _recall_at(case, sources, 5),
+            "nDcgAt5": _ndcg_at(case, sources, 5),
+            "citationCoverage": _citation_coverage(sources),
             "keywordCoverage": keyword_coverage,
             "matchedKeywords": matched_keywords,
             "passed": passed,
@@ -202,6 +260,12 @@ def summarize_rag_eval_results(results: list[dict]) -> dict:
         "hitAt3": _ratio(sum(1 for item in id_judged if item["metrics"]["hitAt3"]), len(id_judged)),
         "hitAt5": _ratio(sum(1 for item in id_judged if item["metrics"]["hitAt5"]), len(id_judged)),
         "mrr": round(sum(item["metrics"]["mrr"] or 0.0 for item in id_judged) / len(id_judged), 4) if id_judged else 0.0,
+        "recallAt1": round(sum(item["metrics"]["recallAt1"] or 0.0 for item in id_judged) / len(id_judged), 4) if id_judged else 0.0,
+        "recallAt3": round(sum(item["metrics"]["recallAt3"] or 0.0 for item in id_judged) / len(id_judged), 4) if id_judged else 0.0,
+        "recallAt5": round(sum(item["metrics"]["recallAt5"] or 0.0 for item in id_judged) / len(id_judged), 4) if id_judged else 0.0,
+        "nDcgAt5": round(sum(item["metrics"]["nDcgAt5"] or 0.0 for item in id_judged) / len(id_judged), 4) if id_judged else 0.0,
+        "citationCoverage": round(sum(item["metrics"]["citationCoverage"] for item in results) / len(results), 4) if results else 0.0,
+        "noResultRate": _ratio(sum(1 for item in results if item["metrics"]["noResult"]), len(results)),
         "avgKeywordCoverage": (
             round(sum(item["metrics"]["keywordCoverage"] or 0.0 for item in keyword_judged) / len(keyword_judged), 4)
             if keyword_judged

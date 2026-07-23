@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Brain,
   Check,
+  ChevronRight,
   FileArchive,
   FileJson,
   LogOut,
@@ -18,7 +19,6 @@ import {
 } from "lucide-react";
 import { generateId } from "../store";
 import { useWorkspaceSlice } from "../storeSlices";
-import type { FileNode } from "../types";
 import {
   deleteMemory,
   isMemoryEnabled,
@@ -29,7 +29,6 @@ import {
   type UserMemoryRecord,
 } from "../services/memories";
 import {
-  countKnowledgeFiles,
   createKnowledgeZipBlob,
   createKnowledgeJsonBlob,
   downloadBlob,
@@ -53,22 +52,8 @@ export interface AccountMenuProps {
   userName?: string;
   onSignOut: () => void | Promise<void>;
   compact?: boolean;
-}
-
-function countFolders(nodes: FileNode[]): number {
-  return nodes.reduce((total, node) => {
-    if (node.type !== "folder") return total;
-    return total + 1 + countFolders(node.children ?? []);
-  }, 0);
-}
-
-function AccountMetric({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-md border border-jelly-border bg-jelly-card px-2.5 py-2">
-      <p className="text-[12px] text-jelly-text-muted">{label}</p>
-      <p className="mt-0.5 text-[14px] font-semibold text-jelly-text">{value}</p>
-    </div>
-  );
+  trashCount?: number;
+  onOpenTrash?: () => void;
 }
 
 function memoryTypeLabel(type: string): string {
@@ -144,8 +129,11 @@ export default function AccountMenu({
   userName,
   onSignOut,
   compact = false,
+  trashCount = 0,
+  onOpenTrash,
 }: AccountMenuProps) {
   const [accountOpen, setAccountOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [memoryEnabledState, setMemoryEnabledState] = useState(isMemoryEnabled);
   const [memorySettingLoading, setMemorySettingLoading] = useState(false);
@@ -165,15 +153,6 @@ export default function AccountMenu({
   const initial = displayName.slice(0, 1).toUpperCase();
   const { treeData, fileContents, addNode, setSelectedFileId } = useWorkspaceSlice();
   const isDark = themeMode === "dark";
-
-  const stats = useMemo(
-    () => ({
-      files: countKnowledgeFiles(treeData),
-      folders: countFolders(treeData),
-      chars: Object.values(fileContents).reduce((total, content) => total + content.length, 0),
-    }),
-    [fileContents, treeData]
-  );
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -361,21 +340,34 @@ export default function AccountMenu({
 
   const activeMemoryCount = memories.filter((memory) => memory.status === "active").length;
   const pendingMemoryCount = memories.filter((memory) => memory.status === "pending").length;
-  const buttonSizeClass = compact ? "h-8 w-8 text-[12px]" : "h-10 w-10 text-[13px]";
+  const buttonSizeClass = compact ? "h-8 w-8 justify-center rounded-full text-[12px]" : "h-14 w-full gap-2.5 rounded-xl px-2.5 text-left";
 
   return (
-      <div ref={accountRef} className="relative shrink-0 overflow-visible">
+      <div ref={accountRef} className={`relative shrink-0 overflow-visible ${compact ? "" : "w-full"}`}>
         <button
           type="button"
           onClick={() => setAccountOpen((open) => !open)}
-          className={`flex ${buttonSizeClass} items-center justify-center rounded-full border font-semibold transition-all duration-200 ${
+          className={`flex ${buttonSizeClass} items-center border font-semibold transition-all duration-200 ${
             accountOpen
-              ? "border-jelly-blue bg-jelly-blue-pale text-jelly-blue-deep"
-              : "border-jelly-border bg-white text-jelly-text-soft hover:border-jelly-blue/35 hover:text-jelly-blue-deep"
+              ? "border-transparent bg-jelly-blue-pale text-jelly-blue-deep"
+              : "border-transparent bg-transparent text-jelly-text-soft hover:bg-white hover:text-jelly-text"
           }`}
           aria-label="账号菜单"
         >
-          {initial || <UserRound size={17} strokeWidth={1.8} />}
+          {compact ? (
+            initial || <UserRound size={17} strokeWidth={1.8} />
+          ) : (
+            <>
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-jelly-blue-pale text-[12px] font-semibold text-jelly-blue-deep">
+                {initial || <UserRound size={16} strokeWidth={1.8} />}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-semibold text-jelly-text">{displayName}</span>
+                <span className="mt-0.5 block truncate text-[11px] font-normal text-jelly-text-muted">{userEmail}</span>
+              </span>
+              <ChevronRight size={15} className={`shrink-0 transition-transform ${accountOpen ? "rotate-180" : ""}`} strokeWidth={1.9} />
+            </>
+          )}
         </button>
 
         {accountOpen && (
@@ -390,17 +382,20 @@ export default function AccountMenu({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 px-1.5 py-2.5">
-              <AccountMetric label="笔记" value={stats.files} />
-              <AccountMetric label="目录" value={stats.folders} />
-              <AccountMetric label="字符" value={stats.chars.toLocaleString()} />
-            </div>
+            <div className="px-1.5 py-1.5">
+              <button
+                type="button"
+                onClick={() => setSettingsOpen((open) => !open)}
+                className="flex h-10 w-full items-center gap-2.5 rounded-lg px-2 text-left text-[13px] text-jelly-text-soft hover:bg-jelly-blue-pale hover:text-jelly-text"
+                aria-expanded={settingsOpen}
+              >
+                <Settings size={16} strokeWidth={1.8} />
+                <span className="min-w-0 flex-1">设置</span>
+                <ChevronRight size={14} className={`transition-transform ${settingsOpen ? "rotate-90" : ""}`} />
+              </button>
 
-            <div className="border-t border-jelly-border px-1.5 py-1.5">
-              <div className="mb-1 flex items-center gap-2 px-1 text-[12px] font-medium text-jelly-text-muted">
-                <Settings size={13} strokeWidth={1.8} />
-                资料与偏好
-              </div>
+              {settingsOpen && (
+                <div className="mb-1 mt-1 border-t border-jelly-border pt-1">
 
               <button
                 type="button"
@@ -548,7 +543,7 @@ export default function AccountMenu({
                                     <textarea
                                       value={editingContent}
                                       onChange={(event) => setEditingContent(event.target.value)}
-                                      className="min-h-16 w-full resize-none rounded-md border border-jelly-border bg-white px-2 py-1.5 text-[12px] leading-relaxed text-jelly-text outline-none focus:border-jelly-blue/40"
+                                      className="min-h-16 w-full resize-none rounded-md border border-jelly-border bg-white px-2 py-1.5 text-[12px] leading-relaxed text-jelly-text outline-none"
                                     />
                                   ) : (
                                     <p className="text-[12px] leading-relaxed text-jelly-text-soft">
@@ -679,6 +674,23 @@ export default function AccountMenu({
                     </div>
                   )}
                 </div>
+              )}
+                </div>
+              )}
+
+              {onOpenTrash && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccountOpen(false);
+                    onOpenTrash();
+                  }}
+                  className="flex h-10 w-full items-center gap-2.5 rounded-lg px-2 text-left text-[13px] text-jelly-text-soft hover:bg-jelly-blue-pale hover:text-jelly-text"
+                >
+                  <Trash2 size={16} strokeWidth={1.8} />
+                  <span className="min-w-0 flex-1">回收站</span>
+                  <span className="rounded-full bg-jelly-blue-pale px-2 py-0.5 text-[10px] font-semibold text-jelly-blue-deep">{trashCount}</span>
+                </button>
               )}
             </div>
 

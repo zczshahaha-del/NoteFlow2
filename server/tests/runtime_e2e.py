@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import http.cookiejar
 import json
+import os
 import sys
 import time
 import urllib.error
@@ -20,7 +21,7 @@ if str(SERVER_ROOT) not in sys.path:
 from app.config import cfg  # noqa: E402
 from app.models.db import User  # noqa: E402
 
-BASE_URL = "http://127.0.0.1:8080"
+BASE_URL = os.environ.get("NOTEFLOW_API_URL", "http://127.0.0.1:8080").rstrip("/")
 TEST_EMAIL = "noteflow-runtime-e2e@local.test"
 TEST_PASSWORD = "NoteFlow-E2E-2026!"
 
@@ -181,6 +182,29 @@ def run() -> dict:
     assert any(item.get("noteId") == note_id for item in search.get("results", []))
     summary["search"] = "result_found"
 
+    ask_events, ask_raw = client.request_sse(
+        "/api/agent/chat",
+        {
+            "question": f"请从我的笔记中找到并原样返回标记 {unique_key}",
+            "mode": "ask_notes",
+            "documentTitle": "",
+            "documentContent": "",
+            "history": [],
+            "maxTokens": 64,
+            "memoryEnabled": False,
+            "pageState": {"contextScope": "library"},
+        },
+    )
+    assert "data: [DONE]" in ask_raw
+    contexts = [event for event in ask_events if event.get("type") == "context"]
+    assert contexts and any(
+        (source.get("note_id") or source.get("noteId")) == note_id
+        for context in contexts
+        for source in context.get("sources", [])
+    ), contexts
+    assert any(event.get("type") == "agent_done" and event.get("status") == "completed" for event in ask_events)
+    summary["askNotes"] = "rag_context_and_citation_source_ok"
+
     draft_data, _ = client.request(
         "POST",
         "/api/note-drafts",
@@ -271,28 +295,42 @@ def run() -> dict:
 
     fresh, _ = client.request("GET", f"/api/notes/{note_id}")
     base_updated_at = fresh["note"]["updatedAt"]
+    base_content_hash = fresh["note"]["contentHash"]
     first_update, _ = client.request(
         "PUT",
         f"/api/notes/{note_id}",
         {
             "content": fresh["note"]["content"] + "\n\n设备 A 更新",
             "expectedUpdatedAt": base_updated_at,
+            "expectedContentHash": base_content_hash,
             "source": "runtime_e2e_device_a",
         },
     )
     assert "设备 A 更新" in first_update["note"]["content"]
+    client.request("POST", f"/api/notes/{note_id}/reindex", {"reason": "runtime_e2e_index_only"})
+    index_safe_update, _ = client.request(
+        "PUT",
+        f"/api/notes/{note_id}",
+        {
+            "content": first_update["note"]["content"] + "\n\n索引后继续编辑",
+            "expectedContentHash": first_update["note"]["contentHash"],
+            "source": "runtime_e2e_after_index",
+        },
+    )
+    assert "索引后继续编辑" in index_safe_update["note"]["content"]
     conflict, _ = client.request(
         "PUT",
         f"/api/notes/{note_id}",
         {
             "content": fresh["note"]["content"] + "\n\n设备 B 更新",
             "expectedUpdatedAt": base_updated_at,
+            "expectedContentHash": first_update["note"]["contentHash"],
             "source": "runtime_e2e_device_b",
         },
         expected_status=409,
     )
     assert conflict["error"]["code"] == "NOTE_VERSION_CONFLICT"
-    summary["multiDeviceConflict"] = "409_detected"
+    summary["multiDeviceConflict"] = "content_hash_409_and_index_only_update_ok"
 
     refreshed, _ = client.request("POST", "/api/auth/refresh")
     assert refreshed["user"]["email"] == TEST_EMAIL

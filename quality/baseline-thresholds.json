@@ -1,0 +1,29 @@
+{
+  "version": "2026-07-17-v1",
+  "frontend": {
+    "requiredFailures": 0
+  },
+  "backendUnit": {
+    "requiredFailures": 0
+  },
+  "security": {
+    "crossUserLeakage": 0
+  },
+  "ragLegacy": {
+    "minimumRecallAt5": 0.6,
+    "minimumMrr": 0.5,
+    "minimumNdcgAt5": 0.5,
+    "minimumCitationCoverage": 1.0
+  },
+  "memory": {
+    "allowedKnownGapIds": [
+    ],
+    "maximumUnexpectedFailures": 0
+  },
+  "performance": {
+    "healthApiP95Ms": 250,
+    "authenticatedApiP95Ms": 500,
+    "retrievalP95Ms": 1500,
+    "firstTokenP95Ms": 8000
+  }
+}

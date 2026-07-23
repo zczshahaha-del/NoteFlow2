@@ -2,18 +2,23 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
+import os
+import socket
+import uuid
+from datetime import datetime, timedelta
 
 from sqlalchemy import or_, select
 
 from app.database import AsyncSessionLocal
 from app.models.db import Note, NoteIndexJob
+from app.config import cfg
 
 logger = logging.getLogger(__name__)
 
 _worker_task: asyncio.Task | None = None
 _wake_event: asyncio.Event | None = None
 _stop_event: asyncio.Event | None = None
+_worker_id = f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:8]}"
 
 
 def notify_index_worker() -> None:
@@ -21,18 +26,19 @@ def notify_index_worker() -> None:
         _wake_event.set()
 
 
-async def _claim_and_run_one() -> bool:
-    from app.services.markdown_index import run_index_job
-
+async def _claim_one() -> str | None:
+    now = datetime.utcnow()
+    stale_at = now - timedelta(seconds=max(1, cfg.INDEX_JOB_STALE_SECONDS))
     async with AsyncSessionLocal() as session:
         async with session.begin():
             result = await session.execute(
                 select(NoteIndexJob)
                 .where(
-                    NoteIndexJob.status == "pending",
                     or_(
-                        NoteIndexJob.next_attempt_at.is_(None),
-                        NoteIndexJob.next_attempt_at <= datetime.utcnow(),
+                        (NoteIndexJob.status == "pending")
+                        & or_(NoteIndexJob.next_attempt_at.is_(None), NoteIndexJob.next_attempt_at <= now),
+                        (NoteIndexJob.status == "running")
+                        & or_(NoteIndexJob.heartbeat_at.is_(None), NoteIndexJob.heartbeat_at < stale_at),
                     ),
                 )
                 .order_by(NoteIndexJob.created_at)
@@ -41,6 +47,22 @@ async def _claim_and_run_one() -> bool:
             )
             job = result.scalar_one_or_none()
             if job is None:
+                return None
+            job.status = "running"
+            job.claim_owner = _worker_id
+            job.claimed_at = now
+            job.heartbeat_at = now
+            job.started_at = job.started_at or now
+            return job.id
+
+
+async def _run_claimed(job_id: str) -> bool:
+    from app.services.markdown_index import run_index_job
+
+    async with AsyncSessionLocal() as session:
+        async with session.begin():
+            job = await session.get(NoteIndexJob, job_id, with_for_update=True)
+            if job is None or job.status != "running" or job.claim_owner != _worker_id:
                 return False
             note_result = await session.execute(
                 select(Note).where(
@@ -53,10 +75,26 @@ async def _claim_and_run_one() -> bool:
             if note is None:
                 job.status = "cancelled"
                 job.error_message = "note no longer exists"
+                job.error_code = "NOTE_NOT_FOUND"
                 job.finished_at = datetime.utcnow()
+                job.claim_owner = None
+                job.heartbeat_at = None
                 return True
-            await run_index_job(session, note, job)
+            job.heartbeat_at = datetime.utcnow()
+            if job.graph_version == "rag-v2":
+                from app.rag.v2.indexer import run_rag_v2_index_job
+
+                await run_rag_v2_index_job(session, note, job)
+            else:
+                await run_index_job(session, note, job)
         return True
+
+
+async def _claim_and_run_one() -> bool:
+    job_id = await _claim_one()
+    if job_id is None:
+        return False
+    return await _run_claimed(job_id)
 
 
 async def _worker_loop() -> None:

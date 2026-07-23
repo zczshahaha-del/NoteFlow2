@@ -145,7 +145,6 @@ function ResizablePanel({
 function WorkspaceCenter() {
   const { centerMode } = useDraftSlice();
   const { selectedFileId, fileContents, treeData } = useWorkspaceSlice();
-  if (centerMode === "draft") return <AIDraftWorkspace />;
   if (centerMode === "edit") return <EditPreviewWorkspace />;
   const editorMode = new URLSearchParams(window.location.search).get("editor");
   const selectedFile = selectedFileId ? findFileById(treeData, selectedFileId) : undefined;
@@ -196,9 +195,20 @@ export default function App() {
   const isDesktop = useMediaQuery("(min-width: 1280px)");
   const isTabletUp = useMediaQuery("(min-width: 768px)");
   const wasDesktop = useRef(isDesktop);
-  const { centerMode } = useDraftSlice();
+  const { centerMode, draftSeed, pendingCheckpoint, activeDraftContext } = useDraftSlice();
   const { chatSelection } = useChatSlice();
   const focusedWorkspace = centerMode === "edit";
+  const draftAvailable =
+    centerMode === "draft" ||
+    pendingCheckpoint?.checkpointType === "draft_workspace" ||
+    Boolean(activeDraftContext);
+  const checkpointDraftSeed =
+    pendingCheckpoint?.checkpointType === "draft_workspace" &&
+    typeof pendingCheckpoint.payload?.seed === "string"
+      ? pendingCheckpoint.payload.seed.trim()
+      : "";
+  const draftWorkspaceKey =
+    draftSeed.trim() || checkpointDraftSeed || activeDraftContext?.topic || "draft-workspace";
   const { loading: authLoading, session, signIn, signUp, signOut } = useAuthSession();
 
   useEffect(() => {
@@ -280,12 +290,15 @@ export default function App() {
           {/* The center workspace always remains mounted and keeps the available width. */}
           <WorkspaceCenter />
 
+          {/* AI drafts stay mounted while hidden so background outline/progress state is preserved. */}
+          {draftAvailable && <AIDraftWorkspace key={draftWorkspaceKey} />}
+
           {/* Desktop AI panel stays resizable. */}
           {isDesktop && !focusedWorkspace && (
             <ResizablePanel
               defaultWidth={350}
-              minWidth={350}
-              maxWidth={350}
+              minWidth={300}
+              maxWidth={600}
               resizeEdge="left"
               collapsed={!aiOpen}
             >

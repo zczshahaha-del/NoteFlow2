@@ -1,0 +1,66 @@
+{
+  "generatedAt": "2026-07-17T15:59:36.702400+00:00",
+  "stage": "1",
+  "requireSamples": true,
+  "ready": false,
+  "blockers": [
+    "agentShadow has fewer than 20 observations in 24h",
+    "memoryShadow has fewer than 20 observations in 24h"
+  ],
+  "targetEnvironment": {
+    "AGENT_RUNTIME": "langgraph",
+    "LANGGRAPH_CANARY_ENABLED": "true",
+    "LANGGRAPH_CANARY_PERCENT": "1",
+    "RAG_PROVIDER": "legacy",
+    "RAG_V2_INDEX_ENABLED": "true",
+    "MEMORY_PROVIDER": "mem0",
+    "MEM0_CANARY_ENABLED": "true",
+    "MEM0_CANARY_PERCENT": "1",
+    "DRAFT_RUNTIME": "legacy",
+    "EDIT_RUNTIME": "legacy"
+  },
+  "rollbackEnvironment": {
+    "AGENT_RUNTIME": "legacy",
+    "LANGGRAPH_CANARY_ENABLED": "false",
+    "LANGGRAPH_CANARY_PERCENT": "0",
+    "RAG_PROVIDER": "legacy",
+    "RAG_V2_INDEX_ENABLED": "false",
+    "MEMORY_PROVIDER": "legacy",
+    "MEM0_CANARY_ENABLED": "false",
+    "MEM0_CANARY_PERCENT": "0",
+    "DRAFT_RUNTIME": "legacy",
+    "EDIT_RUNTIME": "legacy"
+  },
+  "snapshot": {
+    "agentShadow": {
+      "total": 0,
+      "hard": 0,
+      "failed": 0
+    },
+    "memoryShadow": {
+      "total": 0,
+      "hard": 0,
+      "failed": 0
+    },
+    "outbox": {
+      "total": 0,
+      "pending": 0,
+      "failed": 0
+    },
+    "indexJobs": {
+      "total": 2,
+      "pending": 0,
+      "failed": 0
+    },
+    "ragQueries": {
+      "total": 3,
+      "empty": 2,
+      "average_latency_ms": 562.67
+    }
+  },
+  "health": {
+    "ok": true,
+    "status": "healthy"
+  },
+  "mutationPerformed": false
+}

@@ -5,6 +5,7 @@ import type {
   AgentToolTrace,
   ChatMessage,
   ChatSource,
+  ChatSessionSummary,
   FileNode,
 } from "./types";
 import { findFileById, treeData as initialTreeData } from "./mockData";
@@ -61,6 +62,13 @@ import {
   type AgentCheckpointRecord,
   type AgentTaskSnapshot,
 } from "./services/agent";
+import {
+  createChatSession,
+  deleteChatSession as deleteChatSessionRequest,
+  listChatMessages,
+  listChatSessions,
+  renameChatSession as renameChatSessionRequest,
+} from "./services/chatSessions";
 import {
   hasRemoteConflict,
   listOfflineNoteEdits,
@@ -125,12 +133,14 @@ interface AppState {
   activeDraftContext: ActiveDraftContext | null;
   chatSelection: ChatSelectionContext | null;
   activeEditPreview: NoteEditPreviewRecord | null;
+  editPreviewError: string;
   pendingCheckpoint: AgentCheckpointRecord | null;
   pendingSourceFocus: ChatSource | null;
   pendingEditorSelection: EditorSelectionRequest | null;
   activeEditorSectionId: string | null;
   startDraft: (seed?: string) => void;
   openPendingDraft: () => void;
+  dismissDraftWorkspace: () => void;
   openPendingEditPreview: () => void;
   setActiveDraftContext: (context: ActiveDraftContext | null) => void;
   requestDraftCommand: (action: DraftCommand["action"], feedback?: string) => void;
@@ -179,6 +189,13 @@ interface AppState {
   retryAgentTask: () => void;
   chatMessages: ChatMessage[];
   chatLoading: boolean;
+  chatSessions: ChatSessionSummary[];
+  chatSessionsLoading: boolean;
+  refreshChatSessions: () => Promise<void>;
+  newChatSession: () => Promise<void>;
+  switchChatSession: (sessionId: string) => Promise<void>;
+  renameChatSession: (sessionId: string, title: string) => Promise<void>;
+  deleteChatSession: (sessionId: string) => Promise<void>;
   sendMessage: (text: string, pageState?: Partial<ChatPageState>, options?: { mode?: ChatMode }) => void;
   stopGeneration: () => void;
   treeData: FileNode[];
@@ -565,6 +582,7 @@ function buildTreeFromRecords(
       name: noteName(note.title),
       type: "file",
       content: note.content,
+      contentHash: note.contentHash,
       pinned: note.isPinned,
       createdAt: note.createdAt ?? undefined,
       updatedAt: note.updatedAt ?? undefined,
@@ -596,6 +614,7 @@ function replaceNoteRecordInTree(nodes: FileNode[], note: NoteRecord): FileNode[
         ...node,
         name: noteName(note.title),
         content: note.content,
+        contentHash: note.contentHash,
         pinned: note.isPinned,
         createdAt: note.createdAt ?? node.createdAt,
         updatedAt: note.updatedAt ?? node.updatedAt,
@@ -607,6 +626,17 @@ function replaceNoteRecordInTree(nodes: FileNode[], note: NoteRecord): FileNode[
     }
     if (node.children) return { ...node, children: replaceNoteRecordInTree(node.children, note) };
     return node;
+  });
+}
+
+export function reconcilePersistedNoteRecord(
+  nodes: FileNode[],
+  persistedNote: NoteRecord,
+  latestLocalContent: string
+): FileNode[] {
+  return replaceNoteRecordInTree(nodes, {
+    ...persistedNote,
+    content: latestLocalContent,
   });
 }
 
@@ -711,22 +741,33 @@ function scheduleNoteSave(noteId: string, content: string) {
 async function persistNoteContent(noteId: string, content: string) {
   if (useAppStore.getState().fileContents[noteId] !== content) return;
   let baseUpdatedAt: string | null = null;
+  let baseContentHash: string | null = null;
   useAppStore.setState({ noteSaveState: noteSaveState("saving") });
   try {
     const note = await enqueueNoteMutation(noteId, async () => {
       const beforeSave = useAppStore.getState();
       if (beforeSave.fileContents[noteId] !== content) return null;
-      baseUpdatedAt = findFileById(beforeSave.treeData, noteId)?.updatedAt ?? null;
+      const beforeSaveNote = findFileById(beforeSave.treeData, noteId);
+      baseUpdatedAt = beforeSaveNote?.updatedAt ?? null;
+      baseContentHash = beforeSaveNote?.contentHash ?? null;
       return updateNote(noteId, {
         content,
         source: "auto_save",
         changeSummary: "自动保存正文",
         expectedUpdatedAt: baseUpdatedAt,
+        expectedContentHash: baseContentHash,
       });
     });
     if (!note) return;
     const current = useAppStore.getState();
-    if (current.fileContents[noteId] !== content) return;
+    if (current.fileContents[noteId] !== content) {
+      const latestLocalContent = current.fileContents[note.id] ?? note.content;
+      useAppStore.setState({
+        treeData: reconcilePersistedNoteRecord(current.treeData, note, latestLocalContent),
+      });
+      persistLocalCurrentState();
+      return;
+    }
     useAppStore.setState({
       fileContents: { ...current.fileContents, [note.id]: note.content },
       treeData: replaceNoteRecordInTree(current.treeData, note),
@@ -747,6 +788,7 @@ async function persistNoteContent(noteId: string, content: string) {
           noteId,
           content,
           baseUpdatedAt,
+          baseContentHash,
         });
         useAppStore.setState({
           noteSaveState: noteSaveState("offline", "已离线保存在本机，联网后会自动同步。"),
@@ -767,8 +809,35 @@ async function persistNoteContent(noteId: string, content: string) {
   }
 }
 
+async function contentFingerprint(value: string): Promise<string> {
+  if (typeof crypto !== "undefined" && crypto.subtle) {
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+    return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `fallback-${(hash >>> 0).toString(16)}-${value.length}`;
+}
+
 async function preserveConflictCopy(userId: string, noteId: string, localContent: string) {
   const remote = await getNote(noteId);
+  if (remote.content === localContent) {
+    const current = useAppStore.getState();
+    useAppStore.setState({
+      fileContents: { ...current.fileContents, [remote.id]: remote.content },
+      treeData: replaceNoteRecordInTree(current.treeData, remote),
+      noteSaveState: noteSaveState("saved", "内容已经同步，无需创建冲突副本。"),
+    });
+    await removeOfflineNoteEdit(userId, noteId).catch(() => undefined);
+    persistLocalCurrentState();
+    return;
+  }
+  const conflictFingerprint = await contentFingerprint(
+    `${noteId}\n${remote.contentHash}\n${localContent}`
+  );
   const stamp = new Date().toLocaleString("zh-CN", {
     month: "2-digit",
     day: "2-digit",
@@ -781,6 +850,7 @@ async function preserveConflictCopy(userId: string, noteId: string, localContent
     summary: "离线编辑与远端版本发生冲突，已保留为独立副本，请人工合并。",
     tags: Array.from(new Set([...(remote.tags ?? []), "同步冲突"])),
     content: localContent,
+    idempotencyKey: `sync-conflict:${conflictFingerprint}`,
   });
   await removeOfflineNoteEdit(userId, noteId).catch(() => undefined);
   await loadStructuredWorkspace(userId, conflict.id);
@@ -802,7 +872,14 @@ async function flushOfflineNoteQueue(userId: string) {
         changed = true;
         continue;
       }
-      if (hasRemoteConflict(edit.baseUpdatedAt, remote.updatedAt, remote.content, edit.content)) {
+      if (hasRemoteConflict(
+        edit.baseContentHash,
+        remote.contentHash,
+        edit.baseUpdatedAt,
+        remote.updatedAt,
+        remote.content,
+        edit.content
+      )) {
         await preserveConflictCopy(userId, edit.noteId, edit.content);
         changed = true;
         continue;
@@ -812,6 +889,7 @@ async function flushOfflineNoteQueue(userId: string) {
         source: "auto_save",
         changeSummary: "离线队列恢复",
         expectedUpdatedAt: remote.updatedAt,
+        expectedContentHash: remote.contentHash,
       });
       await removeOfflineNoteEdit(userId, edit.noteId);
       changed = true;
@@ -871,6 +949,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   activeDraftContext: null,
   chatSelection: null,
   activeEditPreview: null,
+  editPreviewError: "",
   pendingCheckpoint: null,
   pendingSourceFocus: null,
   pendingEditorSelection: null,
@@ -888,6 +967,8 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   agentTaskDetailOpen: false,
   chatMessages: [],
   chatLoading: false,
+  chatSessions: [],
+  chatSessionsLoading: false,
   treeData: initialTreeData,
 
   startDraft: (seed = "") => {
@@ -902,17 +983,31 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           {
             id: `msg-${++chatMsgCounter}`,
             role: "assistant",
-            text: "好，我来帮你整理这篇笔记。",
+            text: "好，我会先整理一份大纲。准备好后，你可以打开查看和调整。",
+            draftCard: { seed: trimmedSeed },
           },
         ]
       : [];
     set((state) => ({
-      centerMode: "draft",
+      centerMode: "note",
       draftSeed: trimmedSeed,
       draftCommand: null,
-      activeDraftContext: null,
+      activeDraftContext: trimmedSeed
+        ? {
+            id: "",
+            title: trimmedSeed,
+            topic: trimmedSeed,
+            stage: "configuring",
+            busy: false,
+            statusText: "正在根据你的要求生成大纲…",
+            errorText: "",
+            completedSections: 0,
+            totalSections: 0,
+          }
+        : null,
       chatSelection: null,
       activeEditPreview: null,
+      editPreviewError: "",
       pendingCheckpoint: null,
       agentTask: null,
       pendingSourceFocus: null,
@@ -924,8 +1019,15 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   },
 
   openPendingDraft: () => {
+    const activeDraft = get().activeDraftContext;
+    if (!activeDraft || activeDraft.stage === "configuring" || activeDraft.stage === "failed") {
+      return;
+    }
     const checkpoint = get().pendingCheckpoint ?? get().agentTask?.checkpoint ?? null;
-    if (checkpoint?.checkpointType !== "draft_workspace") return;
+    if (checkpoint?.checkpointType !== "draft_workspace") {
+      set({ centerMode: "draft" });
+      return;
+    }
     const payload = checkpoint.payload ?? {};
     const seed = typeof payload.seed === "string" ? payload.seed.trim() : "";
     set((state) => ({
@@ -942,6 +1044,13 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     }));
   },
 
+  dismissDraftWorkspace: () => {
+    set((state) => ({
+      centerMode: state.centerMode === "draft" ? "note" : state.centerMode,
+      draftCommand: null,
+    }));
+  },
+
   openPendingEditPreview: async () => {
     const checkpoint = get().pendingCheckpoint ?? get().agentTask?.checkpoint ?? null;
     const editPreviewId = editPreviewIdFromCheckpoint(checkpoint);
@@ -951,6 +1060,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       set((state) => ({
         centerMode: "edit",
         activeEditPreview: preview,
+        editPreviewError: "",
         pendingCheckpoint: checkpoint,
         agentSessionId: checkpoint?.sessionId ?? state.agentSessionId,
         agentTask: taskWithCheckpoint(state.agentTask, checkpoint),
@@ -1048,6 +1158,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     set((current) => ({
       chatMessages: [...current.chatMessages, userMsg, assistantMsg],
       chatLoading: true,
+      editPreviewError: "",
     }));
 
     try {
@@ -1064,6 +1175,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       set((current) => ({
       centerMode: "edit",
       activeEditPreview: preview,
+      editPreviewError: "",
       draftSeed: "",
       draftCommand: null,
       activeDraftContext: null,
@@ -1102,6 +1214,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       chatLoading: true,
       centerMode: "edit",
       activeDraftContext: null,
+      editPreviewError: "",
     }));
     try {
       const nextPreview = await reviseEditPreview(preview.id, instruction, isMemoryEnabled());
@@ -1115,6 +1228,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       }
       set((current) => ({
         activeEditPreview: nextPreview,
+        editPreviewError: "",
         pendingCheckpoint: nextCheckpoint,
         agentTask: taskWithCheckpoint(current.agentTask, nextCheckpoint),
         chatMessages: current.chatMessages.map((message) =>
@@ -1138,10 +1252,10 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   restoreEditPreviewRevisionRequest: async (revisionId) => {
     const preview = get().activeEditPreview;
     if (!preview || get().chatLoading) return;
-    set({ chatLoading: true });
+    set({ chatLoading: true, editPreviewError: "" });
     try {
       const nextPreview = await restoreEditPreviewRevision(preview.id, revisionId);
-      set({ activeEditPreview: nextPreview, centerMode: "edit" });
+      set({ activeEditPreview: nextPreview, centerMode: "edit", editPreviewError: "" });
     } catch (error) {
       const text = error instanceof Error ? error.message : "恢复预览版本失败";
       set((current) => ({
@@ -1159,7 +1273,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   applyEditPreviewRequest: async () => {
     const preview = get().activeEditPreview;
     if (!preview || get().chatLoading) return;
-    set({ chatLoading: true });
+    set({ chatLoading: true, editPreviewError: "" });
     try {
       await syncNoteContentBeforeAiEdit(preview.noteId);
       const result = await applyEditPreview(preview.id);
@@ -1175,6 +1289,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       }
       set({
         activeEditPreview: null,
+        editPreviewError: "",
         pendingCheckpoint: null,
         agentTask: taskWithCheckpoint(current.agentTask, null),
         centerMode: "note",
@@ -1207,6 +1322,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     } catch (error) {
       const text = error instanceof Error ? error.message : "应用修改失败，正式笔记未变化";
       set((current) => ({
+        editPreviewError: text,
         chatMessages: [
           ...current.chatMessages,
           { id: `msg-${++chatMsgCounter}`, role: "assistant", text },
@@ -1235,6 +1351,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     } catch {}
     set((current) => ({
       activeEditPreview: null,
+      editPreviewError: "",
       pendingCheckpoint: null,
       agentTask: taskWithCheckpoint(current.agentTask, null),
       centerMode: "note",
@@ -1253,6 +1370,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   closeEditPreview: () => {
     set((state) => ({
       activeEditPreview: null,
+      editPreviewError: "",
       pendingCheckpoint: null,
       agentTask: taskWithCheckpoint(state.agentTask, null),
       centerMode: "note",
@@ -1416,6 +1534,112 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     state.sendMessage(inputText);
   },
 
+  refreshChatSessions: async () => {
+    set({ chatSessionsLoading: true });
+    try {
+      const sessions = await listChatSessions(60);
+      set({ chatSessions: sessions });
+    } finally {
+      set({ chatSessionsLoading: false });
+    }
+  },
+
+  newChatSession: async () => {
+    if (get().chatLoading) get().stopGeneration();
+    const session = await createChatSession(get().selectedFileId);
+    set((current) => ({
+      agentSessionId: session.id,
+      agentTask: null,
+      agentRunHistory: [],
+      pendingCheckpoint: null,
+      agentTaskDetailOpen: false,
+      chatMessages: [],
+      chatLoading: false,
+      chatSelection: null,
+      centerMode: "note",
+      draftSeed: "",
+      draftCommand: null,
+      activeDraftContext: null,
+      activeEditPreview: null,
+      chatSessions: [session, ...current.chatSessions.filter((item) => item.id !== session.id)],
+    }));
+  },
+
+  switchChatSession: async (sessionId) => {
+    if (!sessionId || sessionId === get().agentSessionId && get().chatMessages.length > 0) return;
+    if (get().chatLoading) get().stopGeneration();
+    set({
+      agentSessionId: sessionId,
+      agentTask: null,
+      agentRunHistory: [],
+      pendingCheckpoint: null,
+      agentTaskDetailOpen: false,
+      chatMessages: [],
+      chatLoading: false,
+      chatSelection: null,
+      centerMode: "note",
+      draftSeed: "",
+      draftCommand: null,
+      activeDraftContext: null,
+      activeEditPreview: null,
+      chatSessionsLoading: true,
+    });
+    try {
+      const [messages, task, history] = await Promise.all([
+        listChatMessages(sessionId),
+        getLatestAgentTask(sessionId).catch(() => null),
+        listAgentRuns(sessionId, 8).catch(() => []),
+      ]);
+      if (get().agentSessionId !== sessionId) return;
+      const checkpoint = task?.checkpoint ?? null;
+      set({
+        chatMessages: messages,
+        agentTask: task,
+        agentRunHistory: history,
+        pendingCheckpoint: checkpoint,
+        draftSeed:
+          checkpoint?.checkpointType === "draft_workspace" && typeof checkpoint.payload?.seed === "string"
+            ? checkpoint.payload.seed
+            : "",
+      });
+    } finally {
+      if (get().agentSessionId === sessionId) set({ chatSessionsLoading: false });
+    }
+  },
+
+  renameChatSession: async (sessionId, title) => {
+    const session = await renameChatSessionRequest(sessionId, title.trim());
+    set((current) => ({
+      chatSessions: current.chatSessions.map((item) => item.id === sessionId ? session : item),
+    }));
+  },
+
+  deleteChatSession: async (sessionId) => {
+    if (get().chatLoading && get().agentSessionId === sessionId) get().stopGeneration();
+    await deleteChatSessionRequest(sessionId);
+    const remaining = get().chatSessions.filter((item) => item.id !== sessionId);
+    set({ chatSessions: remaining });
+    if (get().agentSessionId !== sessionId) return;
+    if (remaining[0]) {
+      await get().switchChatSession(remaining[0].id);
+    } else {
+      set({
+        agentSessionId: null,
+        agentTask: null,
+        agentRunHistory: [],
+        pendingCheckpoint: null,
+        chatMessages: [],
+        chatLoading: false,
+        chatSelection: null,
+        centerMode: "note",
+        draftSeed: "",
+        draftCommand: null,
+        activeDraftContext: null,
+        activeEditPreview: null,
+      });
+    }
+  },
+
   hydrate: (userId) => {
     const snapshot = loadLocalSnapshot(userId);
     set({
@@ -1443,47 +1667,19 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       pendingCheckpoint: null,
       chatMessages: [],
       chatLoading: false,
+      chatSessions: [],
+      chatSessionsLoading: true,
     });
-    void getLatestAgentTask()
-      .then(async (task) => {
-        const checkpoint = task?.checkpoint ?? null;
-        set({
-          agentTask: task,
-          agentSessionId: task?.run.sessionId ?? null,
-          pendingCheckpoint: checkpoint,
-        });
-        if (!checkpoint) return;
-        const payload = checkpoint.payload ?? {};
-        if (checkpoint.checkpointType === "edit_preview" && typeof payload.editPreviewId === "string") {
-          set({
-            pendingCheckpoint: checkpoint,
-            agentSessionId: checkpoint.sessionId,
-            agentTask: taskWithCheckpoint(get().agentTask, checkpoint),
-            activeEditPreview: null,
-            draftSeed: "",
-            draftCommand: null,
-            activeDraftContext: null,
-            chatSelection: null,
-          });
-          return;
-        }
-        if (checkpoint.checkpointType === "draft_workspace" && typeof payload.seed === "string") {
-          set({
-            pendingCheckpoint: checkpoint,
-            agentSessionId: checkpoint.sessionId,
-            agentTask: taskWithCheckpoint(get().agentTask, checkpoint),
-            draftSeed: payload.seed,
-            draftCommand: null,
-            activeDraftContext: null,
-            chatSelection: null,
-            activeEditPreview: null,
-          });
+    void get().refreshChatSessions()
+      .then(async () => {
+        const latestSession = get().chatSessions[0];
+        if (latestSession) {
+          await get().switchChatSession(latestSession.id);
+        } else {
+          set({ agentSessionId: null, chatMessages: [], chatSessionsLoading: false });
         }
       })
-      .catch(() => {});
-    void listAgentRuns(null, 8)
-      .then((tasks) => set({ agentRunHistory: tasks }))
-      .catch(() => {});
+      .catch(() => set({ chatSessionsLoading: false }));
   },
 
   replaceSnapshot: (snapshot) => {
@@ -1517,8 +1713,8 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   setSelectedFileId: (id) => {
     set((state) => {
       const keepBackgroundDraft =
-        state.activeDraftContext?.stage === "generating" &&
-        state.pendingCheckpoint?.checkpointType === "draft_workspace";
+        state.pendingCheckpoint?.checkpointType === "draft_workspace" &&
+        Boolean(state.activeDraftContext);
       return {
         selectedFileId: id,
         treeData: id
@@ -1639,20 +1835,40 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         const handleAgentToolAction = async (action: AgentToolAction) => {
           const payload = action.payload ?? {};
           const checkpointId = typeof payload.checkpointId === "string" ? payload.checkpointId : null;
-          if (action.toolName === "note_draft_tool" && action.action === "open_draft_workspace") {
+        if (action.toolName === "note_draft_tool" && action.action === "open_draft_workspace") {
           const plannedSeed = typeof payload.seed === "string" ? payload.seed.trim() : "";
           const seed = plannedSeed || text;
           const payloadCheckpoint = checkpointFromPayload(payload.checkpoint);
           set({
-            centerMode: "draft",
+            centerMode: "note",
             draftSeed: seed,
             draftCommand: null,
-            activeDraftContext: null,
+            activeDraftContext: {
+              id: "",
+              title: seed || "未命名笔记",
+              topic: seed || "未命名笔记",
+              stage: "configuring",
+              busy: false,
+              statusText: "正在根据你的要求生成大纲…",
+              errorText: "",
+              completedSections: 0,
+              totalSections: 0,
+            },
             activeEditPreview: null,
             pendingCheckpoint: payloadCheckpoint,
             pendingSourceFocus: null,
             noteSaveState: noteSaveState("idle"),
           });
+          set((current) => ({
+            chatMessages: current.chatMessages.map((message) =>
+              message.id === assistantMsg.id
+                ? {
+                    ...message,
+                    draftCard: { seed, checkpointId },
+                  }
+                : message
+            ),
+          }));
           if (checkpointId && !payloadCheckpoint) {
             const checkpoint = await getLatestAgentCheckpoint(get().agentSessionId).catch(() => null);
             if (checkpoint?.id === checkpointId) {
@@ -2117,6 +2333,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         set({ chatLoading: false });
       }
       get().refreshAgentRunHistory(get().agentSessionId);
+      void get().refreshChatSessions().catch(() => {});
     }
   },
 

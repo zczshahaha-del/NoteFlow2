@@ -7,6 +7,7 @@ from typing import Optional
 
 from sqlalchemy import desc, select
 
+from app.config import cfg
 from app.database import AsyncSessionLocal
 from app.models.db import ChatMessage as DbChatMessage, UserMemory
 from app.schemas.agent import AgentChatMessageIn
@@ -29,6 +30,12 @@ from app.services.memory import (
 )
 from app.services.memory_llm import extract_memory_candidates_smart
 from app.services.memory_read import MemoryReadPlan, plan_memory_read_smart
+from app.memory.policy import filter_eligible_memories
+from app.memory.runtime import resolve_memory_read
+from app.services.memory_service import MemoryService
+from app.services.outbox import enqueue_memory_sync
+from app.workers.outbox_worker import notify_outbox_worker
+from app.services.user_settings import update_user_memory_enabled
 
 
 def _new_id() -> str:
@@ -87,6 +94,18 @@ def memory_tool_context(action: str, memories: list[dict], question: str) -> str
             "不要提‘长期记忆’‘记忆工具’‘保存记录’等内部机制，除非用户明确问记忆功能本身。"
             "如果查到了名字、偏好、兴趣或目标，直接自然回答。"
             "如果没查到相关信息，就自然说明还不知道，不要假装知道。"
+        )
+
+    if action in {"delete_memories", "disable_memory"}:
+        result = (
+            f"已删除 {len(memories)} 条匹配记忆。"
+            if action == "delete_memories"
+            else "已关闭长期记忆功能。"
+        )
+        return (
+            "NoteFlow 记忆管理操作已完成。\n"
+            f"用户原问题：{question}\n操作结果：{result}\n"
+            "请只简短、明确地确认结果，不要声称仍会保存或读取记忆。"
         )
 
     memory_text = (
@@ -171,6 +190,8 @@ async def save_memory_from_question(
                     scope=normalize_scope(candidate.scope),
                     tags=tags,
                     status="pending",
+                    canonical_key=candidate.canonical_key,
+                    memory_layer=candidate.layer,
                 )
                 db.add(memory)
                 add_memory_event(
@@ -205,6 +226,8 @@ async def save_memory_from_question(
                     existing.source = candidate.source
                     existing.scope = normalize_scope(candidate.scope)
                     existing.tags = tags
+                    existing.canonical_key = candidate.canonical_key or "identity.name"
+                    existing.memory_layer = candidate.layer
                     existing.updated_at = datetime.utcnow()
                     add_memory_event(
                         db,
@@ -247,6 +270,8 @@ async def save_memory_from_question(
                     existing_for_key.source = candidate.source
                     existing_for_key.scope = normalize_scope(candidate.scope)
                     existing_for_key.tags = tags
+                    existing_for_key.canonical_key = canonical_key
+                    existing_for_key.memory_layer = candidate.layer
                     existing_for_key.updated_at = datetime.utcnow()
                     add_memory_event(
                         db,
@@ -287,6 +312,8 @@ async def save_memory_from_question(
                 scope=normalize_scope(candidate.scope),
                 tags=tags,
                 status="active",
+                canonical_key=candidate.canonical_key,
+                memory_layer=candidate.layer,
             )
             db.add(memory)
             add_memory_event(
@@ -298,9 +325,85 @@ async def save_memory_from_question(
                 reason="agent_memory_manage",
             )
             saved.append(_memory_out(memory))
+        await db.flush()
+        saved_ids = {str(item.get("id") or "") for item in saved if item.get("id")}
+        if saved_ids:
+            sync_rows = await db.execute(
+                select(UserMemory).where(UserMemory.user_id == user_id, UserMemory.id.in_(saved_ids))
+            )
+            for memory in sync_rows.scalars().all():
+                await enqueue_memory_sync(
+                    db,
+                    memory_id=memory.id,
+                    user_id=user_id,
+                    operation="upsert" if memory.status == "active" else "delete",
+                    version=MemoryService._sync_version(memory),
+                )
         await db.commit()
+        if saved_ids:
+            notify_outbox_worker()
 
     return ("已同步 1 条记忆。" if len(saved) == 1 else f"已同步 {len(saved)} 条记忆。"), saved
+
+
+def _delete_memory_keys(question: str) -> tuple[set[str], set[str]]:
+    keys: set[str] = set()
+    types: set[str] = set()
+    mapping = (
+        (r"年龄|几岁", "profile.age", "personal_info"),
+        (r"名字|称呼|叫我", "identity.name", "identity"),
+        (r"作息|熬夜|睡眠", "lifestyle.sleep_schedule", "personal_info"),
+        (r"回答风格|表达偏好", "communication.answer_style", "writing_style"),
+        (r"求职|工作状态", "career.current_status", "goal"),
+        (r"面试", "career.interview_history", "episode"),
+        (r"兴趣|爱好", "interest.general", "interest"),
+    )
+    for pattern, key, memory_type in mapping:
+        if re.search(pattern, question, re.I):
+            keys.add(key)
+            types.add(memory_type)
+    return keys, types
+
+
+async def delete_memories_from_question(user_id: str, question: str) -> tuple[str, list[dict]]:
+    keys, types = _delete_memory_keys(question)
+    if not keys and not types:
+        return "没有识别出要删除的具体记忆。", []
+    deleted: list[dict] = []
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(UserMemory).where(
+                UserMemory.user_id == user_id,
+                UserMemory.status != "deleted",
+                UserMemory.deleted_at.is_(None),
+            )
+        )
+        for memory in result.scalars().all():
+            if memory_canonical_key(memory) not in keys and memory.memory_type not in types:
+                continue
+            old_content = memory.content
+            memory.status = "deleted"
+            memory.deleted_at = datetime.utcnow()
+            add_memory_event(
+                db, memory=memory, user_id=user_id, event_type="deleted",
+                old_content=old_content, reason="user_natural_language_delete",
+            )
+            await enqueue_memory_sync(
+                db, memory_id=memory.id, user_id=user_id, operation="delete",
+                version=MemoryService._sync_version(memory),
+            )
+            deleted.append(_memory_out(memory))
+        await db.commit()
+    if deleted:
+        notify_outbox_worker()
+    return f"已删除 {len(deleted)} 条相关记忆。", deleted
+
+
+async def disable_memory_for_user(user_id: str) -> tuple[str, list[dict]]:
+    async with AsyncSessionLocal() as db:
+        await update_user_memory_enabled(db, user_id, False)
+        await db.commit()
+    return "已关闭长期记忆；之后不会读取或保存个人记忆。", []
 
 
 async def _recover_identity_memory_from_recent_chat(db, user_id: str) -> Optional[dict]:
@@ -420,7 +523,7 @@ async def list_memories_for_agent(user_id: str) -> tuple[str, list[dict]]:
     async with AsyncSessionLocal() as db:
         await _recover_identity_memory_from_recent_chat(db, user_id)
         memories = await find_memories(db, user_id, include_deleted=False, limit=50)
-        active = [memory for memory in memories if memory.status == "active"]
+        active = filter_eligible_memories(memories, limit=8)
         return _format_memory_list(active), [_memory_out(memory) for memory in active]
 
 
@@ -446,7 +549,13 @@ async def query_memories_for_agent(
             include_deleted=False,
             limit=read_plan.limit,
         )
-        active = [memory for memory in memories if memory.status == "active"]
+        active = await resolve_memory_read(
+            db,
+            user_id=user_id,
+            query=read_plan.query or question,
+            legacy_memories=memories,
+            limit=min(read_plan.limit, cfg.MEMORY_CONTEXT_LIMIT),
+        )
         await mark_memories_used(db, user_id, active, reason=f"read_plan:{read_plan.reason or 'memory_query'}")
         await db.commit()
         return _format_memory_list(active), [_memory_out(memory) for memory in active]
@@ -521,6 +630,8 @@ async def save_episode_memory(
         scope="global",
         tags=episodic_tags(event_type, tags, summary),
         status="active",
+        canonical_key=f"episode.{event_type}",
+        memory_layer="episodic",
     )
     db.add(memory)
     add_memory_event(
@@ -531,6 +642,12 @@ async def save_episode_memory(
         new_content=memory.content,
         reason=f"episode:{event_type}",
     )
+    await db.flush()
+    await enqueue_memory_sync(
+        db, memory_id=memory.id, user_id=user_id, operation="upsert",
+        version=MemoryService._sync_version(memory),
+    )
+    notify_outbox_worker()
     return memory
 
 
