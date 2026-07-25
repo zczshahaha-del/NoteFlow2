@@ -25,7 +25,7 @@ NoteFlow 正在统一为登录后的单一工作台：
 - HttpOnly Cookie 认证、短期 JWT 访问令牌和可撤销的服务端会话
 - Docker Compose 部署
 - Nginx 静态资源托管和 `/api` 反向代理
-- LangGraph Agent 工作流、LlamaIndex RAG v2 和 Mem0 OSS 长期记忆
+- LangGraph Agent 工作流、LlamaIndex RAG 和 Mem0 OSS 长期记忆
 
 ## 质量检查与发布
 

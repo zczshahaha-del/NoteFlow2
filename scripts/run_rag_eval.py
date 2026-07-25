@@ -16,8 +16,8 @@ from sqlalchemy import delete
 ROOT = Path(__file__).resolve().parents[1]
 SERVER_ROOT = ROOT / "server"
 DATASET = ROOT / "quality" / "eval" / "rag_cases.json"
-REPORT_JSON = ROOT / "quality" / "reports" / "rag-v2-eval.json"
-REPORT_MD = ROOT / "quality" / "reports" / "rag-v2-eval.md"
+REPORT_JSON = ROOT / "quality" / "reports" / "rag-eval.json"
+REPORT_MD = ROOT / "quality" / "reports" / "rag-eval.md"
 MIN_RECALL_AT_5 = 0.8
 MIN_MRR = 0.8
 MIN_NDCG_AT_5 = 0.8
@@ -34,7 +34,7 @@ def _percentile(values: list[float], percentile: float) -> float:
 def _markdown(report: dict) -> str:
     summary = report["summary"]
     lines = [
-        "# NoteFlow RAG v2 固定评测",
+        "# NoteFlow RAG 固定评测",
         "",
         f"- 数据集：`{report['datasetVersion']}`",
         f"- Recall@5：{summary['recallAt5']}（门槛 {MIN_RECALL_AT_5}）",
@@ -77,8 +77,8 @@ async def main_async(with_embeddings: bool) -> int:
     from app.config import cfg
     from app.database import AsyncSessionLocal, engine
     from app.models.db import Note, User
-    from app.rag.v2.indexer import create_rag_v2_index_job, run_rag_v2_index_job
-    from app.rag.v2.retrieval import candidate_to_library_source, retrieve_candidates
+    from app.rag.pipeline.indexer import create_rag_index_job, run_rag_index_job
+    from app.rag.pipeline.retrieval import candidate_to_library_source, retrieve_candidates
     from app.services.rag_eval import RagEvalCase, evaluate_rag_sources, summarize_rag_eval_results
 
     dataset = json.loads(DATASET.read_text(encoding="utf-8"))
@@ -97,7 +97,7 @@ async def main_async(with_embeddings: bool) -> int:
                 session.add(User(
                     id=user_id,
                     email=f"rag-v2-{owner}-{run_key}@local.test",
-                    display_name=f"RAG v2 {owner}",
+                    display_name=f"RAG {owner}",
                     password_hash="quality-eval-not-a-login",
                 ))
             await session.flush()
@@ -119,8 +119,8 @@ async def main_async(with_embeddings: bool) -> int:
                 if item.get("deleted"):
                     continue
                 note = notes[item["key"]]
-                job = await create_rag_v2_index_job(session, note)
-                await run_rag_v2_index_job(session, note, job)
+                job = await create_rag_index_job(session, note)
+                await run_rag_index_job(session, note, job)
                 if job.status != "success":
                     raise RuntimeError(f"v2 index failed for {item['key']}: {job.error_code} {job.error_message}")
             await session.commit()
@@ -177,7 +177,7 @@ async def main_async(with_embeddings: bool) -> int:
         report = {
             "generatedAt": datetime.now(timezone.utc).isoformat(),
             "datasetVersion": dataset["version"],
-            "retrievalMode": "rag_v2 title/bm25/vector/weighted-rrf",
+            "retrievalMode": "hybrid title/bm25/vector/weighted-rrf",
             "summary": summary,
             "qualityGate": {
                 "minRecallAt5": MIN_RECALL_AT_5,

@@ -5,10 +5,10 @@ import unittest
 from unittest.mock import patch
 
 from app.config import cfg
-from app.rag.v2.context import build_context, validate_citations
-from app.rag.v2.parser import parse_markdown_nodes
-from app.rag.v2.reranker import _reranker_endpoint, rerank_with_fallback
-from app.rag.v2.retrieval import RetrievalCandidate, _fallback_bm25, tokenize, weighted_rrf
+from app.rag.pipeline.context import build_context, validate_citations
+from app.rag.pipeline.parser import parse_markdown_nodes
+from app.rag.pipeline.reranker import _reranker_endpoint, rerank_with_fallback
+from app.rag.pipeline.retrieval import RetrievalCandidate, _fallback_bm25, tokenize, weighted_rrf
 
 
 def _candidate(
@@ -35,7 +35,7 @@ def _candidate(
     )
 
 
-class RagV2ParserTest(unittest.TestCase):
+class RagParserTest(unittest.TestCase):
     def test_commonmark_ast_preserves_hierarchy_and_atomic_blocks(self) -> None:
         markdown = """前言
 
@@ -100,7 +100,7 @@ print('ok')
         self.assertTrue(all(node.token_count <= 1000 for node in nodes))
 
 
-class RagV2RetrievalTest(unittest.TestCase):
+class RagRetrievalTest(unittest.TestCase):
     def test_tokenizer_keeps_code_symbols_and_chinese_search_terms(self) -> None:
         with patch.object(cfg, "RAG_BM25_TOKENIZER", "fallback"):
             tokens = tokenize("缓存雪崩 __enter__ C++")
@@ -148,7 +148,7 @@ class _SlowReranker:
         return candidates[:limit]
 
 
-class RagV2RerankerContextTest(unittest.TestCase):
+class RagRerankerContextTest(unittest.TestCase):
     def test_reranker_endpoint_uses_qwen_compatible_plural_path(self) -> None:
         self.assertEqual(
             _reranker_endpoint(

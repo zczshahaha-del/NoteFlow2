@@ -71,7 +71,7 @@ class LangGraphReadonlyTest(unittest.TestCase):
                 "unsavedContent": "当前编辑器全文",
             },
         )
-        with patch("app.rag.v2.service.LlamaIndexRagService.retrieve", new=fake_retrieve):
+        with patch("app.rag.pipeline.service.LlamaIndexRagService.retrieve", new=fake_retrieve):
             result = asyncio.run(_default_rag_search(state))
 
         self.assertEqual(result["context_mode"], "rag_v2_library")

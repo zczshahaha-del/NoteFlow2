@@ -28,7 +28,7 @@ interface StreamPayload {
   }>;
 }
 
-interface AskDeepSeekParams {
+interface AskAIParams {
   sessionId?: string | null;
   question: string;
   mode?: "chat" | "ask_notes";
@@ -93,9 +93,9 @@ export interface GenerateNoteStreamParams {
   onFinishReason?: (reason: string) => void;
 }
 
-export async function askDeepSeek(params: AskDeepSeekParams): Promise<string> {
+export async function askAI(params: AskAIParams): Promise<string> {
   let answer = "";
-  await askDeepSeekStream({
+  await askAIStream({
     ...params,
     onDelta: (delta) => {
       answer += delta;
@@ -104,7 +104,7 @@ export async function askDeepSeek(params: AskDeepSeekParams): Promise<string> {
   return answer.trim();
 }
 
-export async function askDeepSeekStream({
+export async function askAIStream({
   sessionId,
   question,
   mode,
@@ -125,7 +125,7 @@ export async function askDeepSeekStream({
   onToolTrace,
   onToolAction,
   signal,
-}: AskDeepSeekParams & {
+}: AskAIParams & {
   onDelta: (delta: string) => void;
   onFinishReason?: (reason: string) => void;
   onContext?: (context: { contextMode: string; sources: ChatSource[] }) => void;

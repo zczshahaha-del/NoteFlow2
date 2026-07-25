@@ -53,7 +53,7 @@
 | 能力 | 当前位置（供执行 AI 定位） | 处理原则 |
 |---|---|---|
 | 主界面/样式 | `src/App.tsx`、`src/index.css` | 重构为三栏阅读界面，不能只隐藏工作台标题就算完成。 |
-| 正文编辑 | `src/components/TiptapPilotEditor.tsx` | 以 Tiptap 作为唯一编辑器，保持 Markdown 存储、选区和代码块交互。 |
+| 正文编辑 | `src/components/NoteEditor.tsx` | 以 Tiptap 作为唯一编辑器，保持 Markdown 存储、选区和代码块交互。 |
 | 右侧聊天 | `src/components/AIPanel.tsx` | 收敛为干净的 AI 对话面板，删掉常驻的任务/运行细节卡片。 |
 | AI 草稿生成 | `src/components/AIDraftWorkspace.tsx`、`src/services/drafts.ts` | 不再作为独立工作台式页面；改成课程生成流程并保存回目录。 |
 | 大纲/正文提示词 | `server/app/services/prompts.py` | 保持“格式契约 + 用户完整需求”，避免主题硬编码与规则膨胀。 |

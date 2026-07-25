@@ -17,7 +17,7 @@ async def main_async(limit: int, no_embeddings: bool, force: bool) -> int:
     from app.config import cfg
     from app.database import AsyncSessionLocal, engine
     from app.models.db import Note
-    from app.rag.v2.indexer import create_rag_v2_index_job, run_rag_v2_index_job
+    from app.rag.pipeline.indexer import create_rag_index_job, run_rag_index_job
 
     original_key = cfg.EMBEDDING_API_KEY
     if no_embeddings:
@@ -40,9 +40,9 @@ async def main_async(limit: int, no_embeddings: bool, force: bool) -> int:
                 note = await session.scalar(select(Note).where(Note.id == note_id, Note.deleted_at.is_(None)))
                 if note is None:
                     continue
-                job = await create_rag_v2_index_job(session, note, force=force)
+                job = await create_rag_index_job(session, note, force=force)
                 if job.status != "success" or force:
-                    await run_rag_v2_index_job(session, note, job)
+                    await run_rag_index_job(session, note, job)
                 await session.commit()
                 counts["notes"] += 1
                 counts[job.status] = counts.get(job.status, 0) + 1
@@ -57,7 +57,7 @@ async def main_async(limit: int, no_embeddings: bool, force: bool) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Rebuild the derived NoteFlow RAG v2 index")
+    parser = argparse.ArgumentParser(description="Rebuild the derived NoteFlow RAG index")
     parser.add_argument("--limit", type=int, default=10000)
     parser.add_argument("--no-embeddings", action="store_true")
     parser.add_argument("--force", action="store_true")

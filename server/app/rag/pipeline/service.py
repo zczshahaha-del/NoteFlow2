@@ -7,15 +7,15 @@ from app.database import AsyncSessionLocal
 from app.models.db import RagQueryLog
 from app.observability.context import current_trace
 from app.rag.service import RagRequest, RagResult
-from app.rag.v2.context import build_context, citation_to_dict
-from app.rag.v2.reranker import rerank_with_fallback
-from app.rag.v2.retrieval import retrieve_candidates
+from app.rag.pipeline.context import build_context, citation_to_dict
+from app.rag.pipeline.reranker import rerank_with_fallback
+from app.rag.pipeline.retrieval import retrieve_candidates
 from app.services.observability import record_metric
 from app.utils import random_id
 
 
 class LlamaIndexRagService:
-    """RAG v2 facade; the storage model remains NoteFlow-owned and versioned."""
+    """Production RAG facade backed by NoteFlow-owned, versioned storage."""
 
     async def retrieve(self, request: RagRequest) -> RagResult:
         transient_context: list[str] = []

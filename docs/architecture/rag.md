@@ -1,8 +1,8 @@
-# NoteFlow RAG v2 架构
+# NoteFlow RAG 架构
 
 ## 边界
 
-RAG v2 是 NoteFlow 拥有的数据与业务模块，LlamaIndex 提供标准 `TextNode` 适配能力，但不接管用户权限、数据库主键、索引版本或工作流。生产回答当前仍由 legacy 返回；步骤 13 才会做 Agent/RAG 灰度。
+RAG 是 NoteFlow 正式的数据与业务模块。LlamaIndex 提供标准 `TextNode` 适配能力，但不接管用户权限、数据库主键、索引版本或工作流。当前生产检索统一通过 `app.rag.pipeline` 执行。
 
 ```mermaid
 flowchart LR
@@ -28,7 +28,7 @@ flowchart LR
 - `rag_v2_embeddings`：按 node/provider/model/dimension 唯一的向量派生记录。
 - `note_index_jobs.graph_version=rag-v2`：复用已有 claim、heartbeat、重试和 stale recovery 基础设施。
 
-所有 v2 表均为派生数据。降级 `20260717_0007 -> 20260717_0006` 只删除这三张表，不修改笔记、legacy section/chunk/embedding 或业务记录。
+上述表名保留最初上线时的 `rag_v2` 前缀，以兼容既有数据库和迁移记录；它们均为可重建的派生数据。降级 `20260717_0007 -> 20260717_0006` 只删除这三张表，不修改笔记或其他业务记录。
 
 ## AST 与分块
 
@@ -78,20 +78,18 @@ BM25 只对 SQL 已过滤后的节点建立内存索引；缓存 key 同时包�
 
 ## 配置与回滚
 
-默认安全配置：
+默认配置：
 
-- `RAG_PROVIDER=legacy`
-- `RAG_V2_INDEX_ENABLED=false`
 - `RAG_RERANK_ENABLED=false`
 - `RAG_BM25_ENABLED=true`
 - `RAG_VECTOR_ENABLED=true`
 
-可以分别关闭 Rewrite、BM25、Vector、Reranker。整体回滚只需保持 `RAG_PROVIDER=legacy`；v2 派生索引可继续重建或直接清理，不影响旧回答路径。
+可以分别关闭 Rewrite、BM25、Vector 和 Reranker。RAG 派生索引可以安全重建；数据库中的 `rag_v2_*` 名称仅作为兼容标识保留。
 
 ## 运维入口
 
-- `POST /api/rag-v2/reindex`：当前用户按单篇或批量入队重建。
-- `GET /api/rag-v2/index-status`：查询版本、状态、节点数量和错误。
-- `python3 scripts/rebuild_rag_v2.py`：管理员后台重建。
-- `python3 scripts/check_rag_v2_data.py`：只读一致性检查。
-- `python3 scripts/run_rag_v2_eval.py`：固定评测与 legacy 对照。
+- `POST /api/rag-v2/reindex`：当前用户按单篇或批量入队重建；路径为兼容旧客户端而保留。
+- `GET /api/rag-v2/index-status`：查询版本、状态、节点数量和错误；路径为兼容旧客户端而保留。
+- `python3 scripts/rebuild_rag.py`：管理员后台重建。
+- `python3 scripts/check_rag_data.py`：只读一致性检查。
+- `python3 scripts/run_rag_eval.py`：运行固定 RAG 评测。

@@ -13,8 +13,8 @@
 |---|---|---|---|
 | 三栏工作台、目录、搜索框、移动端抽屉 | 可用 | 已实现 | `App.tsx`、`AppNav.tsx`、`DirectoryTree.tsx` |
 | 分类/文件夹新建、重命名、移动、软删除 | 可用 | 已实现 | notes/categories API、DirectoryTree store actions |
-| Markdown 正文编辑 | 可用 | 已实现 | `TiptapPilotEditor.tsx`、编辑器 codec 测试 |
-| Tiptap 与 Markdown round-trip | 可用，已作为唯一编辑器 | 已实现 | `TiptapPilotEditor.tsx`、8 个固定 codec fixtures |
+| Markdown 正文编辑 | 可用 | 已实现 | `NoteEditor.tsx`、编辑器 codec 测试 |
+| Tiptap 与 Markdown round-trip | 可用，已作为唯一编辑器 | 已实现 | `NoteEditor.tsx`、8 个固定 codec fixtures |
 | 代码块编辑、选择、复制、语言切换 | 可用，已有 UI 契约与交互测试 | 已实现 | Tiptap extension、editor UI/selection tests |
 | IME 中文输入、选区、离线冲突 | 可用 | 已实现 | input-composition、selection、offline-conflict tests |
 | 自动保存、版本、恢复、乐观冲突 | 可用 | 已实现 | notes API、NoteVersion、conflict tests |

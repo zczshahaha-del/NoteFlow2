@@ -8,7 +8,7 @@ from typing import Protocol
 import httpx
 
 from app.config import cfg
-from app.rag.v2.retrieval import RetrievalCandidate
+from app.rag.pipeline.retrieval import RetrievalCandidate
 
 
 def _reranker_endpoint(base_url: str, model: str) -> str:

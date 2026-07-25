@@ -63,7 +63,7 @@ DATABASE_AND_EVAL_COMMANDS = [
         cwd=SERVER_ROOT,
         env={"NOTEFLOW_RUN_DB_TESTS": "1"},
     ),
-    GateCommand("rag", "rag-v2-fixed-eval", [sys.executable, "scripts/run_rag_v2_eval.py"]),
+    GateCommand("rag", "rag-fixed-eval", [sys.executable, "scripts/run_rag_eval.py"]),
     GateCommand("memory", "memory-safety-eval", [sys.executable, "scripts/run_memory_safety_eval.py"]),
 ]
 

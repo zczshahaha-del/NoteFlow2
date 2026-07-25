@@ -10,7 +10,7 @@ from urllib.parse import quote
 from app.agent.contracts import RuntimeEvent
 from app.config import cfg
 from app.providers.contracts import ChatProviderRequest, ProviderChatMessage
-from app.rag.v2.context import validate_citation_indexes
+from app.rag.pipeline.context import validate_citation_indexes
 
 
 class ReadonlyAgentState(TypedDict, total=False):

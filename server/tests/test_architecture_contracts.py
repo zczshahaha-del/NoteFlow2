@@ -8,7 +8,7 @@ from app.agent.contracts import RuntimeErrorCode, RuntimeEvent
 from app.providers.chat import DeepSeekChatModelProvider
 from app.providers.contracts import ChatModelProvider
 from app.rag.service import configured_rag_service
-from app.rag.v2.service import LlamaIndexRagService
+from app.rag.pipeline.service import LlamaIndexRagService
 from app.repositories.base import require_user_id
 from app.repositories import (
     AttachmentRepository,

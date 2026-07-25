@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useDraftSlice, useWorkspaceSlice } from "../storeSlices";
 import type { FileNode } from "../types";
-import { generateNoteStream } from "../services/deepseek";
+import { generateNoteStream } from "../services/aiStream";
 import {
   assembleNoteDraft,
   cancelNoteDraft,

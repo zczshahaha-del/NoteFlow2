@@ -31,7 +31,7 @@ import {
   X,
 } from "lucide-react";
 import { useEditorSlice } from "../storeSlices";
-import { findFileById } from "../mockData";
+import { findFileById } from "../workspaceTree";
 import { createNoteFlowTiptapExtensions } from "../editor/tiptapExtensions";
 import { findTiptapTextRange } from "../utils/tiptapSelection";
 import OutlinePanel from "./OutlinePanel";
@@ -226,7 +226,7 @@ function SelectionToolbarButton({
   );
 }
 
-export default function TiptapPilotEditor() {
+export default function NoteEditor() {
   const {
     selectedFileId,
     treeData,

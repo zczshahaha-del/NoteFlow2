@@ -28,7 +28,7 @@ import {
   useEditorSlice,
   useWorkspaceSlice,
 } from "../storeSlices";
-import { findFileById } from "../mockData";
+import { findFileById } from "../workspaceTree";
 import { handleRenderedCodeBlockAction, renderChatMarkdown } from "../utils/chatMarkdown";
 import { shouldSubmitChatInput } from "../utils/inputComposition";
 import type { AgentToolTrace, ChatMessage, ChatSource } from "../types";

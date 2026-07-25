@@ -15,12 +15,12 @@ sys.path.insert(0, str(ROOT / "server"))
 
 async def main_async() -> int:
     from app.database import AsyncSessionLocal, engine
-    from app.models.db import Note, NoteIndexJob, RagV2Embedding, RagV2IndexState, RagV2Node
+    from app.models.db import Note, NoteIndexJob, RagEmbedding, RagIndexState, RagNode
 
     async with AsyncSessionLocal() as session:
         revision = await session.scalar(text("select version_num from alembic_version"))
         active_notes = (await session.execute(select(Note.id, Note.content).where(Note.deleted_at.is_(None)))).all()
-        states = (await session.execute(select(RagV2IndexState))).scalars().all()
+        states = (await session.execute(select(RagIndexState))).scalars().all()
         state_by_note = {state.note_id: state for state in states}
         missing_states = [note_id for note_id, _content in active_notes if note_id not in state_by_note]
         stale_states = [
@@ -29,15 +29,15 @@ async def main_async() -> int:
             if note_id in state_by_note
             and state_by_note[note_id].source_version != hashlib.sha256((content or "").encode()).hexdigest()
         ]
-        node_count = await session.scalar(select(func.count(RagV2Node.id)).where(RagV2Node.active.is_(True)))
+        node_count = await session.scalar(select(func.count(RagNode.id)).where(RagNode.active.is_(True)))
         node_pointer_mismatch = await session.scalar(
-            select(func.count(RagV2Node.id))
-            .join(RagV2IndexState, RagV2IndexState.note_id == RagV2Node.note_id)
-            .where(RagV2Node.active.is_(True), RagV2Node.source_version != RagV2IndexState.source_version)
+            select(func.count(RagNode.id))
+            .join(RagIndexState, RagIndexState.note_id == RagNode.note_id)
+            .where(RagNode.active.is_(True), RagNode.source_version != RagIndexState.source_version)
         )
         embedding_rows = (
             await session.execute(
-                select(RagV2Embedding.status, func.count(RagV2Embedding.id)).group_by(RagV2Embedding.status)
+                select(RagEmbedding.status, func.count(RagEmbedding.id)).group_by(RagEmbedding.status)
             )
         ).all()
         embedding_counts = {status: count for status, count in embedding_rows}

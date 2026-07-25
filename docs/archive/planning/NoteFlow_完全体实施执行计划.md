@@ -1,7 +1,7 @@
 # NoteFlow 完全体实施执行计划
 
 > 文档性质：后续逐步实施的唯一执行顺序与验收清单
-> 依据文档：`docs/specification/NoteFlow_统一架构与功能设计说明书_v2.0_整合版.docx`
+> 依据文档：`docs/specification/NoteFlow_统一架构与功能设计说明书.docx`
 > 当前目标：在不推翻现有前端 UI 和稳定业务能力的前提下，把 NoteFlow 完成到可正式运行、可测试、可灰度、可回滚、可维护的完全体。
 > 核心选型：LangGraph 全局编排、LlamaIndex RAG v2、Mem0 OSS 长期记忆、PostgreSQL + pgvector、Redis、FastAPI、React/Tiptap、SSE。
 

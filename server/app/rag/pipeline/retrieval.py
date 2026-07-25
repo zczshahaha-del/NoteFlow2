@@ -12,7 +12,7 @@ from sqlalchemy import select, text
 
 from app.config import cfg
 from app.database import AsyncSessionLocal
-from app.models.db import Note, RagV2IndexState, RagV2Node
+from app.models.db import Note, RagIndexState, RagNode
 from app.services.embeddings import embed_texts, embedding_enabled
 from app.services.note_library import QueryUnderstanding, understand_note_query
 from app.services.pgvector import vector_literal
@@ -96,22 +96,22 @@ def tokenize(value: str) -> list[str]:
 async def _visible_nodes(user_id: str, note_id: str | None = None) -> list[RetrievalCandidate]:
     async with AsyncSessionLocal() as session:
         stmt = (
-            select(RagV2Node, Note.title)
-            .join(Note, Note.id == RagV2Node.note_id)
-            .join(RagV2IndexState, RagV2IndexState.note_id == RagV2Node.note_id)
+            select(RagNode, Note.title)
+            .join(Note, Note.id == RagNode.note_id)
+            .join(RagIndexState, RagIndexState.note_id == RagNode.note_id)
             .where(
-                RagV2Node.user_id == user_id,
-                RagV2Node.active.is_(True),
-                RagV2IndexState.user_id == user_id,
-                RagV2IndexState.status == "indexed",
-                RagV2Node.source_version == RagV2IndexState.source_version,
+                RagNode.user_id == user_id,
+                RagNode.active.is_(True),
+                RagIndexState.user_id == user_id,
+                RagIndexState.status == "indexed",
+                RagNode.source_version == RagIndexState.source_version,
                 Note.user_id == user_id,
                 Note.deleted_at.is_(None),
             )
         )
         if note_id:
-            stmt = stmt.where(RagV2Node.note_id == note_id)
-        rows = (await session.execute(stmt.order_by(RagV2Node.note_id, RagV2Node.node_index))).all()
+            stmt = stmt.where(RagNode.note_id == note_id)
+        rows = (await session.execute(stmt.order_by(RagNode.note_id, RagNode.node_index))).all()
     return [
         RetrievalCandidate(
             node_id=node.id,

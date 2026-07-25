@@ -28,6 +28,6 @@ class RagService(Protocol):
 
 def configured_rag_service() -> RagService:
     """Return NoteFlow's single supported RAG implementation."""
-    from app.rag.v2.service import LlamaIndexRagService
+    from app.rag.pipeline.service import LlamaIndexRagService
 
     return LlamaIndexRagService()

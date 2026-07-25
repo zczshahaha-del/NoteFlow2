@@ -246,7 +246,7 @@ class NoteIndexJob(Base):
     finished_at: Mapped[Optional[datetime]] = mapped_column("finished_at", DateTime, nullable=True)
 
 
-class RagV2IndexState(Base):
+class RagIndexState(Base):
     """Atomic pointer to the only source version visible to RAG v2."""
 
     __tablename__ = "rag_v2_index_states"
@@ -266,7 +266,7 @@ class RagV2IndexState(Base):
     indexed_at: Mapped[Optional[datetime]] = mapped_column("indexed_at", DateTime, nullable=True)
 
 
-class RagV2Node(Base):
+class RagNode(Base):
     """Versioned, structured Markdown node used only by the v2 retriever."""
 
     __tablename__ = "rag_v2_nodes"
@@ -295,7 +295,7 @@ class RagV2Node(Base):
     updated_at: Mapped[datetime] = mapped_column("updated_at", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-class RagV2Embedding(Base):
+class RagEmbedding(Base):
     __tablename__ = "rag_v2_embeddings"
     __table_args__ = (
         UniqueConstraint("node_id", "provider", "embedding_model", "embedding_dim", name="uq_rag_v2_embedding_version"),

@@ -9,7 +9,7 @@ import LoginPage from "./components/LoginPage";
 import { useAuthSession } from "./hooks/useAuthSession";
 import { useChatSlice, useDraftSlice } from "./storeSlices";
 
-const TiptapPilotEditor = lazy(() => import("./components/TiptapPilotEditor"));
+const NoteEditor = lazy(() => import("./components/NoteEditor"));
 
 const THEME_STORAGE_KEY = "noteflow-theme-mode";
 
@@ -153,7 +153,7 @@ function WorkspaceCenter() {
         </main>
       )}
     >
-      <TiptapPilotEditor />
+      <NoteEditor />
     </Suspense>
   );
 }

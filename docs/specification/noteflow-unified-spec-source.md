@@ -212,7 +212,7 @@ OpenViking 可以作为未来外部知识源或知识组织实验，但不进入
 |---|---|
 | App / storeSlices | 组合 workspace、editor、chat、agent、draft 状态 |
 | DirectoryTree | 分类/文件夹、笔记选择、搜索、新建与删除确认 |
-| TiptapPilotEditor | 唯一的 Markdown 编辑器，负责选区、代码块、大纲和自动保存 |
+| NoteEditor | 唯一的 Markdown 编辑器，负责选区、代码块、大纲和自动保存 |
 | AIPanel | 模式选择、输入、SSE 消费、来源、轨迹和任务状态 |
 | AIDraftWorkspace | 大纲与分节生成、确认、停止、保存 |
 | EditPreviewWorkspace | 差异预览、修订、应用与取消 |
@@ -228,7 +228,7 @@ OpenViking 可以作为未来外部知识源或知识组织实验，但不进入
 
 ### 5.4 SSE 兼容原则
 
-- 前端继续通过现有 askDeepSeekStream/agent service 消费 text/event-stream。
+- 前端继续通过现有 askAIStream/agent service 消费 text/event-stream。
 - 后端内部事件可以升级，但对外必须经过 SSE Adapter，保证旧组件仍能理解 context、tool_trace、checkpoint、agent_done、agent_error、choices delta 和 [DONE]。
 - 每个事件都带 sessionId/runId；可以重放的状态事件带 eventId 和 sequence。
 - 断线重连优先读取最新 run/checkpoint 快照，再决定是否续流或提示用户恢复。
@@ -370,7 +370,7 @@ class ToolResult(BaseModel):
 - update/forget/list：用户管理操作。
 - 记忆工具不得从笔记正文自动推断用户个人事实。
 
-## 9. LlamaIndex RAG v2.0
+## 9. LlamaIndex RAG
 
 [DIAGRAM:rag]
 
@@ -763,7 +763,7 @@ src/
 ├── components/
 │   ├── AppNav.tsx
 │   ├── DirectoryTree.tsx
-│   ├── TiptapPilotEditor.tsx
+│   ├── NoteEditor.tsx
 │   ├── AIPanel.tsx
 │   ├── AIDraftWorkspace.tsx
 │   ├── EditPreviewWorkspace.tsx
@@ -1089,7 +1089,7 @@ server/app/
 
 验收：路由一致率达目标；无跨用户/副作用风险；可按用户灰度。
 
-### 21.4 Phase 3：LlamaIndex RAG v2
+### 21.4 Phase 3：LlamaIndex RAG
 
 - 接入 AST Parser、结构化 chunk、LlamaIndex Node 和 pgvector adapter。
 - 先保留 title/vector，实现 BM25、Query Rewrite、Permission Filter、RRF、Reranker、Context Builder。
@@ -1114,7 +1114,7 @@ server/app/
 
 ### 21.7 Phase 6：默认切换与清理
 
-- LangGraph、LlamaIndex RAG v2 和 Mem0 已成为唯一正式运行链路。
+- LangGraph、LlamaIndex RAG 和 Mem0 已成为唯一正式运行链路。
 - 灰度、Shadow、Canary 和重复编排代码已删除。
 - 更新运维手册、告警、数据迁移和灾备文档。
 
@@ -1251,6 +1251,6 @@ server/app/
 
 ## 26. 最终架构结论
 
-NoteFlow 不需要推翻现有产品，也不需要用框架替代所有业务代码。最合理的升级方式是保留已经稳定的前端、API、数据模型和领域能力，在其上建立清晰的编排与 AI 能力边界：LangGraph 负责全局流程和恢复；LlamaIndex 负责可评测的 RAG v2；Mem0 负责长期记忆智能；PostgreSQL + pgvector 继续统一承载业务与向量数据；Redis 提供短暂基础设施能力。
+NoteFlow 不需要推翻现有产品，也不需要用框架替代所有业务代码。最合理的升级方式是保留已经稳定的前端、API、数据模型和领域能力，在其上建立清晰的编排与 AI 能力边界：LangGraph 负责全局流程和恢复；LlamaIndex 负责可评测的 RAG；Mem0 负责长期记忆智能；PostgreSQL + pgvector 继续统一承载业务与向量数据；Redis 提供短暂基础设施能力。
 
 完成迁移后的 NoteFlow 应同时具备四个特征：用户体验不因重构而回退；AI 行为可控、可追踪、可恢复；RAG 有真实的混合召回、重排、权限和评测；长期记忆可用但不越权。本文档作为后续代码重构、技术评审、任务拆分和最终验收的统一依据。

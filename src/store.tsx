@@ -8,9 +8,9 @@ import type {
   ChatSessionSummary,
   FileNode,
 } from "./types";
-import { findFileById, treeData as initialTreeData } from "./mockData";
-import { askDeepSeekStream } from "./services/deepseek";
-import type { ChatPageState } from "./services/deepseek";
+import { findFileById, initialWorkspaceTree } from "./workspaceTree";
+import { askAIStream } from "./services/aiStream";
+import type { ChatPageState } from "./services/aiStream";
 import {
   clearKnowledgeBase,
   loadKnowledgeBase,
@@ -969,7 +969,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   chatLoading: false,
   chatSessions: [],
   chatSessionsLoading: false,
-  treeData: initialTreeData,
+  treeData: initialWorkspaceTree,
 
   startDraft: (seed = "") => {
     const trimmedSeed = seed.trim();
@@ -2167,7 +2167,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         }
       };
 
-      await askDeepSeekStream({
+      await askAIStream({
         sessionId: latest.agentSessionId,
         question: text,
         mode: chatMode,

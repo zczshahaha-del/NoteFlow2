@@ -4,8 +4,8 @@ import re
 from dataclasses import dataclass
 
 from app.config import cfg
-from app.rag.v2.parser import estimate_tokens
-from app.rag.v2.retrieval import RetrievalCandidate
+from app.rag.pipeline.parser import estimate_tokens
+from app.rag.pipeline.retrieval import RetrievalCandidate
 
 
 @dataclass(frozen=True)
@@ -91,7 +91,7 @@ def build_context(
         return BuiltContext(
             text=(
                 f"用户问题：{question}\n\n"
-                "NoteFlow RAG v2 没有检索到可用来源。"
+                "NoteFlow RAG 没有检索到可用来源。"
                 "必须明确告诉用户未在其笔记中找到答案，不得使用通用知识伪装成笔记内容，也不得生成引用。"
             ),
             citations=[],

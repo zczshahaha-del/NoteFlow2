@@ -10,11 +10,11 @@ from app.config import cfg
 from app.models.db import (
     Note,
     NoteIndexJob,
-    RagV2Embedding,
-    RagV2IndexState,
-    RagV2Node,
+    RagEmbedding,
+    RagIndexState,
+    RagNode,
 )
-from app.rag.v2.parser import CHUNKER_VERSION, PARSER_VERSION, StructuredNode, parse_markdown_nodes
+from app.rag.pipeline.parser import CHUNKER_VERSION, PARSER_VERSION, StructuredNode, parse_markdown_nodes
 from app.services.embeddings import chunk_embedding_text, content_hash, embed_texts, embedding_enabled
 from app.services.observability import record_metric
 from app.utils import random_id
@@ -38,7 +38,7 @@ def embedding_version() -> str:
     return f"{cfg.EMBEDDING_PROVIDER}:{cfg.EMBEDDING_MODEL}:{cfg.EMBEDDING_DIMENSIONS}"
 
 
-async def create_rag_v2_index_job(
+async def create_rag_index_job(
     session: AsyncSession,
     note: Note,
     *,
@@ -101,11 +101,11 @@ async def _index_embeddings(
     node_ids = [node.id for node in nodes]
     existing_rows = (
         await session.execute(
-            select(RagV2Embedding).where(
-                RagV2Embedding.node_id.in_(node_ids),
-                RagV2Embedding.provider == cfg.EMBEDDING_PROVIDER,
-                RagV2Embedding.embedding_model == cfg.EMBEDDING_MODEL,
-                RagV2Embedding.embedding_dim == cfg.EMBEDDING_DIMENSIONS,
+            select(RagEmbedding).where(
+                RagEmbedding.node_id.in_(node_ids),
+                RagEmbedding.provider == cfg.EMBEDDING_PROVIDER,
+                RagEmbedding.embedding_model == cfg.EMBEDDING_MODEL,
+                RagEmbedding.embedding_dim == cfg.EMBEDDING_DIMENSIONS,
             )
         )
     ).scalars().all()
@@ -125,7 +125,7 @@ async def _index_embeddings(
         for node in missing:
             row = existing.get(node.id)
             if row is None:
-                row = RagV2Embedding(
+                row = RagEmbedding(
                     id=random_id(),
                     node_id=node.id,
                     note_id=note.id,
@@ -158,7 +158,7 @@ async def _index_embeddings(
             for node, vector in zip(batch, result.embeddings):
                 row = existing.get(node.id)
                 if row is None:
-                    row = RagV2Embedding(
+                    row = RagEmbedding(
                         id=random_id(),
                         node_id=node.id,
                         note_id=note.id,
@@ -187,7 +187,7 @@ async def _index_embeddings(
             for node in batch:
                 row = existing.get(node.id)
                 if row is None:
-                    row = RagV2Embedding(
+                    row = RagEmbedding(
                         id=random_id(),
                         node_id=node.id,
                         note_id=note.id,
@@ -234,7 +234,7 @@ def _mark_v2_retry(job: NoteIndexJob, error: Exception, now: datetime) -> None:
         job.finished_at = now
 
 
-async def run_rag_v2_index_job(session: AsyncSession, note: Note, job: NoteIndexJob) -> NoteIndexJob:
+async def run_rag_index_job(session: AsyncSession, note: Note, job: NoteIndexJob) -> NoteIndexJob:
     started = datetime.utcnow()
     job.status = "running"
     job.started_at = job.started_at or started
@@ -265,14 +265,14 @@ async def run_rag_v2_index_job(session: AsyncSession, note: Note, job: NoteIndex
         existing_nodes = {
             row.id: row
             for row in (
-                await session.execute(select(RagV2Node).where(RagV2Node.id.in_([node.id for node in nodes])))
+                await session.execute(select(RagNode).where(RagNode.id.in_([node.id for node in nodes])))
             ).scalars().all()
         } if nodes else {}
 
         for node in nodes:
             row = existing_nodes.get(node.id)
             if row is None:
-                row = RagV2Node(id=node.id)
+                row = RagNode(id=node.id)
                 stats.created += 1
             else:
                 stats.reused += 1
@@ -308,18 +308,18 @@ async def run_rag_v2_index_job(session: AsyncSession, note: Note, job: NoteIndex
             return job
 
         await session.execute(
-            update(RagV2Node)
-            .where(RagV2Node.note_id == note.id, RagV2Node.user_id == note.user_id)
+            update(RagNode)
+            .where(RagNode.note_id == note.id, RagNode.user_id == note.user_id)
             .values(active=False)
         )
         if nodes:
             await session.execute(
-                update(RagV2Node).where(RagV2Node.id.in_([node.id for node in nodes])).values(active=True)
+                update(RagNode).where(RagNode.id.in_([node.id for node in nodes])).values(active=True)
             )
 
-        state = await session.get(RagV2IndexState, note.id)
+        state = await session.get(RagIndexState, note.id)
         if state is None:
-            state = RagV2IndexState(note_id=note.id, user_id=note.user_id)
+            state = RagIndexState(note_id=note.id, user_id=note.user_id)
         state.user_id = note.user_id
         state.source_version = source_version
         state.parser_version = PARSER_VERSION
@@ -356,10 +356,10 @@ async def run_rag_v2_index_job(session: AsyncSession, note: Note, job: NoteIndex
         return job
     except Exception as exc:
         _mark_v2_retry(job, exc, datetime.utcnow())
-        state = await session.get(RagV2IndexState, note.id)
+        state = await session.get(RagIndexState, note.id)
         if state is None or state.source_version in {"", job.source_version}:
             if state is None:
-                state = RagV2IndexState(note_id=note.id, user_id=note.user_id, source_version=job.source_version or "")
+                state = RagIndexState(note_id=note.id, user_id=note.user_id, source_version=job.source_version or "")
             state.status = "failed" if job.status == "failed" else "pending"
             state.error_code = job.error_code
             state.error_message = job.error_message
@@ -370,12 +370,12 @@ async def run_rag_v2_index_job(session: AsyncSession, note: Note, job: NoteIndex
         return job
 
 
-async def v2_index_diagnostics(session: AsyncSession, user_id: str, note_id: str | None = None) -> dict:
-    conditions = [RagV2IndexState.user_id == user_id]
+async def rag_index_diagnostics(session: AsyncSession, user_id: str, note_id: str | None = None) -> dict:
+    conditions = [RagIndexState.user_id == user_id]
     if note_id:
-        conditions.append(RagV2IndexState.note_id == note_id)
+        conditions.append(RagIndexState.note_id == note_id)
     states = (
-        await session.execute(select(RagV2IndexState).where(*conditions).order_by(RagV2IndexState.updated_at.desc()))
+        await session.execute(select(RagIndexState).where(*conditions).order_by(RagIndexState.updated_at.desc()))
     ).scalars().all()
     return {
         "provider": "llamaindex",
@@ -400,7 +400,7 @@ async def v2_index_diagnostics(session: AsyncSession, user_id: str, note_id: str
     }
 
 
-async def enqueue_rag_v2_rebuild(
+async def enqueue_rag_rebuild(
     session: AsyncSession,
     user_id: str,
     *,
@@ -414,4 +414,4 @@ async def enqueue_rag_v2_rebuild(
     notes = (
         await session.execute(stmt.order_by(Note.updated_at.desc()).limit(max(1, min(limit, 2000))))
     ).scalars().all()
-    return [await create_rag_v2_index_job(session, note, force=force) for note in notes]
+    return [await create_rag_index_job(session, note, force=force) for note in notes]
