@@ -77,7 +77,7 @@ NoteFlow 是以 Markdown 笔记为核心的个人知识工作台。它同时提�
 | 层级 | 当前实现 | 说明 |
 |---|---|---|
 | 前端 | React 19、TypeScript 6、Vite 8 | Zustand 状态、TanStack Query、SSE 客户端 |
-| 编辑器 | Tiptap 3、ProseMirror、Marked、Turndown | Markdown 往返、代码块、选区工具栏、版本历史 |
+| 编辑器 | Tiptap 3、ProseMirror、Tiptap Markdown | Markdown 往返、代码块、选区工具栏、版本历史 |
 | 后端 | Python、FastAPI 0.115、Pydantic 2 | 业务接口与流式接口 |
 | ORM/迁移 | SQLAlchemy Async 2、Alembic | asyncpg 连接 PostgreSQL |
 | 主数据库 | PostgreSQL 16 + pgvector | 业务数据、向量、运行记录 |
@@ -212,7 +212,7 @@ OpenViking 可以作为未来外部知识源或知识组织实验，但不进入
 |---|---|
 | App / storeSlices | 组合 workspace、editor、chat、agent、draft 状态 |
 | DirectoryTree | 分类/文件夹、笔记选择、搜索、新建与删除确认 |
-| NoteEditor / TiptapPilotEditor | Markdown 编辑、选区、代码块、大纲和自动保存 |
+| TiptapPilotEditor | 唯一的 Markdown 编辑器，负责选区、代码块、大纲和自动保存 |
 | AIPanel | 模式选择、输入、SSE 消费、来源、轨迹和任务状态 |
 | AIDraftWorkspace | 大纲与分节生成、确认、停止、保存 |
 | EditPreviewWorkspace | 差异预览、修订、应用与取消 |
@@ -576,9 +576,8 @@ LlamaIndex 作为独立 RagService 实现索引节点、检索器组合、后处
 
 ### 11.7 Mem0 接入策略
 
-- 新增 MemoryProvider 协议，先保留 LegacyMemoryProvider，再实现 Mem0Provider。
-- 第一阶段 shadow read/write：旧系统仍回答，Mem0 仅记录对照数据和指标。
-- 对比召回、错误记忆和延迟后逐步切到 Mem0；开关 MEMORY_PROVIDER=legacy|mem0。
+- Mem0Provider 已成为唯一长期记忆检索和同步实现。
+- `user_memories` 继续承担权限、安全策略、状态投影和审计，不作为第二套检索运行时。
 - 自托管 OSS 不支付 Mem0 Cloud 订阅，但仍有数据库、模型调用、计算、监控、备份和升级维护成本。
 - Mem0 使用现有 PostgreSQL/pgvector 或独立 schema/namespace，不新增 Qdrant。
 
@@ -730,12 +729,10 @@ mem0ai
 ### 15.2 目标环境变量
 
 ```text
-AGENT_RUNTIME=legacy|langgraph
 GRAPH_VERSION=v1
 LLM_PROVIDER=deepseek
 LLM_BASE_URL=https://api.deepseek.com
 LLM_MODEL=deepseek-v4-pro
-RAG_PROVIDER=legacy|llamaindex
 RAG_REWRITE_ENABLED=true
 RAG_BM25_ENABLED=true
 RAG_RERANK_ENABLED=true
@@ -743,9 +740,6 @@ RAG_CANDIDATE_K=30
 RAG_TOP_K=8
 RERANK_PROVIDER=...
 RERANK_MODEL=...
-MEMORY_PROVIDER=legacy|mem0
-MEMORY_SHADOW_WRITE=true
-MEMORY_SHADOW_READ=false
 EMBEDDING_PROVIDER=dashscope
 EMBEDDING_MODEL=text-embedding-v4
 EMBEDDING_DIMENSIONS=1024
@@ -769,7 +763,6 @@ src/
 ├── components/
 │   ├── AppNav.tsx
 │   ├── DirectoryTree.tsx
-│   ├── NoteEditor.tsx
 │   ├── TiptapPilotEditor.tsx
 │   ├── AIPanel.tsx
 │   ├── AIDraftWorkspace.tsx
@@ -1083,10 +1076,10 @@ server/app/
 ### 21.2 Phase 1：建立模块接口
 
 - 新增 ChatModelProvider、RagService、MemoryProvider、ToolResult 和 RuntimeEvent。
-- 用 legacy adapter 包装当前 note_library、memory 和 agent runtime。
+- 建立统一 Provider 和 Tool 边界。
 - 把 router 中可搬出的 SQL/业务逻辑移到 service/repository。
 
-验收：AGENT_RUNTIME/RAG_PROVIDER/MEMORY_PROVIDER 全为 legacy 时行为完全一致。
+验收：所有正式入口统一使用类型化 Provider 和 RuntimeEvent。
 
 ### 21.3 Phase 2：LangGraph Shadow
 
@@ -1121,8 +1114,8 @@ server/app/
 
 ### 21.7 Phase 6：默认切换与清理
 
-- 默认 AGENT_RUNTIME=langgraph、RAG_PROVIDER=llamaindex、MEMORY_PROVIDER=mem0。
-- 保留一个发布周期 legacy 回滚路径；稳定后删除重复编排代码。
+- LangGraph、LlamaIndex RAG v2 和 Mem0 已成为唯一正式运行链路。
+- 灰度、Shadow、Canary 和重复编排代码已删除。
 - 更新运维手册、告警、数据迁移和灾备文档。
 
 验收：全量 E2E、性能、安全、RAG 评测和生产灰度指标通过。

@@ -2,8 +2,8 @@
 
 > 由 `scripts/export_current_baseline.py` 从 FastAPI OpenAPI 事实导出。
 
-- API 路径数：75
-- 操作数：87
+- API 路径数：77
+- 操作数：91
 - 全局错误结构：`ApiErrorEnvelope { error: { code, message }, requestId, traceId }`（OpenAPI schema 保持向后兼容，traceId 为运行时关联字段）。
 - 认证实现：HttpOnly session cookie 为当前主路径；部分旧客户端仍兼容 Bearer。
 
@@ -13,12 +13,9 @@
 | GET | `/api/agent/checkpoints/latest` | Latest Checkpoint | - | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | POST | `/api/agent/checkpoints/{checkpoint_id}/bind` | Bind Checkpoint | CheckpointBindPayload | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | POST | `/api/agent/checkpoints/{checkpoint_id}/resolve` | Resolve Checkpoint | CheckpointResolvePayload | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
-| POST | `/api/agent/langgraph-poc/chat` | Langgraph Poc Chat | AgentChatPayload | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
-| GET | `/api/agent/langgraph-shadow/summary` | Langgraph Shadow Summary | - | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | GET | `/api/agent/runs` | List Runs | - | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | GET | `/api/agent/runs/latest` | Latest Run | - | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | POST | `/api/agent/runs/{run_id}/cancel` | Cancel Run | RunCancelPayload | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
-| POST | `/api/ai/chat` | Chat | ChatPayload | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | POST | `/api/ai/notes/generate` | Generate Note | NoteGeneratePayload | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | POST | `/api/attachments` | Upload Attachment | string | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | GET | `/api/attachments/{attachment_id}` | Download Attachment | - | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
@@ -38,6 +35,11 @@
 | POST | `/api/categories` | Create Category | CategoryPayload | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | PUT | `/api/categories/{category_id}` | Update Category | CategoryPayload | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | DELETE | `/api/categories/{category_id}` | Delete Category | - | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
+| GET | `/api/chat-sessions` | List Chat Sessions | - | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
+| POST | `/api/chat-sessions` | Create Chat Session | ChatSessionCreatePayload | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
+| PATCH | `/api/chat-sessions/{session_id}` | Update Chat Session | ChatSessionUpdatePayload | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
+| DELETE | `/api/chat-sessions/{session_id}` | Delete Chat Session | - | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
+| GET | `/api/chat-sessions/{session_id}/messages` | List Chat Messages | - | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | GET | `/api/diagnostics` | Diagnostics | - | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | route dependency / public |
 | GET | `/api/health` | Health | - | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | route dependency / public |
 | GET | `/api/index-jobs` | List Index Jobs | - | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
@@ -49,6 +51,7 @@
 | POST | `/api/memories` | Create Memory | MemoryPayload | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | GET | `/api/memories/context` | Get Memory Context | - | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | POST | `/api/memories/extract` | Extract Memory | MemoryExtractPayload | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
+| GET | `/api/memories/provider` | Get Memory Provider | - | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | POST | `/api/memories/search` | Search Memories | MemorySearchPayload | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | PUT | `/api/memories/{memory_id}` | Update Memory | MemoryUpdatePayload | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | DELETE | `/api/memories/{memory_id}` | Delete Memory | - | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
@@ -61,6 +64,7 @@
 | POST | `/api/note-drafts/{draft_id}/generate-all` | Generate All Draft Sections | DraftGenerateAllPayload | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | POST | `/api/note-drafts/{draft_id}/generate-all/stop` | Stop All Draft Sections | - | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | POST | `/api/note-drafts/{draft_id}/save-to-notes` | Save Draft To Notes | DraftSavePayload | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
+| POST | `/api/note-drafts/{draft_id}/sections` | Create Draft Section | DraftSectionPayload | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | PUT | `/api/note-drafts/{draft_id}/sections/{section_id}` | Update Draft Section | DraftSectionUpdatePayload | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | POST | `/api/note-drafts/{draft_id}/sections/{section_id}/confirm` | Confirm Draft Section | - | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |
 | POST | `/api/note-drafts/{draft_id}/sections/{section_id}/delete` | Delete Draft Section | - | object | 200, 400, 401, 403, 404, 409, 422, 429, 500, 502, 503 | cookie / bearer |

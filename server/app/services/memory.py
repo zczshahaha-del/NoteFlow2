@@ -58,13 +58,18 @@ IDENTITY_NAME_RE = re.compile(
 )
 PERSONAL_INFO_QUESTION_RE = re.compile(
     r"(我(?:今年|现在)?(?:多大|几岁)|我的年龄.*(?:多少|多大)|"
-    r"你.*(?:记得|知道).*我.*(?:多大|几岁|年龄))"
+    r"我的(?:身高|体重).*(?:多少|多高|多重)|"
+    r"我(?:身高|体重).*(?:多少|多高|多重)|"
+    r"你.*(?:记得|知道).*我.*(?:多大|几岁|年龄|身高|体重))"
 )
 AGE_STATEMENT_RE = re.compile(
     r"(我(?:今年|现在)?(?:都|已经|刚)?\s*\d{1,3}\s*岁|"
     r"(?:今年|现在)(?:都|已经|刚)?\s*\d{1,3}\s*岁)"
 )
 AGE_VALUE_RE = re.compile(r"(?:我)?(?:今年|现在)?(?:都|已经|刚)?\s*(\d{1,3})\s*岁")
+HEIGHT_STATEMENT_RE = re.compile(
+    r"(?:我(?:的)?身高(?:是|有)?|我高)\s*(\d{2,3}(?:\.\d+)?)\s*(厘米|cm|CM|米|m)?"
+)
 INTEREST_RE = re.compile(r"(我(?:很|特别|挺|比较)?(?:喜欢|爱|常玩|经常玩|平时玩|在玩|想玩)|我的爱好是)")
 INTEREST_VALUE_RE = re.compile(
     r"(?:我(?:很|特别|挺|比较)?(?:喜欢|爱|常玩|经常玩|平时玩|在玩|想玩)|我的爱好是)"
@@ -83,6 +88,7 @@ ANSWER_STYLE_RE = re.compile(r"(简洁|详细|通俗|专业|正式|口语|直接
 SINGLE_VALUE_KEYS = {
     "identity.name",
     "profile.age",
+    "profile.height",
     "lifestyle.sleep_schedule",
     "career.current_status",
     "career.current_goal",
@@ -92,6 +98,7 @@ SINGLE_VALUE_KEYS = {
 AUTO_ACTIVE_KEYS = {
     "identity.name",
     "profile.age",
+    "profile.height",
     "lifestyle.sleep_schedule",
     "career.current_status",
     "interest.general",
@@ -108,6 +115,9 @@ CANONICAL_KEY_ALIASES = {
     "profile.current_age": "profile.age",
     "profile.user_age": "profile.age",
     "age.general": "profile.age",
+    "personal_info.height": "profile.height",
+    "profile.user_height": "profile.height",
+    "height.general": "profile.height",
     "lifestyle.sleep": "lifestyle.sleep_schedule",
     "lifestyle.sleep_habit": "lifestyle.sleep_schedule",
     "lifestyle.sleep_pattern": "lifestyle.sleep_schedule",
@@ -250,6 +260,9 @@ def memory_layer(memory: UserMemory) -> str:
 
 
 def memory_canonical_key(memory: UserMemory) -> str:
+    stored_key = str(getattr(memory, "canonical_key", "") or "").strip()
+    if stored_key:
+        return normalize_canonical_key(stored_key, memory.memory_type)
     for tag in memory.tags or []:
         if isinstance(tag, str) and tag.startswith("key:"):
             return normalize_canonical_key(tag[4:], memory.memory_type)
@@ -460,6 +473,26 @@ def extract_memory_candidates(text: str, context: str = "global") -> list[Memory
             )
         )
 
+    height_match = HEIGHT_STATEMENT_RE.search(normalized)
+    if height_match:
+        raw_height = float(height_match.group(1))
+        unit = (height_match.group(2) or "cm").lower()
+        height_cm = raw_height * 100 if unit in {"米", "m"} and raw_height < 3 else raw_height
+        height_value = f"{height_cm:g}"
+        candidates.append(
+            _candidate(
+                memory_type="personal_info",
+                content=f"用户身高：{height_value}cm",
+                importance=4,
+                confidence=0.92,
+                source="user_explicit",
+                scope="global",
+                tags=["个人信息", "身高"],
+                canonical_key="profile.height",
+                value=height_value,
+            )
+        )
+
     if JOB_GOAL_RE.search(normalized):
         value = "求职中"
         if re.search(r"(后端|前端|Python|Java|Go|测试|产品|运营)", normalized, re.I):
@@ -646,6 +679,7 @@ async def find_memories(
                 return 1
             return 2
 
+        memories = [memory for memory in memories if key_rank(memory) < 2]
         memories.sort(key=lambda memory: (key_rank(memory), -score_memory(memory, query), memory.created_at))
     else:
         memories.sort(key=lambda memory: (-score_memory(memory, query), memory.created_at), reverse=False)

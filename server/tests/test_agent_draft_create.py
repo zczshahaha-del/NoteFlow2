@@ -1,30 +1,39 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import AsyncMock, Mock, patch
+from contextlib import asynccontextmanager
+from unittest.mock import AsyncMock, patch
 
-from app.agent.rollout import RuntimeDecision
 from app.deps import CurrentUser
 from app.routers import agent
 from app.schemas.agent import AgentChatPayload
-from app.services.context_planner import ContextPlan
+from app.services.turn_planner import (
+    ChatMode,
+    IntentParameters,
+    PlanResult,
+    PrimaryIntent,
+    TurnPlan,
+)
 
 
 class AgentDraftCreateTest(unittest.IsolatedAsyncioTestCase):
     async def test_draft_card_metadata_is_persisted_after_checkpoint_creation(self) -> None:
-        plan = ContextPlan(
-            primary_intent="note_draft_create",
+        plan = TurnPlan(
+            mode=ChatMode.CHAT,
+            primary_intent=PrimaryIntent.NOTE_CREATE,
+            intent_parameters=IntentParameters(
+                topic="Python",
+                requirements="生成一份 Python 学习笔记",
+            ),
             confidence=0.99,
-            reply_surface="draft_workspace",
-            context_plan={"topic": "Python"},
-            draft_request={
-                "topic": "Python",
-                "brief": "生成一份 Python 学习笔记",
-                "note_type": "智能笔记",
-                "source_mode": "model_knowledge",
-            },
-            source="test",
+            result=PlanResult.EXECUTE,
+            source="llm",
         )
+
+        @asynccontextmanager
+        async def fake_checkpointer():
+            yield object()
+
         checkpoint = {
             "id": "checkpoint-python",
             "runId": "run-python",
@@ -43,8 +52,14 @@ class AgentDraftCreateTest(unittest.IsolatedAsyncioTestCase):
         )
 
         with (
-            patch.object(agent, "plan_context_smart", AsyncMock(return_value=plan)),
-            patch.object(agent, "_latest_working_checkpoint", AsyncMock(return_value=None)),
+            patch.object(agent, "postgres_checkpointer", fake_checkpointer),
+            patch.object(agent, "graph_waiting_for_clarification", AsyncMock(return_value=False)),
+            patch.object(
+                agent,
+                "invoke_turn_graph",
+                AsyncMock(return_value={"turn_plan": plan.model_dump(mode="json"), "status": "ready"}),
+            ),
+            patch.object(agent, "_update_agent_run_intent", AsyncMock(return_value=None)),
             patch.object(agent, "_checkpoint_for_plan", AsyncMock(return_value=None)),
             patch.object(agent, "_effective_memory_enabled", AsyncMock(return_value=False)),
             patch.object(
@@ -59,13 +74,6 @@ class AgentDraftCreateTest(unittest.IsolatedAsyncioTestCase):
                     }
                 ),
             ),
-            patch.object(agent, "schedule_langgraph_shadow", Mock()),
-            patch.object(
-                agent,
-                "select_agent_runtime",
-                Mock(return_value=RuntimeDecision("legacy", "test", 0)),
-            ),
-            patch.object(agent, "select_child_runtime", Mock(return_value="langgraph")),
             patch.object(
                 agent,
                 "_record_tool_trace",

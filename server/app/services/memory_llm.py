@@ -1,24 +1,70 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from datetime import datetime
-from typing import Iterable
+from typing import Iterable, Literal
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.services.ai import ChatMessage, complete_chat
 from app.services.memory import (
     MemoryCandidate,
-    PERSISTED_MEMORY_LAYERS,
-    clamp_importance,
-    extract_memory_candidates,
     memory_layer_tags,
-    normalize_canonical_key,
-    normalize_memory_layer,
-    normalize_memory_type,
-    normalize_scope,
 )
 
 MAX_HISTORY_CHARS = 2200
+logger = logging.getLogger(__name__)
+
+
+class MemoryExtractionFailure(RuntimeError):
+    """The MemoryWriter model was unavailable or violated its JSON contract."""
+
+
+class MemoryCandidateOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    memory_type: Literal[
+        "episode",
+        "identity",
+        "personal_info",
+        "interest",
+        "preference",
+        "goal",
+        "writing_style",
+        "project",
+        "skill",
+        "constraint",
+        "workflow",
+    ]
+    layer: Literal["semantic", "episodic"]
+    canonical_key: str = Field(min_length=3, max_length=80)
+    value: str = Field(min_length=1, max_length=500)
+    content: str = Field(min_length=1, max_length=1000)
+    importance: int = Field(ge=1, le=5)
+    confidence: float = Field(ge=0.0, le=1.0)
+    source: Literal["user_explicit", "ai_inferred"]
+    scope: Literal[
+        "global",
+        "note_generation",
+        "note_editing",
+        "note_search",
+        "job_search",
+        "learning",
+    ] = "global"
+    tags: list[str] = Field(default_factory=list, max_length=12)
+    subject: Literal["user", "third_party", "assistant", "unknown"]
+    temporal_scope: Literal["durable", "current_phase", "temporary", "unknown"]
+    stability: Literal["high", "medium", "low"]
+    operation: Literal["upsert", "candidate", "reject"]
+    reason: str = Field(default="", max_length=300)
+
+
+class MemoryExtractionOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidates: list[MemoryCandidateOutput] = Field(default_factory=list, max_length=12)
 
 
 def _clean(value: object, limit: int = 500) -> str:
@@ -26,18 +72,10 @@ def _clean(value: object, limit: int = 500) -> str:
     return text[:limit]
 
 
-def _clamp_confidence(value: object) -> float:
-    try:
-        number = float(value)
-    except (TypeError, ValueError):
-        return 0.0
-    return max(0.0, min(1.0, number))
-
-
 def _json_from_text(text: str) -> dict:
     raw = (text or "").strip()
     if not raw:
-        return {"candidates": []}
+        raise ValueError("MemoryWriter returned an empty response")
     raw = re.sub(r"^```(?:json)?\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
     try:
@@ -45,29 +83,11 @@ def _json_from_text(text: str) -> dict:
     except json.JSONDecodeError:
         match = re.search(r"\{.*\}", raw, re.S)
         if not match:
-            return {"candidates": []}
-        try:
-            data = json.loads(match.group(0))
-        except json.JSONDecodeError:
-            return {"candidates": []}
-    return data if isinstance(data, dict) else {"candidates": []}
-
-
-def _candidate_content(memory_type: str, value: str) -> str:
-    labels = {
-        "episode": "用户历史经历",
-        "identity": "用户身份信息",
-        "personal_info": "用户个人信息",
-        "interest": "用户兴趣爱好",
-        "preference": "用户偏好",
-        "goal": "用户目标或当前状态",
-        "writing_style": "用户表达偏好",
-        "project": "用户项目背景",
-        "skill": "用户技能或学习方向",
-        "constraint": "用户长期限制",
-        "workflow": "用户工作习惯",
-    }
-    return f"{labels.get(memory_type, '用户记忆')}：{value}"
+            raise ValueError("MemoryWriter did not return a JSON object")
+        data = json.loads(match.group(0))
+    if not isinstance(data, dict):
+        raise ValueError("MemoryWriter JSON must be an object")
+    return data
 
 
 def _candidate_tags(
@@ -89,60 +109,40 @@ def _candidate_tags(
 
 
 def candidates_from_llm_payload(payload: dict, *, extraction_method: str = "llm") -> list[MemoryCandidate]:
-    items = payload.get("candidates") if isinstance(payload, dict) else []
-    if not isinstance(items, list):
-        return []
+    output = MemoryExtractionOutput.model_validate(payload)
 
     candidates: list[MemoryCandidate] = []
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        operation = _clean(item.get("operation"), 24) or "candidate"
-        memory_type = normalize_memory_type(_clean(item.get("memory_type"), 40))
-        layer = normalize_memory_layer(_clean(item.get("layer"), 24), memory_type)
-        if layer not in PERSISTED_MEMORY_LAYERS:
-            operation = "reject"
-        value = _clean(item.get("value"), 500)
-        content = _clean(item.get("content"), 1000) or _candidate_content(memory_type, value)
-        canonical_key = normalize_canonical_key(item.get("canonical_key"), memory_type)
-        confidence = _clamp_confidence(item.get("confidence"))
-        source = _clean(item.get("source"), 50) or "llm_extracted"
-        subject = _clean(item.get("subject"), 24) or "unknown"
-        temporal_scope = _clean(item.get("temporal_scope"), 24) or "unknown"
-        stability = _clean(item.get("stability"), 24) or "medium"
+    for item in output.candidates:
         tags = _candidate_tags(
-            item.get("tags") or [],
-            layer=layer,
-            canonical_key=canonical_key,
-            value=value,
+            item.tags,
+            layer=item.layer,
+            canonical_key=item.canonical_key,
+            value=item.value,
             extraction_method=extraction_method,
         )
-        if operation:
-            tags.append(f"operation:{operation}"[:80])
-        if subject:
-            tags.append(f"subject:{subject}"[:80])
-        if temporal_scope:
-            tags.append(f"temporal:{temporal_scope}"[:80])
+        tags.append(f"operation:{item.operation}"[:80])
+        tags.append(f"subject:{item.subject}"[:80])
+        tags.append(f"temporal:{item.temporal_scope}"[:80])
         tags = tags[:12]
 
         candidates.append(
             MemoryCandidate(
-                memory_type=memory_type,
-                content=content[:1000],
-                importance=clamp_importance(item.get("importance")),
-                confidence=confidence,
-                should_save=operation in {"upsert", "candidate"} and bool(value or content),
-                source=source,
-                scope=normalize_scope(_clean(item.get("scope"), 50)),
+                memory_type=item.memory_type,
+                content=item.content,
+                importance=item.importance,
+                confidence=item.confidence,
+                should_save=item.operation in {"upsert", "candidate"},
+                source=item.source,
+                scope=item.scope,
                 tags=tags,
-                canonical_key=canonical_key,
-                value=value,
-                layer=layer,
-                stability=stability,
-                subject=subject,
-                temporal_scope=temporal_scope,
-                operation=operation,
-                reason=_clean(item.get("reason"), 300),
+                canonical_key=item.canonical_key,
+                value=item.value,
+                layer=item.layer,
+                stability=item.stability,
+                subject=item.subject,
+                temporal_scope=item.temporal_scope,
+                operation=item.operation,
+                reason=item.reason,
             )
         )
     return candidates
@@ -163,6 +163,7 @@ def _format_history(history: list[ChatMessage] | None) -> str:
 
 def _build_messages(text: str, context: str, history: list[ChatMessage] | None) -> list[dict]:
     today = datetime.utcnow().date().isoformat()
+    schema = json.dumps(MemoryExtractionOutput.model_json_schema(), ensure_ascii=False)
     system = f"""
 你是 NoteFlow 的 Memory Extractor，只负责把用户当前这句话里的长期可复用信息提取成结构化 JSON。
 当前日期：{today}
@@ -174,7 +175,7 @@ def _build_messages(text: str, context: str, history: list[ChatMessage] | None) 
 4. 临时状态不要保存，例如“今天累”“这次先这样”“刚才不想写”。但“最近正在找工作/最近在学 Redis”属于当前阶段状态，可以提取。
 5. 不要把提问当成记忆写入，例如“你还记得我叫什么吗”应返回空 candidates。
 6. 不要做没有依据的推断：频繁问 Redis 不等于喜欢 Redis。
-7. 输出必须是 JSON 对象，不能有 markdown，不能有解释文字。
+7. 输出必须严格符合末尾 JSON Schema，不能有 markdown，不能有解释文字。
 
 允许的 memory_type：
 episode, identity, personal_info, interest, preference, goal, writing_style, project, skill, constraint, workflow
@@ -205,6 +206,9 @@ episode, identity, personal_info, interest, preference, goal, writing_style, pro
 - “今天我有点累” => 空 candidates
 - “缓存雪崩是什么” => 空 candidates
 - “你还记得我多大了吗” => 空 candidates
+
+JSON Schema：
+{schema}
 """.strip()
     user = (
         f"上下文类型：{context or 'global'}\n"
@@ -224,12 +228,48 @@ async def extract_memory_candidates_llm(
 ) -> list[MemoryCandidate]:
     if not text or not text.strip():
         return []
-    content = await complete_chat(
-        _build_messages(text, context, history),
-        max_tokens=1800,
-        temperature=0.0,
-    )
-    return candidates_from_llm_payload(_json_from_text(content), extraction_method="llm")
+    messages = _build_messages(text, context, history)
+    try:
+        content = await complete_chat(
+            messages,
+            max_tokens=1800,
+            temperature=0.0,
+            response_format={"type": "json_object"},
+        )
+    except Exception as exc:
+        logger.warning("MemoryWriter provider failed: %s", type(exc).__name__)
+        raise MemoryExtractionFailure("记忆提取服务暂时不可用。") from exc
+
+    try:
+        return candidates_from_llm_payload(_json_from_text(content), extraction_method="llm")
+    except Exception as contract_error:
+        logger.info("MemoryWriter contract repair requested: %s", type(contract_error).__name__)
+
+    repair_messages = [
+        *messages,
+        {"role": "assistant", "content": content[:5000]},
+        {
+            "role": "user",
+            "content": (
+                "上一份 JSON 未通过协议校验。"
+                "请严格按照 JSON Schema 修复，只返回完整 JSON 对象。"
+            ),
+        },
+    ]
+    try:
+        repaired = await complete_chat(
+            repair_messages,
+            max_tokens=1800,
+            temperature=0.0,
+            response_format={"type": "json_object"},
+        )
+        return candidates_from_llm_payload(
+            _json_from_text(repaired),
+            extraction_method="llm_repaired",
+        )
+    except Exception as exc:
+        logger.warning("MemoryWriter contract repair failed: %s", type(exc).__name__)
+        raise MemoryExtractionFailure("记忆提取结果格式异常，自动修复后仍未成功。") from exc
 
 
 async def extract_memory_candidates_smart(
@@ -237,15 +277,6 @@ async def extract_memory_candidates_smart(
     context: str = "global",
     history: list[ChatMessage] | None = None,
 ) -> list[MemoryCandidate]:
-    try:
-        candidates = await extract_memory_candidates_llm(text, context, history)
-        if candidates:
-            return candidates
-    except Exception:
-        pass
-    fallback = extract_memory_candidates(text, context)
-    for candidate in fallback:
-        candidate.reason = candidate.reason or "规则兜底提取"
-        if "method:rule" not in candidate.tags:
-            candidate.tags = (candidate.tags + ["method:rule"])[:12]
-    return fallback
+    """Compatibility entry point: semantic extraction is model-only."""
+
+    return await extract_memory_candidates_llm(text, context, history)

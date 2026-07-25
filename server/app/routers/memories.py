@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from app.config import cfg
 from app.deps import CurrentUser, get_current_user, redis_rate_limit
-from app.memory.rollout import effective_memory_provider, mem0_shadow_selected
 from app.models.db import UserMemory
 from app.services.ai import ChatMessage
 from app.services.memory import (
@@ -198,8 +197,8 @@ async def get_memory_context(
 @router.get("/memories/provider")
 async def get_memory_provider(user: CurrentUser = Depends(memory_user)):
     return {
-        "provider": effective_memory_provider(user.id),
-        "configuredProvider": cfg.MEMORY_PROVIDER,
-        "shadow": mem0_shadow_selected(user.id),
+        "provider": "mem0",
+        "configuredProvider": "mem0",
+        "shadow": False,
         "memoryEnabledByDefault": True,
     }

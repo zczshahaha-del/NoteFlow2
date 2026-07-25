@@ -31,6 +31,8 @@ class RetrievalCandidate:
     content: str
     content_hash: str
     source_version: str
+    start_line: int | None = None
+    end_line: int | None = None
     score: float = 0.0
     channels: list[str] = field(default_factory=list)
     scores: dict[str, float] = field(default_factory=dict)
@@ -59,6 +61,11 @@ def candidate_to_library_source(candidate: RetrievalCandidate):
         retrieval_channels=list(candidate.channels),
         query_intent=None,
     )
+
+
+def _line_number(metadata: dict[str, Any] | None, key: str) -> int | None:
+    value = (metadata or {}).get(key)
+    return int(value) if isinstance(value, int) and value >= 0 else None
 
 
 def _normalize(value: str) -> str:
@@ -115,6 +122,8 @@ async def _visible_nodes(user_id: str, note_id: str | None = None) -> list[Retri
             content=node.content,
             content_hash=node.content_hash,
             source_version=node.source_version,
+            start_line=_line_number(node.node_metadata, "start_line"),
+            end_line=_line_number(node.node_metadata, "end_line"),
         )
         for node, title in rows
     ]
@@ -144,7 +153,7 @@ async def title_retrieve(
         params["note_id"] = note_id
     sql = f"""
         SELECT node.id, node.note_id, n.title, node.section_key, node.section_path,
-               node.content, node.content_hash, node.source_version,
+               node.content, node.content_hash, node.source_version, node.node_metadata,
                ({' + '.join(f'CASE WHEN {condition} THEN 1 ELSE 0 END' for condition in conditions)})::float AS raw_score
         FROM rag_v2_nodes node
         JOIN rag_v2_index_states state ON state.note_id = node.note_id
@@ -173,6 +182,8 @@ async def title_retrieve(
             content=row["content"],
             content_hash=row["content_hash"],
             source_version=row["source_version"],
+            start_line=_line_number(row["node_metadata"], "start_line"),
+            end_line=_line_number(row["node_metadata"], "end_line"),
             score=float(row["raw_score"]),
             channels=["title"],
             scores={"title": float(row["raw_score"])},
@@ -296,7 +307,7 @@ async def vector_retrieve(
         params["note_id"] = note_id
     sql = f"""
         SELECT node.id, node.note_id, n.title, node.section_key, node.section_path,
-               node.content, node.content_hash, node.source_version,
+               node.content, node.content_hash, node.source_version, node.node_metadata,
                1 - (embedding.embedding <=> CAST(:query_vector AS vector)) AS similarity
         FROM rag_v2_embeddings embedding
         JOIN rag_v2_nodes node ON node.id = embedding.node_id
@@ -331,6 +342,8 @@ async def vector_retrieve(
             content=row["content"],
             content_hash=row["content_hash"],
             source_version=row["source_version"],
+            start_line=_line_number(row["node_metadata"], "start_line"),
+            end_line=_line_number(row["node_metadata"], "end_line"),
             score=float(row["similarity"]),
             channels=["vector"],
             scores={"vector": round(float(row["similarity"]), 6)},

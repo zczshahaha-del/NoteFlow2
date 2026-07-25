@@ -7,7 +7,7 @@ from app.memory.policy import filter_eligible_memories
 from app.services.user_settings import is_user_memory_enabled
 
 
-class LegacyMemoryService:
+class MemoryContextService:
     async def enabled(self, *, user_id: str, requested: bool) -> bool:
         if not requested:
             return False
@@ -40,7 +40,7 @@ class LegacyMemoryService:
                 session,
                 user_id=user_id,
                 query=query,
-                legacy_memories=memories,
+                candidate_memories=memories,
                 limit=6,
             )
             await session.commit()

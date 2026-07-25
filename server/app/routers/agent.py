@@ -11,24 +11,31 @@ from fastapi.responses import StreamingResponse
 from app.config import cfg
 from app.database import AsyncSessionLocal
 from app.deps import CurrentUser, get_current_user, redis_rate_limit
-from app.memory.service import LegacyMemoryService
+from app.memory.service import MemoryContextService
 from app.rag.service import RagRequest, configured_rag_service
 from app.repositories.runs import RunRepository
 from app.services.ai import ChatMessage, ChatRequest, stream_chat
-from app.services.context_planner import ContextPlan, fallback_context_plan, plan_context_smart
-from app.services.memory_read import MemoryReadPlan, plan_memory_read_smart
+from app.services.context_planner import ContextPlan
+from app.services.memory_read import memory_read_plan_from_turn_plan
 from app.services.runtime_errors import public_error_message
 from app.services.run_service import RunService
 from app.agent.sse import encode_event
 from app.observability.context import trace_scope
-from app.agent.shadow import schedule_langgraph_shadow
-from app.agent.canary import stream_canary
-from app.agent.langgraph_readonly import new_readonly_state, stream_readonly_graph
-from app.agent.rollout import select_agent_runtime, select_child_runtime
+from app.agent.langgraph_readonly import (
+    new_readonly_state,
+    postgres_checkpointer,
+    stream_readonly_graph,
+)
+from app.agent.langgraph_turn import (
+    graph_waiting_for_clarification,
+    invoke_turn_graph,
+    new_turn_state,
+)
 from app.services.agent_runtime import (
     finish_agent_run as _finish_agent_run,
     record_tool_trace as _record_tool_trace,
     start_agent_run as _start_agent_run,
+    update_agent_run_intent as _update_agent_run_intent,
 )
 from app.services.agent_checkpoints import (
     agent_run_history as _agent_run_history,
@@ -39,7 +46,7 @@ from app.services.agent_checkpoints import (
     patch_working_memory_status as _patch_working_memory_status,
 )
 from app.services.agent_memory import (
-    chat_history_for_memory as _chat_history_for_memory,
+    auto_save_memory_from_question as _auto_save_memory_from_question,
     episode_summary_from_checkpoint as _episode_summary_from_checkpoint,
     history_recall_context as _history_recall_context,
     list_memories_for_agent as _list_memories_for_agent,
@@ -60,6 +67,7 @@ from app.schemas.agent import (
     CheckpointResolvePayload,
     RunCancelPayload,
 )
+from app.services.turn_planner import ContextSource, PrimaryIntent, TurnPlan
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 logger = logging.getLogger(__name__)
@@ -73,9 +81,9 @@ def _event_delta_text(data: dict[str, Any]) -> str:
     return str(delta.get("content") or "") if isinstance(delta, dict) else ""
 
 
-def _langgraph_canary_response(
+def _langgraph_response(
     *, payload: AgentChatPayload, user_id: str, intent: str,
-    run_state: dict[str, Any], decision,
+    run_state: dict[str, Any], turn_plan: TurnPlan, memory_enabled: bool,
 ) -> StreamingResponse:
     session_id = run_state["session_id"]
     run_id = run_state["run_id"]
@@ -86,7 +94,8 @@ def _langgraph_canary_response(
         mode=payload.mode,
         history=[item.model_dump() for item in payload.history],
         page_state=_page_state_dict(payload.pageState) or {},
-        memory_enabled=payload.memoryEnabled,
+        turn_plan=turn_plan.model_dump(mode="json"),
+        memory_enabled=memory_enabled,
         session_id=session_id,
         run_id=run_id,
         trace_id=run_state.get("trace_id") or "",
@@ -101,88 +110,41 @@ def _langgraph_canary_response(
         error_message = ""
         with trace_scope(
             trace_id=run_state.get("trace_id") or "",
-            session_id=session_id, run_id=run_id, node="langgraph_canary",
+            session_id=session_id, run_id=run_id, node="langgraph",
         ):
             trace = await _record_tool_trace(
                 user_id=user_id, run_id=run_id, step_id=route_step_id,
-                tool_name="runtime_rollout", action="langgraph_readonly",
+                tool_name="agent_runtime", action="langgraph_readonly",
                 status="success", duration_ms=0,
                 input_summary=payload.question,
-                output_summary=f"canary={decision.reason};bucket={decision.bucket}",
-                metadata={
-                    "runtime": "langgraph", "ragProvider": "llamaindex",
-                    "reason": decision.reason, "bucket": decision.bucket,
-                },
+                output_summary="LangGraph fixed runtime",
+                metadata={"runtime": "langgraph", "ragProvider": "llamaindex"},
             )
             yield _sse_format(trace)
-            buffered_events: list[dict[str, Any]] = []
-            user_payload_started = False
-            fallback_before_payload = False
             try:
-                async for event in stream_canary(state):
-                    data = event.to_wire()
-                    event_type = event.type
-                    if not user_payload_started and event_type == "context":
-                        context_mode = data.get("contextMode")
-                        sources = list(data.get("sources") or [])
-                        buffered_events.append(data)
-                        continue
-                    if not user_payload_started and event_type not in {"choices", "agent_error"}:
-                        buffered_events.append(data)
-                        continue
-                    if event_type == "agent_error" and not user_payload_started:
-                        fallback_before_payload = True
-                        failed = False
-                        error_message = ""
-                        break
-                    if not user_payload_started:
-                        user_payload_started = True
-                        for buffered in buffered_events:
-                            yield _sse_format(buffered)
-                        buffered_events.clear()
-                    if event_type == "agent_session":
-                        data.setdefault("intent", intent)
-                    elif event_type == "choices":
-                        answer_parts.append(_event_delta_text(data))
-                    elif event_type == "context":
-                        context_mode = data.get("contextMode")
-                        sources = list(data.get("sources") or [])
-                    elif event_type == "agent_error":
-                        failed = True
-                        error_message = str(data.get("message") or "LangGraph canary failed")
-                    yield _sse_format(data)
+                async with postgres_checkpointer() as saver:
+                    async for event in stream_readonly_graph(state, checkpointer=saver):
+                        data = event.to_wire()
+                        if event.type == "agent_session":
+                            data.setdefault("intent", intent)
+                        elif event.type == "choices":
+                            answer_parts.append(_event_delta_text(data))
+                        elif event.type == "answer_replace":
+                            answer_parts = [str(data.get("content") or "")]
+                        elif event.type == "context":
+                            context_mode = data.get("contextMode")
+                            sources = list(data.get("sources") or [])
+                        elif event.type == "agent_error":
+                            failed = True
+                            error_message = str(data.get("message") or "LangGraph failed")
+                        yield _sse_format(data)
             except Exception as exc:
-                if not user_payload_started:
-                    fallback_before_payload = True
-                else:
-                    failed = True
-                    error_message = public_error_message(exc)
-                    yield _sse_format(_agent_error_event(session_id, run_id, error_message))
-                    yield _sse_format(_choice_delta(error_message))
-                    answer_parts.append(error_message)
-                    yield _sse_format(_agent_done_event(session_id, run_id, "failed"))
-
-            if fallback_before_payload:
-                fallback_trace = await _record_tool_trace(
-                    user_id=user_id, run_id=run_id, step_id=route_step_id,
-                    tool_name="runtime_rollout", action="fallback_legacy_readonly",
-                    status="success", duration_ms=0,
-                    input_summary=payload.question,
-                    output_summary="LangGraph 在首个用户可见事件前失败，已自动回退",
-                    metadata={"runtime": "legacy", "fallbackFrom": "langgraph"},
-                )
-                yield _sse_format(fallback_trace)
-                async for event in stream_readonly_graph(state):
-                    data = event.to_wire()
-                    if event.type == "choices":
-                        answer_parts.append(_event_delta_text(data))
-                    elif event.type == "context":
-                        context_mode = data.get("contextMode")
-                        sources = list(data.get("sources") or [])
-                    elif event.type == "agent_error":
-                        failed = True
-                        error_message = str(data.get("message") or "Legacy fallback failed")
-                    yield _sse_format(data)
+                failed = True
+                error_message = public_error_message(exc)
+                yield _sse_format(_agent_error_event(session_id, run_id, error_message))
+                yield _sse_format(_choice_delta(error_message))
+                answer_parts.append(error_message)
+                yield _sse_format(_agent_done_event(session_id, run_id, "failed"))
 
             answer = "".join(answer_parts).strip()
             await _finish_agent_run(
@@ -210,79 +172,121 @@ def _short(text: str, limit: int = 180) -> str:
     return normalized[:limit].rstrip() + "..."
 
 
-def _chat_mode_plan(mode: str) -> tuple[bool, ContextPlan]:
-    """Choose the answer path only from the user's visible composer mode."""
-    if mode == "ask_notes":
-        return True, ContextPlan(
-            primary_intent="note_search",
-            confidence=1.0,
-            reply_surface="note_reference",
-            context_plan={"search_note_library": True, "strict_note_answer": True},
-            reason="explicit:ask_notes",
-            source="ui_mode",
+def _context_plan_from_turn_plan(plan: TurnPlan) -> ContextPlan:
+    sources = set(plan.context_sources)
+    intent_map = {
+        PrimaryIntent.GENERAL_CHAT: "general_chat",
+        PrimaryIntent.NOTE_CREATE: "note_draft_create",
+        PrimaryIntent.NOTE_EDIT: "note_edit_create",
+        PrimaryIntent.MEMORY: "memory_manage",
+        PrimaryIntent.UNKNOWN: "general_chat",
+    }
+    intent = intent_map[plan.primary_intent]
+    if ContextSource.KNOWLEDGE_BASE in sources:
+        intent = "note_search"
+    parameters = plan.intent_parameters
+    return ContextPlan(
+        primary_intent=intent,
+        confidence=plan.confidence,
+        reply_surface=(
+            "draft_workspace"
+            if intent == "note_draft_create"
+            else "editor_patch"
+            if intent == "note_edit_create"
+            else "note_reference"
+            if intent == "note_search"
+            else "chat_bubble"
+        ),
+        memory_action=parameters.memory_action,
+        context_plan={
+            "use_current_selection": ContextSource.SELECTED_TEXT in sources,
+            "use_current_note": ContextSource.CURRENT_NOTE in sources,
+            "search_note_library": ContextSource.KNOWLEDGE_BASE in sources,
+            "read_user_memory": ContextSource.USER_MEMORY in sources,
+            "write_user_memory": False,
+            "continue_working_task": False,
+            "topic": parameters.topic or "",
+            "focus": parameters.requirements,
+        },
+        draft_request={
+            "topic": parameters.topic or "",
+            "brief": parameters.requirements,
+            "note_type": "智能笔记",
+            "source_mode": "model_knowledge",
+            "style": "按用户需求自动组织",
+        }
+        if intent == "note_draft_create"
+        else {},
+        edit_request={
+            "target_type": "selection" if ContextSource.SELECTED_TEXT in sources else "note",
+            "instruction": parameters.instruction,
+        }
+        if intent == "note_edit_create"
+        else {},
+        memory_read_request={
+            "query": parameters.memory_query,
+            "canonicalKey": parameters.memory_key,
+            "scope": parameters.memory_scope,
+            "layers": list(parameters.memory_layers),
+            "memoryTypes": list(parameters.memory_types),
+        }
+        if intent == "memory_manage"
+        else {},
+        reason=plan.reason,
+        source=plan.source,
+    )
+
+
+def _terminal_turn_response(
+    *,
+    user_id: str,
+    run_state: dict[str, Any],
+    intent: str,
+    answer: str,
+    turn_plan: TurnPlan | None = None,
+) -> StreamingResponse:
+    session_id = run_state["session_id"]
+    run_id = run_state["run_id"]
+
+    async def stream():
+        yield _sse_format(
+            {
+                "type": "agent_session",
+                "sessionId": session_id,
+                "runId": run_id,
+                "intent": intent,
+            }
         )
-    return False, ContextPlan(
-        primary_intent="general_chat",
-        confidence=1.0,
-        reply_surface="chat_bubble",
-        context_plan={},
-        reason="explicit:chat",
-        source="ui_mode",
+        if turn_plan is not None:
+            yield _sse_format(
+                {
+                    "type": "tool_trace",
+                    "toolName": "turn_planner",
+                    "action": turn_plan.result.value,
+                    "status": "success",
+                    "metadata": {"turnPlan": turn_plan.model_dump(mode="json"), "silent": True},
+                }
+            )
+        yield _sse_format(_choice_delta(answer))
+        await _finish_agent_run(
+            user_id=user_id,
+            session_id=session_id,
+            run_id=run_id,
+            status="completed",
+            answer=answer,
+        )
+        yield _sse_format(_agent_done_event(session_id, run_id, "completed"))
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream; charset=utf-8",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )
 
 
 def _page_state_dict(page_state: AgentChatPageState | None) -> dict[str, Any] | None:
     return page_state.model_dump() if page_state else None
-
-
-def _context_scope(page_state: AgentChatPageState | None) -> str:
-    return (page_state.contextScope if page_state else "auto") or "auto"
-
-
-def _apply_visible_chat_mode_policy(plan: ContextPlan, payload: AgentChatPayload) -> ContextPlan:
-    """Keep the visible composer mode deterministic without disabling tasks.
-
-    The "对话" mode must still understand commands such as generating a note,
-    editing the current note, reading memory, or resuming work. It should not,
-    however, silently turn a normal chat into full-library RAG; that only happens
-    when the user explicitly selects "全库搜索" (`ask_notes`).
-    """
-    if payload.mode == "ask_notes":
-        return plan
-
-    scope = _context_scope(payload.pageState)
-    if plan.primary_intent == "note_search" and scope != "knowledge_base":
-        return ContextPlan(
-            primary_intent="general_chat",
-            confidence=max(plan.confidence, 0.75),
-            reply_surface="chat_bubble",
-            context_plan={},
-            reason=f"{plan.reason};ui_mode:chat_blocks_library_search" if plan.reason else "ui_mode:chat_blocks_library_search",
-            source=plan.source,
-        )
-    return plan
-
-
-def _classify_intent(payload: AgentChatPayload) -> str:
-    force_note_answer, ui_plan = _chat_mode_plan(payload.mode)
-    if force_note_answer:
-        return ui_plan.primary_intent
-    plan = fallback_context_plan(
-        payload.question,
-        page_state=_page_state_dict(payload.pageState),
-        checkpoint=None,
-    )
-    return _apply_visible_chat_mode_policy(plan, payload).primary_intent
-
-
-def _should_use_memory_plan(plan: MemoryReadPlan) -> bool:
-    """The model decides whether a normal chat turn is about personal memory.
-
-    The composer mode is intentionally not involved here: it controls only note
-    retrieval. A low-confidence planner result must not inject unrelated profile
-    data into an ordinary conversation.
-    """
-    return plan.is_memory_query and plan.confidence >= 0.55
 
 
 def _note_sources_fallback(sources: list[dict]) -> str:
@@ -310,7 +314,7 @@ async def _checkpoint_for_plan(user_id: str, session_id: Optional[str], intent: 
 
 
 async def _effective_memory_enabled(user_id: str, requested: bool) -> bool:
-    return await LegacyMemoryService().enabled(user_id=user_id, requested=requested)
+    return await MemoryContextService().enabled(user_id=user_id, requested=requested)
 
 
 async def _resolve_checkpoint_by_id(
@@ -581,42 +585,134 @@ async def chat(
     payload: AgentChatPayload,
     user: CurrentUser = Depends(redis_rate_limit("agent-chat", cfg.AI_RATE_LIMIT)),
 ):
-    force_note_answer, ui_context_plan = _chat_mode_plan(payload.mode)
-    planning_checkpoint = None if force_note_answer else await _latest_working_checkpoint(user.id, payload.sessionId)
-    if force_note_answer:
-        context_plan = ui_context_plan
-    else:
-        context_plan = await plan_context_smart(
-            question=payload.question,
-            history=[ChatMessage(role=m.role, text=m.text) for m in payload.history],
-            page_state=_page_state_dict(payload.pageState),
-            checkpoint=planning_checkpoint,
-        )
-        context_plan = _apply_visible_chat_mode_policy(context_plan, payload)
-    intent = context_plan.primary_intent
-    active_checkpoint = await _checkpoint_for_plan(user.id, payload.sessionId, intent)
-    memory_enabled = await _effective_memory_enabled(user.id, not force_note_answer)
-
-    run_state = await _start_agent_run(payload, user.id, intent)
+    run_state = await _start_agent_run(payload, user.id, "planning")
     session_id = run_state["session_id"]
     run_id = run_state["run_id"]
     route_step_id = run_state["route_step_id"]
-    schedule_langgraph_shadow(
+    page_state_dict = _page_state_dict(payload.pageState) or {}
+
+    try:
+        async with postgres_checkpointer() as saver:
+            waiting = bool(payload.sessionId) and await graph_waiting_for_clarification(
+                checkpointer=saver,
+                thread_id=session_id,
+            )
+            turn_state = await invoke_turn_graph(
+                None
+                if waiting
+                else new_turn_state(
+                    user_id=user.id,
+                    session_id=session_id,
+                    question=payload.question,
+                    mode=payload.mode,
+                    history=[item.model_dump() for item in payload.history],
+                    page_state=page_state_dict,
+                ),
+                checkpointer=saver,
+                thread_id=session_id,
+                resume=payload.question if waiting else None,
+            )
+    except Exception as exc:
+        logger.exception("Turn planning failed")
+        answer = public_error_message(exc)
+        await _update_agent_run_intent(
+            user_id=user.id,
+            run_id=run_id,
+            step_id=route_step_id,
+            intent="unknown",
+        )
+        return _terminal_turn_response(
+            user_id=user.id,
+            run_state=run_state,
+            intent="unknown",
+            answer=answer,
+        )
+
+    raw_plan = turn_state.get("turn_plan") or {}
+    turn_plan = TurnPlan.model_validate(raw_plan) if raw_plan else None
+    if turn_state.get("status") == "cancelled":
+        intent = turn_plan.primary_intent.value if turn_plan else "unknown"
+        await _update_agent_run_intent(
+            user_id=user.id,
+            run_id=run_id,
+            step_id=route_step_id,
+            intent=intent,
+        )
+        return _terminal_turn_response(
+            user_id=user.id,
+            run_state=run_state,
+            intent=intent,
+            answer="已取消本次请求。",
+            turn_plan=turn_plan,
+        )
+    if "__interrupt__" in turn_state:
+        answer = (
+            str(turn_state.get("clarification_question") or "").strip()
+            or "还缺少一些必要信息，可以再具体说明一下吗？"
+        )
+        intent = turn_plan.primary_intent.value if turn_plan else "unknown"
+        await _update_agent_run_intent(
+            user_id=user.id,
+            run_id=run_id,
+            step_id=route_step_id,
+            intent=intent,
+        )
+        return _terminal_turn_response(
+            user_id=user.id,
+            run_state=run_state,
+            intent=intent,
+            answer=answer,
+            turn_plan=turn_plan,
+        )
+
+    if turn_plan is None or turn_state.get("status") == "failed":
+        answer = str(turn_state.get("error_message") or "意图识别失败，请再说具体一点。")
+        return _terminal_turn_response(
+            user_id=user.id,
+            run_state=run_state,
+            intent="unknown",
+            answer=answer,
+        )
+
+    if turn_plan.primary_intent == PrimaryIntent.UNKNOWN:
+        answer = (
+            str(turn_state.get("clarification_question") or "").strip()
+            or "我还没确定你想让我做什么，可以再具体说明一下吗？"
+        )
+        await _update_agent_run_intent(
+            user_id=user.id,
+            run_id=run_id,
+            step_id=route_step_id,
+            intent="unknown",
+        )
+        return _terminal_turn_response(
+            user_id=user.id,
+            run_state=run_state,
+            intent="unknown",
+            answer=answer,
+            turn_plan=turn_plan,
+        )
+
+    context_plan = _context_plan_from_turn_plan(turn_plan)
+    force_note_answer = ContextSource.KNOWLEDGE_BASE in turn_plan.context_sources
+    intent = context_plan.primary_intent
+    await _update_agent_run_intent(
         user_id=user.id,
-        question=payload.question,
-        mode=payload.mode,
-        history=[item.model_dump() for item in payload.history],
-        page_state=_page_state_dict(payload.pageState) or {},
-        legacy_intent=intent,
-        legacy_requires_sources=force_note_answer or bool(context_plan.context_plan.get("search_note_library")),
+        run_id=run_id,
+        step_id=route_step_id,
+        intent=intent,
     )
-    runtime_decision = select_agent_runtime(
-        user_id=user.id, intent=intent, mode=payload.mode,
-    )
-    if runtime_decision.runtime == "langgraph":
-        return _langgraph_canary_response(
-            payload=payload, user_id=user.id, intent=intent,
-            run_state=run_state, decision=runtime_decision,
+    active_checkpoint = await _checkpoint_for_plan(user.id, payload.sessionId, intent)
+    memory_enabled = await _effective_memory_enabled(user.id, not force_note_answer)
+
+    if intent in {"general_chat", "note_search", "note_context_qa"}:
+        return _langgraph_response(
+            payload=payload,
+            user_id=user.id,
+            intent=intent,
+            run_state=run_state,
+            turn_plan=turn_plan,
+            memory_enabled=memory_enabled,
         )
 
     async def _stream_impl():
@@ -654,33 +750,37 @@ async def chat(
             memory_context = ""
             page_state = payload.pageState
 
-            if memory_enabled:
+            if memory_enabled and context_plan.context_plan.get("read_user_memory"):
                 started = time.perf_counter()
-                memory_plan = await plan_memory_read_smart(
-                    payload.question,
-                    _chat_history_for_memory(payload.history),
+                memory_plan = memory_read_plan_from_turn_plan(
+                    turn_plan,
+                    question=payload.question,
                 )
-                if _should_use_memory_plan(memory_plan):
-                    _, context_memories = await _query_memories_for_agent(
-                        user.id,
-                        payload.question,
-                        payload.history,
-                        read_plan=memory_plan,
-                    )
-                    memory_context = _memory_context_from_records(context_memories)
-                    trace = await _record_tool_trace(
-                        user_id=user.id,
-                        run_id=run_id,
-                        step_id=route_step_id,
-                        tool_name="memory_tool",
-                        action="build_context",
-                        status="success",
-                        duration_ms=int((time.perf_counter() - started) * 1000),
-                        input_summary=payload.question,
-                        output_summary="已读取相关个人资料" if memory_context else "本轮不需要个人资料",
-                        metadata={"enabled": True, "silent": True, "plannerConfidence": memory_plan.confidence},
-                    )
-                    yield _sse_format(trace)
+                _, context_memories = await _query_memories_for_agent(
+                    user.id,
+                    payload.question,
+                    payload.history,
+                    read_plan=memory_plan,
+                )
+                memory_context = _memory_context_from_records(context_memories)
+                trace = await _record_tool_trace(
+                    user_id=user.id,
+                    run_id=run_id,
+                    step_id=route_step_id,
+                    tool_name="memory_tool",
+                    action="build_context",
+                    status="success",
+                    duration_ms=int((time.perf_counter() - started) * 1000),
+                    input_summary=payload.question,
+                    output_summary="已读取相关个人资料" if memory_context else "本轮不需要个人资料",
+                    metadata={
+                        "enabled": True,
+                        "silent": True,
+                        "plannerConfidence": turn_plan.confidence,
+                        "singleTurnPlan": True,
+                    },
+                )
+                yield _sse_format(trace)
 
             if intent in {"confirm_action", "cancel_action", "note_edit_revise"}:
                 checkpoint_payload = (active_checkpoint or {}).get("payload") or {}
@@ -778,6 +878,12 @@ async def chat(
                     )
                 )
                 yield _sse_format(_choice_delta(answer))
+                if memory_enabled:
+                    await _auto_save_memory_from_question(
+                        user.id,
+                        payload.question,
+                        payload.history,
+                    )
                 yield _sse_format(
                     {
                         "type": "agent_done",
@@ -978,17 +1084,39 @@ async def chat(
                     return
 
                 started = time.perf_counter()
-                memory_action = context_plan.memory_action if context_plan.memory_action in {"read", "list", "write", "delete", "disable"} else "read"
+                memory_action = (
+                    context_plan.memory_action
+                    if context_plan.memory_action
+                    in {"read", "list", "write", "update", "delete", "disable"}
+                    else "read"
+                )
                 if memory_action == "list":
                     tool_summary, memories = await _list_memories_for_agent(user.id)
                     action = "list_memories"
                     output_summary = f"读取 {len(memories)} 条长期记忆"
                 elif memory_action == "read":
-                    tool_summary, memories = await _query_memories_for_agent(user.id, payload.question, payload.history)
+                    tool_summary, memories = await _query_memories_for_agent(
+                        user.id,
+                        payload.question,
+                        payload.history,
+                        read_plan=memory_read_plan_from_turn_plan(
+                            turn_plan,
+                            question=payload.question,
+                        ),
+                    )
                     action = "list_memories"
                     output_summary = f"读取 {len(memories)} 条长期记忆"
                 elif memory_action == "delete":
-                    tool_summary, memories = await _delete_memories_from_question(user.id, payload.question)
+                    tool_summary, memories = await _delete_memories_from_question(
+                        user.id,
+                        payload.question,
+                        canonical_keys=(
+                            [turn_plan.intent_parameters.memory_key]
+                            if turn_plan.intent_parameters.memory_key
+                            else []
+                        ),
+                        memory_types=list(turn_plan.intent_parameters.memory_types),
+                    )
                     action = "delete_memories"
                     output_summary = tool_summary
                 elif memory_action == "disable":
@@ -1141,6 +1269,12 @@ async def chat(
                     )
                 )
                 yield _sse_format(_choice_delta(answer))
+                if memory_enabled:
+                    await _auto_save_memory_from_question(
+                        user.id,
+                        payload.question,
+                        payload.history,
+                    )
                 yield _sse_format(
                     {
                         "type": "agent_done",
@@ -1153,7 +1287,7 @@ async def chat(
                 return
 
             if intent == "note_draft_create":
-                draft_runtime = select_child_runtime("draft")
+                draft_runtime = "langgraph"
                 draft_seed = _draft_seed_from_plan(context_plan, payload.question)
                 planned_brief = _short(
                     str((context_plan.draft_request or {}).get("brief") or ""),
@@ -1226,6 +1360,12 @@ async def chat(
                     )
                 )
                 yield _sse_format(_choice_delta(answer))
+                if memory_enabled:
+                    await _auto_save_memory_from_question(
+                        user.id,
+                        payload.question,
+                        payload.history,
+                    )
                 yield _sse_format(
                     {
                         "type": "agent_done",
@@ -1238,7 +1378,7 @@ async def chat(
                 return
 
             if intent == "note_edit_create":
-                edit_runtime = select_child_runtime("edit")
+                edit_runtime = "langgraph"
                 if not page_state or not page_state.currentNoteId:
                     answer = "请先打开一篇正式笔记，再让我生成修改预览。"
                     yield _sse_format(_choice_delta(answer))
@@ -1300,6 +1440,12 @@ async def chat(
                     )
                 )
                 yield _sse_format(_choice_delta(answer))
+                if memory_enabled:
+                    await _auto_save_memory_from_question(
+                        user.id,
+                        payload.question,
+                        payload.history,
+                    )
                 yield _sse_format(
                     {
                         "type": "agent_done",

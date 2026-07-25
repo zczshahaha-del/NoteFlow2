@@ -3,7 +3,9 @@ from __future__ import annotations
 import unittest
 
 from app.observability.context import redact_data
-from app.services.context_planner import context_plan_from_llm_payload
+from pydantic import ValidationError
+
+from app.services.turn_planner import plan_from_llm_payload
 
 
 class Steps1618SecurityTest(unittest.TestCase):
@@ -19,22 +21,33 @@ class Steps1618SecurityTest(unittest.TestCase):
         self.assertNotIn("sk-abcdefghijklmnop", value["message"])
 
     def test_model_cannot_invent_unapproved_tool(self):
-        plan = context_plan_from_llm_payload(
-            {
-                "primary_intent": "general_chat",
-                "tool_plan": [
-                    {"tool": "shell_exec", "action": "read_secrets"},
-                    {"tool": "note_library_tool", "action": "search"},
-                ],
-            }
-        )
-        self.assertEqual([item["tool"] for item in plan.tool_plan], ["note_library_tool"])
+        with self.assertRaises(ValidationError):
+            plan_from_llm_payload(
+                {
+                    "primary_intent": "general_chat",
+                    "intent_parameters": {},
+                    "context_sources": [],
+                    "confidence": 0.9,
+                    "reason": "test",
+                    "tool_plan": [
+                        {"tool": "shell_exec", "action": "read_secrets"},
+                    ],
+                },
+                mode="chat",
+            )
 
     def test_model_cannot_escape_memory_action_allowlist(self):
-        plan = context_plan_from_llm_payload(
-            {"primary_intent": "memory_manage", "memory_action": "dump_all_users"}
-        )
-        self.assertEqual(plan.memory_action, "read")
+        with self.assertRaises(ValidationError):
+            plan_from_llm_payload(
+                {
+                    "primary_intent": "memory",
+                    "intent_parameters": {"memory_action": "dump_all_users"},
+                    "context_sources": ["user_memory"],
+                    "confidence": 0.9,
+                    "reason": "test",
+                },
+                mode="chat",
+            )
 
 
 if __name__ == "__main__":

@@ -71,11 +71,9 @@ class HttpReranker:
 
 
 def configured_reranker() -> CandidateReranker | None:
-    if not cfg.RAG_RERANK_ENABLED or cfg.RERANKER_PROVIDER in {"legacy", "none"}:
+    if not cfg.RAG_RERANK_ENABLED:
         return None
-    if cfg.RERANKER_PROVIDER in {"http", "llamaindex"}:
-        return HttpReranker(cfg.RERANKER_BASE_URL, cfg.RERANKER_API_KEY, cfg.RERANKER_MODEL)
-    raise RuntimeError(f"unsupported RERANKER_PROVIDER: {cfg.RERANKER_PROVIDER}")
+    return HttpReranker(cfg.RERANKER_BASE_URL, cfg.RERANKER_API_KEY, cfg.RERANKER_MODEL)
 
 
 async def rerank_with_fallback(

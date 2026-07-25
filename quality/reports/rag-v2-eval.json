@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-23T04:54:32.123810+00:00",
+  "generatedAt": "2026-07-23T08:38:47.814131+00:00",
   "datasetVersion": "2026-07-17-v1",
   "retrievalMode": "rag_v2 title/bm25/vector/weighted-rrf",
   "summary": {
@@ -24,23 +24,23 @@
       "title": 5
     }
   },
-  "legacyComparison": {
-    "recallAt5": 0.8,
-    "mrr": 0.8,
-    "nDcgAt5": 0.8
+  "qualityGate": {
+    "minRecallAt5": 0.8,
+    "minMrr": 0.8,
+    "minNDcgAt5": 0.8
   },
   "noAnswerAccuracy": 1.0,
   "crossUserLeakage": 0,
   "coldHotConsistent": true,
-  "nonInferior": true,
+  "passed": true,
   "latencyMs": {
     "cold": {
-      "p50": 2.6,
-      "p95": 23.42
+      "p50": 2.69,
+      "p95": 23.86
     },
     "hot": {
-      "p50": 2.0,
-      "p95": 3.14
+      "p50": 2.02,
+      "p95": 2.94
     }
   },
   "results": [
@@ -64,7 +64,7 @@
       },
       "expected": {
         "noteIds": [
-          "rag-v2-note-redis_avalanche-47f3b77d3c5d"
+          "rag-v2-note-redis_avalanche-de6a8edf4939"
         ],
         "sectionIds": [],
         "chunkIds": [],
@@ -103,11 +103,11 @@
       },
       "topResults": [
         {
-          "noteId": "rag-v2-note-redis_avalanche-47f3b77d3c5d",
+          "noteId": "rag-v2-note-redis_avalanche-de6a8edf4939",
           "noteTitle": "Redis 缓存故障处理",
-          "sectionId": "f13617329e2e302a93e9169ffc6732fd0fbba91c53b655c51df37f7518463d39",
+          "sectionId": "e5c69f71f9e4de92e4accedd8d8b1a00ca2701071a8485f9d71ff16237775df2",
           "sectionTitle": "缓存雪崩",
-          "chunkId": "016517abc75340ae66bc991d6b3f79c8f55b465af007d5352fcd57b3b2ae4ccb",
+          "chunkId": "825411392c96c573a6fb3ad4ad5e3fcad5b2fd1313f8fad65a547eada6f85d04",
           "sourceType": "rag_v2_node",
           "snippet": "缓存雪崩是大量缓存键在同一时间失效，导致请求直接冲击数据库。常见措施包括随机过期时间、限流、熔断和缓存预热。",
           "score": 0.016,
@@ -159,12 +159,12 @@
           "title": {
             "status": "ok",
             "count": 0,
-            "durationMs": 2.05
+            "durationMs": 1.26
           },
           "bm25": {
             "status": "ok",
             "count": 1,
-            "durationMs": 1.96
+            "durationMs": 2.08
           }
         },
         "rrf": {
@@ -197,7 +197,7 @@
       },
       "expected": {
         "noteIds": [
-          "rag-v2-note-rag_architecture-47f3b77d3c5d"
+          "rag-v2-note-rag_architecture-de6a8edf4939"
         ],
         "sectionIds": [],
         "chunkIds": [],
@@ -237,11 +237,11 @@
       },
       "topResults": [
         {
-          "noteId": "rag-v2-note-rag_architecture-47f3b77d3c5d",
+          "noteId": "rag-v2-note-rag_architecture-de6a8edf4939",
           "noteTitle": "RAG Architecture Notes",
-          "sectionId": "bab3acd7eacd5e29b1cd1b5ba07d61b21dbf0f3d8e556e7527d478d0f07a8f5b",
+          "sectionId": "e649c498bb692d926d533830743ebe8adbc9dbb5cb4665c8d91fdd2b78cf760f",
           "sectionTitle": "Retrieval-Augmented Generation / Hybrid retrieval",
-          "chunkId": "bca76753b266bc1ce3790c5a0f325328f49811df046b4848e0b6f0b9377fd79b",
+          "chunkId": "b63b5a4160e216cd597ce8e1609f3f5b25ed63fde0a111916409bb89023c6680",
           "sourceType": "rag_v2_node",
           "snippet": "BM25 and vector search can be fused with reciprocal rank fusion.",
           "score": 0.037,
@@ -266,11 +266,11 @@
           ]
         },
         {
-          "noteId": "rag-v2-note-rag_architecture-47f3b77d3c5d",
+          "noteId": "rag-v2-note-rag_architecture-de6a8edf4939",
           "noteTitle": "RAG Architecture Notes",
-          "sectionId": "ef8fc8e2115a900e609d3cbbad3fed46735493410a624efcbce9f49e99646f77",
+          "sectionId": "7e265af072be32d196a5924c8591551f6cc09128e30e6f3b456417e949ac566a",
           "sectionTitle": "Retrieval-Augmented Generation",
-          "chunkId": "20e7a73e16a13c48902f1aacfe1f57776835c313c3b76c37c790cd5b39dc97b5",
+          "chunkId": "3c4aff11ce4d2da178d053c722f4c60968a7c14388e7a1d9905bc52aa818a4bb",
           "sourceType": "rag_v2_node",
           "snippet": "RAG combines retrieval with generation. The retriever returns evidence chunks and the generator answers with citations.",
           "score": 0.036,
@@ -291,11 +291,11 @@
           "matchedKeywords": []
         },
         {
-          "noteId": "rag-v2-note-weekly_current-47f3b77d3c5d",
+          "noteId": "rag-v2-note-weekly_current-de6a8edf4939",
           "noteTitle": "项目周报",
-          "sectionId": "3b566dc2147a0079452015ceb706eea65ddd9afdd9caebcfa0b9e0756016353b",
+          "sectionId": "83893141fd27e09dbe3258c379a7a98c4af03ef1b277449d099ca3229bbf5639",
           "sectionTitle": "2026 年第 29 周",
-          "chunkId": "73e58d44a35086c0c98146fe3859ed63c248e51bd82ffdd7e481280c07d5ec74",
+          "chunkId": "5a075bdb11446c1fbdcb8496c5085c50d694396d498ae051bcf7dd8360e9e269",
           "sourceType": "rag_v2_node",
           "snippet": "NoteFlow 当前决定使用 LangGraph 负责全局编排，LlamaIndex 作为 RAG 模块。",
           "score": 0.016,
@@ -343,7 +343,7 @@
           "title": {
             "status": "ok",
             "count": 2,
-            "durationMs": 1.4
+            "durationMs": 1.41
           },
           "bm25": {
             "status": "ok",
@@ -383,7 +383,7 @@
       },
       "expected": {
         "noteIds": [
-          "rag-v2-note-python_context_manager-47f3b77d3c5d"
+          "rag-v2-note-python_context_manager-de6a8edf4939"
         ],
         "sectionIds": [],
         "chunkIds": [],
@@ -422,11 +422,11 @@
       },
       "topResults": [
         {
-          "noteId": "rag-v2-note-python_context_manager-47f3b77d3c5d",
+          "noteId": "rag-v2-note-python_context_manager-de6a8edf4939",
           "noteTitle": "Python 上下文管理器",
-          "sectionId": "dce3bcd01d69e407420f21dd151b29108a43bce3839f3b0d673344679de25a07",
+          "sectionId": "dac211d089eb0a2e809bd880be689e79fe8843633f0a178a7aecc0db11927ba5",
           "sectionTitle": "Context Manager",
-          "chunkId": "bf065f6d78e88799c05aca5cea52f8d502e6e1f49ba57cea2da20d6538819d9f",
+          "chunkId": "5439ee3f30fa4bf4d35843aed18a7f54989e54e898aabcf971da0106b8513690",
           "sourceType": "rag_v2_node",
           "snippet": "Python 的上下文管理器实现 `__enter__` 和 `__exit__`。`with` 语句会在进入代码块时调用 `__enter__`，离开时调用 `__exit__`。",
           "score": 0.016,
@@ -480,12 +480,12 @@
           "title": {
             "status": "ok",
             "count": 0,
-            "durationMs": 1.41
+            "durationMs": 1.31
           },
           "bm25": {
             "status": "ok",
             "count": 1,
-            "durationMs": 2.05
+            "durationMs": 1.84
           }
         },
         "rrf": {
@@ -519,7 +519,7 @@
       },
       "expected": {
         "noteIds": [
-          "rag-v2-note-weekly_current-47f3b77d3c5d"
+          "rag-v2-note-weekly_current-de6a8edf4939"
         ],
         "sectionIds": [],
         "chunkIds": [],
@@ -557,11 +557,11 @@
       },
       "topResults": [
         {
-          "noteId": "rag-v2-note-weekly_current-47f3b77d3c5d",
+          "noteId": "rag-v2-note-weekly_current-de6a8edf4939",
           "noteTitle": "项目周报",
-          "sectionId": "3b566dc2147a0079452015ceb706eea65ddd9afdd9caebcfa0b9e0756016353b",
+          "sectionId": "83893141fd27e09dbe3258c379a7a98c4af03ef1b277449d099ca3229bbf5639",
           "sectionTitle": "2026 年第 29 周",
-          "chunkId": "73e58d44a35086c0c98146fe3859ed63c248e51bd82ffdd7e481280c07d5ec74",
+          "chunkId": "5a075bdb11446c1fbdcb8496c5085c50d694396d498ae051bcf7dd8360e9e269",
           "sourceType": "rag_v2_node",
           "snippet": "NoteFlow 当前决定使用 LangGraph 负责全局编排，LlamaIndex 作为 RAG 模块。",
           "score": 0.037,
@@ -616,12 +616,12 @@
           "title": {
             "status": "ok",
             "count": 1,
-            "durationMs": 1.34
+            "durationMs": 1.32
           },
           "bm25": {
             "status": "ok",
             "count": 1,
-            "durationMs": 1.87
+            "durationMs": 1.84
           }
         },
         "rrf": {
@@ -658,7 +658,7 @@
       },
       "expected": {
         "noteIds": [
-          "rag-v2-note-markdown_parser-47f3b77d3c5d"
+          "rag-v2-note-markdown_parser-de6a8edf4939"
         ],
         "sectionIds": [],
         "chunkIds": [],
@@ -698,11 +698,11 @@
       },
       "topResults": [
         {
-          "noteId": "rag-v2-note-markdown_parser-47f3b77d3c5d",
+          "noteId": "rag-v2-note-markdown_parser-de6a8edf4939",
           "noteTitle": "Markdown AST 解析",
-          "sectionId": "d888d0e76fbd9d44acf361794fcdbb344fae10a35605ff417cc62fa2e8753486",
+          "sectionId": "02a90aaf942bbe51ac65d9394db617c3faf06c947c43bd27d880f9d44e2e9cd4",
           "sectionTitle": "Parser",
-          "chunkId": "1414d3acb17349f1468beabd5eded9e8e4abac20bb5f848c1fbb6c00723753fb",
+          "chunkId": "a877279e3e6cdbb10577614b65227397e2ec39cf6e4f0035a43645fd55c47c4a",
           "sourceType": "rag_v2_node",
           "snippet": "正式解析应使用 CommonMark AST，保留标题层级、列表、表格和 fenced code block 边界。",
           "score": 0.037,
@@ -727,11 +727,11 @@
           ]
         },
         {
-          "noteId": "rag-v2-note-python_context_manager-47f3b77d3c5d",
+          "noteId": "rag-v2-note-python_context_manager-de6a8edf4939",
           "noteTitle": "Python 上下文管理器",
-          "sectionId": "dce3bcd01d69e407420f21dd151b29108a43bce3839f3b0d673344679de25a07",
+          "sectionId": "dac211d089eb0a2e809bd880be689e79fe8843633f0a178a7aecc0db11927ba5",
           "sectionTitle": "Context Manager",
-          "chunkId": "bf065f6d78e88799c05aca5cea52f8d502e6e1f49ba57cea2da20d6538819d9f",
+          "chunkId": "5439ee3f30fa4bf4d35843aed18a7f54989e54e898aabcf971da0106b8513690",
           "sourceType": "rag_v2_node",
           "snippet": "Python 的上下文管理器实现 `__enter__` 和 `__exit__`。`with` 语句会在进入代码块时调用 `__enter__`，离开时调用 `__exit__`。",
           "score": 0.02,
@@ -783,12 +783,12 @@
           "title": {
             "status": "ok",
             "count": 2,
-            "durationMs": 3.03
+            "durationMs": 1.41
           },
           "bm25": {
             "status": "ok",
             "count": 1,
-            "durationMs": 2.93
+            "durationMs": 1.91
           }
         },
         "rrf": {
@@ -871,12 +871,12 @@
           "title": {
             "status": "ok",
             "count": 0,
-            "durationMs": 1.28
+            "durationMs": 2.86
           },
           "bm25": {
             "status": "ok",
             "count": 0,
-            "durationMs": 1.82
+            "durationMs": 2.84
           }
         },
         "rrf": {
@@ -959,12 +959,12 @@
           "title": {
             "status": "ok",
             "count": 0,
-            "durationMs": 1.4
+            "durationMs": 2.52
           },
           "bm25": {
             "status": "ok",
             "count": 0,
-            "durationMs": 1.9
+            "durationMs": 2.51
           }
         },
         "rrf": {

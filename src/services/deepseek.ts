@@ -14,6 +14,7 @@ interface StreamPayload {
   status?: string;
   code?: string;
   message?: string;
+  content?: string;
   payload?: Record<string, unknown>;
   durationMs?: number;
   inputSummary?: string;
@@ -63,6 +64,7 @@ interface StreamRequest {
   onDelta: (delta: string) => void;
   onFinishReason?: (reason: string) => void;
   onContext?: (context: { contextMode: string; sources: ChatSource[] }) => void;
+  onAnswerReplace?: (content: string) => void;
   onAgentSession?: (session: { sessionId: string; runId: string; intent: string }) => void;
   onAgentDone?: (result: { sessionId: string; runId: string; status: string }) => void;
   onAgentError?: (error: { sessionId?: string; runId?: string; status: string; code?: string; message: string }) => void;
@@ -116,6 +118,7 @@ export async function askDeepSeekStream({
   onDelta,
   onFinishReason,
   onContext,
+  onAnswerReplace,
   onAgentSession,
   onAgentDone,
   onAgentError,
@@ -126,6 +129,7 @@ export async function askDeepSeekStream({
   onDelta: (delta: string) => void;
   onFinishReason?: (reason: string) => void;
   onContext?: (context: { contextMode: string; sources: ChatSource[] }) => void;
+  onAnswerReplace?: (content: string) => void;
   onAgentSession?: (session: { sessionId: string; runId: string; intent: string }) => void;
   onAgentDone?: (result: { sessionId: string; runId: string; status: string }) => void;
   onAgentError?: (error: { sessionId?: string; runId?: string; status: string; code?: string; message: string }) => void;
@@ -138,6 +142,7 @@ export async function askDeepSeekStream({
     onDelta,
     onFinishReason,
     onContext,
+    onAnswerReplace,
     onAgentSession,
     onAgentDone,
     onAgentError,
@@ -180,6 +185,7 @@ async function streamAIResponse({
   onDelta,
   onFinishReason,
   onContext,
+  onAnswerReplace,
   onAgentSession,
   onAgentDone,
   onAgentError,
@@ -300,6 +306,10 @@ async function streamAIResponse({
           contextMode: data.contextMode ?? "retrieval",
           sources: data.sources ?? [],
         });
+        continue;
+      }
+      if (data.type === "answer_replace") {
+        onAnswerReplace?.(data.content ?? "");
         continue;
       }
       const choice = data.choices?.[0];

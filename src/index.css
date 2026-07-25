@@ -1630,7 +1630,7 @@ button,
 .document-canvas .document-title {
   display: block !important;
   margin: 0 !important;
-  color: #24272c !important;
+  color: var(--noteflow-heading-ink) !important;
   font-size: clamp(30px, 3vw, 40px) !important;
   font-weight: 780 !important;
   line-height: 1.18 !important;
@@ -1648,9 +1648,9 @@ button,
 }
 
 .document-canvas .note-content {
-  color: #2e3033 !important;
+  color: var(--noteflow-body-ink) !important;
   font-size: 16px !important;
-  font-weight: 500;
+  font-weight: 450;
   line-height: 1.58 !important;
   letter-spacing: 0 !important;
 }
@@ -1663,7 +1663,7 @@ button,
 .document-canvas .note-content h2,
 .document-canvas .note-content h3,
 .document-canvas .note-content h4 {
-  color: #27292d !important;
+  color: var(--noteflow-heading-ink) !important;
   font-weight: 800 !important;
   letter-spacing: 0 !important;
 }
@@ -1692,9 +1692,18 @@ button,
   line-height: 1.32 !important;
 }
 
+.document-canvas .note-content.heading-numbering-enabled
+  :is(h1, h2, h3, h4, h5, h6)[data-heading-number]::before {
+  content: attr(data-heading-number);
+  display: inline-block;
+  margin-right: 0.38em;
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
 .document-canvas .note-content p {
   margin: 10px 0 14px !important;
-  color: #2f3135 !important;
+  color: var(--noteflow-body-ink) !important;
   font-size: 16px !important;
   line-height: 1.64 !important;
 }
@@ -1714,7 +1723,7 @@ button,
 
 .document-canvas .note-content li {
   margin: 6px 0 !important;
-  color: #2f3135 !important;
+  color: var(--noteflow-body-ink) !important;
   font-size: 16px !important;
   line-height: 1.64 !important;
 }
@@ -1747,7 +1756,7 @@ button,
   border: 0 !important;
   border-radius: 12px !important;
   background: #e8f3ef !important;
-  color: #303234 !important;
+  color: var(--noteflow-body-ink) !important;
   padding: 16px 20px 16px 44px !important;
   font-size: 16px !important;
   line-height: 1.64 !important;
@@ -1787,6 +1796,10 @@ button,
 
 .document-canvas .note-content .code-block {
   overflow: visible !important;
+}
+
+.document-canvas .note-content .code-block.is-code-menu-open {
+  z-index: 20 !important;
 }
 
 .document-canvas .note-content .code-toolbar {
@@ -2297,6 +2310,8 @@ button,
   --noteflow-paper: #fdfdfc;
   --noteflow-surface: #ffffff;
   --noteflow-ink: #252a31;
+  --noteflow-heading-ink: #232528;
+  --noteflow-body-ink: #36393d;
   --noteflow-muted: #8a94a3;
   --noteflow-line: #e9edf1;
   --noteflow-code: #f7f7f5;
@@ -2478,7 +2493,7 @@ body,
 
 .code-language-floating-popover {
   position: fixed;
-  z-index: 65;
+  z-index: 1000;
   box-sizing: border-box;
   overflow: hidden;
   border: 1px solid #e1ded8;
@@ -2974,6 +2989,8 @@ body,
   --noteflow-paper: #111820;
   --noteflow-surface: #17212b;
   --noteflow-ink: #e7eef4;
+  --noteflow-heading-ink: #edf3f7;
+  --noteflow-body-ink: #b8c3cc;
   --noteflow-muted: #82929f;
   --noteflow-line: rgba(225, 236, 244, 0.11);
   --noteflow-code: #0f1720;
@@ -3129,4 +3146,52 @@ body,
   transform: translateY(-1px);
   border-color: rgba(62, 113, 139, 0.34);
   background: #eef7fb;
+}
+
+/*
+ * Stable desktop reading geometry.
+ * The document remains centered in the full application viewport while there
+ * is enough gutter space. A side panel only shifts the page after crossing its
+ * safety edge; the page narrows only when both safety edges leave less than
+ * the preferred 780px reading width.
+ */
+@media (min-width: 1280px) {
+  .app-frame.stable-workspace-layout {
+    --document-edge-gap: 28px;
+    --document-page-width: min(
+      780px,
+      calc(
+        100vw
+        - var(--workspace-left-width, 0px)
+        - var(--workspace-right-width, 0px)
+        - 56px
+      )
+    );
+  }
+
+  .app-frame.stable-workspace-layout .document-canvas .document-scroll {
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .app-frame.stable-workspace-layout .chapter-rail {
+    right: calc(var(--workspace-right-width, 0px) + 10px);
+  }
+
+  .app-frame.stable-workspace-layout .document-canvas .note-page {
+    width: var(--document-page-width) !important;
+    max-width: none !important;
+    margin-right: 0 !important;
+    margin-left: clamp(
+      calc(var(--workspace-left-width, 0px) + var(--document-edge-gap)),
+      calc((100vw - var(--document-page-width)) / 2),
+      calc(
+        100vw
+        - var(--workspace-right-width, 0px)
+        - var(--document-edge-gap)
+        - var(--document-page-width)
+      )
+    ) !important;
+    transition: width 160ms ease, margin-left 160ms ease;
+  }
 }

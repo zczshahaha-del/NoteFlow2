@@ -5,6 +5,8 @@ interface HeadingItem {
   level: number;
   text: string;
   id: string;
+  displayNumber?: string;
+  hierarchyDepth?: number;
 }
 
 interface HeadingNode {
@@ -23,8 +25,13 @@ function buildHeadingTree(headings: HeadingItem[]): HeadingNode[] {
 
   headings.forEach((heading) => {
     const node: HeadingNode = { item: heading, children: [] };
+    const headingDepth = heading.hierarchyDepth ?? heading.level;
 
-    while (stack.length > 0 && stack[stack.length - 1].item.level >= heading.level) {
+    while (
+      stack.length > 0 &&
+      (stack[stack.length - 1].item.hierarchyDepth ?? stack[stack.length - 1].item.level) >=
+        headingDepth
+    ) {
       stack.pop();
     }
 
@@ -185,7 +192,7 @@ export default function OutlinePanel({
                       ? "text-jelly-text-muted hover:bg-jelly-blue-pale hover:text-jelly-blue-deep"
                       : "cursor-default text-transparent"
                   }`}
-                  style={{ marginLeft: `${depth * 12}px` }}
+                  style={{ marginLeft: `${depth * 18}px` }}
                   onClick={() => {
                     if (hasChildren) toggleHeading(h.id);
                   }}
@@ -200,7 +207,7 @@ export default function OutlinePanel({
                 </button>
                 <button
                   className={`
-                    min-w-0 flex-1 truncate rounded-md border-l-[3px] py-1.5 pr-2 text-left text-[12px] transition-colors duration-100
+                    min-w-0 flex-1 truncate rounded-md border-l-[3px] py-1.5 pr-2 text-left transition-colors duration-100
                     ${
                       activeId === h.id
                         ? "border-l-jelly-blue bg-jelly-blue-pale font-medium text-jelly-blue-deep"
@@ -208,10 +215,17 @@ export default function OutlinePanel({
                     }
                   `}
                   style={{
-                    paddingLeft: `${Math.max(8, (h.level - 1) * 8)}px`,
+                    paddingLeft: "7px",
+                    fontSize: depth === 0 ? "13px" : depth === 1 ? "12px" : "11.5px",
+                    fontWeight: depth === 0 ? 590 : 450,
                   }}
                   onClick={() => onHeadingClick(h.id)}
                 >
+                  {h.displayNumber && (
+                    <span className="mr-1.5 tabular-nums text-jelly-text-muted" aria-hidden="true">
+                      {h.displayNumber}
+                    </span>
+                  )}
                   {h.text}
                 </button>
               </div>

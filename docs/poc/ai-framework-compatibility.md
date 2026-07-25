@@ -2,6 +2,9 @@
 
 执行日期：2026-07-17（Asia/Shanghai）
 
+> 历史记录：本 PoC 已完成使命。隔离镜像、专用依赖文件和运行脚本已在
+> 2026-07-23 清理；当前正式依赖以 `server/requirements.txt` 为准，验证由正式测试套件承担。
+
 ## 结论
 
 步骤 3 的框架组合可以进入后续实现，但本阶段不切换生产路径。生产默认仍是 `legacy`，LangGraph、LlamaIndex 和 Mem0 只存在于隔离 PoC 与稳定接口边界中。
@@ -14,9 +17,9 @@
 - Mem0 配置固定使用 PostgreSQL/pgvector 独立 collection，不部署 Qdrant，不建立第二业务真相源。
 - DeepSeek 实测支持流式返回、JSON 结构化输出和 token usage；DashScope 实测支持批量请求与 1024 维向量。
 
-## 锁定版本
+## 当时验证的版本
 
-直接依赖文件：`server/requirements-ai.txt`；完整传递依赖锁：`server/requirements-ai.lock.txt`。
+下表保留当时的验证记录，不再代表当前正式依赖版本。
 
 | 依赖 | 锁定版本 | PoC 结果 |
 |---|---:|---|
@@ -91,35 +94,15 @@ LlamaIndex 不拥有第二套 NoteFlow 数据。映射规则如下：
 
 `mem0ai` 当前会传递安装 `qdrant-client`，但本项目配置和运行时没有创建 Qdrant client、Qdrant collection 或 Qdrant 服务。若未来要求“依赖树中也不能出现 qdrant-client”，需要等待 Mem0 拆分 extras 或维护内部安装包；这不影响当前“不使用 Qdrant、不新增第二真相源”的架构约束。
 
-## 重复运行
+## 当前验证方式
 
-不连接数据库的隔离 PoC：
-
-```bash
-npm run test:ai-framework-poc
-```
-
-连接一次性 PostgreSQL 的完整 PoC：
-
-```bash
-python3 scripts/run_ai_framework_poc.py \
-  --network noteflow_default \
-  --postgres-url postgresql://noteflow:***@postgres:5432/noteflow_poc_step3
-```
-
-真实 Provider PoC：
-
-```bash
-cd server
-PYTHONPATH=. python3 poc/check_external_providers.py
-```
-
-真实 Provider 命令会产生少量 API 用量，不纳入默认质量门禁。
+隔离 PoC 已退役。请使用 `npm run test:backend`、`npm run test:architecture`、
+`npm run test:rag-v2` 和 `npm run test:memory-safety` 验证正式实现。
 
 ## 回滚与升级规则
 
-- 默认 flags 全部保持 `legacy`，删除 `server/poc/` 和 `server/requirements-ai.txt` 不会改变当前 API。
-- 新依赖先在隔离 Docker 中升级，再跑固定 RAG/Memory、Checkpoint 和 Provider PoC。
+- 历史 PoC 文件已经删除，不影响当前 API。
+- 新依赖在正式 Docker 环境中升级，并运行固定 RAG/Memory、Checkpoint 和 Provider 测试。
 - 一次只升级一个框架簇；LangGraph/checkpointer、LlamaIndex adapters、Mem0 分开升级。
 - 未通过 Python 3.12 Docker、PostgreSQL 恢复和跨用户测试的版本不得进入主运行镜像。
 

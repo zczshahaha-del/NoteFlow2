@@ -17,7 +17,6 @@ from app.database import AsyncSessionLocal, engine
 from app.models.db import (
     AgentRun,
     AgentCheckpoint,
-    AgentShadowRun,
     Base,
     ChatSession,
     Note,
@@ -44,7 +43,6 @@ from app.services.markdown_index import create_index_job, run_index_job
 from app.services.note_library import understand_note_query
 from app.services.memory_service import MemoryService
 from app.services.run_service import RunService
-from app.agent.shadow import run_shadow_once
 from app.agent.write_runtime import (
     authorize_draft_save,
     initialize_draft_graph,
@@ -338,47 +336,6 @@ async def _exercise_outbox_idempotency_and_recovery() -> dict[str, bool]:
         await engine.dispose()
 
 
-async def _exercise_shadow_has_no_business_side_effects() -> dict[str, bool]:
-    suffix = uuid.uuid4().hex
-    user = User(
-        id=f"shadow-user-{suffix}", email=f"shadow-{suffix}@local.test",
-        display_name="Shadow Test", password_hash="not-used",
-    )
-    input_hash = __import__("hashlib").sha256("shadow question".encode()).hexdigest()
-    try:
-        async with AsyncSessionLocal() as session:
-            session.add(user)
-            await session.commit()
-            before = {
-                "notes": await session.scalar(select(func.count(Note.id))),
-                "memories": await session.scalar(select(func.count(UserMemory.id))),
-                "checkpoints": await session.scalar(select(func.count(AgentCheckpoint.id))),
-            }
-        await run_shadow_once(
-            user_id=user.id, question="shadow question", mode="chat", history=[], page_state={},
-            legacy_intent="general_chat", legacy_requires_sources=False,
-            request_id=f"shadow-request-{suffix}", trace_id=f"shadow-trace-{suffix}",
-        )
-        async with AsyncSessionLocal() as session:
-            after = {
-                "notes": await session.scalar(select(func.count(Note.id))),
-                "memories": await session.scalar(select(func.count(UserMemory.id))),
-                "checkpoints": await session.scalar(select(func.count(AgentCheckpoint.id))),
-            }
-            row = await session.scalar(select(AgentShadowRun).where(AgentShadowRun.input_hash == input_hash))
-            return {
-                "business_unchanged": before == after,
-                "shadow_recorded": row is not None and row.status == "matched",
-                "plan_only": row is not None and bool((row.graph_summary or {}).get("planOnly")),
-            }
-    finally:
-        async with AsyncSessionLocal() as session:
-            await session.execute(delete(AgentShadowRun).where(AgentShadowRun.request_id == f"shadow-request-{suffix}"))
-            await session.execute(delete(User).where(User.id == user.id))
-            await session.commit()
-        await engine.dispose()
-
-
 async def _exercise_rag_v2_incremental_and_permissions() -> dict[str, bool]:
     suffix = uuid.uuid4().hex
     owner = User(
@@ -494,7 +451,14 @@ class DatabaseIntegrationTest(unittest.TestCase):
         cls.snapshot = asyncio.run(_database_snapshot())
 
     def test_runtime_tables_match_sqlalchemy_metadata(self) -> None:
-        library_owned = {"checkpoint_migrations", "checkpoints", "checkpoint_blobs", "checkpoint_writes"}
+        library_owned = {
+            "checkpoint_migrations",
+            "checkpoints",
+            "checkpoint_blobs",
+            "checkpoint_writes",
+            "mem0migrations",
+            cfg.MEM0_COLLECTION_NAME,
+        }
         self.assertEqual(self.snapshot["tables"] - {"alembic_version"} - library_owned, set(Base.metadata.tables))
 
     def test_pgvector_and_hnsw_are_available(self) -> None:
@@ -515,12 +479,6 @@ class DatabaseIntegrationTest(unittest.TestCase):
         self.assertTrue(result["same_row"])
         self.assertTrue(result["claim_ok"])
         self.assertTrue(result["recovery_ok"])
-
-    def test_langgraph_shadow_records_only_telemetry(self) -> None:
-        result = asyncio.run(_exercise_shadow_has_no_business_side_effects())
-        self.assertTrue(result["business_unchanged"])
-        self.assertTrue(result["shadow_recorded"])
-        self.assertTrue(result["plan_only"])
 
     def test_reindex_allows_reused_child_under_new_parent(self) -> None:
         first_status, second_status = asyncio.run(_exercise_reused_child_with_new_parent())

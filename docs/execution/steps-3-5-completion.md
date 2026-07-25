@@ -14,7 +14,7 @@
 
 ## 步骤 3
 
-- 新增 `server/requirements-ai.txt` 精确锁定 AI 依赖。
+- 当时新增独立 AI 依赖锁用于隔离验证；PoC 退役后已合并到正式 `server/requirements.txt`。
 - 新增多阶段 Python 3.12 PoC 镜像；编译工具只存在于 builder，不进入运行层。
 - 新增本地/Docker 可重复脚本和真实 Provider 检查。
 - LangGraph PostgreSQL Checkpoint 在一次性数据库中完成 setup、保存、连接关闭、重新连接和恢复；数据库随后已删除。

@@ -25,7 +25,6 @@ from app.services.markdown_index import HEADING_RE, index_note_now
 from app.services.memory import build_memory_context
 from app.services.note_edit import generate_edit_preview, revise_edit_preview
 from app.services.user_settings import is_user_memory_enabled
-from app.agent.rollout import select_child_runtime
 from app.agent.write_runtime import initialize_edit_graph, resume_edit_graph
 from app.utils import random_id
 
@@ -168,6 +167,26 @@ async def _get_preview(session, user_id: str, edit_id: str) -> NoteEditPreview:
     if preview is None:
         raise HTTPException(status_code=404, detail="edit preview not found")
     return preview
+
+
+async def _ensure_edit_graph(preview: NoteEditPreview, user_id: str) -> None:
+    if preview.graph_thread_id:
+        return
+    preview.runtime = "langgraph"
+    preview.graph_thread_id = f"edit-{random_id()}"
+    initialized = await initialize_edit_graph(
+        user_id=user_id,
+        thread_id=preview.graph_thread_id,
+        note_id=preview.note_id,
+        instruction=preview.instruction,
+        preview_id=preview.id,
+        target_type=preview.target_type,
+        section_id=preview.section_id or "",
+        selected_text=preview.old_content or "",
+        source_content_hash=preview.source_content_hash or "",
+    )
+    if not initialized:
+        raise HTTPException(status_code=503, detail="LangGraph 修改流程初始化失败，请稍后重试")
 
 
 async def _get_sections(session, user_id: str, note_id: str) -> list[NoteSection]:
@@ -622,27 +641,25 @@ async def create_edit_preview(
             change_summary=change_summary,
             status="preview",
             idempotency_key=idempotency_key or None,
-            runtime=select_child_runtime("edit"),
-            graph_thread_id=f"edit-{random_id()}" if select_child_runtime("edit") == "langgraph" else None,
+            runtime="langgraph",
+            graph_thread_id=f"edit-{random_id()}",
             source_content_hash=hashlib.sha256((note.content or "").encode()).hexdigest(),
         )
         session.add(preview)
         session.add(_make_edit_revision(preview, source="generated"))
+        await session.flush()
+        initialized = await initialize_edit_graph(
+            user_id=user.id, thread_id=preview.graph_thread_id,
+            note_id=preview.note_id, instruction=preview.instruction,
+            preview_id=preview.id, target_type=preview.target_type,
+            section_id=preview.section_id or "", selected_text=payload.selectedText,
+            source_content_hash=preview.source_content_hash,
+        )
+        if not initialized:
+            await session.rollback()
+            raise HTTPException(status_code=503, detail="LangGraph 修改流程初始化失败，请稍后重试")
         await session.commit()
         await session.refresh(preview)
-        if preview.runtime == "langgraph" and preview.graph_thread_id:
-            initialized = await initialize_edit_graph(
-                user_id=user.id, thread_id=preview.graph_thread_id,
-                note_id=preview.note_id, instruction=preview.instruction,
-                preview_id=preview.id, target_type=preview.target_type,
-                section_id=preview.section_id or "", selected_text=payload.selectedText,
-                source_content_hash=preview.source_content_hash,
-            )
-            if not initialized:
-                preview.runtime = "legacy"
-                preview.graph_thread_id = None
-                await session.commit()
-                await session.refresh(preview)
         return {"preview": _edit_out(preview)}
 
 
@@ -683,13 +700,15 @@ async def restore_edit_preview_revision(
         preview.new_content = revision.new_content
         preview.change_summary = revision.change_summary or []
         preview.instruction = revision.instruction
+        await _ensure_edit_graph(preview, user.id)
+        resumed = await resume_edit_graph(
+            thread_id=preview.graph_thread_id, action="restore",
+            payload={"revisionId": payload.revisionId},
+        )
+        if not resumed:
+            raise HTTPException(status_code=503, detail="LangGraph 修改流程恢复失败，请稍后重试")
         await session.commit()
         await session.refresh(preview)
-        if preview.runtime == "langgraph" and preview.graph_thread_id:
-            await resume_edit_graph(
-                thread_id=preview.graph_thread_id, action="restore",
-                payload={"revisionId": payload.revisionId},
-            )
         return {"preview": _edit_out(preview)}
 
 
@@ -728,14 +747,16 @@ async def revise_preview(
         preview.new_content = result.new_content
         preview.change_summary = result.change_summary
         preview.instruction = f"{preview.instruction}\n\n继续调整：{payload.instruction.strip()}"
+        await _ensure_edit_graph(preview, user.id)
+        resumed = await resume_edit_graph(
+            thread_id=preview.graph_thread_id, action="revise",
+            payload={"instruction": payload.instruction},
+        )
+        if not resumed:
+            raise HTTPException(status_code=503, detail="LangGraph 修改流程恢复失败，请稍后重试")
         session.add(_make_edit_revision(preview, source="revision"))
         await session.commit()
         await session.refresh(preview)
-        if preview.runtime == "langgraph" and preview.graph_thread_id:
-            await resume_edit_graph(
-                thread_id=preview.graph_thread_id, action="revise",
-                payload={"instruction": payload.instruction},
-            )
         return {"preview": _edit_out(preview)}
 
 
@@ -766,6 +787,10 @@ async def apply_preview(
                 status_code=409,
                 detail="笔记已在预览生成后发生变化，请重新生成修改预览。",
             )
+        await _ensure_edit_graph(preview, user.id)
+        resumed = await resume_edit_graph(thread_id=preview.graph_thread_id, action="apply")
+        if not resumed:
+            raise HTTPException(status_code=503, detail="LangGraph 修改流程确认失败，请稍后重试")
         session.add(_make_version(note, preview))
         note.content = _apply_preview_content(note, preview)
         preview.applied_content_hash = hashlib.sha256((note.content or "").encode()).hexdigest()
@@ -777,8 +802,6 @@ async def apply_preview(
         await session.refresh(preview)
         await session.refresh(note)
         await session.refresh(job)
-        if preview.runtime == "langgraph" and preview.graph_thread_id:
-            await resume_edit_graph(thread_id=preview.graph_thread_id, action="apply")
         return {
             "preview": _edit_out(preview),
             "note": _note_out(note),
@@ -795,10 +818,12 @@ async def cancel_preview(
         preview = await _get_preview(session, user.id, edit_id)
         if preview.status != "preview":
             raise HTTPException(status_code=409, detail="edit preview is not active")
+        await _ensure_edit_graph(preview, user.id)
+        resumed = await resume_edit_graph(thread_id=preview.graph_thread_id, action="cancel")
+        if not resumed:
+            raise HTTPException(status_code=503, detail="LangGraph 修改流程取消失败，请稍后重试")
         preview.status = "cancelled"
         preview.cancelled_at = datetime.utcnow()
         await session.commit()
         await session.refresh(preview)
-        if preview.runtime == "langgraph" and preview.graph_thread_id:
-            await resume_edit_graph(thread_id=preview.graph_thread_id, action="cancel")
         return {"preview": _edit_out(preview)}

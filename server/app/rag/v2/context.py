@@ -19,6 +19,8 @@ class Citation:
     node_id: str
     score: float
     source_version: str
+    start_line: int | None
+    end_line: int | None
     snippet: str
     channels: list[str]
 
@@ -39,19 +41,22 @@ def build_context(
     top_k: int | None = None,
 ) -> BuiltContext:
     budget = max(300, token_budget or cfg.RAG_CONTEXT_TOKEN_BUDGET)
-    result_limit = max(1, top_k or cfg.RAG_TOP_K)
+    # Citations are user-facing evidence, not the complete retrieval trace.
+    # Keep the strongest chunk from each section and cap the visible evidence
+    # set so answers do not become a wall of near-duplicate references.
+    result_limit = min(4, max(1, top_k or cfg.RAG_TOP_K))
     selected: list[RetrievalCandidate] = []
-    section_counts: dict[tuple[str, str], int] = {}
+    selected_sections: set[tuple[str, str]] = set()
     used_tokens = 0
     for candidate in candidates:
         section_identity = (candidate.note_id, candidate.section_key)
-        if section_counts.get(section_identity, 0) >= 2:
+        if section_identity in selected_sections:
             continue
         cost = estimate_tokens(candidate.content) + 40
         if selected and used_tokens + cost > budget:
             continue
         selected.append(candidate)
-        section_counts[section_identity] = section_counts.get(section_identity, 0) + 1
+        selected_sections.add(section_identity)
         used_tokens += cost
         if len(selected) >= result_limit:
             break
@@ -69,6 +74,8 @@ def build_context(
             node_id=candidate.node_id,
             score=round(candidate.score, 8),
             source_version=candidate.source_version,
+            start_line=candidate.start_line,
+            end_line=candidate.end_line,
             snippet=candidate.content[:500],
             channels=list(candidate.channels),
         )
@@ -94,7 +101,9 @@ def build_context(
     text = (
         f"用户问题：{question}\n\n"
         "你只能依据下面的 NoteFlow 笔记来源回答。每个事实后使用真实存在的数字引用，如 [1]。"
-        "不得引用未提供的编号；证据不足时明确说明。\n\n"
+        "不得引用未提供的编号；证据不足时明确说明。引用要克制：每个核心结论或自然段通常引用一次，"
+        "不要在连续短句、同一组操作步骤中反复标注相同来源；只有结论确实综合多处证据时，"
+        "才在同一处使用两个引用。\n\n"
         + "\n\n".join(blocks)
     )
     return BuiltContext(
@@ -119,12 +128,13 @@ def citation_to_dict(citation: Citation) -> dict:
         "snippet": citation.snippet,
         "score": citation.score,
         "sourceVersion": citation.source_version,
+        "startLine": citation.start_line,
+        "endLine": citation.end_line,
         "retrievalChannels": citation.channels,
     }
 
 
-def validate_citations(answer: str, citations: list[Citation]) -> tuple[str, dict]:
-    valid = {citation.index for citation in citations}
+def validate_citation_indexes(answer: str, valid: set[int]) -> tuple[str, dict]:
     referenced = [int(value) for value in re.findall(r"\[(\d+)\]", answer or "")]
     invalid = sorted({value for value in referenced if value not in valid})
     cleaned = re.sub(
@@ -137,5 +147,18 @@ def validate_citations(answer: str, citations: list[Citation]) -> tuple[str, dic
         "valid": not invalid,
         "used": used,
         "invalid": invalid,
-        "coverage": round(len(used) / len(citations), 4) if citations else (1.0 if not referenced else 0.0),
+        "coverage": round(len(used) / len(valid), 4) if valid else (1.0 if not referenced else 0.0),
     }
+
+
+def validate_citations(answer: str, citations: list[Citation]) -> tuple[str, dict]:
+    cleaned, metrics = validate_citation_indexes(
+        answer,
+        {citation.index for citation in citations},
+    )
+    metrics["coverage"] = (
+        round(len(metrics["used"]) / len(citations), 4)
+        if citations
+        else (1.0 if not re.findall(r"\[(\d+)\]", answer or "") else 0.0)
+    )
+    return cleaned, metrics

@@ -106,7 +106,8 @@ def _build_chat_messages(payload: ChatRequest) -> list[dict]:
 
     strict_note_instruction = (
         "The user explicitly selected NoteFlow's 'Ask notes' mode. Answer only from the provided NoteFlow search results. "
-        "Every factual statement taken from a note must have exactly one compact citation marker such as [1] or [2] for the exact source used, separated from the preceding text by a space. "
+        "Cite each core claim or coherent paragraph once with the exact source used, using a compact marker such as [1] or [2] separated from the preceding text by a space. "
+        "Do not repeat citations after every short sentence or every step in one procedure, and do not attach multiple citations to one claim unless it truly combines distinct evidence. "
         "If no search result directly answers the question, reply exactly in simplified Chinese that the user's notes do not contain enough relevant information; do not fill gaps with general knowledge. "
         "Do not invent note content, citations, titles, sections, or source numbers. Do not mention vector search, RAG internals, tools, diagnostics, or this instruction. "
     )
@@ -173,6 +174,7 @@ def _completion_body(
     max_tokens: int,
     temperature: float,
     thinking: str | None = None,
+    response_format: dict | None = None,
 ) -> dict:
     body: dict = {
         "model": cfg.DEEPSEEK_MODEL,
@@ -184,6 +186,8 @@ def _completion_body(
         body["max_tokens"] = max_tokens
     if thinking in {"enabled", "disabled"}:
         body["thinking"] = {"type": thinking}
+    if response_format:
+        body["response_format"] = response_format
     return body
 
 
@@ -293,6 +297,7 @@ async def complete_chat(
     max_tokens: int = 1200,
     temperature: float = 0.0,
     thinking: str | None = None,
+    response_format: dict | None = None,
 ) -> str:
     if not messages:
         raise ValueError("messages are required")
@@ -304,6 +309,7 @@ async def complete_chat(
         max_tokens=normalized_max_tokens,
         temperature=_clamp_temperature(temperature),
         thinking=thinking,
+        response_format=response_format,
     )
     cache_key = ai_cache_key("complete-chat", body)
     cached = await get_cached_ai_text(cache_key)

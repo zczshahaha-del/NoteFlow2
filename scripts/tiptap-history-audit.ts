@@ -54,7 +54,6 @@ const [{ Editor }, { createNoteFlowTiptapExtensions }] = await Promise.all([
   import("@tiptap/core"),
   import("../src/editor/tiptapExtensions.ts"),
 ]);
-const { evaluateEditorCompatibility } = await import("../src/editor/compatibility.ts");
 
 const marked = new Marked({ breaks: true, gfm: true });
 const trackedTags = [
@@ -133,18 +132,13 @@ const results = corpus.records.map((record) => {
     reasons.push("semantic-signature-changed");
   }
   if (secondSerialized !== serialized) reasons.push("second-pass-unstable");
-  const compatibility = evaluateEditorCompatibility(record.content);
-  const guardedByFallback = reasons.length > 0 && !compatibility.useModernEditor;
-
   return {
     kind: record.kind,
     id: record.id,
     noteId: record.noteId,
     title: record.title,
-    ok: reasons.length === 0 || guardedByFallback,
+    ok: reasons.length === 0,
     conversionOk: reasons.length === 0,
-    guardedByFallback,
-    fallbackReason: guardedByFallback ? compatibility.reason : undefined,
     reasons,
     inputLength: record.content.length,
     outputLength: serialized.length,
@@ -163,7 +157,6 @@ const results = corpus.records.map((record) => {
 });
 
 const blocked = results.filter((result) => !result.ok);
-const guarded = results.filter((result) => result.guardedByFallback);
 console.log(JSON.stringify({
   ok: blocked.length === 0,
   readOnly: true,
@@ -171,9 +164,7 @@ console.log(JSON.stringify({
   noteCount: results.filter((result) => result.kind === "note").length,
   versionCount: results.filter((result) => result.kind === "version").length,
   directPassCount: results.filter((result) => result.conversionOk).length,
-  guardedFallbackCount: guarded.length,
   blockedCount: blocked.length,
-  guarded,
   blocked,
 }));
 

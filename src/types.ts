@@ -50,14 +50,19 @@ export interface ChatSessionSummary {
 }
 
 export interface ChatSource {
+  citationId?: string;
   noteId: string;
   noteTitle: string;
   sectionId: string | null;
   sectionTitle: string | null;
+  sectionPath?: string[];
   chunkId: string | null;
   sourceType: string;
   snippet: string;
   score: number;
+  sourceVersion?: string;
+  startLine?: number | null;
+  endLine?: number | null;
   retrievalChannels?: string[];
   queryIntent?: string | null;
 }

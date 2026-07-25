@@ -1,21 +1,14 @@
 from __future__ import annotations
 
-import asyncio
 import inspect
 import unittest
 from pathlib import Path
 
 from app.agent.contracts import RuntimeErrorCode, RuntimeEvent
-from app.config import cfg
-from app.providers.contracts import (
-    ChatModelProvider,
-    EmbeddingProvider,
-    MemoryProvider,
-    RerankCandidate,
-    RerankerProvider,
-    VectorStoreProvider,
-)
-from app.providers.registry import legacy_provider_registry
+from app.providers.chat import DeepSeekChatModelProvider
+from app.providers.contracts import ChatModelProvider
+from app.rag.service import configured_rag_service
+from app.rag.v2.service import LlamaIndexRagService
 from app.repositories.base import require_user_id
 from app.repositories import (
     AttachmentRepository,
@@ -30,22 +23,9 @@ from app.tools.contracts import SourceRef, ToolContext, ToolResult, reject_model
 
 
 class ArchitectureContractTest(unittest.TestCase):
-    def test_legacy_registry_implements_every_provider_protocol(self) -> None:
-        registry = legacy_provider_registry()
-        self.assertIsInstance(registry.chat, ChatModelProvider)
-        self.assertIsInstance(registry.embedding, EmbeddingProvider)
-        self.assertIsInstance(registry.reranker, RerankerProvider)
-        self.assertIsInstance(registry.vector_store, VectorStoreProvider)
-        self.assertIsInstance(registry.memory, MemoryProvider)
-
-    def test_legacy_flags_are_safe_defaults(self) -> None:
-        self.assertEqual(cfg.AGENT_RUNTIME, "legacy")
-        self.assertEqual(cfg.RAG_PROVIDER, "legacy")
-        self.assertEqual(cfg.MEMORY_PROVIDER, "legacy")
-        self.assertEqual(cfg.AI_CANARY_PERCENT, 0)
-        self.assertFalse(cfg.LANGGRAPH_POC_ENABLED)
-        self.assertFalse(cfg.LANGGRAPH_SHADOW_ENABLED)
-        self.assertEqual(cfg.LANGGRAPH_SHADOW_SAMPLE_PERCENT, 0)
+    def test_single_runtime_uses_new_providers(self) -> None:
+        self.assertIsInstance(DeepSeekChatModelProvider(), ChatModelProvider)
+        self.assertIsInstance(configured_rag_service(), LlamaIndexRagService)
 
     def test_tool_identity_only_comes_from_context(self) -> None:
         context = ToolContext(user_id="user-a", run_id="run-a")
@@ -73,14 +53,6 @@ class ArchitectureContractTest(unittest.TestCase):
     def test_repository_rejects_empty_ownership_scope(self) -> None:
         with self.assertRaises(ValueError):
             require_user_id("")
-
-    def test_legacy_reranker_is_deterministic(self) -> None:
-        candidates = [
-            RerankCandidate(id="low", text="low", score=0.1),
-            RerankCandidate(id="high", text="high", score=0.9),
-        ]
-        ranked = asyncio.run(legacy_provider_registry().reranker.rerank("query", candidates, 1))
-        self.assertEqual([item.id for item in ranked], ["high"])
 
     def test_migrated_routers_do_not_embed_sql_queries(self) -> None:
         router_root = Path(__file__).resolve().parents[1] / "app" / "routers"

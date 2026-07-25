@@ -2,7 +2,7 @@
 
 > 此文件描述代码模型；真实 PostgreSQL 运行时结构另见 `database-runtime.md`。
 
-- 模型表数量：34
+- 模型表数量：35
 - 业务真相源：PostgreSQL
 - 向量字段：pgvector `vector(1024)`
 
@@ -13,12 +13,12 @@
 | `id` | `VARCHAR(64)` | 否 | 是 | `-` | `-` |
 | `name` | `VARCHAR(160)` | 否 | 否 | `-` | `-` |
 | `dataset_version` | `VARCHAR(80)` | 否 | 否 | `-` | `v1` |
-| `input_data` | `JSON` | 否 | 否 | `-` | `<function RagEvalCase.<lambda> at 0x10abffca0>` |
-| `expected` | `JSON` | 否 | 否 | `-` | `<function RagEvalCase.<lambda> at 0x10ab09ca0>` |
-| `tags` | `JSON` | 否 | 否 | `-` | `<function RagEvalCase.<lambda> at 0x10ad9b4c0>` |
+| `input_data` | `JSON` | 否 | 否 | `-` | `<function RagEvalCase.<lambda> at 0x10a691670>` |
+| `expected` | `JSON` | 否 | 否 | `-` | `<function RagEvalCase.<lambda> at 0x10a865700>` |
+| `tags` | `JSON` | 否 | 否 | `-` | `<function RagEvalCase.<lambda> at 0x10a865b80>` |
 | `active` | `BOOLEAN` | 否 | 否 | `-` | `True` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10adfd160>` |
-| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10adfd9d0>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a8c3160>` |
+| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a8c3310>` |
 
 - 索引：`uq_rag_eval_case_version_name`
 - 唯一约束：无
@@ -27,12 +27,12 @@
 
 | 字段 | 类型 | 可空 | 主键 | 外键 | 默认值 |
 |---|---|---:|---:|---|---|
-| `id` | `VARCHAR(64)` | 否 | 是 | `-` | `<function User.<lambda> at 0x10aa28c10>` |
+| `id` | `VARCHAR(64)` | 否 | 是 | `-` | `<function User.<lambda> at 0x10a4b8d30>` |
 | `email` | `VARCHAR(255)` | 否 | 否 | `-` | `-` |
 | `display_name` | `VARCHAR(120)` | 否 | 否 | `-` | `-` |
 | `password_hash` | `VARCHAR(255)` | 否 | 否 | `-` | `-` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10aa28ee0>` |
-| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10aa3c040>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a4c8040>` |
+| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a4c8160>` |
 
 - 索引：无
 - 唯一约束：`(unnamed)`
@@ -55,12 +55,12 @@
 | `graph_requires_sources` | `BOOLEAN` | 是 | 否 | `-` | `-` |
 | `hard_violation` | `BOOLEAN` | 否 | 否 | `-` | `False` |
 | `status` | `VARCHAR(32)` | 否 | 否 | `-` | `running` |
-| `differences` | `JSON` | 否 | 否 | `-` | `<function AgentShadowRun.<lambda> at 0x10add7700>` |
-| `graph_summary` | `JSON` | 否 | 否 | `-` | `<function AgentShadowRun.<lambda> at 0x10add78b0>` |
+| `differences` | `JSON` | 否 | 否 | `-` | `<function AgentShadowRun.<lambda> at 0x10a865820>` |
+| `graph_summary` | `JSON` | 否 | 否 | `-` | `<function AgentShadowRun.<lambda> at 0x10a8659d0>` |
 | `duration_ms` | `INTEGER` | 否 | 否 | `-` | `0` |
 | `error_code` | `VARCHAR(80)` | 是 | 否 | `-` | `-` |
 | `error_message` | `TEXT` | 是 | 否 | `-` | `-` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10add7b80>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a865ca0>` |
 
 - 索引：`ix_agent_shadow_runs_created_at`, `ix_agent_shadow_runs_hard_violation`, `ix_agent_shadow_runs_input_hash`, `ix_agent_shadow_runs_request_id`, `ix_agent_shadow_runs_status`, `ix_agent_shadow_runs_trace_id`, `ix_agent_shadow_runs_user_id`
 - 唯一约束：无
@@ -74,10 +74,10 @@
 | `topic` | `VARCHAR(120)` | 否 | 否 | `-` | `-` |
 | `aggregate_type` | `VARCHAR(80)` | 否 | 否 | `-` | `-` |
 | `aggregate_id` | `VARCHAR(160)` | 否 | 否 | `-` | `-` |
-| `payload` | `JSON` | 否 | 否 | `-` | `<function IntegrationOutbox.<lambda> at 0x10add7550>` |
+| `payload` | `JSON` | 否 | 否 | `-` | `<function IntegrationOutbox.<lambda> at 0x10a8650d0>` |
 | `idempotency_key` | `VARCHAR(240)` | 否 | 否 | `-` | `-` |
 | `status` | `VARCHAR(32)` | 否 | 否 | `-` | `pending` |
-| `available_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10abff550>` |
+| `available_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a865a60>` |
 | `locked_by` | `VARCHAR(160)` | 是 | 否 | `-` | `-` |
 | `locked_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 | `heartbeat_at` | `DATETIME` | 是 | 否 | `-` | `-` |
@@ -86,7 +86,7 @@
 | `error_code` | `VARCHAR(80)` | 是 | 否 | `-` | `-` |
 | `last_error` | `TEXT` | 是 | 否 | `-` | `-` |
 | `trace_id` | `VARCHAR(64)` | 是 | 否 | `-` | `-` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10adfd0d0>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a8859d0>` |
 | `processed_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 
 - 索引：`ix_integration_outbox_aggregate_id`, `ix_integration_outbox_available_at`, `ix_integration_outbox_locked_by`, `ix_integration_outbox_status`, `ix_integration_outbox_topic`, `ix_integration_outbox_trace_id`, `ix_integration_outbox_user_id`
@@ -97,11 +97,11 @@
 | 字段 | 类型 | 可空 | 主键 | 外键 | 默认值 |
 |---|---|---:|---:|---|---|
 | `user_id` | `VARCHAR(64)` | 否 | 是 | `users.id` | `-` |
-| `tree_data` | `JSON` | 否 | 否 | `-` | `<function KnowledgeBase.<lambda> at 0x10aa3ce50>` |
-| `file_contents` | `JSON` | 否 | 否 | `-` | `<function KnowledgeBase.<lambda> at 0x10aa3cdc0>` |
+| `tree_data` | `JSON` | 否 | 否 | `-` | `<function KnowledgeBase.<lambda> at 0x10a4c80d0>` |
+| `file_contents` | `JSON` | 否 | 否 | `-` | `<function KnowledgeBase.<lambda> at 0x10a4c8ee0>` |
 | `selected_file_id` | `VARCHAR(255)` | 是 | 否 | `-` | `-` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10aa7f8b0>` |
-| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10aa7f9d0>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a5049d0>` |
+| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a504af0>` |
 
 - 索引：无
 - 唯一约束：无
@@ -115,8 +115,8 @@
 | `name` | `VARCHAR(100)` | 否 | 否 | `-` | `-` |
 | `parent_id` | `VARCHAR(64)` | 是 | 否 | `note_categories.id` | `-` |
 | `sort_order` | `INTEGER` | 否 | 否 | `-` | `0` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10aa7fb80>` |
-| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10aa67040>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a4fc040>` |
+| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a4fc160>` |
 | `deleted_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 
 - 索引：`ix_note_categories_user_id`
@@ -130,7 +130,7 @@
 | `user_id` | `VARCHAR(64)` | 否 | 否 | `users.id` | `-` |
 | `token_hash` | `VARCHAR(64)` | 否 | 否 | `-` | `-` |
 | `requested_ip` | `VARCHAR(64)` | 是 | 否 | `-` | `-` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10aa28f70>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a4b8f70>` |
 | `expires_at` | `DATETIME` | 否 | 否 | `-` | `-` |
 | `used_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 
@@ -143,13 +143,13 @@
 |---|---|---:|---:|---|---|
 | `id` | `VARCHAR(64)` | 否 | 是 | `-` | `-` |
 | `case_id` | `VARCHAR(64)` | 是 | 否 | `rag_eval_cases.id` | `-` |
-| `provider` | `VARCHAR(50)` | 否 | 否 | `-` | `legacy` |
+| `provider` | `VARCHAR(50)` | 否 | 否 | `-` | `llamaindex` |
 | `status` | `VARCHAR(32)` | 否 | 否 | `-` | `running` |
-| `parameters` | `JSON` | 否 | 否 | `-` | `<function RagEvalRun.<lambda> at 0x10add7940>` |
-| `result` | `JSON` | 否 | 否 | `-` | `<function RagEvalRun.<lambda> at 0x10adfdb80>` |
-| `metrics` | `JSON` | 否 | 否 | `-` | `<function RagEvalRun.<lambda> at 0x10ae2f0d0>` |
+| `parameters` | `JSON` | 否 | 否 | `-` | `<function RagEvalRun.<lambda> at 0x10a885820>` |
+| `result` | `JSON` | 否 | 否 | `-` | `<function RagEvalRun.<lambda> at 0x10a8c34c0>` |
+| `metrics` | `JSON` | 否 | 否 | `-` | `<function RagEvalRun.<lambda> at 0x10a8c39d0>` |
 | `trace_id` | `VARCHAR(64)` | 是 | 否 | `-` | `-` |
-| `started_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ae2f280>` |
+| `started_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a8c3b80>` |
 | `finished_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 
 - 索引：`ix_rag_eval_runs_case_id`, `ix_rag_eval_runs_status`, `ix_rag_eval_runs_trace_id`
@@ -167,7 +167,7 @@
 | `confidence` | `FLOAT` | 是 | 否 | `-` | `-` |
 | `source` | `VARCHAR(50)` | 否 | 否 | `-` | `user_explicit` |
 | `scope` | `VARCHAR(50)` | 否 | 否 | `-` | `global` |
-| `tags` | `JSON` | 否 | 否 | `-` | `<function UserMemory.<lambda> at 0x10abef160>` |
+| `tags` | `JSON` | 否 | 否 | `-` | `<function UserMemory.<lambda> at 0x10a6621f0>` |
 | `status` | `VARCHAR(50)` | 否 | 否 | `-` | `active` |
 | `external_provider` | `VARCHAR(50)` | 是 | 否 | `-` | `-` |
 | `external_id` | `VARCHAR(160)` | 是 | 否 | `-` | `-` |
@@ -175,12 +175,12 @@
 | `memory_layer` | `VARCHAR(50)` | 是 | 否 | `-` | `-` |
 | `expires_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 | `source_ref` | `VARCHAR(255)` | 是 | 否 | `-` | `-` |
-| `provider_metadata` | `JSON` | 否 | 否 | `-` | `<function UserMemory.<lambda> at 0x10abef700>` |
+| `provider_metadata` | `JSON` | 否 | 否 | `-` | `<function UserMemory.<lambda> at 0x10a662820>` |
 | `idempotency_key` | `VARCHAR(160)` | 是 | 否 | `-` | `-` |
 | `last_used_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 | `access_count` | `INTEGER` | 否 | 否 | `-` | `0` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10abef9d0>` |
-| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10abefaf0>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a662af0>` |
+| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a662c10>` |
 | `deleted_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 
 - 索引：`ix_user_memories_expires_at`, `ix_user_memories_user_id`
@@ -194,8 +194,8 @@
 | `user_id` | `VARCHAR(64)` | 否 | 否 | `users.id` | `-` |
 | `user_agent` | `VARCHAR(512)` | 是 | 否 | `-` | `-` |
 | `ip_address` | `VARCHAR(64)` | 是 | 否 | `-` | `-` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10aa3c8b0>` |
-| `last_seen_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10aa3cd30>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a4c89d0>` |
+| `last_seen_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a4c8e50>` |
 | `expires_at` | `DATETIME` | 否 | 否 | `-` | `-` |
 | `revoked_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 
@@ -208,11 +208,33 @@
 |---|---|---:|---:|---|---|
 | `user_id` | `VARCHAR(64)` | 否 | 是 | `users.id` | `-` |
 | `memory_enabled` | `BOOLEAN` | 否 | 否 | `-` | `True` |
-| `preferences` | `JSON` | 否 | 否 | `-` | `<function UserSettings.<lambda> at 0x10aa28ca0>` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10aa3c1f0>` |
-| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10aa3c700>` |
+| `preferences` | `JSON` | 否 | 否 | `-` | `<function UserSettings.<lambda> at 0x10a4b8ca0>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a4c8310>` |
+| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a4c8820>` |
 
 - 索引：无
+- 唯一约束：无
+
+## `memory_shadow_runs`
+
+| 字段 | 类型 | 可空 | 主键 | 外键 | 默认值 |
+|---|---|---:|---:|---|---|
+| `id` | `VARCHAR(64)` | 否 | 是 | `-` | `-` |
+| `user_id` | `VARCHAR(64)` | 是 | 否 | `users.id` | `-` |
+| `memory_id` | `VARCHAR(64)` | 是 | 否 | `user_memories.id` | `-` |
+| `operation` | `VARCHAR(32)` | 否 | 否 | `-` | `-` |
+| `query_hash` | `VARCHAR(64)` | 是 | 否 | `-` | `-` |
+| `legacy_ids` | `JSON` | 否 | 否 | `-` | `<function MemoryShadowRun.<lambda> at 0x10a865670>` |
+| `mem0_ids` | `JSON` | 否 | 否 | `-` | `<function MemoryShadowRun.<lambda> at 0x10a691ee0>` |
+| `overlap_ratio` | `FLOAT` | 否 | 否 | `-` | `0.0` |
+| `latency_ms` | `INTEGER` | 否 | 否 | `-` | `0` |
+| `hard_violation` | `BOOLEAN` | 否 | 否 | `-` | `False` |
+| `status` | `VARCHAR(32)` | 否 | 否 | `-` | `success` |
+| `error_code` | `VARCHAR(80)` | 是 | 否 | `-` | `-` |
+| `details` | `JSON` | 否 | 否 | `-` | `<function MemoryShadowRun.<lambda> at 0x10a662790>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a885160>` |
+
+- 索引：`ix_memory_shadow_runs_created_at`, `ix_memory_shadow_runs_hard_violation`, `ix_memory_shadow_runs_memory_id`, `ix_memory_shadow_runs_operation`, `ix_memory_shadow_runs_query_hash`, `ix_memory_shadow_runs_status`, `ix_memory_shadow_runs_user_id`
 - 唯一约束：无
 
 ## `notes`
@@ -224,15 +246,15 @@
 | `title` | `VARCHAR(255)` | 否 | 否 | `-` | `-` |
 | `category_id` | `VARCHAR(64)` | 是 | 否 | `note_categories.id` | `-` |
 | `summary` | `TEXT` | 是 | 否 | `-` | `-` |
-| `tags` | `JSON` | 否 | 否 | `-` | `<function Note.<lambda> at 0x10aa67160>` |
+| `tags` | `JSON` | 否 | 否 | `-` | `<function Note.<lambda> at 0x10a4fc0d0>` |
 | `content` | `TEXT` | 否 | 否 | `-` | `-` |
 | `is_pinned` | `BOOLEAN` | 否 | 否 | `-` | `False` |
 | `is_favorite` | `BOOLEAN` | 否 | 否 | `-` | `False` |
 | `index_status` | `VARCHAR(50)` | 否 | 否 | `-` | `pending` |
 | `index_version` | `VARCHAR(128)` | 是 | 否 | `-` | `-` |
 | `idempotency_key` | `VARCHAR(160)` | 是 | 否 | `-` | `-` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10aa679d0>` |
-| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10aa67af0>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a4fcaf0>` |
+| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a4fcc10>` |
 | `deleted_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 
 - 索引：`ix_notes_user_id`
@@ -249,7 +271,7 @@
 | `old_content` | `TEXT` | 是 | 否 | `-` | `-` |
 | `new_content` | `TEXT` | 是 | 否 | `-` | `-` |
 | `reason` | `TEXT` | 是 | 否 | `-` | `-` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10abef4c0>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a6625e0>` |
 
 - 索引：`ix_user_memory_events_memory_id`, `ix_user_memory_events_user_id`
 - 唯一约束：无
@@ -263,9 +285,9 @@
 | `title` | `VARCHAR(255)` | 否 | 否 | `-` | `新对话` |
 | `status` | `VARCHAR(50)` | 否 | 否 | `-` | `active` |
 | `current_note_id` | `VARCHAR(64)` | 是 | 否 | `notes.id` | `-` |
-| `metadata_json` | `JSON` | 否 | 否 | `-` | `<function ChatSession.<lambda> at 0x10abefc10>` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ab09d30>` |
-| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ab09f70>` |
+| `metadata_json` | `JSON` | 否 | 否 | `-` | `<function ChatSession.<lambda> at 0x10a662d30>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a62fa60>` |
+| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a62f8b0>` |
 | `last_message_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 | `archived_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 
@@ -284,7 +306,7 @@
 | `size` | `INTEGER` | 否 | 否 | `-` | `-` |
 | `sha256` | `VARCHAR(64)` | 否 | 否 | `-` | `-` |
 | `storage_key` | `VARCHAR(512)` | 否 | 否 | `-` | `-` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10aa28b80>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a504940>` |
 
 - 索引：`ix_note_attachments_note_id`, `ix_note_attachments_sha256`, `ix_note_attachments_user_id`
 - 唯一约束：`(unnamed)`
@@ -305,18 +327,20 @@
 | `include_code` | `BOOLEAN` | 否 | 否 | `-` | `True` |
 | `include_exercises` | `BOOLEAN` | 否 | 否 | `-` | `True` |
 | `extra_request` | `TEXT` | 否 | 否 | `-` | `-` |
-| `draft_config` | `JSON` | 否 | 否 | `-` | `<function NoteDraft.<lambda> at 0x10ab730d0>` |
+| `draft_config` | `JSON` | 否 | 否 | `-` | `<function NoteDraft.<lambda> at 0x10a5f71f0>` |
 | `outline` | `TEXT` | 否 | 否 | `-` | `-` |
 | `assembled_content` | `TEXT` | 否 | 否 | `-` | `-` |
 | `status` | `VARCHAR(50)` | 否 | 否 | `-` | `configuring` |
 | `saved_note_id` | `VARCHAR(64)` | 是 | 否 | `notes.id` | `-` |
 | `idempotency_key` | `VARCHAR(160)` | 是 | 否 | `-` | `-` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ab73820>` |
-| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ab73940>` |
+| `runtime` | `VARCHAR(32)` | 否 | 否 | `-` | `langgraph` |
+| `graph_thread_id` | `VARCHAR(160)` | 是 | 否 | `-` | `-` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a5f7a60>` |
+| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a5f7b80>` |
 | `canceled_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 | `saved_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 
-- 索引：`ix_note_drafts_user_id`
+- 索引：`ix_note_drafts_graph_thread_id`, `ix_note_drafts_user_id`
 - 唯一约束：无
 
 ## `note_index_jobs`
@@ -328,7 +352,7 @@
 | `user_id` | `VARCHAR(64)` | 否 | 否 | `users.id` | `-` |
 | `status` | `VARCHAR(50)` | 否 | 否 | `-` | `pending` |
 | `error_message` | `TEXT` | 是 | 否 | `-` | `-` |
-| `stats` | `JSON` | 否 | 否 | `-` | `<function NoteIndexJob.<lambda> at 0x10aa67a60>` |
+| `stats` | `JSON` | 否 | 否 | `-` | `<function NoteIndexJob.<lambda> at 0x10a4fca60>` |
 | `retry_count` | `INTEGER` | 否 | 否 | `-` | `0` |
 | `max_retries` | `INTEGER` | 否 | 否 | `-` | `3` |
 | `next_attempt_at` | `DATETIME` | 是 | 否 | `-` | `-` |
@@ -342,7 +366,7 @@
 | `chunker_version` | `VARCHAR(80)` | 是 | 否 | `-` | `-` |
 | `embedding_version` | `VARCHAR(120)` | 是 | 否 | `-` | `-` |
 | `graph_version` | `VARCHAR(80)` | 是 | 否 | `-` | `-` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ab09e50>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a5e3f70>` |
 | `started_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 | `finished_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 
@@ -363,7 +387,7 @@
 | `content` | `TEXT` | 否 | 否 | `-` | `-` |
 | `token_count` | `INTEGER` | 否 | 否 | `-` | `0` |
 | `content_hash` | `VARCHAR(64)` | 否 | 否 | `-` | `-` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ab3c790>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a5c08b0>` |
 
 - 索引：`ix_note_sections_content_hash`, `ix_note_sections_note_id`, `ix_note_sections_user_id`
 - 唯一约束：无
@@ -379,7 +403,7 @@
 | `content` | `TEXT` | 否 | 否 | `-` | `-` |
 | `change_summary` | `TEXT` | 是 | 否 | `-` | `-` |
 | `source` | `VARCHAR(50)` | 否 | 否 | `-` | `manual_edit` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10aa67c10>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a4fcb80>` |
 
 - 索引：`ix_note_versions_note_id`, `ix_note_versions_user_id`
 - 唯一约束：无
@@ -398,8 +422,8 @@
 | `node_count` | `INTEGER` | 否 | 否 | `-` | `0` |
 | `error_code` | `VARCHAR(80)` | 是 | 否 | `-` | `-` |
 | `error_message` | `TEXT` | 是 | 否 | `-` | `-` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ab09280>` |
-| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ab09430>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a5e3550>` |
+| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a4fcd30>` |
 | `indexed_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 
 - 索引：`ix_rag_v2_index_states_status`, `ix_rag_v2_index_states_user_id`
@@ -413,7 +437,7 @@
 | `note_id` | `VARCHAR(64)` | 否 | 否 | `notes.id` | `-` |
 | `user_id` | `VARCHAR(64)` | 否 | 否 | `users.id` | `-` |
 | `section_key` | `VARCHAR(64)` | 否 | 否 | `-` | `-` |
-| `section_path` | `JSON` | 否 | 否 | `-` | `<function RagV2Node.<lambda> at 0x10ab09b80>` |
+| `section_path` | `JSON` | 否 | 否 | `-` | `<function RagV2Node.<lambda> at 0x10a5e3820>` |
 | `node_type` | `VARCHAR(32)` | 否 | 否 | `-` | `text` |
 | `node_index` | `INTEGER` | 否 | 否 | `-` | `0` |
 | `content` | `TEXT` | 否 | 否 | `-` | `-` |
@@ -422,11 +446,11 @@
 | `source_version` | `VARCHAR(128)` | 否 | 否 | `-` | `-` |
 | `parser_version` | `VARCHAR(80)` | 否 | 否 | `-` | `-` |
 | `chunker_version` | `VARCHAR(80)` | 否 | 否 | `-` | `-` |
-| `block_types` | `JSON` | 否 | 否 | `-` | `<function RagV2Node.<lambda> at 0x10aae6700>` |
-| `node_metadata` | `JSON` | 否 | 否 | `-` | `<function RagV2Node.<lambda> at 0x10aae68b0>` |
+| `block_types` | `JSON` | 否 | 否 | `-` | `<function RagV2Node.<lambda> at 0x10a57e820>` |
+| `node_metadata` | `JSON` | 否 | 否 | `-` | `<function RagV2Node.<lambda> at 0x10a57e9d0>` |
 | `active` | `BOOLEAN` | 否 | 否 | `-` | `False` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10aae69d0>` |
-| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10aae6b80>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a57eaf0>` |
+| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a57eca0>` |
 
 - 索引：`ix_rag_v2_nodes_active`, `ix_rag_v2_nodes_content_hash`, `ix_rag_v2_nodes_note_id`, `ix_rag_v2_nodes_note_section`, `ix_rag_v2_nodes_section_key`, `ix_rag_v2_nodes_source_version`, `ix_rag_v2_nodes_user_id`, `ix_rag_v2_nodes_visible`
 - 唯一约束：无
@@ -446,8 +470,8 @@
 | `request_id` | `VARCHAR(64)` | 是 | 否 | `-` | `-` |
 | `trace_id` | `VARCHAR(64)` | 是 | 否 | `-` | `-` |
 | `idempotency_key` | `VARCHAR(160)` | 是 | 否 | `-` | `-` |
-| `metadata_json` | `JSON` | 否 | 否 | `-` | `<function AgentRun.<lambda> at 0x10abffd30>` |
-| `started_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10abffe50>` |
+| `metadata_json` | `JSON` | 否 | 否 | `-` | `<function AgentRun.<lambda> at 0x10a691e50>` |
+| `started_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a691f70>` |
 | `finished_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 
 - 索引：`ix_agent_runs_request_id`, `ix_agent_runs_session_id`, `ix_agent_runs_trace_id`, `ix_agent_runs_user_id`
@@ -465,7 +489,7 @@
 | `content` | `TEXT` | 否 | 否 | `-` | `-` |
 | `token_count` | `INTEGER` | 否 | 否 | `-` | `0` |
 | `content_hash` | `VARCHAR(64)` | 否 | 否 | `-` | `-` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ab3c670>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a5c0790>` |
 
 - 索引：`ix_note_chunks_content_hash`, `ix_note_chunks_note_id`, `ix_note_chunks_section_id`, `ix_note_chunks_user_id`
 - 唯一约束：无
@@ -483,8 +507,10 @@
 | `outline_text` | `TEXT` | 否 | 否 | `-` | `-` |
 | `content` | `TEXT` | 否 | 否 | `-` | `-` |
 | `status` | `VARCHAR(50)` | 否 | 否 | `-` | `outline_only` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ab09ee0>` |
-| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ab09310>` |
+| `generation_key` | `VARCHAR(160)` | 是 | 否 | `-` | `-` |
+| `retry_count` | `INTEGER` | 否 | 否 | `-` | `0` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a57eb80>` |
+| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a57e670>` |
 | `deleted_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 | `confirmed_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 
@@ -503,16 +529,20 @@
 | `old_content` | `TEXT` | 否 | 否 | `-` | `-` |
 | `new_content` | `TEXT` | 否 | 否 | `-` | `-` |
 | `instruction` | `TEXT` | 否 | 否 | `-` | `-` |
-| `change_summary` | `JSON` | 否 | 否 | `-` | `<function NoteEditPreview.<lambda> at 0x10abc04c0>` |
+| `change_summary` | `JSON` | 否 | 否 | `-` | `<function NoteEditPreview.<lambda> at 0x10a62f5e0>` |
 | `status` | `VARCHAR(50)` | 否 | 否 | `-` | `preview` |
 | `idempotency_key` | `VARCHAR(160)` | 是 | 否 | `-` | `-` |
 | `apply_idempotency_key` | `VARCHAR(160)` | 是 | 否 | `-` | `-` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10abc0790>` |
-| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10abc08b0>` |
+| `runtime` | `VARCHAR(32)` | 否 | 否 | `-` | `langgraph` |
+| `graph_thread_id` | `VARCHAR(160)` | 是 | 否 | `-` | `-` |
+| `source_content_hash` | `VARCHAR(64)` | 否 | 否 | `-` | `-` |
+| `applied_content_hash` | `VARCHAR(64)` | 是 | 否 | `-` | `-` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a62faf0>` |
+| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a62fc10>` |
 | `applied_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 | `cancelled_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 
-- 索引：`ix_note_edit_previews_note_id`, `ix_note_edit_previews_user_id`
+- 索引：`ix_note_edit_previews_graph_thread_id`, `ix_note_edit_previews_note_id`, `ix_note_edit_previews_user_id`
 - 唯一约束：无
 
 ## `rag_v2_embeddings`
@@ -530,8 +560,8 @@
 | `embedding` | `vector(1024)` | 是 | 否 | `-` | `-` |
 | `status` | `VARCHAR(32)` | 否 | 否 | `-` | `pending` |
 | `error_message` | `TEXT` | 是 | 否 | `-` | `-` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ab09c10>` |
-| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ab09700>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a5e3c10>` |
+| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a5e3310>` |
 | `indexed_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 
 - 索引：`ix_rag_v2_embeddings_content_hash`, `ix_rag_v2_embeddings_node_id`, `ix_rag_v2_embeddings_note_id`, `ix_rag_v2_embeddings_user_id`, `ix_rag_v2_embeddings_vector_ready`
@@ -548,9 +578,9 @@
 | `intent` | `VARCHAR(80)` | 否 | 否 | `-` | `general_chat` |
 | `status` | `VARCHAR(50)` | 否 | 否 | `-` | `open` |
 | `checkpoint_type` | `VARCHAR(80)` | 否 | 否 | `-` | `runtime` |
-| `payload` | `JSON` | 否 | 否 | `-` | `<function AgentCheckpoint.<lambda> at 0x10abef8b0>` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ad9b940>` |
-| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ad9baf0>` |
+| `payload` | `JSON` | 否 | 否 | `-` | `<function AgentCheckpoint.<lambda> at 0x10a662940>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a82aa60>` |
+| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a82ac10>` |
 | `resolved_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 
 - 索引：`ix_agent_checkpoints_run_id`, `ix_agent_checkpoints_session_id`, `ix_agent_checkpoints_user_id`
@@ -569,8 +599,8 @@
 | `input_summary` | `TEXT` | 是 | 否 | `-` | `-` |
 | `output_summary` | `TEXT` | 是 | 否 | `-` | `-` |
 | `trace_id` | `VARCHAR(64)` | 是 | 否 | `-` | `-` |
-| `metadata_json` | `JSON` | 否 | 否 | `-` | `<function AgentStep.<lambda> at 0x10abef820>` |
-| `started_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10abef670>` |
+| `metadata_json` | `JSON` | 否 | 否 | `-` | `<function AgentStep.<lambda> at 0x10a6628b0>` |
+| `started_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a82a040>` |
 | `finished_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 
 - 索引：`ix_agent_steps_run_id`, `ix_agent_steps_trace_id`, `ix_agent_steps_user_id`
@@ -587,9 +617,9 @@
 | `role` | `VARCHAR(20)` | 否 | 否 | `-` | `-` |
 | `text` | `TEXT` | 否 | 否 | `-` | `-` |
 | `context_mode` | `VARCHAR(50)` | 是 | 否 | `-` | `-` |
-| `sources` | `JSON` | 否 | 否 | `-` | `<function ChatMessage.<lambda> at 0x10abef550>` |
-| `metadata_json` | `JSON` | 否 | 否 | `-` | `<function ChatMessage.<lambda> at 0x10abff5e0>` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10abff700>` |
+| `sources` | `JSON` | 否 | 否 | `-` | `<function ChatMessage.<lambda> at 0x10a662670>` |
+| `metadata_json` | `JSON` | 否 | 否 | `-` | `<function ChatMessage.<lambda> at 0x10a691700>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a691820>` |
 
 - 索引：`ix_chat_messages_run_id`, `ix_chat_messages_session_id`, `ix_chat_messages_user_id`
 - 唯一约束：无
@@ -607,7 +637,7 @@
 | `content` | `TEXT` | 否 | 否 | `-` | `-` |
 | `status` | `VARCHAR(50)` | 否 | 否 | `-` | `outline_only` |
 | `source` | `VARCHAR(50)` | 否 | 否 | `-` | `revise_section` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10aae6550>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a5f7af0>` |
 
 - 索引：`ix_note_draft_section_versions_draft_id`, `ix_note_draft_section_versions_draft_section_id`, `ix_note_draft_section_versions_user_id`
 - 唯一约束：无
@@ -621,9 +651,9 @@
 | `user_id` | `VARCHAR(64)` | 否 | 否 | `users.id` | `-` |
 | `new_content` | `TEXT` | 否 | 否 | `-` | `-` |
 | `instruction` | `TEXT` | 否 | 否 | `-` | `-` |
-| `change_summary` | `JSON` | 否 | 否 | `-` | `<function NoteEditPreviewRevision.<lambda> at 0x10aae6820>` |
+| `change_summary` | `JSON` | 否 | 否 | `-` | `<function NoteEditPreviewRevision.<lambda> at 0x10a62f820>` |
 | `source` | `VARCHAR(50)` | 否 | 否 | `-` | `generated` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10abc09d0>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a62f670>` |
 
 - 索引：`ix_note_edit_preview_revisions_edit_id`, `ix_note_edit_preview_revisions_user_id`
 - 唯一约束：无
@@ -644,8 +674,8 @@
 | `embedding` | `vector(1024)` | 是 | 否 | `-` | `-` |
 | `status` | `VARCHAR(50)` | 否 | 否 | `-` | `pending` |
 | `error_message` | `TEXT` | 是 | 否 | `-` | `-` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ab093a0>` |
-| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ab094c0>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a5e34c0>` |
+| `updated_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a5e35e0>` |
 | `indexed_at` | `DATETIME` | 是 | 否 | `-` | `-` |
 
 - 索引：`ix_note_embeddings_chunk_id`, `ix_note_embeddings_content_hash`, `ix_note_embeddings_note_id`, `ix_note_embeddings_section_id`, `ix_note_embeddings_user_id`
@@ -659,15 +689,15 @@
 | `user_id` | `VARCHAR(64)` | 是 | 否 | `users.id` | `-` |
 | `query_hash` | `VARCHAR(64)` | 否 | 否 | `-` | `-` |
 | `query_preview` | `VARCHAR(300)` | 是 | 否 | `-` | `-` |
-| `provider` | `VARCHAR(50)` | 否 | 否 | `-` | `legacy` |
+| `provider` | `VARCHAR(50)` | 否 | 否 | `-` | `llamaindex` |
 | `mode` | `VARCHAR(50)` | 否 | 否 | `-` | `hybrid` |
 | `candidate_count` | `INTEGER` | 否 | 否 | `-` | `0` |
 | `result_count` | `INTEGER` | 否 | 否 | `-` | `0` |
 | `latency_ms` | `INTEGER` | 否 | 否 | `-` | `0` |
 | `trace_id` | `VARCHAR(64)` | 是 | 否 | `-` | `-` |
 | `run_id` | `VARCHAR(64)` | 是 | 否 | `agent_runs.id` | `-` |
-| `metrics` | `JSON` | 否 | 否 | `-` | `<function RagQueryLog.<lambda> at 0x10add79d0>` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10add7a60>` |
+| `metrics` | `JSON` | 否 | 否 | `-` | `<function RagQueryLog.<lambda> at 0x10a8858b0>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a885790>` |
 
 - 索引：`ix_rag_query_logs_created_at`, `ix_rag_query_logs_query_hash`, `ix_rag_query_logs_run_id`, `ix_rag_query_logs_trace_id`, `ix_rag_query_logs_user_id`
 - 唯一约束：无
@@ -687,8 +717,8 @@
 | `input_summary` | `TEXT` | 是 | 否 | `-` | `-` |
 | `output_summary` | `TEXT` | 是 | 否 | `-` | `-` |
 | `trace_id` | `VARCHAR(64)` | 是 | 否 | `-` | `-` |
-| `metadata_json` | `JSON` | 否 | 否 | `-` | `<function AgentToolTrace.<lambda> at 0x10ad9b8b0>` |
-| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10ad9b9d0>` |
+| `metadata_json` | `JSON` | 否 | 否 | `-` | `<function AgentToolTrace.<lambda> at 0x10a82a9d0>` |
+| `created_at` | `DATETIME` | 否 | 否 | `-` | `<function datetime.utcnow at 0x10a82aaf0>` |
 
 - 索引：`ix_agent_tool_traces_run_id`, `ix_agent_tool_traces_step_id`, `ix_agent_tool_traces_trace_id`, `ix_agent_tool_traces_user_id`
 - 唯一约束：无

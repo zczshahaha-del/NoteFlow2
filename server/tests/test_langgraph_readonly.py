@@ -6,22 +6,23 @@ from unittest.mock import patch
 
 from app.agent.langgraph_readonly import (
     ReadonlyGraphDependencies,
+    _default_rag_search,
     invoke_readonly_graph,
     new_readonly_state,
     stream_readonly_graph,
 )
-from app.agent.canary import _rag_v2_search
 from app.rag.service import RagResult
-from app.agent.shadow import compare_shadow, readonly_legacy_route, shadow_selected
 from app.agent.sse import DONE_FRAME, SSEStreamAdapter
 
 
 class FakeReadonlyTools:
-    def __init__(self, *, sources: list[dict] | None = None):
+    def __init__(self, *, sources: list[dict] | None = None, answer_text: str = "answer"):
         self.rag_calls = 0
         self.memory_calls = 0
         self.answer_calls = 0
+        self.memory_write_calls = 0
         self.sources = sources if sources is not None else [{"noteId": "note-1", "noteTitle": "Note"}]
+        self.answer_text = answer_text
         self.events = []
 
     async def emit(self, event):
@@ -37,12 +38,17 @@ class FakeReadonlyTools:
 
     async def answer(self, _state):
         self.answer_calls += 1
-        yield {"choices": [{"delta": {"content": "answer"}, "finish_reason": None}]}
+        yield {"choices": [{"delta": {"content": self.answer_text}, "finish_reason": None}]}
+
+    async def memory_write(self, _state):
+        self.memory_write_calls += 1
+        return 1
 
     def dependencies(self):
         return ReadonlyGraphDependencies(
             emit=self.emit, memory_recall=self.memory,
             rag_search=self.rag, answer_stream=self.answer,
+            memory_write=self.memory_write,
         )
 
 
@@ -65,8 +71,8 @@ class LangGraphReadonlyTest(unittest.TestCase):
                 "unsavedContent": "当前编辑器全文",
             },
         )
-        with patch("app.agent.canary.LlamaIndexRagService.retrieve", new=fake_retrieve):
-            result = asyncio.run(_rag_v2_search(state))
+        with patch("app.rag.v2.service.LlamaIndexRagService.retrieve", new=fake_retrieve):
+            result = asyncio.run(_default_rag_search(state))
 
         self.assertEqual(result["context_mode"], "rag_v2_library")
         self.assertEqual(len(captured), 1)
@@ -107,6 +113,18 @@ class LangGraphReadonlyTest(unittest.TestCase):
         self.assertIn("没有找到", result["answer"])
         self.assertEqual(tools.answer_calls, 0)
 
+    def test_invalid_citation_number_is_removed_and_replacement_is_emitted(self) -> None:
+        tools = FakeReadonlyTools(answer_text="有效来源 [1]，虚构来源 [9]。")
+        result = asyncio.run(invoke_readonly_graph(
+            new_readonly_state(user_id="u", question="q", mode="ask_notes"),
+            dependencies=tools.dependencies(),
+        ))
+
+        self.assertEqual(result["answer"], "有效来源 [1]，虚构来源 。")
+        replacements = [item for item in tools.events if item.get("type") == "answer_replace"]
+        self.assertEqual(len(replacements), 1)
+        self.assertEqual(replacements[0]["citationValidation"]["invalid"], [9])
+
     def test_invalid_mode_returns_stable_error_events(self) -> None:
         tools = FakeReadonlyTools()
         result = asyncio.run(invoke_readonly_graph(
@@ -136,6 +154,21 @@ class LangGraphReadonlyTest(unittest.TestCase):
         self.assertEqual(sum(frame == DONE_FRAME for frame in frames), 1)
         self.assertIn('"type": "agent_session"', frames[0])
 
+    def test_memory_writer_runs_after_primary_answer(self) -> None:
+        tools = FakeReadonlyTools()
+        result = asyncio.run(invoke_readonly_graph(
+            new_readonly_state(
+                user_id="u",
+                question="我叫张成",
+                mode="chat",
+                memory_enabled=True,
+            ),
+            dependencies=tools.dependencies(),
+        ))
+        self.assertEqual(result["answer"], "answer")
+        self.assertEqual(result["memory_write_count"], 1)
+        self.assertEqual(tools.memory_write_calls, 1)
+
     def test_checkpoint_can_resume_after_planner_interrupt(self) -> None:
         try:
             from langgraph.checkpoint.memory import InMemorySaver
@@ -147,7 +180,6 @@ class LangGraphReadonlyTest(unittest.TestCase):
             tools = FakeReadonlyTools()
             state = new_readonly_state(
                 user_id="u", question="q", mode="chat", thread_id="resume-thread",
-                plan_only=True,
             )
             interrupted = await invoke_readonly_graph(
                 state, dependencies=tools.dependencies(), checkpointer=saver,
@@ -161,40 +193,6 @@ class LangGraphReadonlyTest(unittest.TestCase):
         interrupted, resumed = asyncio.run(exercise())
         self.assertEqual(interrupted["route"], "general_chat")
         self.assertEqual(resumed["status"], "success")
-
-
-class LangGraphShadowPolicyTest(unittest.TestCase):
-    def test_shadow_comparison_normalizes_equivalent_readonly_intents(self) -> None:
-        differences, violation = compare_shadow(
-            mode="ask_notes", legacy_intent="note_search", graph_intent="note_qa",
-            legacy_requires_sources=True, graph_requires_sources=True,
-        )
-        self.assertFalse(differences["route"])
-        self.assertFalse(differences["requiresSources"])
-        self.assertFalse(violation)
-
-    def test_hard_mode_violation_is_detected(self) -> None:
-        differences, violation = compare_shadow(
-            mode="ask_notes", legacy_intent="note_search", graph_intent="general_chat",
-            legacy_requires_sources=True, graph_requires_sources=False,
-        )
-        self.assertTrue(differences["route"])
-        self.assertTrue(violation)
-
-    def test_sampling_is_deterministic_and_user_allowlist_overrides_percent(self) -> None:
-        with patch("app.agent.shadow.cfg.LANGGRAPH_SHADOW_ENABLED", True), \
-             patch("app.agent.shadow.cfg.LANGGRAPH_SHADOW_USER_IDS", {"allowed"}), \
-             patch("app.agent.shadow.cfg.LANGGRAPH_SHADOW_SAMPLE_PERCENT", 0):
-            self.assertTrue(shadow_selected(user_id="allowed", request_id="r1"))
-            self.assertFalse(shadow_selected(user_id="other", request_id="r1"))
-        with patch("app.agent.shadow.cfg.LANGGRAPH_SHADOW_ENABLED", True), \
-             patch("app.agent.shadow.cfg.LANGGRAPH_SHADOW_USER_IDS", set()), \
-             patch("app.agent.shadow.cfg.LANGGRAPH_SHADOW_SAMPLE_PERCENT", 100):
-            self.assertTrue(shadow_selected(user_id="any", request_id="fixed"))
-
-    def test_legacy_route_policy_respects_visible_mode(self) -> None:
-        self.assertEqual(readonly_legacy_route("chat", "general_chat"), "general_chat")
-        self.assertEqual(readonly_legacy_route("ask_notes", "note_search"), "note_qa")
 
 
 if __name__ == "__main__":

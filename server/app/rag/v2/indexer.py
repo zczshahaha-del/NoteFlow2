@@ -383,7 +383,7 @@ async def v2_index_diagnostics(session: AsyncSession, user_id: str, note_id: str
         "parserVersion": PARSER_VERSION,
         "chunkerVersion": CHUNKER_VERSION,
         "embeddingVersion": embedding_version(),
-        "enabled": cfg.RAG_V2_INDEX_ENABLED,
+        "enabled": True,
         "states": [
             {
                 "noteId": state.note_id,

@@ -173,7 +173,7 @@ function enhanceCodeBlocks(root: DocumentFragment): void {
   });
 }
 
-function enhanceCitations(root: DocumentFragment): void {
+function enhanceCitations(root: DocumentFragment, validCitationCount = 0): void {
   const citationPattern =
     /(?:【\s*来源\s*(\d+)\s*】|\[\s*来源\s*(\d+)\s*\]|（\s*来源\s*(\d+)\s*）|\(\s*来源\s*(\d+)\s*\)|【\s*(\d+)\s*】|\[\s*(\d+)\s*\])/gu;
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -201,6 +201,12 @@ function enhanceCitations(root: DocumentFragment): void {
         fragment.append(document.createTextNode(text.slice(lastIndex, index)));
       }
       const sourceIndex = match.slice(1).find(Boolean) ?? "";
+      const numericIndex = Number(sourceIndex);
+      if (!Number.isInteger(numericIndex) || numericIndex < 1 || numericIndex > validCitationCount) {
+        fragment.append(document.createTextNode(match[0]));
+        lastIndex = index + match[0].length;
+        continue;
+      }
       const button = document.createElement("button");
       button.type = "button";
       button.className = "chat-citation";
@@ -218,12 +224,12 @@ function enhanceCitations(root: DocumentFragment): void {
   });
 }
 
-export function renderChatMarkdown(markdown: string): string {
+export function renderChatMarkdown(markdown: string, validCitationCount = 0): string {
   const template = document.createElement("template");
   template.innerHTML = marked.parse(markdown || "") as string;
   sanitizeHtml(template.content);
   enhanceCodeBlocks(template.content);
-  enhanceCitations(template.content);
+  enhanceCitations(template.content, validCitationCount);
   return template.innerHTML;
 }
 

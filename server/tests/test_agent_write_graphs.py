@@ -5,7 +5,6 @@ import importlib.metadata
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
 
 from app.agent.langgraph_draft import (
     DraftGraphDependencies,
@@ -17,7 +16,6 @@ from app.agent.langgraph_edit import (
     invoke_edit_graph,
     new_edit_state,
 )
-from app.agent.rollout import runtime_circuit, select_agent_runtime
 from app.services.draft_worker import (
     _PENDING_SECTION_STATUSES,
     _active_claim_tasks,
@@ -229,32 +227,6 @@ class EditGraphTest(unittest.TestCase):
         self.assertIn("__interrupt__", revised)
         self.assertEqual(final["status"], "applied")
         self.assertEqual((tools.previews, tools.revisions, tools.applies), (1, 1, 1))
-
-
-class CanarySelectionTest(unittest.TestCase):
-    def tearDown(self) -> None:
-        runtime_circuit.reset()
-
-    def test_disabled_and_write_intents_always_use_legacy(self) -> None:
-        with patch("app.agent.rollout.cfg.AGENT_RUNTIME", "legacy"), \
-             patch("app.agent.rollout.cfg.LANGGRAPH_CANARY_ENABLED", False):
-            self.assertEqual(select_agent_runtime(user_id="u", intent="general_chat", mode="chat").runtime, "legacy")
-        with patch("app.agent.rollout.cfg.AGENT_RUNTIME", "langgraph"), \
-             patch("app.agent.rollout.cfg.LANGGRAPH_CANARY_ENABLED", True), \
-             patch("app.agent.rollout.cfg.LANGGRAPH_CANARY_PERCENT", 100):
-            self.assertEqual(select_agent_runtime(user_id="u", intent="note_edit_create", mode="chat").runtime, "legacy")
-
-    def test_allowlist_and_circuit_breaker(self) -> None:
-        with patch("app.agent.rollout.cfg.AGENT_RUNTIME", "langgraph"), \
-             patch("app.agent.rollout.cfg.LANGGRAPH_CANARY_ENABLED", True), \
-             patch("app.agent.rollout.cfg.LANGGRAPH_CANARY_PERCENT", 0), \
-             patch("app.agent.rollout.cfg.LANGGRAPH_CANARY_USER_IDS", {"internal"}), \
-             patch("app.agent.rollout.cfg.LANGGRAPH_CANARY_ERROR_THRESHOLD", 1):
-            self.assertEqual(select_agent_runtime(user_id="internal", intent="general_chat", mode="chat").runtime, "langgraph")
-            runtime_circuit.failure("provider_failed")
-            decision = select_agent_runtime(user_id="internal", intent="general_chat", mode="chat")
-            self.assertEqual(decision.runtime, "legacy")
-            self.assertTrue(decision.circuit_open)
 
 
 if __name__ == "__main__":

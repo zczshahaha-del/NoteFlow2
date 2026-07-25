@@ -58,15 +58,13 @@ class Client:
 
     def first_token(self, question: str) -> float:
         request = urllib.request.Request(
-            self.base_url + "/api/ai/chat",
+            self.base_url + "/api/agent/chat",
             data=json.dumps(
                 {
                     "question": question,
-                    "documentTitle": "",
-                    "documentContent": "",
                     "history": [],
-                    "maxTokens": 24,
                     "memoryEnabled": False,
+                    "mode": "chat",
                 },
                 ensure_ascii=False,
             ).encode("utf-8"),

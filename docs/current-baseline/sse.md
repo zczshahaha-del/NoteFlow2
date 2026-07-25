@@ -2,7 +2,7 @@
 
 ## 传输约定
 
-- 端点：`POST /api/ai/chat`、`POST /api/ai/notes/generate`、`POST /api/agent/chat`。
+- 端点：`POST /api/ai/notes/generate`、`POST /api/agent/chat`。
 - Content-Type：`text/event-stream; charset=utf-8`。
 - 每帧：`data: <JSON>\n\n`。
 - 正常或受控失败流的最终结束标记：`data: [DONE]\n\n`。
@@ -30,11 +30,10 @@
 4. Agent 路径发送 `agent_done` 或 `agent_error`。
 5. 最后发送 `[DONE]`；前端把 `[DONE]` 视为传输终止，不是业务事件。
 
-## 兼容边界
+## 运行边界
 
-- 内部事件已统一为 `RuntimeEvent`，由 SSE Adapter 映射为上述旧协议；Router 的 `_sse_format` 兼容入口也统一委托给 Adapter。
-- `SSE_ADAPTER_ENABLED=false` 可立即切回字节等价的 legacy encoder。
+- 内部事件统一为 `RuntimeEvent`，由 SSE Adapter 映射为浏览器协议；Router 的 `_sse_format` 入口统一委托给 Adapter。
 - Adapter 保证结束标记只输出一次，并拒绝在 `[DONE]` 后继续发送事件。
 - 请求与运行通过 `requestId`、`traceId`、`sessionId`、`runId` 关联。
 - 前端当前明确识别：`agent_session`、`tool_trace`、`tool_action`、`agent_done`、`agent_error`、`stream_error`、`context`。
-- 新运行时在切换前必须继续输出以上事件和结束顺序。
+- LangGraph 运行时必须持续输出以上事件和结束顺序。
