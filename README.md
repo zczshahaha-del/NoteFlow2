@@ -1,58 +1,58 @@
 # NoteFlow
 
-NoteFlow is a personal knowledge-base app with a React frontend, FastAPI backend, PostgreSQL + pgvector persistence, Redis infrastructure, and DeepSeek AI features.
+NoteFlow 是一款个人知识库应用，采用 React 前端、FastAPI 后端、PostgreSQL + pgvector 持久化存储和 Redis 基础设施，并集成了 DeepSeek AI 能力。
 
-## Product Direction
+## 产品方向
 
-NoteFlow is being converged into a single workbench after login:
+NoteFlow 正在统一为登录后的单一工作台：
 
-- left: knowledge tree, folders, notes, search, and future recycle-bin entry
-- center: official note reading/editing plus future AI draft and edit-preview modes
-- right: AI assistant, references, task status, and future execution trace
-- avatar menu: profile, preferences, memory management, export, and sign out
+- 左侧：知识树、文件夹、笔记、搜索，以及后续的回收站入口
+- 中间：正式笔记的阅读与编辑，以及后续的 AI 草稿和修改预览模式
+- 右侧：AI 助手、引用来源、任务状态，以及后续的执行轨迹
+- 头像菜单：个人资料、偏好设置、记忆管理、导出和退出登录
 
-Standalone AI generation and settings pages are retained only as migration prototypes. New product work should be folded back into the workbench instead of adding new top-level pages.
+独立的 AI 生成页和设置页仅作为迁移原型保留。新的产品功能应整合回工作台，不再新增顶层页面。
 
-## Stack
+## 技术栈
 
-- React + Vite + Tailwind frontend
-- Zustand app state
-- TanStack Query auth/session requests
-- FastAPI REST/SSE backend
-- SQLAlchemy async + PostgreSQL + pgvector user, knowledge-base, and RAG vector storage
-- DeepSeek chat model integration via `httpx`
-- Redis AI rate limiting
-- HttpOnly Cookie authentication with short-lived JWT access tokens and revocable server sessions
-- Docker Compose deployment
-- Nginx static hosting and `/api` reverse proxy
-- LangGraph agent workflows, LlamaIndex RAG v2, and Mem0 OSS long-term memory
+- React + Vite + Tailwind 前端
+- Zustand 应用状态管理
+- TanStack Query 认证与会话请求
+- FastAPI REST/SSE 后端
+- SQLAlchemy 异步访问 PostgreSQL，并使用 pgvector 存储用户、知识库和 RAG 向量数据
+- 通过 `httpx` 集成 DeepSeek 对话模型
+- Redis AI 请求限流
+- HttpOnly Cookie 认证、短期 JWT 访问令牌和可撤销的服务端会话
+- Docker Compose 部署
+- Nginx 静态资源托管和 `/api` 反向代理
+- LangGraph Agent 工作流、LlamaIndex RAG v2 和 Mem0 OSS 长期记忆
 
-## Quality and release
+## 质量检查与发布
 
 ```bash
 python3 scripts/quality_gate.py --profile full
 python3 scripts/run_release_acceptance.py --base-url http://127.0.0.1:8080
 ```
 
-These commands validate a release candidate. See [production runbook](docs/operations/production-rollout-runbook.md).
+以上命令用于验证候选发布版本。具体操作请参阅[生产发布运行手册](docs/operations/production-rollout-runbook.md)。
 
-## Engineering Baseline
+## 工程基线
 
-- The Python backend starts with `cd server && python3 -m app.main`.
-- Alembic owns schema initialization and upgrades; application startup runs `alembic upgrade head` after PostgreSQL is ready.
-- User IDs are strings and should remain `String(64)` across new backend tables.
-- The existing `knowledge_bases` JSON snapshot is retained only for old client-data migration; structured notes are the active data model.
+- Python 后端通过 `cd server && python3 -m app.main` 启动。
+- Alembic 负责数据库结构的初始化和升级；PostgreSQL 就绪后，应用启动流程会执行 `alembic upgrade head`。
+- 用户 ID 使用字符串，新建后端数据表时应继续保持为 `String(64)`。
+- 现有的 `knowledge_bases` JSON 快照仅用于迁移旧客户端数据；当前生效的数据模型是结构化笔记。
 
-## Docker Deployment
+## Docker 部署
 
-Create Docker env:
+创建 Docker 环境配置：
 
 ```bash
 cp server/.env.example server/.env
 nano server/.env
 ```
 
-At minimum, set:
+至少需要配置：
 
 ```env
 JWT_SECRET=replace_with_a_long_random_secret
@@ -63,28 +63,28 @@ POSTGRES_PASSWORD=replace_with_postgres_password
 AI_RATE_LIMIT_PER_MINUTE=30
 ```
 
-Start the app:
+启动应用：
 
 ```bash
 docker compose up -d --build
 ```
 
-Open:
+访问：
 
 ```text
 http://your-server-ip/
 ```
 
-## Local Development
+## 本地开发
 
-Recommended: one script starts the Python API first (tries TCP bind from `PORT` in `server/.env`, default `8080`, then `8081`, `8082`, ... until one works), waits until the API is reachable, then starts Vite. The chosen port is written to `server/.dev-api-port` so the `/api` proxy always matches the backend:
+推荐方式：使用一个脚本先启动 Python API。脚本会从 `server/.env` 中的 `PORT` 开始尝试绑定 TCP 端口，默认依次尝试 `8080`、`8081`、`8082`……直到找到可用端口。确认 API 可访问后，脚本再启动 Vite。最终选中的端口会写入 `server/.dev-api-port`，确保 `/api` 代理始终指向正确的后端端口：
 
 ```bash
 npm install
 npm run dev
 ```
 
-Split terminals:
+分别使用两个终端启动：
 
 ```bash
 npm run server:dev
@@ -92,7 +92,7 @@ npm run server:dev
 npm run dev:vite
 ```
 
-Backend only:
+仅启动后端：
 
 ```bash
 cd server
@@ -100,7 +100,7 @@ cp .env.example .env
 python3 -m app.main
 ```
 
-Inspect or apply migrations manually:
+手动检查或执行数据库迁移：
 
 ```bash
 cd server
@@ -108,7 +108,7 @@ python3 -m alembic -c alembic.ini current
 python3 -m alembic -c alembic.ini upgrade head
 ```
 
-If the browser must call the Python API without the Vite dev proxy, set the real port in `.env.local` at the repo root:
+如果浏览器不通过 Vite 开发代理直接调用 Python API，请在仓库根目录的 `.env.local` 中配置真实端口：
 
 ```env
 VITE_API_BASE_URL=http://127.0.0.1:8080
