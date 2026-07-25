@@ -10,9 +10,9 @@
 
 ## 步骤 19 产出
 
-- `quality/reports/steps-19-final.*`：全量质量门禁。
-- `quality/reports/steps-19-runtime-e2e.*`：真实 API/AI E2E 结果。
-- `quality/reports/steps-19-release-acceptance.*`：并发、多笔记、长笔记、索引、检索 p50/p95 与 Provider 用量。
+- `quality/reports/archive/steps-19-final.*`：全量质量门禁。
+- `quality/reports/archive/steps-19-runtime-e2e.*`：真实 API/AI E2E 结果。
+- `quality/reports/archive/steps-19-release-acceptance.*`：并发、多笔记、长笔记、索引、检索 p50/p95 与 Provider 用量。
 - `/api/metrics` 现在给出 route/domain p50、p95，并汇总 LLM/Embedding 调用、cache hit、token 和配置单价估算费用。
 - 浏览器验收覆盖登录/注册、目录、笔记编辑、AI 助手入口及控制台错误检查。
 

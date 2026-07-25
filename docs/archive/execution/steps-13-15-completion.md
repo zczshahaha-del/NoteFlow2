@@ -96,7 +96,7 @@ EDIT_RUNTIME=legacy
 - 锁定 Python 3.12 / LangGraph 1.2.9 的真实 PostgreSQL/pgvector 集成：9/9 通过，包含 Draft/Edit durable checkpoint 与 resume。
 - 前端 production build：通过。
 - 最终全量质量门禁：26/26 通过。
-- 最终报告：`quality/reports/steps-13-15-final.md` 与 `.json`。
+- 最终报告：`quality/reports/archive/steps-13-15-final.md` 与 `.json`。
 
 ## 下一步
 

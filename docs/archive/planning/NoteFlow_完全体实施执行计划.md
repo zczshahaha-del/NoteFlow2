@@ -1,8 +1,8 @@
 # NoteFlow 完全体实施执行计划
 
-> 文档性质：后续逐步实施的唯一执行顺序与验收清单  
-> 依据文档：`NoteFlow_统一架构与功能设计说明书_v2.0_整合版.docx`  
-> 当前目标：在不推翻现有前端 UI 和稳定业务能力的前提下，把 NoteFlow 完成到可正式运行、可测试、可灰度、可回滚、可维护的完全体。  
+> 文档性质：后续逐步实施的唯一执行顺序与验收清单
+> 依据文档：`docs/specification/NoteFlow_统一架构与功能设计说明书_v2.0_整合版.docx`
+> 当前目标：在不推翻现有前端 UI 和稳定业务能力的前提下，把 NoteFlow 完成到可正式运行、可测试、可灰度、可回滚、可维护的完全体。
 > 核心选型：LangGraph 全局编排、LlamaIndex RAG v2、Mem0 OSS 长期记忆、PostgreSQL + pgvector、Redis、FastAPI、React/Tiptap、SSE。
 
 ---
@@ -355,7 +355,7 @@ PoC 与生产路径隔离；失败可直接移除 PoC 依赖，不影响现有�
 
 ### 步骤 6：数据库迁移、双层 Checkpoint 与 Outbox
 
-> 执行状态：已于 2026-07-17 完成。实现与验证记录见 `docs/execution/steps-6-7-completion.md`。
+> 执行状态：已于 2026-07-17 完成。实现与验证记录见 `docs/archive/execution/steps-6-7-completion.md`。
 
 #### 目标
 
@@ -406,7 +406,7 @@ PoC 与生产路径隔离；失败可直接移除 PoC 依赖，不影响现有�
 
 ### 步骤 7：统一 RuntimeEvent、SSE Adapter 和可观测性
 
-> 执行状态：已于 2026-07-17 完成。实现与验证记录见 `docs/execution/steps-6-7-completion.md`。
+> 执行状态：已于 2026-07-17 完成。实现与验证记录见 `docs/archive/execution/steps-6-7-completion.md`。
 
 #### 目标
 
@@ -448,7 +448,7 @@ PoC 与生产路径隔离；失败可直接移除 PoC 依赖，不影响现有�
 
 ### 步骤 8：LangGraph 只读主图 PoC
 
-> 执行状态：已于 2026-07-17 完成。实现与验证记录见 `docs/execution/steps-8-9-completion.md`。
+> 执行状态：已于 2026-07-17 完成。实现与验证记录见 `docs/archive/execution/steps-8-9-completion.md`。
 
 #### 目标
 
@@ -490,7 +490,7 @@ PoC 与生产路径隔离；失败可直接移除 PoC 依赖，不影响现有�
 
 ### 步骤 9：LangGraph Shadow 双跑
 
-> 执行状态：已于 2026-07-17 完成。实现与验证记录见 `docs/execution/steps-8-9-completion.md`。
+> 执行状态：已于 2026-07-17 完成。实现与验证记录见 `docs/archive/execution/steps-8-9-completion.md`。
 
 #### 目标
 
@@ -531,7 +531,7 @@ PoC 与生产路径隔离；失败可直接移除 PoC 依赖，不影响现有�
 
 ### 步骤 10：RAG v2 索引基础
 
-> 执行状态：已于 2026-07-17 完成。实现与验证记录见 `docs/execution/steps-10-12-completion.md`。
+> 执行状态：已于 2026-07-17 完成。实现与验证记录见 `docs/archive/execution/steps-10-12-completion.md`。
 
 #### 目标
 
@@ -576,7 +576,7 @@ PoC 与生产路径隔离；失败可直接移除 PoC 依赖，不影响现有�
 
 ### 步骤 11：权限前置的混合检索
 
-> 执行状态：已于 2026-07-17 完成。实现与验证记录见 `docs/execution/steps-10-12-completion.md`。
+> 执行状态：已于 2026-07-17 完成。实现与验证记录见 `docs/archive/execution/steps-10-12-completion.md`。
 
 #### 目标
 
@@ -621,7 +621,7 @@ PoC 与生产路径隔离；失败可直接移除 PoC 依赖，不影响现有�
 
 ### 步骤 12：Reranker、Context Builder、引用与 RAG 评测
 
-> 执行状态：已于 2026-07-17 完成。实现与验证记录见 `docs/execution/steps-10-12-completion.md`。
+> 执行状态：已于 2026-07-17 完成。实现与验证记录见 `docs/archive/execution/steps-10-12-completion.md`。
 
 #### 目标
 
@@ -665,7 +665,7 @@ PoC 与生产路径隔离；失败可直接移除 PoC 依赖，不影响现有�
 
 ### 步骤 13：只读 Agent 与 RAG 灰度切换
 
-> 工程实施状态（2026-07-17）：已完成；生产默认保持 legacy 与 0% 灰度。详见 `docs/execution/steps-13-15-completion.md`。
+> 工程实施状态（2026-07-17）：已完成；生产默认保持 legacy 与 0% 灰度。详见 `docs/archive/execution/steps-13-15-completion.md`。
 
 #### 目标
 

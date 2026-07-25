@@ -64,7 +64,7 @@ RAG v2 的索引、权限前置混合召回、Reranker、Context、引用和评�
 - 真实 PostgreSQL/pgvector 集成：8/8 通过。
 - 固定 RAG v2 评测：通过，显著不劣于 legacy。
 - Python 3.12 锁定依赖镜像：构建通过。
-- 最终全量质量门禁：26/26 通过，报告见 `quality/reports/steps-10-12-final.*`。
+- 最终全量质量门禁：26/26 通过，报告见 `quality/reports/archive/steps-10-12-final.*`。
 
 ## 默认与回滚
 

@@ -1,16 +1,16 @@
-# NoteFlow FastAPI Backend
+# NoteFlow FastAPI 后端
 
-The Python API owns authentication, AI orchestration, Redis-backed rate limiting, and knowledge-base persistence.
+Python API 负责身份认证、AI 编排、基于 Redis 的限流和知识库持久化。
 
-## Baseline Notes
+## 工程基线
 
-- Local startup is `python3 -m app.main` from the `server` directory.
-- Alembic owns schema initialization and upgrades. Startup applies all pending revisions after PostgreSQL becomes reachable.
-- User IDs are string identifiers and new user-owned tables should use `String(64)` foreign keys.
-- The `knowledge_bases` table stores the current JSON snapshot and stays as a compatibility layer until the structured note migration is complete.
-- Redis is optional at startup; if it is unavailable, the API logs a warning and continues without Redis-backed rate limiting.
+- 在 `server` 目录中使用 `python3 -m app.main` 启动本地服务。
+- Alembic 负责数据库结构初始化和升级；PostgreSQL 可用后，启动流程会应用所有待执行的迁移。
+- 用户 ID 使用字符串；新建的用户数据表应继续使用 `String(64)` 外键。
+- `knowledge_bases` 表保存兼容旧客户端的 JSON 快照，当前正式数据模型是结构化笔记。
+- Redis 启动失败不会阻止 API 启动，但会暂时失去基于 Redis 的限流能力，并记录警告日志。
 
-## Local Run
+## 本地运行
 
 ```bash
 cd server
@@ -18,24 +18,24 @@ cp .env.example .env
 python3 -m app.main
 ```
 
-Default API base:
+默认 API 地址：
 
 ```text
 http://127.0.0.1:8080
 ```
 
-If that port is already in use, the server binds the next free port (`8081`, `8082`, …) and logs the change. The chosen port is written to `.dev-api-port` in this directory for the Vite dev proxy.
+如果端口已被占用，服务会依次尝试 `8081`、`8082` 等端口，并将最终端口写入当前目录的 `.dev-api-port`，供 Vite 开发代理读取。
 
-## Environment
+## 环境变量
 
-Put backend-only secrets in `server/.env`.
+后端密钥和本地配置保存在 `server/.env`。
 
 ```env
 PORT=8080
 CORS_ORIGIN=http://127.0.0.1:5173,http://localhost:5173
 
 DB_HOST=127.0.0.1
-DB_PORT=5432
+DB_PORT=5433
 DB_USER=noteflow
 DB_PASSWORD=noteflow_password
 DB_NAME=noteflow
@@ -61,7 +61,7 @@ EMBEDDING_MODEL=text-embedding-v4
 EMBEDDING_DIMENSIONS=1024
 EMBEDDING_BATCH_SIZE=10
 
-REDIS_ADDR=127.0.0.1:6379
+REDIS_ADDR=127.0.0.1:6380
 REDIS_PASSWORD=
 REDIS_DB=0
 AI_RATE_LIMIT_PER_MINUTE=30
@@ -70,19 +70,31 @@ ATTACHMENT_STORAGE_ROOT=server/data/attachments
 ATTACHMENT_MAX_BYTES=10485760
 ```
 
-Authentication is stored in an HttpOnly `noteflow_session` Cookie. Access JWTs expire after 30 minutes and are refreshed only while the corresponding server-side session is active. The account menu can revoke individual sessions. Existing browser Bearer tokens are accepted once by `/api/auth/migrate-legacy-token`, converted to a Cookie session, and then deleted from browser storage.
+## 认证与安全
 
-New passwords use Argon2id. Existing PBKDF2 hashes remain valid and are upgraded automatically after a successful login. Password-reset delivery uses `PASSWORD_RESET_WEBHOOK_URL`; development mode returns the one-time token in the response when no webhook is configured, while production never exposes it.
+身份认证保存在 HttpOnly `noteflow_session` Cookie 中。访问 JWT 默认 30 分钟过期，并且只有服务端会话仍然有效时才能刷新。用户可以在账号菜单中撤销指定会话。
 
-Migration commands:
+旧版浏览器 Bearer Token 只会被 `/api/auth/migrate-legacy-token` 接受一次；迁移为 Cookie 会话后，旧 Token 会从浏览器存储中删除。
+
+新密码使用 Argon2id。旧 PBKDF2 密码仍可登录，并会在成功登录后自动升级。
+
+密码重置通过 `PASSWORD_RESET_WEBHOOK_URL` 发送。开发环境未配置 Webhook 时会在响应中返回一次性 Token；生产环境不会暴露该 Token。
+
+## 数据库迁移
 
 ```bash
 python3 -m alembic -c alembic.ini heads
 python3 -m alembic -c alembic.ini upgrade head
 ```
 
-The Docker deployment uses the `pgvector/pgvector:pg16` image, overrides `DB_HOST` to `postgres`, and sets `REDIS_ADDR` to `redis:6379`, so local development and Docker can share the same code.
+Docker 部署使用 `pgvector/pgvector:pg16`，将 `DB_HOST` 改为 `postgres`，并将 `REDIS_ADDR` 改为 `redis:6379`，因此本地开发和 Docker 可以共用同一套代码。
 
-If `EMBEDDING_API_KEY` is empty, note indexing still parses Markdown into sections/chunks and marks embedding rows as `skipped`; search falls back to the existing keyword/structure retrieval path. When the key is configured, indexing calls DashScope `text-embedding-v4`, stores vectors in pgvector `vector(1024)`, and hybrid search combines keyword results with database-side vector similarity.
+## RAG 与附件
 
-Attachments use the provider-neutral `ObjectStorage` interface. The default adapter writes to `ATTACHMENT_STORAGE_ROOT`; an S3/R2/OSS adapter can replace it without changing the attachment routes or editor workflow. Active HTML and SVG uploads are rejected, and the default per-file limit is 10 MB.
+如果 `EMBEDDING_API_KEY` 为空，笔记索引仍会将 Markdown 解析为章节和分块，并将向量状态标记为 `skipped`；检索会退回关键词和结构检索。
+
+配置密钥后，索引会调用 DashScope `text-embedding-v4`，将向量保存到 pgvector `vector(1024)`，混合检索会结合关键词结果与数据库向量相似度。
+
+附件使用与供应商无关的 `ObjectStorage` 接口。默认实现写入 `ATTACHMENT_STORAGE_ROOT`；以后可以替换为 S3、R2 或 OSS，而不需要修改附件路由和编辑器流程。
+
+系统会拒绝包含主动内容的 HTML、SVG 文件，默认单文件上限为 10 MB。

@@ -49,7 +49,7 @@
 - 锁定版本 Docker PoC：通过。
 - Python 3.12 生产后端镜像（含 LangGraph/PostgreSQL Checkpointer 运行依赖）：构建通过。
 - 真实 DeepSeek 流式图：通过。
-- 全量质量门禁结果见 `quality/reports/steps-8-9-final.*`。
+- 全量质量门禁结果见 `quality/reports/archive/steps-8-9-final.*`。
 
 ## 默认与回滚
 

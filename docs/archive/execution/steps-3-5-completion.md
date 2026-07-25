@@ -50,7 +50,7 @@
 - 架构合约：9/9 通过。
 - 真实 PostgreSQL 集成：5/5 通过。
 - OpenAPI：字节语义对象比较一致。
-- 最终全量质量门禁结果记录在 `quality/reports/steps-3-5-final.*`。
+- 最终全量质量门禁结果记录在 `quality/reports/archive/steps-3-5-final.*`。
 
 ## 已知边界
 

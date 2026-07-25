@@ -14,8 +14,8 @@ from docx.shared import Inches, Pt, RGBColor
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "scripts" / "noteflow_unified_spec_source.md"
-OUTPUT = ROOT / "docs" / "NoteFlow_统一架构与功能设计说明书_v2.0_整合版.docx"
+SOURCE = ROOT / "docs" / "specification" / "noteflow-unified-spec-source.md"
+OUTPUT = ROOT / "docs" / "specification" / "NoteFlow_统一架构与功能设计说明书_v2.0_整合版.docx"
 ASSET_DIR = ROOT / "scripts" / ".noteflow_spec_assets"
 
 CONTENT_DXA = 9360

@@ -20,7 +20,7 @@
 - dump 已恢复到一次性隔离数据库，并核对 27 张表、16 篇笔记、610 个 chunks 和 610 个 embeddings。
 - `server/.env`、备份、附件、依赖、构建产物和临时文件均未进入 Git。
 
-完整记录见 `docs/execution/step-0-protection.md`。
+完整记录见 `docs/archive/execution/step-0-protection.md`。
 
 ## 步骤 1：当前事实基线
 

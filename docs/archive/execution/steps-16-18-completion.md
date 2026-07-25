@@ -53,7 +53,7 @@ Mem0 召回不能直接进入 Prompt：返回结果必须用 `noteflow_memory_id
 - 临时库迁移 roundtrip：`20260717_0009 → 20260717_0008 → 20260717_0009`。
 - Mem0 timeout/circuit、灰度默认、敏感策略测试通过。
 - 随机临时数据库 `noteflow_drill_18762e205f` 已删除。
-- 证据：`quality/reports/steps-16-18-resilience-drill.md` 与 `.json`。
+- 证据：`quality/reports/archive/steps-16-18-resilience-drill.md` 与 `.json`。
 
 ## 默认配置
 
@@ -82,7 +82,7 @@ MEM0_CANARY_USER_IDS=
 - Memory 安全集：12/12，已登记缺口 0。
 - 灾备与故障演练：6/6。
 - Python 3.12 后端镜像：构建通过，`mem0ai 2.0.0` 和 Provider 真实导入通过。
-- 最终全量质量门禁结果见 `quality/reports/steps-16-18-final.*`。
+- 最终全量质量门禁结果见 `quality/reports/archive/steps-16-18-final.*`。
 
 ## 尚需生产流量完成的事项
 

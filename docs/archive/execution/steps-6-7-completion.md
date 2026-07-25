@@ -63,7 +63,7 @@ Memory 的 create/update/delete 在同一个 PostgreSQL 事务中写入 outbox�
 - 后端 unittest：71 tests，65 通过，6 个真实 DB 测试在默认模式按设计跳过。
 - 真实 PostgreSQL：6/6 通过，包括 runtime table 对账、pgvector/HNSW、Outbox 幂等与 stale recovery、索引回归、跨用户隔离。
 - Runtime/SSE 专项：6/6 通过，包括 wire round-trip、单一 `[DONE]`、失败顺序、断线/重连边界、legacy rollback 字节兼容、脱敏与 provider metrics。
-- 全量质量门禁结果另见 `quality/reports/steps-6-7-final.*`。
+- 全量质量门禁结果另见 `quality/reports/archive/steps-6-7-final.*`。
 
 ## 回滚与边界
 
