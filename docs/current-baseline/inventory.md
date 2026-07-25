@@ -29,21 +29,21 @@
 |---|---:|
 | React TSX 组件 | 14 |
 | Store slices | 6 |
-| 前端 API services | 12 |
+| 前端 API services | 13 |
 | FastAPI routers | 12 |
 | 后端 services | 30 |
 | SQLAlchemy model modules | 1 |
-| Alembic revisions | 7 |
-| Python unit test files | 17 |
+| Alembic revisions | 9 |
+| Python unit test files | 25 |
 | 前端 test/audit scripts | 11 |
 
 ## 当前实现状态摘要
 
 - 前端：React/TypeScript、Tiptap/Markdown 双编辑兼容、三栏工作台、AI 面板、草稿与修改预览。
-- 后端：主要 Router 已迁移到 Service/Repository；旧业务状态机作为兼容 facade 保留。
-- RAG：Markdown 标题/内容/pg_trgm 与可选向量通道已经启用；只有明确的当前笔记或全库搜索意图才调用。
+- 后端：主要 Router 已迁移到 Service/Repository，AI 运行时只保留正式实现。
+- RAG：LlamaIndex RAG v2、BM25/向量融合、引用与可选 Qwen Reranker 已成为唯一检索链路。
 - Intent：`context_planner` 已启用 LLM 规划并带规则 fallback；并非关闭状态。
-- Memory：自研五层模型、规则/LLM 提取、用户设置和 CRUD 已启用；Mem0 尚未接入。
-- Agent：自研 Router 编排继续作为默认；业务 checkpoint 与 LangGraph 官方 checkpoint 表已语义分离，RuntimeEvent/SSE Adapter/trace 已启用，LangGraph 运行时尚未接入流量。
+- Memory：五层记忆规则、用户设置与 CRUD 继续作为安全真相层，相关性检索和同步固定使用 Mem0。
+- Agent：LangGraph 是唯一运行时；业务 checkpoint 与 LangGraph checkpoint 表语义分离，RuntimeEvent/SSE Adapter/trace 已启用。
 - Reliability：Outbox、索引任务 claim/heartbeat/崩溃恢复与 RAG 评测/查询日志数据面已建立。
-- Draft/Edit：已有持久化草稿、worker、修改预览、确认、取消和版本保护。
+- Draft/Edit：LangGraph 草稿图和修改图负责持久化状态流转，并保留 worker、确认、取消和版本保护。

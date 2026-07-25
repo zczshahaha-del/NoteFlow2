@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const editor = readFileSync(new URL("../src/components/TiptapPilotEditor.tsx", import.meta.url), "utf8");
+const outlinePanel = readFileSync(new URL("../src/components/OutlinePanel.tsx", import.meta.url), "utf8");
 const tiptapExtensions = readFileSync(new URL("../src/editor/tiptapExtensions.ts", import.meta.url), "utf8");
 const aiPanel = readFileSync(new URL("../src/components/AIPanel.tsx", import.meta.url), "utf8");
 const aiDraftWorkspace = readFileSync(new URL("../src/components/AIDraftWorkspace.tsx", import.meta.url), "utf8");
@@ -31,6 +32,29 @@ assert.match(editor, /placement: "top"/);
 assert.match(editor, /flip: false/);
 assert.match(editor, /className="chapter-rail"/);
 assert.match(editor, /aria-label="打开本文目录"/);
+assert.match(editor, /function smoothScrollToEditorHeading/);
+assert.match(editor, /closest<HTMLElement>\("\.document-scroll"\)/);
+assert.match(editor, /scroller\.scrollTo\(\{[\s\S]*?behavior: reduceMotion \? "auto" : "smooth"/);
+assert.doesNotMatch(
+  editor,
+  /const scrollToHeading[\s\S]{0,260}\.focus\(\)[\s\S]{0,120}\.scrollIntoView\(\)/,
+  "outline navigation must not jump by focusing the editor before smooth scrolling"
+);
+assert.match(editor, /numberHeadings\(headings\)/);
+assert.match(editor, /aria-label="文档显示设置"/);
+assert.match(editor, /显示章节编号/);
+assert.match(editor, /role="menuitemcheckbox"/);
+assert.match(editor, /HEADING_NUMBERING_STORAGE_KEY/);
+assert.match(editor, /headings=\{visibleHeadings\}/);
+assert.match(styles, /\.note-content\.heading-numbering-enabled[\s\S]*?\[data-heading-number\]::before/);
+assert.match(styles, /--noteflow-heading-ink: #232528;/);
+assert.match(styles, /--noteflow-body-ink: #36393d;/);
+assert.match(styles, /\.document-canvas \.note-content \{[\s\S]*?font-weight: 450;/);
+assert.match(styles, /\.document-canvas \.note-content p \{[\s\S]*?color: var\(--noteflow-body-ink\) !important;/);
+assert.match(styles, /\.document-canvas \.note-content h1,[\s\S]*?color: var\(--noteflow-heading-ink\) !important;/);
+assert.match(editor, /heading\.hierarchyDepth/);
+assert.match(outlinePanel, /heading\.hierarchyDepth/);
+assert.match(outlinePanel, /depth \* 18/);
 assert.doesNotMatch(editor, /false && !isMobile.*outline/);
 assert.match(styles, /\.tiptap-selection-toolbar \{[\s\S]*?transform: none;/);
 assert.match(styles, /\.document-editor[\s\S]*outline: none !important/);
@@ -78,10 +102,34 @@ assert.match(aiPanel, /aria-label="收起 AI 助手"/);
 assert.doesNotMatch(aiPanel, /false && onCollapse/);
 assert.match(app, /className="ai-orb-launcher absolute bottom-5 right-5/);
 assert.match(app, /<AIDraftWorkspace key=\{draftWorkspaceKey\}/);
+assert.match(app, /<TiptapPilotEditor \/>/);
+assert.doesNotMatch(app, /NoteEditor|manualLegacy|editorMode|evaluateEditorCompatibility/);
+assert.match(editor, /选择一篇笔记开始阅读/);
+assert.match(editor, /从左侧目录打开笔记/);
 assert.match(
   app,
   /defaultWidth=\{350\}[\s\S]*?minWidth=\{300\}[\s\S]*?maxWidth=\{600\}[\s\S]*?resizeEdge="left"/,
   "desktop AI panel must remain horizontally resizable"
+);
+assert.match(app, /className=\{`app-frame[\s\S]*?stable-workspace-layout/);
+assert.match(app, /"--workspace-left-width"/);
+assert.match(app, /"--workspace-right-width"/);
+assert.match(app, /workspace-center-layer absolute inset-0 z-0/);
+assert.match(app, /onWidthChange=\{setAiPanelWidth\}/);
+assert.match(
+  styles,
+  /\.app-frame\.stable-workspace-layout \.document-canvas \.note-page \{[\s\S]*?margin-left: clamp\(/,
+  "desktop document must remain globally centered until a side panel reaches its safety edge"
+);
+assert.match(
+  styles,
+  /--document-page-width: min\([\s\S]*?780px,[\s\S]*?--workspace-left-width[\s\S]*?--workspace-right-width/,
+  "document width must shrink only after side panels consume the available gutters"
+);
+assert.match(
+  styles,
+  /\.app-frame\.stable-workspace-layout \.chapter-rail \{[\s\S]*?right: calc\(var\(--workspace-right-width, 0px\) \+ 10px\);/,
+  "the document outline rail must remain visible beside the resizable AI panel"
 );
 assert.match(editPreviewWorkspace, /role="alert"/);
 assert.match(editPreviewWorkspace, /editPreviewError/);
@@ -148,7 +196,9 @@ assert.match(aiDraftWorkspace, /正在后台逐章重写/);
 assert.match(aiDraftWorkspace, /aria-haspopup="dialog"/);
 assert.match(styles, /\.draft-modal-shell \.draft-control-no-focus-ring:focus[\s\S]*?outline: none !important;[\s\S]*?box-shadow: none !important;/);
 assert.match(directoryTree, /view === "all" && !tag/);
-assert.match(directoryTree, /setRenamingId\(id\);[\s\S]*?setRenameDraft\("新建文件夹"\);/);
+assert.match(directoryTree, /const handleNewFolder[\s\S]*?setNewFolderOpen\(true\);/);
+assert.match(directoryTree, /aria-labelledby="new-folder-title"/);
+assert.match(directoryTree, /const handleCreateFolderConfirm[\s\S]*?addNode\(newFolderParentId/);
 assert.match(directoryTree, /className=\{`directory-tree/);
 assert.match(directoryTree, /newTooltipOpen && !newMenuOpen/);
 assert.match(directoryTree, /border border-jelly-border bg-white[\s\S]*?text-jelly-text-soft/);
@@ -214,6 +264,11 @@ assert.match(tiptapExtensions, /function openCodeLanguageMenu/);
 assert.match(tiptapExtensions, /closest\("\[data-language-toggle\]"\)/);
 assert.match(tiptapExtensions, /if \(menuClose\) \{[\s\S]*?closeMenu\(\);[\s\S]*?return;/);
 assert.match(styles, /\.code-language-floating-popover/);
+assert.match(
+  styles,
+  /\.code-language-floating-popover \{[\s\S]*?z-index: 1000;/,
+  "code language popover must stay above every code block toolbar"
+);
 assert.match(styles, /\.code-language-floating-options \{[\s\S]*?overflow-y: auto;/);
 assert.match(styles, /\.document-canvas \.note-content \.code-language-current \{[\s\S]*?text-overflow: ellipsis !important;[\s\S]*?white-space: nowrap !important;/);
 assert.match(styles, /\.document-canvas \.note-content \.code-language-trigger \{[\s\S]*?background: transparent !important;/);

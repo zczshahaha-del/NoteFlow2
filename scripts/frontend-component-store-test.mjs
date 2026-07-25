@@ -25,6 +25,8 @@ window.matchMedia ??= () => ({
   addEventListener() {},
   removeEventListener() {},
 });
+dom.window.HTMLElement.prototype.attachEvent ??= function attachEvent() {};
+dom.window.HTMLElement.prototype.detachEvent ??= function detachEvent() {};
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const testFetch = async () => new Response(JSON.stringify({ revisions: [] }), {
   status: 200,
@@ -59,8 +61,8 @@ try {
     useWorkspaceSlice,
     LoginPage,
     NoteMetadataControls,
-    NoteEditor,
     EditPreviewWorkspace,
+    DirectoryTree,
   } = await vite.ssrLoadModule("/src/testing/frontendHarness.ts");
 
   const initialState = useAppStore.getInitialState();
@@ -169,22 +171,6 @@ try {
   assert.match(metadataHtml, /已收藏/);
 
   useAppStore.setState({
-    centerMode: "note",
-    treeData: [note],
-    fileContents: { [note.id]: note.content },
-    selectedFileId: null,
-    workspaceLoading: false,
-    workspaceError: null,
-    pendingCheckpoint: null,
-    agentTask: null,
-    agentRunHistory: [],
-  });
-  const emptyEditorHtml = await renderClient(React.createElement(NoteEditor));
-  assert.match(emptyEditorHtml, /选择一篇笔记开始阅读/);
-  assert.match(emptyEditorHtml, /从左侧目录打开笔记/);
-  assert.doesNotMatch(emptyEditorHtml, /工作台/);
-
-  useAppStore.setState({
     centerMode: "edit",
     chatLoading: false,
     activeEditPreview: {
@@ -209,11 +195,77 @@ try {
   assert.match(editHtml, /新内容/);
   assert.match(editHtml, /应用修改/);
 
+  useAppStore.setState({
+    treeData: [note],
+    fileContents: { [note.id]: note.content },
+    selectedFileId: note.id,
+    deletedNotes: [],
+  });
+  const directoryContainer = document.createElement("div");
+  document.body.appendChild(directoryContainer);
+  const directoryRoot = createRoot(directoryContainer);
+  await act(async () => {
+    directoryRoot.render(React.createElement(DirectoryTree, {
+      pinned: true,
+      onPinnedChange() {},
+      themeMode: "light",
+      onThemeModeChange() {},
+      userEmail: "test@example.com",
+      userName: "测试用户",
+      onSignOut() {},
+    }));
+  });
+  const newButton = directoryContainer.querySelector('button[aria-label="新建"]');
+  assert.ok(newButton);
+  await act(async () => {
+    newButton.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+  });
+  const newFolderButton = Array.from(directoryContainer.querySelectorAll("button"))
+    .find((button) => button.textContent?.includes("新建文件夹"));
+  assert.ok(newFolderButton);
+  await act(async () => {
+    newFolderButton.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+  });
+  assert.match(directoryContainer.textContent ?? "", /确认后才会创建/);
+  assert.ok(directoryContainer.querySelector('[role="dialog"][aria-labelledby="new-folder-title"]'));
+  const closeNewFolder = directoryContainer.querySelector('button[aria-label="关闭新建文件夹"]');
+  assert.ok(closeNewFolder);
+  await act(async () => {
+    closeNewFolder.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+  });
+  const fileMenu = directoryContainer.querySelector('button[aria-label="文件操作"]');
+  assert.ok(fileMenu);
+  await act(async () => {
+    fileMenu.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+  });
+  let moveButton = Array.from(directoryContainer.querySelectorAll("button"))
+    .find((button) => button.textContent?.trim() === "移动到");
+  assert.ok(moveButton);
+  await act(async () => {
+    document.body.dispatchEvent(new dom.window.MouseEvent("mousedown", { bubbles: true }));
+  });
+  moveButton = Array.from(directoryContainer.querySelectorAll("button"))
+    .find((button) => button.textContent?.trim() === "移动到");
+  assert.equal(moveButton, undefined);
+  await act(async () => {
+    fileMenu.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+  });
+  moveButton = Array.from(directoryContainer.querySelectorAll("button"))
+    .find((button) => button.textContent?.trim() === "移动到");
+  assert.ok(moveButton);
+  await act(async () => {
+    moveButton.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+  });
+  assert.match(directoryContainer.textContent ?? "", /选择目标位置/);
+  assert.ok(directoryContainer.querySelector('[role="dialog"][aria-labelledby="move-item-title"]'));
+  await act(async () => directoryRoot.unmount());
+  directoryContainer.remove();
+
   console.log(JSON.stringify({
     ok: true,
     storeAssertions: 10,
-    componentAssertions: 12,
-    components: ["LoginPage", "NoteMetadataControls", "NoteEditor", "EditPreviewWorkspace"],
+    componentAssertions: 19,
+    components: ["LoginPage", "NoteMetadataControls", "EditPreviewWorkspace", "DirectoryTree"],
   }));
 } finally {
   await vite.close();

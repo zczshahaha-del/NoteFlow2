@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 import uuid
 from datetime import datetime
@@ -17,7 +18,6 @@ from app.services.memory import (
     candidate_review_tags,
     clamp_importance,
     episodic_tags,
-    extract_memory_candidates,
     find_memories,
     is_episodic_memory,
     is_single_value_key,
@@ -28,14 +28,16 @@ from app.services.memory import (
     normalize_memory_type,
     normalize_scope,
 )
-from app.services.memory_llm import extract_memory_candidates_smart
-from app.services.memory_read import MemoryReadPlan, plan_memory_read_smart
+from app.services.memory_llm import MemoryExtractionFailure, extract_memory_candidates_smart
+from app.services.memory_read import MemoryReadPlan, broad_memory_read_plan
 from app.memory.policy import filter_eligible_memories
 from app.memory.runtime import resolve_memory_read
 from app.services.memory_service import MemoryService
 from app.services.outbox import enqueue_memory_sync
 from app.workers.outbox_worker import notify_outbox_worker
 from app.services.user_settings import update_user_memory_enabled
+
+logger = logging.getLogger(__name__)
 
 
 def _new_id() -> str:
@@ -142,6 +144,24 @@ def chat_history_for_memory(history: list[AgentChatMessageIn] | None) -> list[Ch
         if text:
             result.append(ChatMessage(role=role, text=text))
     return result
+
+
+async def auto_save_memory_from_question(
+    user_id: str,
+    question: str,
+    history: list[AgentChatMessageIn] | None = None,
+) -> list[dict]:
+    """Run the independent model-based MemoryWriter after the primary action."""
+    if not (question or "").strip():
+        return []
+    try:
+        _, memories = await save_memory_from_question(user_id, question, history)
+        return memories
+    except MemoryExtractionFailure:
+        # Implicit memory must never turn an otherwise successful user action
+        # into a failed turn. Explicit memory commands still surface the error.
+        logger.warning("Implicit MemoryWriter skipped because extraction failed")
+        return []
 
 
 async def save_memory_from_question(
@@ -365,8 +385,27 @@ def _delete_memory_keys(question: str) -> tuple[set[str], set[str]]:
     return keys, types
 
 
-async def delete_memories_from_question(user_id: str, question: str) -> tuple[str, list[dict]]:
-    keys, types = _delete_memory_keys(question)
+async def delete_memories_from_question(
+    user_id: str,
+    question: str,
+    *,
+    canonical_keys: list[str] | None = None,
+    memory_types: list[str] | None = None,
+) -> tuple[str, list[dict]]:
+    if canonical_keys is not None or memory_types is not None:
+        keys = {
+            str(item).strip()
+            for item in (canonical_keys or [])
+            if str(item).strip()
+        }
+        types = {
+            normalize_memory_type(item)
+            for item in (memory_types or [])
+            if str(item).strip()
+        }
+    else:
+        # Compatibility for direct/internal callers outside the Agent TurnPlan.
+        keys, types = _delete_memory_keys(question)
     if not keys and not types:
         return "没有识别出要删除的具体记忆。", []
     deleted: list[dict] = []
@@ -406,122 +445,8 @@ async def disable_memory_for_user(user_id: str) -> tuple[str, list[dict]]:
     return "已关闭长期记忆；之后不会读取或保存个人记忆。", []
 
 
-async def _recover_identity_memory_from_recent_chat(db, user_id: str) -> Optional[dict]:
-    existing_result = await db.execute(
-        select(UserMemory)
-        .where(
-            UserMemory.user_id == user_id,
-            UserMemory.memory_type == "identity",
-            UserMemory.status == "active",
-            UserMemory.deleted_at.is_(None),
-        )
-        .limit(1)
-    )
-    if existing_result.scalar_one_or_none() is not None:
-        return None
-
-    messages_result = await db.execute(
-        select(DbChatMessage)
-        .where(DbChatMessage.user_id == user_id, DbChatMessage.role == "user")
-        .order_by(desc(DbChatMessage.created_at))
-        .limit(80)
-    )
-    for message in messages_result.scalars().all():
-        candidates = [
-            candidate
-            for candidate in extract_memory_candidates(message.text, "global")
-            if normalize_memory_type(candidate.memory_type) == "identity" and candidate.should_save
-        ]
-        if not candidates:
-            continue
-        candidate = candidates[0]
-        memory = UserMemory(
-            id=_new_id(),
-            user_id=user_id,
-            memory_type="identity",
-            content=candidate.content[:2000],
-            importance=clamp_importance(candidate.importance),
-            confidence=candidate.confidence,
-            source="chat_recovered",
-            scope=normalize_scope(candidate.scope),
-            tags=candidate.tags[:12],
-            status="active",
-        )
-        db.add(memory)
-        add_memory_event(
-            db,
-            memory=memory,
-            user_id=user_id,
-            event_type="created",
-            new_content=memory.content,
-            reason="recover_identity_from_recent_chat",
-        )
-        await db.commit()
-        await db.refresh(memory)
-        return _memory_out(memory)
-    return None
-
-
-async def _promote_legacy_interview_candidates(db, user_id: str) -> list[dict]:
-    result = await db.execute(
-        select(UserMemory)
-        .where(
-            UserMemory.user_id == user_id,
-            UserMemory.status == "pending",
-            UserMemory.deleted_at.is_(None),
-        )
-        .order_by(desc(UserMemory.created_at))
-        .limit(30)
-    )
-    promoted: list[dict] = []
-    for memory in result.scalars().all():
-        text = f"{memory.content} {' '.join(memory.tags or [])}"
-        if re.search(r"(你还记得|还记得|记得.*吗|知道.*吗|什么|啥|情况吗)", text):
-            continue
-        if not re.search(
-            r"(面试|笔试|offer|录用|没进|没过|挂了|失败|金山|腾讯|阿里|字节|美团|快手|百度|小米|网易)",
-            text,
-            re.I,
-        ):
-            continue
-        old_content = memory.content
-        normalized = re.sub(r"^用户长期目标：", "", memory.content).strip()
-        normalized = re.sub(r"^用户长期偏好：", "", normalized).strip()
-        normalized = re.sub(r"^用户个人信息：", "", normalized).strip()
-        memory.memory_type = "episode"
-        memory.content = f"用户历史经历：{normalized or old_content}"[:2000]
-        memory.importance = max(clamp_importance(memory.importance), 4)
-        memory.confidence = max(float(memory.confidence or 0.0), 0.82)
-        memory.source = "legacy_candidate_promoted"
-        memory.scope = "global"
-        base_tags = [
-            tag
-            for tag in (memory.tags or [])
-            if not str(tag).startswith(("key:", "layer:", "candidate:"))
-        ]
-        memory.tags = episodic_tags(
-            "personal_interview_event",
-            ["key:career.interview_history", "面试经历", *base_tags],
-            normalized or old_content,
-        )
-        memory.status = "active"
-        memory.updated_at = datetime.utcnow()
-        add_memory_event(
-            db,
-            memory=memory,
-            user_id=user_id,
-            event_type="promoted",
-            old_content=old_content,
-            new_content=memory.content,
-            reason="promote_legacy_interview_candidate",
-        )
-        promoted.append(_memory_out(memory))
-    return promoted
-
-
 async def list_memories_for_agent(user_id: str) -> tuple[str, list[dict]]:
     async with AsyncSessionLocal() as db:
-        await _recover_identity_memory_from_recent_chat(db, user_id)
         memories = await find_memories(db, user_id, include_deleted=False, limit=50)
         active = filter_eligible_memories(memories, limit=8)
         return _format_memory_list(active), [_memory_out(memory) for memory in active]
@@ -533,11 +458,13 @@ async def query_memories_for_agent(
     history: list[AgentChatMessageIn] | None = None,
     read_plan: MemoryReadPlan | None = None,
 ) -> tuple[str, list[dict]]:
-    read_plan = read_plan or await plan_memory_read_smart(question, chat_history_for_memory(history))
+    # The public Agent path passes the single validated TurnPlan projection.
+    # This broad plan is only for trusted internal/direct callers.
+    read_plan = read_plan or broad_memory_read_plan(
+        question,
+        reason="trusted_direct_memory_read",
+    )
     async with AsyncSessionLocal() as db:
-        await _recover_identity_memory_from_recent_chat(db, user_id)
-        if "episode" in read_plan.memory_types or "career.interview_history" in read_plan.canonical_keys:
-            await _promote_legacy_interview_candidates(db, user_id)
         memories = await find_memories(
             db,
             user_id,
@@ -553,7 +480,7 @@ async def query_memories_for_agent(
             db,
             user_id=user_id,
             query=read_plan.query or question,
-            legacy_memories=memories,
+            candidate_memories=memories,
             limit=min(read_plan.limit, cfg.MEMORY_CONTEXT_LIMIT),
         )
         await mark_memories_used(db, user_id, active, reason=f"read_plan:{read_plan.reason or 'memory_query'}")

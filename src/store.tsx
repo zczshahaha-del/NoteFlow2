@@ -2190,6 +2190,15 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
             ),
           }));
         },
+        onAnswerReplace: (content) => {
+          set((current) => ({
+            chatMessages: current.chatMessages.map((message) =>
+              message.id === assistantMsg.id
+                ? { ...message, text: content }
+                : message
+            ),
+          }));
+        },
         onAgentSession: (session) => {
           set((current) => ({
             agentSessionId: session.sessionId,

@@ -94,12 +94,28 @@ class Mem0Provider:
             timeout_ms=cfg.MEM0_TIMEOUT_MS,
         )
 
-    async def search(self, *, user_id: str, query: str, limit: int = 8) -> list[dict]:
+    async def search(
+        self,
+        *,
+        user_id: str,
+        query: str,
+        limit: int = 8,
+        metadata_filters: dict[str, str] | None = None,
+    ) -> list[dict]:
+        filters: dict[str, Any] = {"user_id": user_id}
+        if metadata_filters:
+            filters.update(
+                {
+                    str(key): str(value)
+                    for key, value in metadata_filters.items()
+                    if str(key).strip() and str(value).strip()
+                }
+            )
         result = await self._call(
             lambda: self._get_client().search(
                 query,
                 top_k=max(1, min(limit, 20)),
-                filters={"user_id": user_id},
+                filters=filters,
             )
         )
         return _results(result)

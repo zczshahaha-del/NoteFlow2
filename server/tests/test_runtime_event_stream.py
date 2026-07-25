@@ -5,7 +5,7 @@ import logging
 import unittest
 
 from app.agent.contracts import RuntimeEvent
-from app.agent.sse import DONE_FRAME, SSEStreamAdapter, encode_event, legacy_encode_event
+from app.agent.sse import DONE_FRAME, SSEStreamAdapter, encode_event
 from app.observability.context import redact_data, trace_scope
 from app.services.observability import metrics_snapshot, record_metric
 
@@ -21,16 +21,12 @@ class RuntimeEventStreamTest(unittest.TestCase):
         self.assertEqual(encode_event(event), f"data: {json.dumps(wire, ensure_ascii=False)}\n\n")
 
     def test_adapter_emits_exactly_one_done_and_rejects_late_events(self) -> None:
-        adapter = SSEStreamAdapter(enabled=True)
+        adapter = SSEStreamAdapter()
         self.assertIn('"type": "context"', adapter.event({"type": "context"}))
         self.assertEqual(adapter.done(), DONE_FRAME)
         self.assertEqual(adapter.done(), "")
         with self.assertRaises(RuntimeError):
             adapter.event({"type": "late"})
-
-    def test_legacy_rollback_encoder_is_byte_compatible(self) -> None:
-        wire = {"type": "context", "message": "中文"}
-        self.assertEqual(encode_event(wire), legacy_encode_event(wire))
 
     def test_stream_error_has_controlled_terminal_order(self) -> None:
         frames = list(SSEStreamAdapter().adapt([

@@ -123,6 +123,29 @@ function displayedSources(
   return referencedSources(text, sources);
 }
 
+function groupSourcesByNote(
+  refs: Array<{ source: ChatSource; index: number }>
+): Array<{ noteId: string; noteTitle: string; refs: Array<{ source: ChatSource; index: number }> }> {
+  const groups = new Map<string, {
+    noteId: string;
+    noteTitle: string;
+    refs: Array<{ source: ChatSource; index: number }>;
+  }>();
+  refs.forEach((ref) => {
+    const existing = groups.get(ref.source.noteId);
+    if (existing) {
+      existing.refs.push(ref);
+      return;
+    }
+    groups.set(ref.source.noteId, {
+      noteId: ref.source.noteId,
+      noteTitle: ref.source.noteTitle,
+      refs: [ref],
+    });
+  });
+  return Array.from(groups.values());
+}
+
 function chatSessionGroup(value: string | null): string {
   if (!value) return "更早";
   const date = new Date(value);
@@ -1055,6 +1078,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
             attachedSelectionText.length > 80 || attachedSelectionText.includes("\n");
           const sourceRefs =
             msg.role === "assistant" ? displayedSources(msg.text, msg.sources) : [];
+          const sourceGroups = groupSourcesByNote(sourceRefs);
           const precedingSelection = (() => {
             if (msg.role !== "assistant") return null;
             for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
@@ -1079,7 +1103,9 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
                 <div
                   className="chat-markdown"
                   onClick={(event) => handleChatContentClick(event, msg.sources)}
-                  dangerouslySetInnerHTML={{ __html: renderChatMarkdown(msg.text) }}
+                  dangerouslySetInnerHTML={{
+                    __html: renderChatMarkdown(msg.text, msg.sources?.length ?? 0),
+                  }}
                 />
               ) : (
                 <div className="space-y-2">
@@ -1136,25 +1162,37 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
                 </button>
               )}
               {sourceRefs.length > 0 && (
-                <div className="mt-2 flex items-start gap-2 border-t border-jelly-border pt-2">
-                  <span className="mt-1 shrink-0 text-[11px] text-jelly-text-muted">参考</span>
-                  <div className="min-w-0 flex-1 space-y-0.5">
-                    {sourceRefs.slice(0, 4).map(({ source, index: sourceIndex }) => (
-                      <button
-                        key={`${source.noteId}-${source.sectionId ?? "note"}-${sourceIndex}`}
-                        type="button"
-                        className="group flex max-w-full items-center gap-1.5 py-0.5 text-left text-[12px] text-jelly-text-muted transition-colors hover:text-jelly-blue-deep"
-                        onClick={() => focusChatSource(source)}
-                        title={`${source.noteTitle}${source.sectionTitle ? ` / ${source.sectionTitle}` : ""}`}
-                      >
-                        <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-jelly-blue-pale px-1 text-[10px] font-semibold text-jelly-blue-deep">
-                          {sourceIndex}
-                        </span>
-                        <span className="min-w-0 truncate border-b border-transparent group-hover:border-jelly-blue/30">
-                          {source.noteTitle}
-                          {source.sectionTitle ? ` / ${source.sectionTitle}` : ""}
-                        </span>
-                      </button>
+                <div className="mt-2 border-t border-jelly-border pt-2">
+                  <div className="mb-1 text-[11px] text-jelly-text-muted">
+                    参考 · {sourceGroups.length} 篇笔记 · {sourceRefs.length} 处原文
+                  </div>
+                  <div className="space-y-1.5">
+                    {sourceGroups.map((group) => (
+                      <div key={group.noteId} className="min-w-0">
+                        <div className="truncate text-[12px] font-medium text-jelly-text-soft">
+                          {group.noteTitle}
+                        </div>
+                        <div className="space-y-0.5">
+                          {group.refs.map(({ source, index: sourceIndex }) => (
+                            <button
+                              key={`${source.noteId}-${source.sectionId ?? "note"}-${source.chunkId ?? sourceIndex}`}
+                              type="button"
+                              className="group flex max-w-full items-center gap-1.5 py-0.5 text-left text-[12px] text-jelly-text-muted transition-colors hover:text-jelly-blue-deep"
+                              onClick={() => focusChatSource(source)}
+                              title={`打开原文：${source.noteTitle}${source.sectionTitle ? ` / ${source.sectionTitle}` : ""}`}
+                            >
+                              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-jelly-blue-pale px-1 text-[10px] font-semibold text-jelly-blue-deep">
+                                {sourceIndex}
+                              </span>
+                              <span className="min-w-0 truncate border-b border-transparent group-hover:border-jelly-blue/30">
+                                {source.sectionPath?.[source.sectionPath.length - 1] ||
+                                  source.sectionTitle ||
+                                  "正文"}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>

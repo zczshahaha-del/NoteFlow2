@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import cfg
 from app.database import init_db, init_redis
-from app.routers import auth, knowledge, notes, drafts, edits, memories, ai, agent, health, settings, attachments, langgraph_poc, chat_sessions
+from app.routers import auth, knowledge, notes, drafts, edits, memories, ai, agent, health, settings, attachments, chat_sessions
 from app.schemas.common import API_ERROR_RESPONSES
 from app.services.observability import install_observability
 from app.services.index_worker import start_index_worker, stop_index_worker
@@ -67,7 +67,6 @@ app.include_router(settings.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(agent.router, prefix="/api")
 app.include_router(chat_sessions.router, prefix="/api")
-app.include_router(langgraph_poc.router, prefix="/api")
 
 
 def _find_free_port(preferred: int, max_steps: int = 50) -> int:

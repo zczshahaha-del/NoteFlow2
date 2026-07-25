@@ -20,7 +20,6 @@ from app.models.db import (
 from app.repositories.drafts import DraftRepository
 from app.repositories.index_jobs import IndexJobRepository
 from app.repositories.notes import NoteRepository
-from app.agent.rollout import select_child_runtime
 from app.agent.write_runtime import authorize_draft_save, initialize_draft_graph, resume_draft_generation
 from app.services.markdown_index import index_note_now
 from app.utils import random_id
@@ -430,31 +429,28 @@ async def create_draft(
                 ).strip()[:4000],
                 "orchestration": {
                     **dict((payload.draftConfig or {}).get("orchestration") or {}),
-                    "runtime": select_child_runtime("draft"),
+                    "runtime": "langgraph",
                     "stage": "outline_ready" if status == "outline_ready" else "requirements",
                 },
             },
             outline=outline,
             status=status,
             idempotency_key=idempotency_key or None,
-            runtime=select_child_runtime("draft"),
-            graph_thread_id=f"draft-{random_id()}" if select_child_runtime("draft") == "langgraph" else None,
+            runtime="langgraph",
+            graph_thread_id=f"draft-{random_id()}",
         )
         session.add(draft)
         await session.flush()
         await _replace_sections(session, draft, sections)
+        initialized = await initialize_draft_graph(
+            user_id=user.id, thread_id=draft.graph_thread_id,
+            draft_id=draft.id, topic=draft.topic, outline=draft.outline,
+        )
+        if not initialized:
+            await session.rollback()
+            raise HTTPException(status_code=503, detail="LangGraph 草稿流程初始化失败，请稍后重试")
         await session.commit()
         await session.refresh(draft)
-        if draft.runtime == "langgraph" and draft.graph_thread_id:
-            initialized = await initialize_draft_graph(
-                user_id=user.id, thread_id=draft.graph_thread_id,
-                draft_id=draft.id, topic=draft.topic, outline=draft.outline,
-            )
-            if not initialized:
-                draft.runtime = "legacy"
-                draft.graph_thread_id = None
-                await session.commit()
-                await session.refresh(draft)
         return {"draft": _draft_out(draft, await _get_sections(session, user.id, draft.id))}
 
 
@@ -720,19 +716,23 @@ async def generate_all_draft_sections(
             "startedAt": previous_job.get("startedAt") or _now().isoformat(),
             "updatedAt": _now().isoformat(),
         }
+        if not draft.graph_thread_id:
+            draft.runtime = "langgraph"
+            draft.graph_thread_id = f"draft-{random_id()}"
+            initialized = await initialize_draft_graph(
+                user_id=user.id, thread_id=draft.graph_thread_id,
+                draft_id=draft.id, topic=draft.topic, outline=draft.outline,
+            )
+            if not initialized:
+                raise HTTPException(status_code=503, detail="LangGraph 草稿流程初始化失败，请稍后重试")
+        resumed = await resume_draft_generation(thread_id=draft.graph_thread_id)
+        if not resumed:
+            raise HTTPException(status_code=503, detail="LangGraph 草稿流程恢复失败，请稍后重试")
         draft.draft_config = config
         draft.status = "generating"
         await session.commit()
         await session.refresh(draft)
         result = {"draft": _draft_out(draft, await _get_sections(session, user.id, draft.id))}
-        if draft.runtime == "langgraph" and draft.graph_thread_id:
-            resumed = await resume_draft_generation(thread_id=draft.graph_thread_id)
-            if not resumed:
-                draft.runtime = "legacy"
-                draft.graph_thread_id = None
-                await session.commit()
-                await session.refresh(draft)
-                result = {"draft": _draft_out(draft, await _get_sections(session, user.id, draft.id))}
     notify_draft_worker()
     return result
 
@@ -801,13 +801,20 @@ async def save_draft_to_notes(
         content = (draft.assembled_content or _assemble_from_sections(draft, sections)).strip()
         if not content:
             raise HTTPException(status_code=400, detail="draft content is empty")
-        if draft.runtime == "langgraph" and draft.graph_thread_id:
-            authorized = await authorize_draft_save(
-                thread_id=draft.graph_thread_id, assembled_content=content,
+        if not draft.graph_thread_id:
+            draft.runtime = "langgraph"
+            draft.graph_thread_id = f"draft-{random_id()}"
+            initialized = await initialize_draft_graph(
+                user_id=user.id, thread_id=draft.graph_thread_id,
+                draft_id=draft.id, topic=draft.topic, outline=draft.outline,
             )
-            if not authorized:
-                draft.runtime = "legacy"
-                draft.graph_thread_id = None
+            if not initialized:
+                raise HTTPException(status_code=503, detail="LangGraph 草稿流程初始化失败，请稍后重试")
+        authorized = await authorize_draft_save(
+            thread_id=draft.graph_thread_id, assembled_content=content,
+        )
+        if not authorized:
+            raise HTTPException(status_code=503, detail="LangGraph 草稿保存授权失败，请稍后重试")
         note = Note(
             id=random_id(),
             user_id=user.id,

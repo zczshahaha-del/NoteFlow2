@@ -1,8 +1,8 @@
-__all__ = ["LegacyMemoryService"]
+__all__ = ["MemoryContextService"]
 
 
 def __getattr__(name):
-    if name == "LegacyMemoryService":
-        from app.memory.service import LegacyMemoryService
-        return LegacyMemoryService
+    if name == "MemoryContextService":
+        from app.memory.service import MemoryContextService
+        return MemoryContextService
     raise AttributeError(name)

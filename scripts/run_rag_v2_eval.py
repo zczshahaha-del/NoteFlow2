@@ -16,9 +16,11 @@ from sqlalchemy import delete
 ROOT = Path(__file__).resolve().parents[1]
 SERVER_ROOT = ROOT / "server"
 DATASET = ROOT / "quality" / "eval" / "rag_cases.json"
-LEGACY_REPORT = ROOT / "quality" / "reports" / "rag-legacy-baseline.json"
 REPORT_JSON = ROOT / "quality" / "reports" / "rag-v2-eval.json"
 REPORT_MD = ROOT / "quality" / "reports" / "rag-v2-eval.md"
+MIN_RECALL_AT_5 = 0.8
+MIN_MRR = 0.8
+MIN_NDCG_AT_5 = 0.8
 
 
 def _percentile(values: list[float], percentile: float) -> float:
@@ -31,18 +33,17 @@ def _percentile(values: list[float], percentile: float) -> float:
 
 def _markdown(report: dict) -> str:
     summary = report["summary"]
-    legacy = report["legacyComparison"]
     lines = [
         "# NoteFlow RAG v2 固定评测",
         "",
         f"- 数据集：`{report['datasetVersion']}`",
-        f"- Recall@5：{summary['recallAt5']}（legacy {legacy['recallAt5']}）",
-        f"- MRR：{summary['mrr']}（legacy {legacy['mrr']}）",
-        f"- nDCG@5：{summary['nDcgAt5']}（legacy {legacy['nDcgAt5']}）",
+        f"- Recall@5：{summary['recallAt5']}（门槛 {MIN_RECALL_AT_5}）",
+        f"- MRR：{summary['mrr']}（门槛 {MIN_MRR}）",
+        f"- nDCG@5：{summary['nDcgAt5']}（门槛 {MIN_NDCG_AT_5}）",
         f"- 引用字段覆盖率：{summary['citationCoverage']}",
         f"- 预期无结果准确率：{report['noAnswerAccuracy']}",
         f"- 跨用户泄漏：{report['crossUserLeakage']}",
-        f"- 不劣于 legacy：{'是' if report['nonInferior'] else '否'}",
+        f"- 质量门禁：{'通过' if report['passed'] else '失败'}",
         f"- 冷运行 p95：{report['latencyMs']['cold']['p95']} ms",
         f"- 热运行 p95：{report['latencyMs']['hot']['p95']} ms",
         "",
@@ -81,7 +82,6 @@ async def main_async(with_embeddings: bool) -> int:
     from app.services.rag_eval import RagEvalCase, evaluate_rag_sources, summarize_rag_eval_results
 
     dataset = json.loads(DATASET.read_text(encoding="utf-8"))
-    legacy = json.loads(LEGACY_REPORT.read_text(encoding="utf-8"))["summary"]
     run_key = uuid.uuid4().hex[:12]
     owner_ids = {owner: f"rag-v2-{owner}-{run_key}" for owner in {item["owner"] for item in dataset["corpus"]}}
     note_ids = {item["key"]: f"rag-v2-note-{item['key']}-{run_key}" for item in dataset["corpus"]}
@@ -165,10 +165,10 @@ async def main_async(with_embeddings: bool) -> int:
             and cold["forbiddenHits"] == hot["forbiddenHits"]
             for cold, hot in zip(pass_results["cold"], pass_results["hot"])
         )
-        non_inferior = (
-            summary["recallAt5"] >= legacy["recallAt5"]
-            and summary["mrr"] >= legacy["mrr"]
-            and summary["nDcgAt5"] >= legacy["nDcgAt5"]
+        passed = (
+            summary["recallAt5"] >= MIN_RECALL_AT_5
+            and summary["mrr"] >= MIN_MRR
+            and summary["nDcgAt5"] >= MIN_NDCG_AT_5
             and summary["citationCoverage"] == 1.0
             and no_answer_accuracy == 1.0
             and cross_user_leakage == 0
@@ -179,11 +179,15 @@ async def main_async(with_embeddings: bool) -> int:
             "datasetVersion": dataset["version"],
             "retrievalMode": "rag_v2 title/bm25/vector/weighted-rrf",
             "summary": summary,
-            "legacyComparison": {key: legacy[key] for key in ("recallAt5", "mrr", "nDcgAt5")},
+            "qualityGate": {
+                "minRecallAt5": MIN_RECALL_AT_5,
+                "minMrr": MIN_MRR,
+                "minNDcgAt5": MIN_NDCG_AT_5,
+            },
             "noAnswerAccuracy": no_answer_accuracy,
             "crossUserLeakage": cross_user_leakage,
             "coldHotConsistent": consistent,
-            "nonInferior": non_inferior,
+            "passed": passed,
             "latencyMs": {
                 key: {
                     "p50": round(statistics.median(values), 2) if values else 0.0,
@@ -201,9 +205,9 @@ async def main_async(with_embeddings: bool) -> int:
             "nDcgAt5": summary["nDcgAt5"],
             "noAnswerAccuracy": no_answer_accuracy,
             "crossUserLeakage": cross_user_leakage,
-            "nonInferior": non_inferior,
+            "passed": passed,
         }, ensure_ascii=False))
-        return 0 if non_inferior else 1
+        return 0 if passed else 1
     finally:
         cfg.EMBEDDING_API_KEY = original_embedding_key
         cfg.RAG_VECTOR_ENABLED = original_vector_enabled

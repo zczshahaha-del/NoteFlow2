@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import unittest
+from unittest.mock import patch
 
-from app.config import cfg
 from app.memory.policy import classify_memory_content, filter_eligible_memories
-from app.memory.rollout import effective_memory_provider, mem0_shadow_selected
+from app.memory.runtime import resolve_memory_read
 from app.providers.mem0 import Mem0Provider
 from app.providers.resilience import AsyncCircuitBreaker, CircuitOpenError
+from app.services.memory_read import memory_read_plan_from_turn_plan
+from app.services.turn_planner import IntentParameters, PrimaryIntent, TurnPlan
 
 
 class FakeMem0:
@@ -33,11 +35,41 @@ class MissingDeleteMem0(FakeMem0):
 
 
 class MemoryRecord:
-    def __init__(self, *, status="active", content="用户偏好：简洁", deleted_at=None, expires_at=None):
+    def __init__(
+        self,
+        *,
+        memory_id="nf-1",
+        status="active",
+        content="用户偏好：简洁",
+        canonical_key="",
+        deleted_at=None,
+        expires_at=None,
+    ):
+        self.id = memory_id
         self.status = status
         self.content = content
+        self.canonical_key = canonical_key
         self.deleted_at = deleted_at
         self.expires_at = expires_at
+
+
+class UnrelatedMem0Provider:
+    async def search(self, **kwargs):
+        del kwargs
+        return [
+            {
+                "id": "mem0-unrelated",
+                "metadata": {"noteflow_memory_id": "nf-unrelated"},
+            }
+        ]
+
+
+class RecordingSession:
+    def __init__(self):
+        self.added = []
+
+    def add(self, value):
+        self.added.append(value)
 
 
 class Mem0IntegrationTest(unittest.IsolatedAsyncioTestCase):
@@ -52,6 +84,22 @@ class Mem0IntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(deleted)
         self.assertFalse(client.calls[0][2]["infer"])
         self.assertEqual(client.calls[1][2]["filters"], {"user_id": "u-1"})
+
+    async def test_provider_can_restrict_search_to_noteflow_projection(self):
+        client = FakeMem0()
+        provider = Mem0Provider(client_factory=lambda: client)
+
+        await provider.search(
+            user_id="u-1",
+            query="我叫什么名字",
+            limit=6,
+            metadata_filters={"noteflow_memory_id": "nf-name"},
+        )
+
+        self.assertEqual(
+            client.calls[0][2]["filters"],
+            {"user_id": "u-1", "noteflow_memory_id": "nf-name"},
+        )
 
     async def test_circuit_opens_and_recovers_only_after_cooldown(self):
         breaker = AsyncCircuitBreaker(2, 60, 60)
@@ -69,6 +117,48 @@ class Mem0IntegrationTest(unittest.IsolatedAsyncioTestCase):
         provider = Mem0Provider(client_factory=MissingDeleteMem0)
         self.assertTrue(await provider.delete(user_id="u-1", memory_id="gone"))
 
+    async def test_mem0_miss_falls_back_to_safe_relational_candidates(self):
+        session = RecordingSession()
+        candidates = [
+            MemoryRecord(memory_id="nf-age", content="用户年龄为24岁", canonical_key="profile.age"),
+            MemoryRecord(memory_id="nf-height", content="用户身高：180cm", canonical_key="profile.height"),
+        ]
+
+        with patch("app.memory.runtime.get_mem0_provider", return_value=UnrelatedMem0Provider()):
+            result = await resolve_memory_read(
+                session,
+                user_id="u-1",
+                query="我多大，身高多少",
+                candidate_memories=candidates,
+                limit=6,
+            )
+
+        self.assertEqual([memory.id for memory in result], ["nf-age", "nf-height"])
+        self.assertTrue(session.added[0].hard_violation)
+
+    def test_height_read_plan_comes_from_the_single_turn_plan(self):
+        turn_plan = TurnPlan(
+            primary_intent=PrimaryIntent.MEMORY,
+            intent_parameters=IntentParameters(
+                memory_action="read",
+                memory_scope="global",
+                memory_layers=["semantic"],
+                memory_types=["personal_info"],
+                memory_key="profile.height",
+                memory_query="用户身高",
+            ),
+            confidence=0.95,
+        )
+        plan = memory_read_plan_from_turn_plan(
+            turn_plan,
+            question="我身高多少你还记得吗",
+        )
+
+        self.assertEqual(plan.memory_types, ["personal_info"])
+        self.assertEqual(plan.canonical_keys, ["profile.height"])
+        self.assertEqual(plan.layers, ["semantic"])
+        self.assertEqual(plan.query, "用户身高")
+
     def test_sensitive_and_temporary_values_never_enter_context(self):
         for text in (
             "请记住密码 NeverStore-8899",
@@ -82,30 +172,6 @@ class Mem0IntegrationTest(unittest.IsolatedAsyncioTestCase):
                 self.assertFalse(classify_memory_content(text).allowed)
         rows = [MemoryRecord(), MemoryRecord(content="密码是 NeverStore-8899")]
         self.assertEqual(len(filter_eligible_memories(rows)), 1)
-
-    def test_rollout_is_off_by_default_and_allowlist_is_exact(self):
-        old = {
-            "MEMORY_PROVIDER": cfg.MEMORY_PROVIDER,
-            "MEM0_CANARY_ENABLED": cfg.MEM0_CANARY_ENABLED,
-            "MEM0_CANARY_USER_IDS": cfg.MEM0_CANARY_USER_IDS,
-            "MEMORY_SHADOW_ENABLED": cfg.MEMORY_SHADOW_ENABLED,
-            "MEMORY_SHADOW_READ_PERCENT": cfg.MEMORY_SHADOW_READ_PERCENT,
-        }
-        try:
-            cfg.MEMORY_PROVIDER = "mem0"
-            cfg.MEM0_CANARY_ENABLED = True
-            cfg.MEM0_CANARY_USER_IDS = {"internal-user"}
-            cfg.MEMORY_SHADOW_ENABLED = True
-            cfg.MEMORY_SHADOW_READ_PERCENT = 100
-            self.assertEqual(effective_memory_provider("internal-user"), "mem0")
-            self.assertEqual(effective_memory_provider("other-user"), "legacy")
-            self.assertTrue(mem0_shadow_selected("other-user"))
-            cfg.MEM0_CANARY_ENABLED = False
-            self.assertEqual(effective_memory_provider("other-user"), "mem0")
-        finally:
-            for key, value in old.items():
-                setattr(cfg, key, value)
-
 
 if __name__ == "__main__":
     unittest.main()

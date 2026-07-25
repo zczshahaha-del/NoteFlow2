@@ -18,12 +18,17 @@ class LlamaIndexRagService:
     """RAG v2 facade; the storage model remains NoteFlow-owned and versioned."""
 
     async def retrieve(self, request: RagRequest) -> RagResult:
-        # Selection and dirty-editor context are not persisted and deliberately
-        # remain on the established path until the Agent rollout step.
-        if request.selected_text.strip() or request.unsaved_content.strip():
-            from app.rag.service import LegacyRagService
-
-            return await LegacyRagService().retrieve(request)
+        transient_context: list[str] = []
+        if request.selected_text.strip():
+            transient_context.append(f"用户当前选中的正文：\n{request.selected_text.strip()}")
+        if request.unsaved_content.strip():
+            transient_context.append(f"当前编辑器尚未保存的正文：\n{request.unsaved_content.strip()}")
+        if transient_context:
+            return RagResult(
+                context_mode="editor_transient",
+                context_text="\n\n".join(transient_context),
+                sources=[],
+            )
 
         started = time.perf_counter()
         retrieval = await retrieve_candidates(

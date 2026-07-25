@@ -3,11 +3,8 @@ from __future__ import annotations
 import hashlib
 import time
 
-from sqlalchemy import select
-
 from app.config import cfg
 from app.memory.policy import filter_eligible_memories
-from app.memory.rollout import effective_memory_provider, mem0_shadow_selected
 from app.models.db import MemoryShadowRun, UserMemory
 from app.providers.mem0 import get_mem0_provider
 from app.services.observability import record_metric
@@ -29,27 +26,43 @@ async def resolve_memory_read(
     *,
     user_id: str,
     query: str,
-    legacy_memories: list[UserMemory],
+    candidate_memories: list[UserMemory],
     limit: int,
 ) -> list[UserMemory]:
-    legacy = filter_eligible_memories(legacy_memories, limit=limit)
-    provider = effective_memory_provider(user_id)
-    shadow = mem0_shadow_selected(user_id)
-    if provider != "mem0" and not shadow:
-        return legacy
+    candidates = filter_eligible_memories(candidate_memories, limit=limit)
+    candidate_ids = [memory.id for memory in candidates]
+    metadata_filters: dict[str, str] = {}
+    if len(candidate_ids) == 1:
+        # The structured read planner has already narrowed this request to one
+        # policy-approved record (for example identity.name). Restrict Mem0 to
+        # that projection so unrelated episodic memories cannot crowd it out.
+        metadata_filters["noteflow_memory_id"] = candidate_ids[0]
+    else:
+        canonical_keys = {
+            str(memory.canonical_key or "").strip()
+            for memory in candidates
+            if str(memory.canonical_key or "").strip()
+        }
+        if len(canonical_keys) == 1:
+            metadata_filters["canonical_key"] = next(iter(canonical_keys))
 
     started = time.perf_counter()
     status, error_code = "success", None
     mem0_rows: list[dict] = []
     try:
-        mem0_rows = await get_mem0_provider().search(user_id=user_id, query=query, limit=limit)
+        if candidate_ids:
+            mem0_rows = await get_mem0_provider().search(
+                user_id=user_id,
+                query=query,
+                limit=limit,
+                metadata_filters=metadata_filters,
+            )
     except Exception as exc:
         status, error_code = "failed", type(exc).__name__
         record_metric("memory", "mem0_read", status="failed")
 
-    legacy_ids = [memory.id for memory in legacy]
     mem0_ids = [memory_id for row in mem0_rows if (memory_id := _noteflow_id(row))]
-    allowed_ids = set(legacy_ids)
+    allowed_ids = set(candidate_ids)
     hard_violation = any(memory_id not in allowed_ids for memory_id in mem0_ids)
     overlap = len(allowed_ids.intersection(mem0_ids)) / max(1, len(allowed_ids.union(mem0_ids)))
     session.add(
@@ -58,29 +71,35 @@ async def resolve_memory_read(
             user_id=user_id,
             operation="read",
             query_hash=hashlib.sha256(query.encode()).hexdigest(),
-            legacy_ids=legacy_ids,
+            legacy_ids=candidate_ids,
             mem0_ids=mem0_ids,
             overlap_ratio=overlap,
             latency_ms=int((time.perf_counter() - started) * 1000),
             hard_violation=hard_violation,
             status=status,
             error_code=error_code,
-            details={"effectiveProvider": provider, "shadow": shadow, "resultCount": len(mem0_rows)},
+            details={"effectiveProvider": "mem0", "shadow": False, "resultCount": len(mem0_rows)},
         )
     )
     record_metric("memory", "mem0_read", status=status)
 
-    # Shadow never changes the user-visible answer. A Mem0 canary may only select
-    # rows that remain active and eligible in NoteFlow's own projection.
-    if provider != "mem0":
-        return legacy
-    if status != "success":
-        return []
-    ordered_ids = [memory_id for memory_id in mem0_ids if memory_id in allowed_ids]
+    # Mem0 ranks the already policy-approved relational projection. It must
+    # never turn a safe, structured read into "no memory" merely because an
+    # embedding query ranked unrelated records above the requested fields.
+    mapped = {memory.id: memory for memory in candidates}
+    ordered_ids = []
+    if status == "success":
+        ordered_ids = [
+            memory_id
+            for memory_id in mem0_ids
+            if memory_id in allowed_ids and memory_id not in ordered_ids
+        ]
+    ordered_ids.extend(memory_id for memory_id in candidate_ids if memory_id not in ordered_ids)
     if not ordered_ids:
         return []
-    rows = await session.execute(
-        select(UserMemory).where(UserMemory.user_id == user_id, UserMemory.id.in_(ordered_ids))
+    if status != "success" or not allowed_ids.intersection(mem0_ids):
+        record_metric("memory", "mem0_read_fallback", status="success")
+    return filter_eligible_memories(
+        [mapped[memory_id] for memory_id in ordered_ids if memory_id in mapped],
+        limit=limit,
     )
-    mapped = {memory.id: memory for memory in rows.scalars().all()}
-    return filter_eligible_memories([mapped[item] for item in ordered_ids if item in mapped], limit=limit)

@@ -27,10 +27,8 @@ class GateCommand:
 
 
 FRONTEND_COMMANDS = [
-    GateCommand("frontend", "editor-roundtrip", ["npm", "run", "test:editor-roundtrip"]),
     GateCommand("frontend", "tiptap-codec", ["npm", "run", "test:tiptap-codec"]),
     GateCommand("frontend", "tiptap-selection", ["npm", "run", "test:tiptap-selection"]),
-    GateCommand("frontend", "editor-compatibility", ["npm", "run", "test:editor-compatibility"]),
     GateCommand("frontend", "editor-ui-contract", ["npm", "run", "test:editor-ui"]),
     GateCommand("frontend", "wiki-links", ["npm", "run", "test:wiki-links"]),
     GateCommand("frontend", "knowledge-import", ["npm", "run", "test:knowledge-import"]),
@@ -38,7 +36,6 @@ FRONTEND_COMMANDS = [
     GateCommand("frontend", "offline-conflict", ["npm", "run", "test:offline-conflict"]),
     GateCommand("frontend", "component-store", ["npm", "run", "test:frontend"]),
     GateCommand("frontend", "pwa", ["npm", "run", "test:pwa"]),
-    GateCommand("frontend", "editor-selection", ["npm", "run", "test:editor-selection"]),
     GateCommand("frontend", "input-composition", ["npm", "run", "test:input-composition"]),
 ]
 
@@ -66,7 +63,6 @@ DATABASE_AND_EVAL_COMMANDS = [
         cwd=SERVER_ROOT,
         env={"NOTEFLOW_RUN_DB_TESTS": "1"},
     ),
-    GateCommand("rag", "legacy-fixed-eval", [sys.executable, "scripts/run_rag_baseline.py"]),
     GateCommand("rag", "rag-v2-fixed-eval", [sys.executable, "scripts/run_rag_v2_eval.py"]),
     GateCommand("memory", "memory-safety-eval", [sys.executable, "scripts/run_memory_safety_eval.py"]),
 ]

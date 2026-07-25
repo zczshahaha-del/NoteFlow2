@@ -161,6 +161,23 @@ async def record_tool_trace(
     }
 
 
+async def update_agent_run_intent(
+    *,
+    user_id: str,
+    run_id: str,
+    step_id: str,
+    intent: str,
+) -> None:
+    async with AsyncSessionLocal() as db:
+        run = await db.get(AgentRun, run_id)
+        if run is not None and run.user_id == user_id:
+            run.intent = intent
+        step = await db.get(AgentStep, step_id)
+        if step is not None and step.user_id == user_id:
+            step.output_summary = f"intent={intent}"
+        await db.commit()
+
+
 async def finish_agent_run(
     *,
     user_id: str,

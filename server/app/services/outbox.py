@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import cfg
 from app.models.db import IntegrationOutbox, MemoryShadowRun, Note, UserMemory
 from app.memory.policy import memory_is_eligible
-from app.memory.rollout import mem0_write_required
 from app.providers.mem0 import get_mem0_provider
 from app.observability.context import current_trace
 from app.repositories.outbox import OutboxRepository
@@ -33,7 +32,7 @@ async def enqueue_memory_sync(
 
 async def dispatch_outbox(session: AsyncSession, item: IntegrationOutbox) -> None:
     if item.topic == "memory.sync.requested":
-        if not item.user_id or not mem0_write_required(item.user_id):
+        if not item.user_id:
             return
         memory = await session.scalar(
             select(UserMemory).where(
@@ -84,7 +83,7 @@ async def dispatch_outbox(session: AsyncSession, item: IntegrationOutbox) -> Non
                 overlap_ratio=1.0 if external_id else 0.0,
                 latency_ms=int((time.perf_counter() - started) * 1000),
                 status="success",
-                details={"shadow": cfg.MEMORY_PROVIDER != "mem0"},
+                details={"shadow": False},
             )
         )
         return
@@ -94,9 +93,8 @@ async def dispatch_outbox(session: AsyncSession, item: IntegrationOutbox) -> Non
             return
         from app.services.markdown_index import create_index_job
         await create_index_job(session, note)
-        if cfg.RAG_V2_INDEX_ENABLED:
-            from app.rag.v2.indexer import create_rag_v2_index_job
+        from app.rag.v2.indexer import create_rag_v2_index_job
 
-            await create_rag_v2_index_job(session, note)
+        await create_rag_v2_index_job(session, note)
         return
     raise ValueError(f"unsupported outbox topic: {item.topic}")

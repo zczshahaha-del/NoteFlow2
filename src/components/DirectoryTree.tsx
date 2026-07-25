@@ -22,6 +22,7 @@ import {
   ChevronsRight,
   Loader2,
   Star,
+  Check,
 } from "lucide-react";
 import { generateId } from "../store";
 import { useEditorSlice, useWorkspaceSlice } from "../storeSlices";
@@ -157,16 +158,135 @@ function collectFolderIds(node: FileNode): Set<string> {
 function flattenFolders(
   nodes: FileNode[],
   excludeIds = new Set<string>(),
-  prefix = ""
-): Array<{ id: string | null; label: string }> {
-  const folders: Array<{ id: string | null; label: string }> = [];
+  parents: string[] = []
+): Array<{ id: string; name: string; path: string; depth: number }> {
+  const folders: Array<{ id: string; name: string; path: string; depth: number }> = [];
   for (const node of nodes) {
     if (node.type !== "folder" || excludeIds.has(node.id)) continue;
-    const path = prefix ? `${prefix} / ${node.name}` : node.name;
-    folders.push({ id: node.id, label: path });
-    folders.push(...flattenFolders(node.children ?? [], excludeIds, path));
+    const pathParts = [...parents, node.name];
+    folders.push({
+      id: node.id,
+      name: node.name,
+      path: pathParts.join(" / "),
+      depth: parents.length,
+    });
+    folders.push(...flattenFolders(node.children ?? [], excludeIds, pathParts));
   }
   return folders;
+}
+
+type FolderTarget = {
+  id: string | null;
+  name: string;
+  path: string;
+  depth: number;
+};
+
+function FolderPicker({
+  targets,
+  value,
+  currentId,
+  query,
+  onQueryChange,
+  onChange,
+}: {
+  targets: FolderTarget[];
+  value: string | null;
+  currentId?: string | null;
+  query: string;
+  onQueryChange: (value: string) => void;
+  onChange: (value: string | null) => void;
+}) {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const visibleTargets = normalizedQuery
+    ? targets.filter((target) => target.path.toLocaleLowerCase().includes(normalizedQuery))
+    : targets;
+
+  return (
+    <div>
+      <div className="ui-input mb-3 flex h-10 items-center gap-2 px-3 shadow-none">
+        <Search size={14} className="shrink-0 text-jelly-text-muted" strokeWidth={1.8} />
+        <input
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder="搜索文件夹"
+          className="min-w-0 flex-1 bg-transparent text-[13px] text-jelly-text outline-none placeholder:text-jelly-text-muted"
+        />
+        {query && (
+          <button
+            type="button"
+            className="text-jelly-text-muted transition-colors hover:text-jelly-text"
+            onClick={() => onQueryChange("")}
+            aria-label="清空文件夹搜索"
+          >
+            <X size={14} strokeWidth={2} />
+          </button>
+        )}
+      </div>
+
+      <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
+        {visibleTargets.length === 0 ? (
+          <div className="flex min-h-28 flex-col items-center justify-center rounded-xl border border-dashed border-jelly-border text-center">
+            <Folder size={19} className="text-jelly-text-muted" strokeWidth={1.5} />
+            <p className="mt-2 text-[12px] text-jelly-text-muted">没有匹配的文件夹</p>
+          </div>
+        ) : (
+          visibleTargets.map((target) => {
+            const selected = value === target.id;
+            const current = currentId !== undefined && currentId === target.id;
+            return (
+              <button
+                key={target.id ?? "root"}
+                type="button"
+                className={`flex min-h-12 w-full items-center gap-3 rounded-xl border px-3 py-2 text-left transition-all ${
+                  selected
+                    ? "border-jelly-blue/35 bg-jelly-blue-pale text-jelly-blue-deep"
+                    : "border-transparent text-jelly-text-soft hover:border-jelly-border hover:bg-white"
+                }`}
+                style={{ paddingLeft: `${12 + Math.min(target.depth, 4) * 10}px` }}
+                onClick={() => onChange(target.id)}
+                aria-pressed={selected}
+              >
+                <span
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                    selected ? "bg-white/80 text-jelly-blue-deep" : "bg-jelly-blue-pale text-jelly-blue"
+                  }`}
+                >
+                  {target.id === null
+                    ? <BookOpen size={16} strokeWidth={1.7} />
+                    : <Folder size={16} strokeWidth={1.7} />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate text-[13px] font-medium text-jelly-text">
+                      {target.name}
+                    </span>
+                    {current && (
+                      <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] text-jelly-text-muted">
+                        当前位置
+                      </span>
+                    )}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[11px] text-jelly-text-muted">
+                    {target.path}
+                  </span>
+                </span>
+                <span
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                    selected
+                      ? "border-jelly-blue-deep bg-jelly-blue-deep text-white"
+                      : "border-jelly-border bg-white text-transparent"
+                  }`}
+                >
+                  <Check size={12} strokeWidth={2.2} />
+                </span>
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
 }
 
 interface DeleteTargetState {
@@ -287,7 +407,7 @@ function TreeNode({
           )}
         </button>
 
-        <div className="relative ml-1 shrink-0">
+        <div className="relative ml-1 shrink-0" data-file-menu-root>
           <button
             type="button"
             className={`flex h-7 w-7 items-center justify-center rounded-md text-jelly-text-muted transition-all hover:bg-white hover:text-jelly-text ${
@@ -450,8 +570,12 @@ export default function DirectoryTree({
   const [menuNodeId, setMenuNodeId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
+  const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
+  const [folderPickerQuery, setFolderPickerQuery] = useState("");
   const [movingNode, setMovingNode] = useState<FileNode | null>(null);
-  const [moveTargetId, setMoveTargetId] = useState<string>("");
+  const [moveTargetId, setMoveTargetId] = useState<string | null>(null);
   const [trashOpen, setTrashOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTargetState | null>(null);
   const [searchResults, setSearchResults] = useState<ChatSource[]>([]);
@@ -480,8 +604,22 @@ export default function DirectoryTree({
   const moveTargets = useMemo(() => {
     const excludeIds =
       movingNode?.type === "folder" ? collectFolderIds(movingNode) : new Set<string>();
-    return [{ id: null, label: "知识库根目录" }, ...flattenFolders(treeData, excludeIds)];
+    return [
+      { id: null, name: "知识库根目录", path: "知识库", depth: 0 },
+      ...flattenFolders(treeData, excludeIds),
+    ];
   }, [movingNode, treeData]);
+  const allFolderTargets = useMemo(
+    () => [
+      { id: null, name: "知识库根目录", path: "知识库", depth: 0 },
+      ...flattenFolders(treeData),
+    ],
+    [treeData]
+  );
+  const movingNodeParentId = useMemo(
+    () => movingNode ? findParentFolderId(treeData, movingNode.id) : null,
+    [movingNode, treeData]
+  );
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -496,6 +634,27 @@ export default function DirectoryTree({
   }, [newMenuOpen]);
 
   useEffect(() => {
+    if (!menuNodeId) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Element | null;
+      if (typeof target?.closest === "function" && target.closest("[data-file-menu-root]")) return;
+      setMenuNodeId(null);
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setMenuNodeId(null);
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [menuNodeId]);
+
+  useEffect(() => {
     if (!trashOpen) return;
 
     function handleEscape(event: KeyboardEvent) {
@@ -505,6 +664,20 @@ export default function DirectoryTree({
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
   }, [trashOpen]);
+
+  useEffect(() => {
+    if (!newFolderOpen && !movingNode) return;
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setNewFolderOpen(false);
+      setMovingNode(null);
+      setFolderPickerQuery("");
+    }
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [movingNode, newFolderOpen]);
 
   useEffect(() => {
     const query = searchQuery.trim();
@@ -569,11 +742,13 @@ export default function DirectoryTree({
     setNewMenuOpen(false);
     setMenuNodeId(null);
     setRenamingId(null);
+    setNewFolderOpen(false);
     setMovingNode(null);
     setTrashOpen(false);
     setDeleteTarget(null);
     setSearchQuery("");
     setNewTooltipOpen(false);
+    setFolderPickerQuery("");
   }, [expanded]);
 
   const handleNewFile = useCallback(() => {
@@ -593,21 +768,31 @@ export default function DirectoryTree({
   }, [selectedFileId, treeData, addNode, setSelectedFileId]);
 
   const handleNewFolder = useCallback(() => {
-    const id = generateId();
     const parentId = selectedFileId
       ? findParentFolderId(treeData, selectedFileId)
       : null;
-    addNode(parentId, {
+    setNewFolderName("");
+    setNewFolderParentId(parentId);
+    setFolderPickerQuery("");
+    setNewFolderOpen(true);
+    setNewTooltipOpen(false);
+    setNewMenuOpen(false);
+  }, [selectedFileId, treeData]);
+
+  const handleCreateFolderConfirm = useCallback(() => {
+    const name = newFolderName.trim().replace(/\.md$/i, "");
+    if (!name) return;
+    const id = generateId();
+    addNode(newFolderParentId, {
       id,
-      name: "新建文件夹",
+      name,
       type: "folder",
       children: [],
     });
-    setRenamingId(id);
-    setRenameDraft("新建文件夹");
-    setNewTooltipOpen(false);
-    setNewMenuOpen(false);
-  }, [selectedFileId, treeData, addNode]);
+    setNewFolderOpen(false);
+    setNewFolderName("");
+    setFolderPickerQuery("");
+  }, [addNode, newFolderName, newFolderParentId]);
 
   const handleStartRename = useCallback((node: FileNode) => {
     setMenuNodeId(null);
@@ -636,15 +821,18 @@ export default function DirectoryTree({
     setMenuNodeId(null);
     setDeleteTarget(null);
     setMovingNode(node);
-    setMoveTargetId("");
-  }, []);
+    setMoveTargetId(findParentFolderId(treeData, node.id));
+    setFolderPickerQuery("");
+  }, [treeData]);
 
   const handleMoveConfirm = useCallback(() => {
     if (!movingNode) return;
-    moveNode(movingNode.id, moveTargetId || null);
+    if (moveTargetId === movingNodeParentId) return;
+    moveNode(movingNode.id, moveTargetId);
     setMovingNode(null);
-    setMoveTargetId("");
-  }, [moveNode, moveTargetId, movingNode]);
+    setMoveTargetId(null);
+    setFolderPickerQuery("");
+  }, [moveNode, moveTargetId, movingNode, movingNodeParentId]);
 
   const handleExport = useCallback(
     (node: FileNode) => {
@@ -1053,45 +1241,216 @@ export default function DirectoryTree({
         </div>
       )}
 
-      {movingNode && expanded && (
-        <div className="border-t border-jelly-border bg-white px-4 py-3">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="truncate text-[12px] font-semibold text-jelly-text">
-              移动「{movingNode.name.replace(/\.md$/, "")}」
-            </p>
-            <button
-              className="rounded-sm text-jelly-text-muted hover:text-jelly-text"
-              onClick={() => setMovingNode(null)}
-              aria-label="关闭移动面板"
-            >
-              <X size={14} strokeWidth={2} />
-            </button>
-          </div>
-          <select
-            value={moveTargetId}
-            onChange={(event) => setMoveTargetId(event.target.value)}
-            className="ui-input h-9 w-full px-2 text-[13px] outline-none"
+      {newFolderOpen && expanded && (
+        <div className="fixed inset-0 z-[90] grid place-items-center bg-[#26343d]/20 p-4 backdrop-blur-[2px]">
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default"
+            onClick={() => {
+              setNewFolderOpen(false);
+              setFolderPickerQuery("");
+            }}
+            aria-label="关闭新建文件夹"
+          />
+          <section
+            className="panel-surface relative z-10 flex max-h-[min(720px,calc(100vh-32px))] w-[min(520px,calc(100vw-32px))] flex-col overflow-hidden shadow-[0_28px_80px_rgba(22,34,45,0.22)]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="new-folder-title"
           >
-            {moveTargets.map((target) => (
-              <option key={target.id ?? "root"} value={target.id ?? ""}>
-                {target.label}
-              </option>
-            ))}
-          </select>
-          <div className="mt-2 flex justify-end gap-2">
-            <button
-              className="ui-button ui-button-secondary h-9 px-3"
-              onClick={() => setMovingNode(null)}
-            >
-              取消
-            </button>
-            <button
-              className="ui-button ui-button-primary h-9 px-3"
-              onClick={handleMoveConfirm}
-            >
-              移动
-            </button>
-          </div>
+            <header className="flex shrink-0 items-start justify-between gap-4 border-b border-jelly-border px-6 py-5">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-jelly-blue-pale text-jelly-blue-deep">
+                  <FolderPlus size={19} strokeWidth={1.8} />
+                </span>
+                <div className="min-w-0">
+                  <h2 id="new-folder-title" className="text-[16px] font-semibold text-jelly-text">
+                    新建文件夹
+                  </h2>
+                  <p className="mt-1 text-[12px] leading-5 text-jelly-text-muted">
+                    给知识内容一个清晰的位置，确认后才会创建。
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-jelly-text-muted transition-colors hover:bg-jelly-blue-pale hover:text-jelly-text"
+                onClick={() => {
+                  setNewFolderOpen(false);
+                  setFolderPickerQuery("");
+                }}
+                aria-label="关闭新建文件夹"
+              >
+                <X size={16} strokeWidth={1.9} />
+              </button>
+            </header>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+              <label className="mb-2 block text-[12px] font-medium text-jelly-text-soft" htmlFor="new-folder-name">
+                文件夹名称
+              </label>
+              <div className="ui-input flex h-11 items-center gap-2.5 px-3.5 shadow-none">
+                <Folder size={16} className="shrink-0 text-jelly-blue" strokeWidth={1.7} />
+                <input
+                  id="new-folder-name"
+                  value={newFolderName}
+                  autoFocus
+                  maxLength={120}
+                  onChange={(event) => setNewFolderName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && newFolderName.trim()) {
+                      handleCreateFolderConfirm();
+                    }
+                  }}
+                  placeholder="例如：后端开发"
+                  className="min-w-0 flex-1 bg-transparent text-[14px] text-jelly-text outline-none placeholder:text-jelly-text-muted"
+                />
+                <span className="text-[11px] text-jelly-text-muted">{newFolderName.trim().length}/120</span>
+              </div>
+
+              <div className="mb-2 mt-5 flex items-center justify-between gap-3">
+                <p className="text-[12px] font-medium text-jelly-text-soft">创建位置</p>
+                <p className="truncate text-[11px] text-jelly-text-muted">
+                  {allFolderTargets.find((target) => target.id === newFolderParentId)?.path ?? "知识库"}
+                </p>
+              </div>
+              <FolderPicker
+                targets={allFolderTargets}
+                value={newFolderParentId}
+                query={folderPickerQuery}
+                onQueryChange={setFolderPickerQuery}
+                onChange={setNewFolderParentId}
+              />
+            </div>
+
+            <footer className="flex shrink-0 items-center justify-between gap-4 border-t border-jelly-border bg-white/70 px-6 py-4">
+              <p className="min-w-0 truncate text-[11px] text-jelly-text-muted">
+                创建后仍可随时重命名或移动
+              </p>
+              <div className="flex shrink-0 gap-2.5">
+                <button
+                  type="button"
+                  className="ui-button ui-button-secondary h-9 px-4"
+                  onClick={() => {
+                    setNewFolderOpen(false);
+                    setFolderPickerQuery("");
+                  }}
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  className="ui-button ui-button-primary h-9 gap-1.5 px-4 disabled:cursor-not-allowed disabled:opacity-45"
+                  disabled={!newFolderName.trim()}
+                  onClick={handleCreateFolderConfirm}
+                >
+                  <FolderPlus size={14} strokeWidth={1.9} />
+                  创建文件夹
+                </button>
+              </div>
+            </footer>
+          </section>
+        </div>
+      )}
+
+      {movingNode && expanded && (
+        <div className="fixed inset-0 z-[90] grid place-items-center bg-[#26343d]/20 p-4 backdrop-blur-[2px]">
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default"
+            onClick={() => {
+              setMovingNode(null);
+              setFolderPickerQuery("");
+            }}
+            aria-label="关闭移动项目"
+          />
+          <section
+            className="panel-surface relative z-10 flex max-h-[min(720px,calc(100vh-32px))] w-[min(520px,calc(100vw-32px))] flex-col overflow-hidden shadow-[0_28px_80px_rgba(22,34,45,0.22)]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="move-item-title"
+          >
+            <header className="flex shrink-0 items-start justify-between gap-4 border-b border-jelly-border px-6 py-5">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-jelly-blue-pale text-jelly-blue-deep">
+                  <FolderInput size={19} strokeWidth={1.8} />
+                </span>
+                <div className="min-w-0">
+                  <h2 id="move-item-title" className="text-[16px] font-semibold text-jelly-text">
+                    移动{movingNode.type === "folder" ? "文件夹" : "笔记"}
+                  </h2>
+                  <p className="mt-1 max-w-[360px] truncate text-[12px] leading-5 text-jelly-text-muted">
+                    「{movingNode.name.replace(/\.md$/, "")}」
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-jelly-text-muted transition-colors hover:bg-jelly-blue-pale hover:text-jelly-text"
+                onClick={() => {
+                  setMovingNode(null);
+                  setFolderPickerQuery("");
+                }}
+                aria-label="关闭移动项目"
+              >
+                <X size={16} strokeWidth={1.9} />
+              </button>
+            </header>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+              <div className="mb-3 rounded-xl border border-jelly-border bg-jelly-blue-pale/45 px-3.5 py-3">
+                <div className="flex items-center gap-3">
+                  {movingNode.type === "folder"
+                    ? <Folder size={17} className="shrink-0 text-jelly-blue" strokeWidth={1.7} />
+                    : <FileText size={17} className="shrink-0 text-jelly-text-muted" strokeWidth={1.7} />}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-medium text-jelly-text">
+                      {movingNode.name.replace(/\.md$/, "")}
+                    </p>
+                    <p className="mt-0.5 truncate text-[11px] text-jelly-text-muted">
+                      当前：{moveTargets.find((target) => target.id === movingNodeParentId)?.path ?? "知识库"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <p className="mb-2 text-[12px] font-medium text-jelly-text-soft">选择目标位置</p>
+              <FolderPicker
+                targets={moveTargets}
+                value={moveTargetId}
+                currentId={movingNodeParentId}
+                query={folderPickerQuery}
+                onQueryChange={setFolderPickerQuery}
+                onChange={setMoveTargetId}
+              />
+            </div>
+
+            <footer className="flex shrink-0 items-center justify-between gap-4 border-t border-jelly-border bg-white/70 px-6 py-4">
+              <p className="min-w-0 truncate text-[11px] text-jelly-text-muted">
+                目标：{moveTargets.find((target) => target.id === moveTargetId)?.path ?? "知识库"}
+              </p>
+              <div className="flex shrink-0 gap-2.5">
+                <button
+                  type="button"
+                  className="ui-button ui-button-secondary h-9 px-4"
+                  onClick={() => {
+                    setMovingNode(null);
+                    setFolderPickerQuery("");
+                  }}
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  className="ui-button ui-button-primary h-9 gap-1.5 px-4 disabled:cursor-not-allowed disabled:opacity-45"
+                  disabled={moveTargetId === movingNodeParentId}
+                  onClick={handleMoveConfirm}
+                >
+                  <FolderInput size={14} strokeWidth={1.9} />
+                  移动到这里
+                </button>
+              </div>
+            </footer>
+          </section>
         </div>
       )}
 

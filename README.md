@@ -25,32 +25,31 @@ Standalone AI generation and settings pages are retained only as migration proto
 - HttpOnly Cookie authentication with short-lived JWT access tokens and revocable server sessions
 - Docker Compose deployment
 - Nginx static hosting and `/api` reverse proxy
-- LangGraph agent workflows, LlamaIndex RAG v2, and Mem0 OSS long-term-memory adapters behind independent rollout flags
+- LangGraph agent workflows, LlamaIndex RAG v2, and Mem0 OSS long-term memory
 
 ## Quality and release
 
 ```bash
 python3 scripts/quality_gate.py --profile full
 python3 scripts/run_release_acceptance.py --base-url http://127.0.0.1:8080
-python3 scripts/release_rollout.py --stage internal --base-url http://127.0.0.1:8080 --candidate-drill
 ```
 
-The first two commands validate a release candidate. The rollout command is intentionally read-only: it reports target flags and blockers but never mutates production. See [production rollout runbook](docs/operations/production-rollout-runbook.md).
+These commands validate a release candidate. See [production runbook](docs/operations/production-rollout-runbook.md).
 
 ## Engineering Baseline
 
 - The Python backend starts with `cd server && python3 -m app.main`.
 - Alembic owns schema initialization and upgrades; application startup runs `alembic upgrade head` after PostgreSQL is ready.
 - User IDs are strings and should remain `String(64)` across new backend tables.
-- The existing `knowledge_bases` JSON snapshot is a compatibility and migration layer. Structured notes, categories, versions, indexes, and memory tables will be added in later phases without deleting the legacy snapshot immediately.
+- The existing `knowledge_bases` JSON snapshot is retained only for old client-data migration; structured notes are the active data model.
 
 ## Docker Deployment
 
 Create Docker env:
 
 ```bash
-cp .env.example .env
-nano .env
+cp server/.env.example server/.env
+nano server/.env
 ```
 
 At minimum, set:

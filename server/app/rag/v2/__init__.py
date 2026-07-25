@@ -1,7 +1,7 @@
 """Versioned NoteFlow RAG implementation.
 
 Nothing in this package is selected by the production path unless
-``RAG_PROVIDER=llamaindex`` is explicitly enabled in a later rollout step.
+This package is the only production RAG implementation.
 """
 
 from app.rag.v2.parser import PARSER_VERSION, StructuredNode, parse_markdown_nodes

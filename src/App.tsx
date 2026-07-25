@@ -2,15 +2,12 @@ import { lazy, Suspense, useRef, useCallback, useState, useEffect } from "react"
 import { BookOpen, Sparkles } from "lucide-react";
 import { AppProvider } from "./store";
 import DirectoryTree from "./components/DirectoryTree";
-import NoteEditor from "./components/NoteEditor";
 import AIDraftWorkspace from "./components/AIDraftWorkspace";
 import EditPreviewWorkspace from "./components/EditPreviewWorkspace";
 import AIPanel from "./components/AIPanel";
 import LoginPage from "./components/LoginPage";
 import { useAuthSession } from "./hooks/useAuthSession";
-import { useChatSlice, useDraftSlice, useWorkspaceSlice } from "./storeSlices";
-import { findFileById } from "./mockData";
-import { evaluateEditorCompatibility } from "./editor/compatibility";
+import { useChatSlice, useDraftSlice } from "./storeSlices";
 
 const TiptapPilotEditor = lazy(() => import("./components/TiptapPilotEditor"));
 
@@ -32,6 +29,7 @@ function ResizablePanel({
   maxWidth = 360,
   resizeEdge = "right",
   collapsed,
+  onWidthChange,
   children,
 }: {
   defaultWidth: number;
@@ -39,6 +37,7 @@ function ResizablePanel({
   maxWidth?: number;
   resizeEdge?: "left" | "right";
   collapsed: boolean;
+  onWidthChange?: (width: number) => void;
   children: React.ReactNode;
 }) {
   const [width, setWidth] = useState(defaultWidth);
@@ -51,7 +50,8 @@ function ResizablePanel({
 
   useEffect(() => {
     pendingWidth.current = width;
-  }, [width]);
+    onWidthChange?.(width);
+  }, [onWidthChange, width]);
 
   const handleMouseDown = useCallback(
     (e: React.PointerEvent) => {
@@ -144,31 +144,18 @@ function ResizablePanel({
 
 function WorkspaceCenter() {
   const { centerMode } = useDraftSlice();
-  const { selectedFileId, fileContents, treeData } = useWorkspaceSlice();
   if (centerMode === "edit") return <EditPreviewWorkspace />;
-  const editorMode = new URLSearchParams(window.location.search).get("editor");
-  const selectedFile = selectedFileId ? findFileById(treeData, selectedFileId) : undefined;
-  const markdown = selectedFile
-    ? (fileContents[selectedFile.id] ?? selectedFile.content ?? "")
-    : "";
-  const compatibility = evaluateEditorCompatibility(markdown);
-  const forcedModern = editorMode === "modern";
-  const manualLegacy = editorMode === "legacy";
-  const tiptapEnabled = Boolean(selectedFileId) && !manualLegacy && (forcedModern || compatibility.useModernEditor);
-  if (tiptapEnabled) {
-    return (
-      <Suspense
-        fallback={(
-          <main className="flex min-w-0 flex-1 items-center justify-center bg-white text-sm text-jelly-text-muted">
-            正在打开文档…
-          </main>
-        )}
-      >
-        <TiptapPilotEditor />
-      </Suspense>
-    );
-  }
-  return <NoteEditor />;
+  return (
+    <Suspense
+      fallback={(
+        <main className="flex min-w-0 flex-1 items-center justify-center bg-white text-sm text-jelly-text-muted">
+          正在打开文档…
+        </main>
+      )}
+    >
+      <TiptapPilotEditor />
+    </Suspense>
+  );
 }
 
 function useMediaQuery(query: string) {
@@ -190,6 +177,7 @@ function useMediaQuery(query: string) {
 export default function App() {
   const [filePanelPinned, setFilePanelPinned] = useState(true);
   const [aiOpen, setAiOpen] = useState(false);
+  const [aiPanelWidth, setAiPanelWidth] = useState(350);
   const [libraryDrawerOpen, setLibraryDrawerOpen] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(loadThemeMode);
   const isDesktop = useMediaQuery("(min-width: 1280px)");
@@ -210,6 +198,16 @@ export default function App() {
   const draftWorkspaceKey =
     draftSeed.trim() || checkpointDraftSeed || activeDraftContext?.topic || "draft-workspace";
   const { loading: authLoading, session, signIn, signUp, signOut } = useAuthSession();
+  const desktopLeftWidth = isDesktop && !focusedWorkspace
+    ? (filePanelPinned ? 260 : 52)
+    : 0;
+  const desktopRightWidth = isDesktop && !focusedWorkspace && aiOpen
+    ? aiPanelWidth
+    : 0;
+  const workspaceLayoutStyle = {
+    "--workspace-left-width": `${desktopLeftWidth}px`,
+    "--workspace-right-width": `${desktopRightWidth}px`,
+  } as React.CSSProperties;
 
   useEffect(() => {
     document.documentElement.classList.toggle("theme-dark", themeMode === "dark");
@@ -260,7 +258,12 @@ export default function App() {
   return (
     <AppProvider userId={session.user.id}>
       <div className="h-full bg-jelly-bg p-0">
-        <div className="app-frame relative flex h-full min-w-0 overflow-hidden">
+        <div
+          className={`app-frame relative flex h-full min-w-0 overflow-hidden ${
+            isDesktop ? "stable-workspace-layout" : ""
+          }`}
+          style={workspaceLayoutStyle}
+        >
           {/* Persistent library navigation: full panel on desktop, icon rail on tablet. */}
           {isTabletUp && !focusedWorkspace && (
             <div
@@ -287,29 +290,41 @@ export default function App() {
             </div>
           )}
 
-          {/* The center workspace always remains mounted and keeps the available width. */}
-          <WorkspaceCenter />
+          {/* On desktop the document owns the whole viewport. Side panels consume
+              the empty gutters first and only move the page when they touch it. */}
+          <div
+            className={
+              isDesktop
+                ? "workspace-center-layer absolute inset-0 z-0 flex min-w-0"
+                : "workspace-center-layer flex min-w-0 flex-1"
+            }
+          >
+            <WorkspaceCenter />
+          </div>
 
           {/* AI drafts stay mounted while hidden so background outline/progress state is preserved. */}
           {draftAvailable && <AIDraftWorkspace key={draftWorkspaceKey} />}
 
           {/* Desktop AI panel stays resizable. */}
           {isDesktop && !focusedWorkspace && (
-            <ResizablePanel
-              defaultWidth={350}
-              minWidth={300}
-              maxWidth={600}
-              resizeEdge="left"
-              collapsed={!aiOpen}
-            >
-              <div
-                className={`h-full transition-opacity duration-200 ${
-                  aiOpen ? "opacity-100" : "pointer-events-none opacity-0"
-                }`}
+            <div className="relative z-40 ml-auto flex h-full shrink-0">
+              <ResizablePanel
+                defaultWidth={350}
+                minWidth={300}
+                maxWidth={600}
+                resizeEdge="left"
+                collapsed={!aiOpen}
+                onWidthChange={setAiPanelWidth}
               >
-                <AIPanel onCollapse={() => setAiOpen(false)} />
-              </div>
-            </ResizablePanel>
+                <div
+                  className={`h-full transition-opacity duration-200 ${
+                    aiOpen ? "opacity-100" : "pointer-events-none opacity-0"
+                  }`}
+                >
+                  <AIPanel onCollapse={() => setAiOpen(false)} />
+                </div>
+              </ResizablePanel>
+            </div>
           )}
 
           {/* Mobile/tablet library drawer. */}

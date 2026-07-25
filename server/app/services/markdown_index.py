@@ -390,10 +390,9 @@ def schedule_index_retry(note: Note, job: NoteIndexJob, error: Exception, now: d
 
 async def index_note_now(session: AsyncSession, note: Note) -> NoteIndexJob:
     job = await create_index_job(session, note)
-    if cfg.RAG_V2_INDEX_ENABLED:
-        from app.rag.v2.indexer import create_rag_v2_index_job
+    from app.rag.v2.indexer import create_rag_v2_index_job
 
-        await create_rag_v2_index_job(session, note)
+    await create_rag_v2_index_job(session, note)
     from app.services.index_worker import notify_index_worker
 
     notify_index_worker()

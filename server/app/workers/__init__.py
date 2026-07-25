@@ -1,1 +1,1 @@
-"""Stable worker package; legacy workers remain in app.services during migration."""
+"""Background workers for indexing, drafts and integration outbox processing."""

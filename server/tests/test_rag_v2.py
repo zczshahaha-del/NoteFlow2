@@ -193,6 +193,25 @@ class RagV2RerankerContextTest(unittest.TestCase):
         self.assertNotIn("[9]", cleaned)
         self.assertEqual(validation["invalid"], [9])
 
+    def test_context_limits_visible_evidence_and_keeps_one_chunk_per_section(self) -> None:
+        candidates = [
+            _candidate("one", section_key="same"),
+            _candidate("two", section_key="same"),
+            _candidate("three", section_key="three"),
+            _candidate("four", section_key="four"),
+            _candidate("five", section_key="five"),
+            _candidate("six", section_key="six"),
+        ]
+        candidates[0].start_line = 12
+        candidates[0].end_line = 18
+
+        context = build_context("RAG 是什么", candidates, token_budget=5000, top_k=8)
+
+        self.assertEqual(len(context.citations), 4)
+        self.assertEqual([item.node_id for item in context.citations], ["one", "three", "four", "five"])
+        self.assertEqual(context.citations[0].start_line, 12)
+        self.assertIn("引用要克制", context.text)
+
     def test_no_source_context_forbids_fabricated_note_answer(self) -> None:
         context = build_context("不存在的问题", [], token_budget=1000)
         self.assertEqual(context.citations, [])

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import {
@@ -19,6 +19,7 @@ import {
   ListOrdered,
   Menu,
   MessageSquarePlus,
+  MoreHorizontal,
   Pilcrow,
   Quote,
   Redo2,
@@ -37,9 +38,11 @@ import OutlinePanel from "./OutlinePanel";
 import { attachmentMarkdown, uploadAttachment } from "../services/attachments";
 import { getNoteOutline, type NoteSectionRecord } from "../services/notes";
 import { formatDocumentTime } from "../utils/documentTime";
+import { numberHeadings } from "../utils/headingNumbering";
 
 const VersionHistoryPanel = lazy(() => import("./VersionHistoryPanel"));
 const extensions = createNoteFlowTiptapExtensions();
+const HEADING_NUMBERING_STORAGE_KEY = "noteflow:show-heading-numbers";
 const selectionToolbarAppendTo = () => document.body;
 const selectionToolbarShouldShow = ({
   editor,
@@ -57,6 +60,15 @@ const selectionToolbarOptions = {
   flip: false,
   shift: { padding: 12 },
 } as const;
+
+function loadHeadingNumberingPreference(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    return window.localStorage.getItem(HEADING_NUMBERING_STORAGE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
 
 interface TiptapHeading {
   id: string;
@@ -130,6 +142,29 @@ function focusEditorSource(editor: Editor, position: number) {
     target.scrollIntoView({ behavior: "smooth", block: "center" });
     target.classList.add("source-focus-highlight");
     window.setTimeout(() => target.classList.remove("source-focus-highlight"), 1600);
+  });
+}
+
+function smoothScrollToEditorHeading(editor: Editor, position: number) {
+  const targetNode = editor.view.nodeDOM(position);
+  const target = targetNode instanceof HTMLElement
+    ? targetNode
+    : targetNode?.parentElement;
+  const scroller = editor.view.dom.closest<HTMLElement>(".document-scroll");
+  if (!target || !scroller) {
+    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+
+  const targetTop =
+    target.getBoundingClientRect().top -
+    scroller.getBoundingClientRect().top +
+    scroller.scrollTop -
+    24;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  scroller.scrollTo({
+    top: Math.max(0, targetTop),
+    behavior: reduceMotion ? "auto" : "smooth",
   });
 }
 
@@ -216,9 +251,12 @@ export default function TiptapPilotEditor() {
   );
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
+  const [documentMenuOpen, setDocumentMenuOpen] = useState(false);
+  const [showHeadingNumbers, setShowHeadingNumbers] = useState(loadHeadingNumberingPreference);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkDraft, setLinkDraft] = useState("");
   const [backendSections, setBackendSections] = useState<NoteSectionRecord[]>([]);
+  const documentMenuRef = useRef<HTMLDivElement>(null);
   const isMobile = useMediaQuery("(max-width: 767px)");
 
   const editor = useEditor(
@@ -247,7 +285,19 @@ export default function TiptapPilotEditor() {
     setTitleDraft(selectedFile?.name.replace(/\.md$/i, "") ?? "未命名笔记");
     setVersionHistoryOpen(false);
     setMobileOutlineOpen(false);
+    setDocumentMenuOpen(false);
   }, [selectedFile?.id, selectedFile?.name]);
+
+  useEffect(() => {
+    if (!documentMenuOpen) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!documentMenuRef.current?.contains(event.target as Node)) {
+        setDocumentMenuOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutsideClick, true);
+    return () => document.removeEventListener("pointerdown", closeOnOutsideClick, true);
+  }, [documentMenuOpen]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed || editor.getMarkdown() === rawContent) return;
@@ -278,17 +328,43 @@ export default function TiptapPilotEditor() {
       pendingSourceFocus.noteId !== selectedFileId
     ) return;
     const normalize = (value: string) => value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
-    const sectionTitle = pendingSourceFocus.sectionTitle?.trim() ?? "";
+    const pathTitle =
+      pendingSourceFocus.sectionPath?.[pendingSourceFocus.sectionPath.length - 1]?.trim();
+    const sectionTitle = (
+      pathTitle ||
+      pendingSourceFocus.sectionTitle?.split("/").pop() ||
+      ""
+    ).trim();
     const editorHeadings = collectHeadings(editor);
     const heading = sectionTitle
-      ? editorHeadings.find((item) => normalize(item.text) === normalize(sectionTitle))
+      ? editorHeadings.find((item) => normalize(item.text) === normalize(sectionTitle)) ??
+        editorHeadings.find((item) => {
+          const headingText = normalize(item.text);
+          const sourceText = normalize(sectionTitle);
+          return headingText.includes(sourceText) || sourceText.includes(headingText);
+        })
       : undefined;
 
     if (heading) {
       const from = Math.min(heading.position + 1, editor.state.doc.content.size);
       focusEditorSource(editor, from);
     } else {
-      const plainSnippet = markdownPlainText(editor, pendingSourceFocus.snippet || "")
+      const sourceLines =
+        Number.isInteger(pendingSourceFocus.startLine) &&
+        Number.isInteger(pendingSourceFocus.endLine) &&
+        (pendingSourceFocus.endLine as number) > (pendingSourceFocus.startLine as number)
+          ? rawContent
+              .split(/\r?\n/)
+              .slice(
+                pendingSourceFocus.startLine as number,
+                pendingSourceFocus.endLine as number
+              )
+              .join("\n")
+          : "";
+      const plainSnippet = markdownPlainText(
+        editor,
+        sourceLines || pendingSourceFocus.snippet || ""
+      )
         .replace(/^\.{3}|\.{3}$/g, "")
         .trim();
       const centeredSnippet = (length: number) => {
@@ -307,17 +383,36 @@ export default function TiptapPilotEditor() {
         .map((candidate) => findTiptapTextRange(editor.state.doc, candidate))
         .find(Boolean);
       if (range) focusEditorSource(editor, range.from);
+      else focusEditorSource(editor, 1);
     }
     clearPendingSourceFocus();
-  }, [clearPendingSourceFocus, editor, pendingSourceFocus, selectedFileId]);
+  }, [clearPendingSourceFocus, editor, pendingSourceFocus, rawContent, selectedFileId]);
 
   const editorReady = Boolean(editor && !editor.isDestroyed);
   const headings = editorReady ? collectHeadings(editor!) : [];
+  const numberedHeadings = numberHeadings(headings);
+  const visibleHeadings = showHeadingNumbers
+    ? numberedHeadings
+    : numberedHeadings.map((heading) => ({ ...heading, displayNumber: "" }));
   const activeId = editorReady ? activeHeadingId(editor!, headings) : "";
   const headingPositions = useMemo(
     () => new Map(headings.map((heading) => [heading.id, heading.position])),
     [headings]
   );
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    const headingElements = Array.from(
+      editor.view.dom.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")
+    );
+    editor.view.dom.classList.toggle("heading-numbering-enabled", showHeadingNumbers);
+    headingElements.forEach((element, index) => {
+      const displayNumber = showHeadingNumbers
+        ? numberedHeadings[index]?.displayNumber ?? ""
+        : "";
+      if (displayNumber) element.dataset.headingNumber = displayNumber;
+      else delete element.dataset.headingNumber;
+    });
+  }, [editor, numberedHeadings, showHeadingNumbers]);
   useEffect(() => {
     let alive = true;
     setBackendSections([]);
@@ -363,7 +458,18 @@ export default function TiptapPilotEditor() {
   const createdAtLabel = formatDocumentTime(selectedFile?.createdAt);
   const updatedAtLabel = formatDocumentTime(selectedFile?.updatedAt);
 
-  if (!selectedFile || !editor || editor.isDestroyed) {
+  if (!selectedFile) {
+    return (
+      <main className="document-empty-state flex min-w-0 flex-1 items-center justify-center bg-white px-8 text-center">
+        <div>
+          <p className="text-[18px] font-semibold text-jelly-text">选择一篇笔记开始阅读</p>
+          <p className="mt-2 text-[13px] text-jelly-text-muted">从左侧目录打开笔记，或新建一篇笔记。</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!editor || editor.isDestroyed) {
     return (
       <main className="flex min-w-0 flex-1 items-center justify-center bg-white text-sm text-jelly-text-muted">
         正在打开文档…
@@ -374,7 +480,12 @@ export default function TiptapPilotEditor() {
   const scrollToHeading = (id: string) => {
     const position = headingPositions.get(id);
     if (position === undefined) return;
-    editor.chain().focus().setTextSelection(position + 1).scrollIntoView().run();
+    const selectionPosition = Math.min(position + 1, editor.state.doc.content.size);
+    editor.commands.setTextSelection(selectionPosition);
+    window.requestAnimationFrame(() => {
+      if (!editor.isDestroyed) smoothScrollToEditorHeading(editor, position);
+    });
+    if (mobileOutlineOpen) setMobileOutlineOpen(false);
   };
 
   const addCurrentSelectionToChat = () => {
@@ -411,7 +522,7 @@ export default function TiptapPilotEditor() {
 
   const outline = (
     <OutlinePanel
-      headings={headings}
+      headings={visibleHeadings}
       activeId={activeId}
       onHeadingClick={scrollToHeading}
       onClose={() => setMobileOutlineOpen(false)}
@@ -503,7 +614,7 @@ export default function TiptapPilotEditor() {
                   className="document-title block w-full border-none bg-transparent px-0 py-1 text-[clamp(2.05rem,4vw,2.7rem)] font-bold leading-tight text-jelly-text outline-none"
                   aria-label="文档标题"
                 />
-                <div className="document-meta-row mb-8 mt-4 flex flex-wrap items-center gap-2 text-[13px] text-jelly-text-muted">
+                <div className="document-meta-row relative mb-8 mt-4 flex min-h-8 flex-wrap items-center gap-2 text-[13px] text-jelly-text-muted">
                   {createdAtLabel && (
                     <>
                       <span>创建于 {createdAtLabel}</span>
@@ -511,6 +622,64 @@ export default function TiptapPilotEditor() {
                     </>
                   )}
                   {updatedAtLabel && <span>更新于 {updatedAtLabel}</span>}
+                  <div ref={documentMenuRef} className="relative ml-auto">
+                    <button
+                      type="button"
+                      className="document-view-menu-trigger flex h-8 w-8 items-center justify-center rounded-lg text-jelly-text-muted transition-colors hover:bg-[#f1f3f4] hover:text-jelly-text"
+                      onClick={() => setDocumentMenuOpen((open) => !open)}
+                      aria-label="文档显示设置"
+                      aria-haspopup="menu"
+                      aria-expanded={documentMenuOpen}
+                    >
+                      <MoreHorizontal size={17} />
+                    </button>
+                    {documentMenuOpen && (
+                      <div
+                        className="document-view-menu absolute right-0 top-full z-40 mt-1.5 w-[210px] rounded-xl border border-jelly-border bg-white p-1.5 shadow-[0_16px_40px_rgba(15,23,42,0.12)]"
+                        role="menu"
+                        aria-label="文档显示设置"
+                      >
+                        <button
+                          type="button"
+                          className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[#f4f6f7]"
+                          role="menuitemcheckbox"
+                          aria-checked={showHeadingNumbers}
+                          onClick={() => {
+                            const nextValue = !showHeadingNumbers;
+                            setShowHeadingNumbers(nextValue);
+                            try {
+                              window.localStorage.setItem(
+                                HEADING_NUMBERING_STORAGE_KEY,
+                                String(nextValue)
+                              );
+                            } catch {
+                              // The preference remains active for this session.
+                            }
+                            setDocumentMenuOpen(false);
+                          }}
+                        >
+                          <span
+                            className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[11px] ${
+                              showHeadingNumbers
+                                ? "border-jelly-blue bg-jelly-blue text-white"
+                                : "border-jelly-border bg-white"
+                            }`}
+                            aria-hidden="true"
+                          >
+                            {showHeadingNumbers ? "✓" : ""}
+                          </span>
+                          <span>
+                            <span className="block text-[13px] font-medium text-jelly-text">
+                              显示章节编号
+                            </span>
+                            <span className="mt-0.5 block text-[11px] leading-4 text-jelly-text-muted">
+                              自动编号一级和二级标题
+                            </span>
+                          </span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div
                   onPasteCapture={(event) => {
@@ -598,16 +767,20 @@ export default function TiptapPilotEditor() {
             <span>本文目录</span>
           </button>
           <div className="chapter-rail-track">
-            {headings.map((heading) => (
+            {visibleHeadings.map((heading) => (
               <button
                 key={heading.id}
                 type="button"
                 className={`chapter-rail-item ${activeId === heading.id ? "is-active" : ""}`}
                 onClick={() => scrollToHeading(heading.id)}
-                title={heading.text}
+                title={`${heading.displayNumber ? `${heading.displayNumber} ` : ""}${heading.text}`}
+                style={{ paddingLeft: `${Math.min(heading.hierarchyDepth, 3) * 12}px` }}
               >
                 <span className="chapter-rail-mark" />
-                <span className="chapter-rail-label">{heading.text}</span>
+                <span className="chapter-rail-label">
+                  {heading.displayNumber ? `${heading.displayNumber} ` : ""}
+                  {heading.text}
+                </span>
               </button>
             ))}
           </div>
