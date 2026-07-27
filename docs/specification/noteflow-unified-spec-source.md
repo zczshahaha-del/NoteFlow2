@@ -210,7 +210,7 @@ OpenViking 可以作为未来外部知识源或知识组织实验，但不进入
 
 | 模块 | 职责 |
 |---|---|
-| App / storeSlices | 组合 workspace、editor、chat、agent、draft 状态 |
+| App / store/selectors | 组合 workspace、editor、chat、agent、draft 状态 |
 | DirectoryTree | 分类/文件夹、笔记选择、搜索、新建与删除确认 |
 | NoteEditor | 唯一的 Markdown 编辑器，负责选区、代码块、大纲和自动保存 |
 | AIPanel | 模式选择、输入、SSE 消费、来源、轨迹和任务状态 |
@@ -781,17 +781,21 @@ src/
 │   ├── categories.ts
 │   ├── attachments.ts
 │   ├── agent.ts
-│   ├── deepseek.ts
+│   ├── aiStream.ts
 │   ├── drafts.ts
 │   ├── edits.ts
 │   ├── memories.ts
 │   └── offlineQueue.ts
-├── storeSlices/
-│   ├── workspace.ts
-│   ├── editor.ts
-│   ├── chat.ts
-│   ├── agent.ts
-│   └── draft.ts
+├── store/
+│   ├── index.tsx
+│   ├── persistence.ts
+│   ├── tree.ts
+│   └── selectors/
+│       ├── workspace.ts
+│       ├── editor.ts
+│       ├── chat.ts
+│       ├── agent.ts
+│       └── draft.ts
 └── utils/
 ```
 
@@ -910,7 +914,7 @@ server/app/
 | services/note_library.py | 拆为 rag/query、retrievers、fusion、context_builder |
 | services/markdown_index.py | 拆为 rag/parser、chunker、ingestion |
 | services/embedding_index.py、embeddings.py | providers/embeddings + rag/ingestion |
-| services/memory*.py、agent_memory.py | memory/provider、policy、retrieval、extraction、legacy_adapter |
+| app/memory/ | provider、policy、retrieval、extraction、service |
 | services/agent_checkpoints.py、agent_runtime.py | agent runtime repository + graph checkpoint adapter |
 | services/index_worker.py、draft_worker.py | workers/，保留当前行为和测试 |
 

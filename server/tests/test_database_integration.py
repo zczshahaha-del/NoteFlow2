@@ -41,7 +41,7 @@ from app.repositories.notes import NoteRepository
 from app.repositories.runs import RunRepository
 from app.services.markdown_index import create_index_job, run_index_job
 from app.services.note_library import understand_note_query
-from app.services.memory_service import MemoryService
+from app.memory.service import MemoryService
 from app.services.run_service import RunService
 from app.agent.write_runtime import (
     authorize_draft_save,

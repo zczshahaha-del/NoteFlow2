@@ -11,7 +11,7 @@ from app.services.note_library import (
     prefer_section_sources,
     understand_note_query,
 )
-from app.services.rag_eval import RagEvalCase, evaluate_rag_sources, summarize_rag_eval_results
+from app.rag.evaluation import RagEvalCase, evaluate_rag_sources, summarize_rag_eval_results
 
 
 def _source(

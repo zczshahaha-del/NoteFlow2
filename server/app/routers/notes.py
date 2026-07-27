@@ -20,7 +20,7 @@ from app.services.note_library import (
     source_to_dict,
     understand_note_query,
 )
-from app.services.rag_eval import RagEvalCase, build_auto_rag_eval_cases, run_rag_eval
+from app.rag.evaluation import RagEvalCase, build_auto_rag_eval_cases, run_rag_eval
 from app.utils import random_id
 
 router = APIRouter(tags=["notes"])

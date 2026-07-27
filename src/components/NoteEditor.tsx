@@ -30,7 +30,7 @@ import {
   Undo2,
   X,
 } from "lucide-react";
-import { useEditorSlice } from "../storeSlices";
+import { useEditorSlice } from "../store/selectors";
 import { findFileById } from "../workspaceTree";
 import { createNoteFlowTiptapExtensions } from "../editor/tiptapExtensions";
 import { findTiptapTextRange } from "../utils/tiptapSelection";

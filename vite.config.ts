@@ -43,7 +43,7 @@ export default defineConfig({
             },
             {
               name: 'app-store',
-              test: /[\\/]src[\\/]store\.tsx$/,
+              test: /[\\/]src[\\/]store[\\/]index\.tsx$/,
               priority: 10,
             },
           ],

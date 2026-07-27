@@ -25,7 +25,7 @@ import {
   Check,
 } from "lucide-react";
 import { generateId } from "../store";
-import { useEditorSlice, useWorkspaceSlice } from "../storeSlices";
+import { useEditorSlice, useWorkspaceSlice } from "../store/selectors";
 import type { ChatSource, FileNode } from "../types";
 import AccountMenu, { type AccountMenuProps } from "./AppNav";
 import { searchNotes, type NoteSearchQueryPlan } from "../services/notes";

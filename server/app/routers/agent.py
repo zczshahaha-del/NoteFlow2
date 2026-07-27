@@ -11,12 +11,12 @@ from fastapi.responses import StreamingResponse
 from app.config import cfg
 from app.database import AsyncSessionLocal
 from app.deps import CurrentUser, get_current_user, redis_rate_limit
-from app.memory.service import MemoryContextService
+from app.memory.context import MemoryContextService
 from app.rag.service import RagRequest, configured_rag_service
 from app.repositories.runs import RunRepository
 from app.services.ai import ChatMessage, ChatRequest, stream_chat
 from app.services.context_planner import ContextPlan
-from app.services.memory_read import memory_read_plan_from_turn_plan
+from app.memory.planning import memory_read_plan_from_turn_plan
 from app.services.runtime_errors import public_error_message
 from app.services.run_service import RunService
 from app.agent.sse import encode_event
@@ -45,7 +45,7 @@ from app.services.agent_checkpoints import (
     latest_waiting_checkpoint as _latest_waiting_checkpoint,
     patch_working_memory_status as _patch_working_memory_status,
 )
-from app.services.agent_memory import (
+from app.memory.agent import (
     auto_save_memory_from_question as _auto_save_memory_from_question,
     episode_summary_from_checkpoint as _episode_summary_from_checkpoint,
     history_recall_context as _history_recall_context,

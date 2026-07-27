@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from app.routers.agent import _classify_intent, AgentChatPayload, AgentChatPageState
-from app.services.memory import (
+from app.memory.domain import (
     candidate_review_tags,
     extract_memory_candidates,
     is_single_value_key,
     memory_candidate_status,
     normalize_canonical_key,
 )
-from app.services.memory_llm import candidates_from_llm_payload
-from app.services.memory_read import fallback_memory_read_plan, read_plan_from_llm_payload
+from app.memory.extraction import candidates_from_llm_payload
+from app.memory.planning import fallback_memory_read_plan, read_plan_from_llm_payload
 
 
 def _assert(condition: bool, message: str):

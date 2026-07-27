@@ -24,8 +24,8 @@ from app.services.turn_planner import (
     resume_turn_plan_smart,
     validate_turn_plan,
 )
-from app.services.memory import extract_memory_candidates
-from app.services.memory_llm import (
+from app.memory.domain import extract_memory_candidates
+from app.memory.extraction import (
     MemoryExtractionFailure,
     candidates_from_llm_payload,
     extract_memory_candidates_smart,
@@ -292,7 +292,7 @@ class TurnPlannerTest(unittest.TestCase):
             }
             """,
         ])
-        with patch("app.services.memory_llm.complete_chat", completion):
+        with patch("app.memory.extraction.complete_chat", completion):
             candidates = asyncio.run(extract_memory_candidates_smart("我身高180cm"))
 
         self.assertEqual(completion.await_count, 2)
@@ -301,7 +301,7 @@ class TurnPlannerTest(unittest.TestCase):
 
     def test_memory_writer_failure_does_not_fall_back_to_regex(self) -> None:
         completion = AsyncMock(side_effect=RuntimeError("provider unavailable"))
-        with patch("app.services.memory_llm.complete_chat", completion):
+        with patch("app.memory.extraction.complete_chat", completion):
             with self.assertRaises(MemoryExtractionFailure):
                 asyncio.run(extract_memory_candidates_smart("我身高180cm"))
         self.assertEqual(completion.await_count, 1)

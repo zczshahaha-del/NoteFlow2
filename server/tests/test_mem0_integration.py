@@ -8,7 +8,7 @@ from app.memory.policy import classify_memory_content, filter_eligible_memories
 from app.memory.runtime import resolve_memory_read
 from app.providers.mem0 import Mem0Provider
 from app.providers.resilience import AsyncCircuitBreaker, CircuitOpenError
-from app.services.memory_read import memory_read_plan_from_turn_plan
+from app.memory.planning import memory_read_plan_from_turn_plan
 from app.services.turn_planner import IntentParameters, PrimaryIntent, TurnPlan
 
 

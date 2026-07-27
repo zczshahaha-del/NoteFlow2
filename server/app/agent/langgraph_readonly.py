@@ -52,11 +52,11 @@ async def _ignore_event(_event: RuntimeEvent) -> None:
 
 
 async def _default_memory_recall(state: ReadonlyAgentState) -> str:
-    from app.services.agent_memory import (
+    from app.memory.agent import (
         memory_context_from_records,
         query_memories_for_agent,
     )
-    from app.services.memory_read import memory_read_plan_from_turn_plan
+    from app.memory.planning import memory_read_plan_from_turn_plan
     from app.services.turn_planner import TurnPlan
 
     turn_plan = TurnPlan.model_validate(state.get("turn_plan") or {})
@@ -115,7 +115,7 @@ async def _default_answer_stream(state: ReadonlyAgentState) -> AsyncIterator[dic
 
 async def _default_memory_write(state: ReadonlyAgentState) -> int:
     from app.schemas.agent import AgentChatMessageIn
-    from app.services.agent_memory import auto_save_memory_from_question
+    from app.memory.agent import auto_save_memory_from_question
 
     history = [
         AgentChatMessageIn.model_validate(item)

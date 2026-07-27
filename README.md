@@ -77,6 +77,16 @@ http://your-server-ip/
 
 ## 本地开发
 
+本地后端使用 Python 3.12，与生产 Docker 镜像保持一致。
+
+首次运行先创建虚拟环境并安装后端依赖：
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r server/requirements.txt
+```
+
 推荐方式：使用一个脚本先启动 Python API。脚本会从 `server/.env` 中的 `PORT` 开始尝试绑定 TCP 端口，默认依次尝试 `8080`、`8081`、`8082`……直到找到可用端口。确认 API 可访问后，脚本再启动 Vite。最终选中的端口会写入 `server/.dev-api-port`，确保 `/api` 代理始终指向正确的后端端口：
 
 ```bash

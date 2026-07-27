@@ -1,6 +1,6 @@
 import { useShallow } from "zustand/react/shallow";
 
-import { useAppStore } from "../store";
+import { useAppStore } from "..";
 
 export function useEditorSlice() {
   return useAppStore(useShallow((state) => ({

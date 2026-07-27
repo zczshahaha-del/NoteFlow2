@@ -7,7 +7,7 @@ import EditPreviewWorkspace from "./components/EditPreviewWorkspace";
 import AIPanel from "./components/AIPanel";
 import LoginPage from "./components/LoginPage";
 import { useAuthSession } from "./hooks/useAuthSession";
-import { useChatSlice, useDraftSlice } from "./storeSlices";
+import { useChatSlice, useDraftSlice } from "./store/selectors";
 
 const NoteEditor = lazy(() => import("./components/NoteEditor"));
 

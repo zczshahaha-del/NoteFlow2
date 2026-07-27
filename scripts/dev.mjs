@@ -9,6 +9,8 @@ import net from "node:net"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
+import { resolvePythonCommand } from "./python-runtime.mjs"
+
 const rootDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..")
 const serverDir = path.join(rootDir, "server")
 const devPortFile = path.join(serverDir, ".dev-api-port")
@@ -94,7 +96,15 @@ if (await tcpOpens("127.0.0.1", frontendPort)) {
 
 let viteStarted = false
 
-const pyProc = spawn("python3", ["-m", "app.main"], {
+let pythonCommand
+try {
+  pythonCommand = resolvePythonCommand(rootDir)
+} catch (error) {
+  console.error(error instanceof Error ? error.message : error)
+  process.exit(1)
+}
+
+const pyProc = spawn(pythonCommand, ["-m", "app.main"], {
   cwd: serverDir,
   stdio: "inherit",
   env: process.env,

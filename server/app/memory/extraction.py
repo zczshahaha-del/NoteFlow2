@@ -9,7 +9,7 @@ from typing import Iterable, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.services.ai import ChatMessage, complete_chat
-from app.services.memory import (
+from app.memory.domain import (
     MemoryCandidate,
     memory_layer_tags,
 )

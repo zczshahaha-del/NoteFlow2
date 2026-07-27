@@ -12,10 +12,14 @@ Python API 负责身份认证、AI 编排、基于 Redis 的限流和知识库�
 
 ## 本地运行
 
+需要 Python 3.12，与生产 Docker 镜像保持一致。
+
 ```bash
-cd server
-cp .env.example .env
-python3 -m app.main
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r server/requirements.txt
+cp server/.env.example server/.env
+npm run server:dev
 ```
 
 默认 API 地址：

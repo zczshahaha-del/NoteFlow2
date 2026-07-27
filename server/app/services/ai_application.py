@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.memory.service import MemoryContextService
+from app.memory.context import MemoryContextService
 
 
 MEMORY_TYPES = [

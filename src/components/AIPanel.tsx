@@ -27,7 +27,7 @@ import {
   useDraftSlice,
   useEditorSlice,
   useWorkspaceSlice,
-} from "../storeSlices";
+} from "../store/selectors";
 import { findFileById } from "../workspaceTree";
 import { handleRenderedCodeBlockAction, renderChatMarkdown } from "../utils/chatMarkdown";
 import { shouldSubmitChatInput } from "../utils/inputComposition";

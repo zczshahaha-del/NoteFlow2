@@ -79,7 +79,7 @@ async def main_async(with_embeddings: bool) -> int:
     from app.models.db import Note, User
     from app.rag.pipeline.indexer import create_rag_index_job, run_rag_index_job
     from app.rag.pipeline.retrieval import candidate_to_library_source, retrieve_candidates
-    from app.services.rag_eval import RagEvalCase, evaluate_rag_sources, summarize_rag_eval_results
+    from app.rag.evaluation import RagEvalCase, evaluate_rag_sources, summarize_rag_eval_results
 
     dataset = json.loads(DATASET.read_text(encoding="utf-8"))
     run_key = uuid.uuid4().hex[:12]

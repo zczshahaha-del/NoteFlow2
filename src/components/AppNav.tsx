@@ -18,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { generateId } from "../store";
-import { useWorkspaceSlice } from "../storeSlices";
+import { useWorkspaceSlice } from "../store/selectors";
 import {
   deleteMemory,
   isMemoryEnabled,

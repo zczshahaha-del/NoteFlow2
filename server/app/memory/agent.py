@@ -13,7 +13,7 @@ from app.database import AsyncSessionLocal
 from app.models.db import ChatMessage as DbChatMessage, UserMemory
 from app.schemas.agent import AgentChatMessageIn
 from app.services.ai import ChatMessage
-from app.services.memory import (
+from app.memory.domain import (
     add_memory_event,
     candidate_review_tags,
     clamp_importance,
@@ -28,11 +28,11 @@ from app.services.memory import (
     normalize_memory_type,
     normalize_scope,
 )
-from app.services.memory_llm import MemoryExtractionFailure, extract_memory_candidates_smart
-from app.services.memory_read import MemoryReadPlan, broad_memory_read_plan
+from app.memory.extraction import MemoryExtractionFailure, extract_memory_candidates_smart
+from app.memory.planning import MemoryReadPlan, broad_memory_read_plan
 from app.memory.policy import filter_eligible_memories
 from app.memory.runtime import resolve_memory_read
-from app.services.memory_service import MemoryService
+from app.memory.service import MemoryService
 from app.services.outbox import enqueue_memory_sync
 from app.workers.outbox_worker import notify_outbox_worker
 from app.services.user_settings import update_user_memory_enabled

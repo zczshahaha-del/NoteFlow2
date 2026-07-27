@@ -22,7 +22,7 @@ from app.repositories.edits import EditRepository
 from app.repositories.index_jobs import IndexJobRepository
 from app.repositories.notes import NoteRepository
 from app.services.markdown_index import HEADING_RE, index_note_now
-from app.services.memory import build_memory_context
+from app.memory.domain import build_memory_context
 from app.services.note_edit import generate_edit_preview, revise_edit_preview
 from app.services.user_settings import is_user_memory_enabled
 from app.agent.write_runtime import initialize_edit_graph, resume_edit_graph

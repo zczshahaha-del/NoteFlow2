@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 
 from app.schemas.agent import AgentChatMessageIn
-from app.services.agent_memory import (
+from app.memory.agent import (
     chat_history_for_memory,
     episode_summary_from_checkpoint,
     memory_context_from_records,

@@ -16,7 +16,7 @@ REPORT_MD = ROOT / "quality" / "reports" / "memory-safety-baseline.md"
 
 
 def _evaluate_extract(case: dict) -> dict:
-    from app.services.memory import extract_memory_candidates, memory_candidate_status
+    from app.memory.domain import extract_memory_candidates, memory_candidate_status
 
     candidates = extract_memory_candidates(case["input"], "global")
     saved = [candidate for candidate in candidates if memory_candidate_status(candidate) != "rejected"]

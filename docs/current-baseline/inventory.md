@@ -28,10 +28,12 @@
 | 分组 | 数量 |
 |---|---:|
 | React TSX 组件 | 14 |
-| Store slices | 6 |
+| Store selectors | 6 |
 | 前端 API services | 13 |
 | FastAPI routers | 12 |
-| 后端 services | 30 |
+| 通用后端 services | 25 |
+| Memory 领域模块 | 9 |
+| RAG 领域模块 | 8 |
 | SQLAlchemy model modules | 1 |
 | Alembic revisions | 9 |
 | Python unit test files | 25 |
