@@ -28,10 +28,12 @@
 | 分组 | 数量 |
 |---|---:|
 | React TSX 组件 | 14 |
-| Store slices | 6 |
+| Store selectors | 6 |
 | 前端 API services | 13 |
 | FastAPI routers | 12 |
-| 后端 services | 30 |
+| 通用后端 services | 25 |
+| Memory 领域模块 | 9 |
+| RAG 领域模块 | 8 |
 | SQLAlchemy model modules | 1 |
 | Alembic revisions | 9 |
 | Python unit test files | 25 |
@@ -41,7 +43,7 @@
 
 - 前端：React/TypeScript、Tiptap/Markdown 双编辑兼容、三栏工作台、AI 面板、草稿与修改预览。
 - 后端：主要 Router 已迁移到 Service/Repository，AI 运行时只保留正式实现。
-- RAG：LlamaIndex RAG v2、BM25/向量融合、引用与可选 Qwen Reranker 已成为唯一检索链路。
+- RAG：LlamaIndex RAG、BM25/向量融合、引用与可选 Qwen Reranker 已成为唯一检索链路。
 - Intent：`context_planner` 已启用 LLM 规划并带规则 fallback；并非关闭状态。
 - Memory：五层记忆规则、用户设置与 CRUD 继续作为安全真相层，相关性检索和同步固定使用 Mem0。
 - Agent：LangGraph 是唯一运行时；业务 checkpoint 与 LangGraph checkpoint 表语义分离，RuntimeEvent/SSE Adapter/trace 已启用。

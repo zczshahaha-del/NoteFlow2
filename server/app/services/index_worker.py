@@ -82,9 +82,9 @@ async def _run_claimed(job_id: str) -> bool:
                 return True
             job.heartbeat_at = datetime.utcnow()
             if job.graph_version == "rag-v2":
-                from app.rag.v2.indexer import run_rag_v2_index_job
+                from app.rag.pipeline.indexer import run_rag_index_job
 
-                await run_rag_v2_index_job(session, note, job)
+                await run_rag_index_job(session, note, job)
             else:
                 await run_index_job(session, note, job)
         return True

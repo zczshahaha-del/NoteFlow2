@@ -6,7 +6,7 @@ from app.routers.agent import (
     _history_recall_context,
     AgentChatPayload,
 )
-from app.services.memory import episodic_tags, is_episodic_memory
+from app.memory.domain import episodic_tags, is_episodic_memory
 
 
 class _FakeMemory:

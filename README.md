@@ -25,7 +25,7 @@ NoteFlow 正在统一为登录后的单一工作台：
 - HttpOnly Cookie 认证、短期 JWT 访问令牌和可撤销的服务端会话
 - Docker Compose 部署
 - Nginx 静态资源托管和 `/api` 反向代理
-- LangGraph Agent 工作流、LlamaIndex RAG v2 和 Mem0 OSS 长期记忆
+- LangGraph Agent 工作流、LlamaIndex RAG 和 Mem0 OSS 长期记忆
 
 ## 质量检查与发布
 
@@ -76,6 +76,16 @@ http://your-server-ip/
 ```
 
 ## 本地开发
+
+本地后端使用 Python 3.12，与生产 Docker 镜像保持一致。
+
+首次运行先创建虚拟环境并安装后端依赖：
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r server/requirements.txt
+```
 
 推荐方式：使用一个脚本先启动 Python API。脚本会从 `server/.env` 中的 `PORT` 开始尝试绑定 TCP 端口，默认依次尝试 `8080`、`8081`、`8082`……直到找到可用端口。确认 API 可访问后，脚本再启动 Vite。最终选中的端口会写入 `server/.dev-api-port`，确保 `/api` 代理始终指向正确的后端端口：
 

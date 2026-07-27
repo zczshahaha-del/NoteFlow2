@@ -9,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { listNoteVersions, type NoteVersionRecord } from "../services/notes";
-import { useEditorSlice } from "../storeSlices";
+import { useEditorSlice } from "../store/selectors";
 import { useConfirmDialog } from "./ConfirmDialog";
 
 interface VersionHistoryPanelProps {

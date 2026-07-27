@@ -14,8 +14,8 @@ from docx.shared import Inches, Pt, RGBColor
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "scripts" / "noteflow_unified_spec_source.md"
-OUTPUT = ROOT / "docs" / "NoteFlow_统一架构与功能设计说明书_v2.0_整合版.docx"
+SOURCE = ROOT / "docs" / "specification" / "noteflow-unified-spec-source.md"
+OUTPUT = ROOT / "docs" / "specification" / "NoteFlow_统一架构与功能设计说明书.docx"
 ASSET_DIR = ROOT / "scripts" / ".noteflow_spec_assets"
 
 CONTENT_DXA = 9360
@@ -775,7 +775,7 @@ def render_markdown(
             captions = {
                 "architecture": "NoteFlow 目标总体架构与层次边界",
                 "langgraph": "LangGraph 主图、只读路径与受控写入子图",
-                "rag": "RAG v2.0：权限前置的混合检索、融合与重排",
+                "rag": "RAG：权限前置的混合检索、融合与重排",
                 "memory": "五层记忆、Policy Engine 与异步写入",
             }
             add_diagram(doc, diagrams[key], captions[key], figure_index)

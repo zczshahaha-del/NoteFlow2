@@ -11,7 +11,7 @@ import {
   Wand2,
   X,
 } from "lucide-react";
-import { useChatSlice, useEditorSlice } from "../storeSlices";
+import { useChatSlice, useEditorSlice } from "../store/selectors";
 import {
   listEditPreviewRevisions,
   type NoteEditPreviewRevisionRecord,

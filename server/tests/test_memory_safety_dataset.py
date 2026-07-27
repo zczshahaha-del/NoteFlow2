@@ -4,7 +4,7 @@ import json
 import unittest
 from pathlib import Path
 
-from app.services.memory import extract_memory_candidates, memory_candidate_status
+from app.memory.domain import extract_memory_candidates, memory_candidate_status
 
 
 DATASET = Path(__file__).resolve().parents[2] / "quality" / "eval" / "memory_safety_cases.json"

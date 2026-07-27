@@ -9,13 +9,13 @@ from app.config import cfg
 from app.deps import CurrentUser, get_current_user, redis_rate_limit
 from app.models.db import UserMemory
 from app.services.ai import ChatMessage
-from app.services.memory import (
+from app.memory.domain import (
     memory_canonical_key,
     memory_layer,
     memory_value,
 )
-from app.services.memory_llm import extract_memory_candidates_smart
-from app.services.memory_service import MemoryService
+from app.memory.extraction import extract_memory_candidates_smart
+from app.memory.service import MemoryService
 
 router = APIRouter(tags=["memories"])
 memory_user = redis_rate_limit("memory", cfg.MEMORY_RATE_LIMIT)

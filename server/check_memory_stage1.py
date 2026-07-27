@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.routers.agent import _classify_intent
 from app.routers.agent import AgentChatPayload, AgentChatPageState
-from app.services.memory import extract_memory_candidates
+from app.memory.domain import extract_memory_candidates
 
 
 def _keys(text: str) -> list[str]:

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowUpRight, Link2, Loader2, Sparkles, Unlink } from "lucide-react";
-import { useEditorSlice, useWorkspaceSlice } from "../storeSlices";
+import { useEditorSlice, useWorkspaceSlice } from "../store/selectors";
 import { getRelatedNotes } from "../services/notes";
 import type { ChatSource, FileNode } from "../types";
 import { extractWikiLinks, findWikiBacklinks, flattenWikiNotes, normalizeWikiTitle } from "../utils/wikiLinks";

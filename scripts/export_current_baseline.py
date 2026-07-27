@@ -199,6 +199,14 @@ def _count_files(relative: str, pattern: str) -> int:
     return len(list((ROOT / relative).glob(pattern)))
 
 
+def _count_python_modules(relative: str) -> int:
+    return sum(
+        1
+        for path in (ROOT / relative).rglob("*.py")
+        if path.name != "__init__.py"
+    )
+
+
 def _write_inventory(cfg) -> None:
     content = f"""# NoteFlow 当前环境与代码清单
 
@@ -230,10 +238,12 @@ def _write_inventory(cfg) -> None:
 | 分组 | 数量 |
 |---|---:|
 | React TSX 组件 | {_count_files('src/components', '*.tsx')} |
-| Store slices | {_count_files('src/storeSlices', '*.ts')} |
+| Store selectors | {_count_files('src/store/selectors', '*.ts')} |
 | 前端 API services | {_count_files('src/services', '*.ts')} |
 | FastAPI routers | {_count_files('server/app/routers', '*.py') - 1} |
-| 后端 services | {_count_files('server/app/services', '*.py') - 1} |
+| 通用后端 services | {_count_python_modules('server/app/services')} |
+| Memory 领域模块 | {_count_python_modules('server/app/memory')} |
+| RAG 领域模块 | {_count_python_modules('server/app/rag')} |
 | SQLAlchemy model modules | {_count_files('server/app/models', '*.py') - 1} |
 | Alembic revisions | {_count_files('server/alembic/versions', '*.py')} |
 | Python unit test files | {_count_files('server/tests', 'test_*.py')} |
@@ -243,7 +253,7 @@ def _write_inventory(cfg) -> None:
 
 - 前端：React/TypeScript、Tiptap/Markdown 双编辑兼容、三栏工作台、AI 面板、草稿与修改预览。
 - 后端：主要 Router 已迁移到 Service/Repository，AI 运行时只保留正式实现。
-- RAG：LlamaIndex RAG v2、BM25/向量融合、引用与可选 Qwen Reranker 已成为唯一检索链路。
+- RAG：LlamaIndex RAG、BM25/向量融合、引用与可选 Qwen Reranker 已成为唯一检索链路。
 - Intent：`context_planner` 已启用 LLM 规划并带规则 fallback；并非关闭状态。
 - Memory：五层记忆规则、用户设置与 CRUD 继续作为安全真相层，相关性检索和同步固定使用 Mem0。
 - Agent：LangGraph 是唯一运行时；业务 checkpoint 与 LangGraph checkpoint 表语义分离，RuntimeEvent/SSE Adapter/trace 已启用。

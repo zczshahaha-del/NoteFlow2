@@ -93,8 +93,8 @@ async def dispatch_outbox(session: AsyncSession, item: IntegrationOutbox) -> Non
             return
         from app.services.markdown_index import create_index_job
         await create_index_job(session, note)
-        from app.rag.v2.indexer import create_rag_v2_index_job
+        from app.rag.pipeline.indexer import create_rag_index_job
 
-        await create_rag_v2_index_job(session, note)
+        await create_rag_index_job(session, note)
         return
     raise ValueError(f"unsupported outbox topic: {item.topic}")

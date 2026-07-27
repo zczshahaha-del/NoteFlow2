@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Hash, Plus, Star, X } from "lucide-react";
-import { useWorkspaceSlice } from "../storeSlices";
+import { useWorkspaceSlice } from "../store/selectors";
 import type { FileNode } from "../types";
 
 export default function NoteMetadataControls({ note }: { note: FileNode }) {

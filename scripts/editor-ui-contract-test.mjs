@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const editor = readFileSync(new URL("../src/components/TiptapPilotEditor.tsx", import.meta.url), "utf8");
+const editor = readFileSync(new URL("../src/components/NoteEditor.tsx", import.meta.url), "utf8");
 const outlinePanel = readFileSync(new URL("../src/components/OutlinePanel.tsx", import.meta.url), "utf8");
 const tiptapExtensions = readFileSync(new URL("../src/editor/tiptapExtensions.ts", import.meta.url), "utf8");
 const aiPanel = readFileSync(new URL("../src/components/AIPanel.tsx", import.meta.url), "utf8");
@@ -102,8 +102,8 @@ assert.match(aiPanel, /aria-label="收起 AI 助手"/);
 assert.doesNotMatch(aiPanel, /false && onCollapse/);
 assert.match(app, /className="ai-orb-launcher absolute bottom-5 right-5/);
 assert.match(app, /<AIDraftWorkspace key=\{draftWorkspaceKey\}/);
-assert.match(app, /<TiptapPilotEditor \/>/);
-assert.doesNotMatch(app, /NoteEditor|manualLegacy|editorMode|evaluateEditorCompatibility/);
+assert.match(app, /<NoteEditor \/>/);
+assert.doesNotMatch(app, /TiptapPilotEditor|manualLegacy|editorMode|evaluateEditorCompatibility/);
 assert.match(editor, /选择一篇笔记开始阅读/);
 assert.match(editor, /从左侧目录打开笔记/);
 assert.match(

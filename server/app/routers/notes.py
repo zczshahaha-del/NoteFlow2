@@ -20,7 +20,7 @@ from app.services.note_library import (
     source_to_dict,
     understand_note_query,
 )
-from app.services.rag_eval import RagEvalCase, build_auto_rag_eval_cases, run_rag_eval
+from app.rag.evaluation import RagEvalCase, build_auto_rag_eval_cases, run_rag_eval
 from app.utils import random_id
 
 router = APIRouter(tags=["notes"])
@@ -742,11 +742,11 @@ async def reindex_rag_v2(
     payload: RagV2ReindexPayload,
     user: CurrentUser = Depends(get_current_user),
 ):
-    from app.rag.v2.indexer import enqueue_rag_v2_rebuild
+    from app.rag.pipeline.indexer import enqueue_rag_rebuild
     from app.services.index_worker import notify_index_worker
 
     async with AsyncSessionLocal() as session:
-        jobs = await enqueue_rag_v2_rebuild(
+        jobs = await enqueue_rag_rebuild(
             session,
             user.id,
             note_id=payload.noteId,
@@ -765,9 +765,9 @@ async def rag_v2_index_status(
     noteId: Optional[str] = Query(None),
     user: CurrentUser = Depends(get_current_user),
 ):
-    from app.rag.v2.indexer import v2_index_diagnostics
+    from app.rag.pipeline.indexer import rag_index_diagnostics
 
     async with AsyncSessionLocal() as session:
         if noteId:
             await _get_note(session, user.id, noteId)
-        return await v2_index_diagnostics(session, user.id, note_id=noteId)
+        return await rag_index_diagnostics(session, user.id, note_id=noteId)

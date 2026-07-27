@@ -24,9 +24,9 @@ from app.models.db import (
     NoteDraft,
     NoteEditPreview,
     NoteIndexJob,
-    RagV2IndexState,
-    RagV2Embedding,
-    RagV2Node,
+    RagIndexState,
+    RagEmbedding,
+    RagNode,
     User,
     UserMemory,
     IntegrationOutbox,
@@ -41,7 +41,7 @@ from app.repositories.notes import NoteRepository
 from app.repositories.runs import RunRepository
 from app.services.markdown_index import create_index_job, run_index_job
 from app.services.note_library import understand_note_query
-from app.services.memory_service import MemoryService
+from app.memory.service import MemoryService
 from app.services.run_service import RunService
 from app.agent.write_runtime import (
     authorize_draft_save,
@@ -50,8 +50,8 @@ from app.agent.write_runtime import (
     resume_draft_generation,
     resume_edit_graph,
 )
-from app.rag.v2.indexer import create_rag_v2_index_job, run_rag_v2_index_job
-from app.rag.v2.retrieval import retrieve_candidates, vector_retrieve
+from app.rag.pipeline.indexer import create_rag_index_job, run_rag_index_job
+from app.rag.pipeline.retrieval import retrieve_candidates, vector_retrieve
 
 
 RUN_DB_TESTS = os.environ.get("NOTEFLOW_RUN_DB_TESTS") == "1"
@@ -336,7 +336,7 @@ async def _exercise_outbox_idempotency_and_recovery() -> dict[str, bool]:
         await engine.dispose()
 
 
-async def _exercise_rag_v2_incremental_and_permissions() -> dict[str, bool]:
+async def _exercise_rag_incremental_and_permissions() -> dict[str, bool]:
     suffix = uuid.uuid4().hex
     owner = User(
         id=f"rag-v2-owner-{suffix}", email=f"rag-v2-owner-{suffix}@local.test",
@@ -364,53 +364,53 @@ async def _exercise_rag_v2_incremental_and_permissions() -> dict[str, bool]:
             await session.flush()
             session.add_all([note, private])
             await session.flush()
-            first_job = await create_rag_v2_index_job(session, note)
-            private_job = await create_rag_v2_index_job(session, private)
-            await run_rag_v2_index_job(session, note, first_job)
-            await run_rag_v2_index_job(session, private, private_job)
+            first_job = await create_rag_index_job(session, note)
+            private_job = await create_rag_index_job(session, private)
+            await run_rag_index_job(session, note, first_job)
+            await run_rag_index_job(session, private, private_job)
             await session.commit()
             first_nodes = (
                 await session.execute(
-                    select(RagV2Node).where(RagV2Node.note_id == note.id, RagV2Node.active.is_(True))
+                    select(RagNode).where(RagNode.note_id == note.id, RagNode.active.is_(True))
                 )
             ).scalars().all()
             stable_first = next(node.id for node in first_nodes if node.section_path == ["Stable"])
             changed_first = next(node.id for node in first_nodes if node.section_path == ["Changed"])
 
             note.content = "# Stable\n\nBM25 and vector use RRF.\n\n# Changed\n\nnew parser detail"
-            second_job = await create_rag_v2_index_job(session, note)
-            await run_rag_v2_index_job(session, note, second_job)
+            second_job = await create_rag_index_job(session, note)
+            await run_rag_index_job(session, note, second_job)
             await session.commit()
             second_nodes = (
                 await session.execute(
-                    select(RagV2Node).where(RagV2Node.note_id == note.id, RagV2Node.active.is_(True))
+                    select(RagNode).where(RagNode.note_id == note.id, RagNode.active.is_(True))
                 )
             ).scalars().all()
             stable_second = next(node.id for node in second_nodes if node.section_path == ["Stable"])
             changed_second = next(node.id for node in second_nodes if node.section_path == ["Changed"])
-            old_changed = await session.get(RagV2Node, changed_first)
-            state_before_stale = await session.get(RagV2IndexState, note.id)
+            old_changed = await session.get(RagNode, changed_first)
+            state_before_stale = await session.get(RagIndexState, note.id)
             indexed_source = state_before_stale.source_version
 
             owner_embedding = await session.scalar(
-                select(RagV2Embedding).where(RagV2Embedding.node_id == stable_second)
+                select(RagEmbedding).where(RagEmbedding.node_id == stable_second)
             )
             private_node = await session.scalar(
-                select(RagV2Node).where(RagV2Node.note_id == private.id, RagV2Node.active.is_(True))
+                select(RagNode).where(RagNode.note_id == private.id, RagNode.active.is_(True))
             )
             private_embedding = await session.scalar(
-                select(RagV2Embedding).where(RagV2Embedding.node_id == private_node.id)
+                select(RagEmbedding).where(RagEmbedding.node_id == private_node.id)
             )
             owner_embedding.status = "indexed"
             owner_embedding.embedding = [0.01] * cfg.EMBEDDING_DIMENSIONS
             private_embedding.status = "indexed"
             private_embedding.embedding = [0.01] * cfg.EMBEDDING_DIMENSIONS
 
-            stale_job = await create_rag_v2_index_job(session, note, force=True)
+            stale_job = await create_rag_index_job(session, note, force=True)
             note.content += "\n\nconcurrent update"
-            await run_rag_v2_index_job(session, note, stale_job)
+            await run_rag_index_job(session, note, stale_job)
             await session.commit()
-            state_after_stale = await session.get(RagV2IndexState, note.id)
+            state_after_stale = await session.get(RagIndexState, note.id)
 
         owner_results = await retrieve_candidates(owner.id, "BM25 RRF", limit=8)
         probe_results = await retrieve_candidates(owner.id, "BETA_ONLY_NEPTUNE_7429", limit=8)
@@ -421,8 +421,8 @@ async def _exercise_rag_v2_incremental_and_permissions() -> dict[str, bool]:
             model=cfg.EMBEDDING_MODEL,
             dimensions=cfg.EMBEDDING_DIMENSIONS,
         )
-        with patch("app.rag.v2.retrieval.embedding_enabled", return_value=True), patch(
-            "app.rag.v2.retrieval.embed_texts", new=AsyncMock(return_value=fake_embedding_result)
+        with patch("app.rag.pipeline.retrieval.embedding_enabled", return_value=True), patch(
+            "app.rag.pipeline.retrieval.embed_texts", new=AsyncMock(return_value=fake_embedding_result)
         ):
             vector_results = await vector_retrieve(owner.id, query_plan, limit=8)
         return {
@@ -485,8 +485,8 @@ class DatabaseIntegrationTest(unittest.TestCase):
         self.assertEqual(first_status, "success")
         self.assertEqual(second_status, "success")
 
-    def test_rag_v2_incremental_index_fencing_and_permissions(self) -> None:
-        result = asyncio.run(_exercise_rag_v2_incremental_and_permissions())
+    def test_rag_incremental_index_fencing_and_permissions(self) -> None:
+        result = asyncio.run(_exercise_rag_incremental_and_permissions())
         self.assertTrue(result["jobs_succeeded"])
         self.assertTrue(result["unchanged_reused"])
         self.assertTrue(result["changed_rebuilt"])

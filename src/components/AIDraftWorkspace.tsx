@@ -19,9 +19,9 @@ import {
   Wand2,
   X,
 } from "lucide-react";
-import { useDraftSlice, useWorkspaceSlice } from "../storeSlices";
+import { useDraftSlice, useWorkspaceSlice } from "../store/selectors";
 import type { FileNode } from "../types";
-import { generateNoteStream } from "../services/deepseek";
+import { generateNoteStream } from "../services/aiStream";
 import {
   assembleNoteDraft,
   cancelNoteDraft,

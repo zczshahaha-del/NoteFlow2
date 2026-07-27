@@ -8,7 +8,7 @@ from app.agent.contracts import RuntimeErrorCode, RuntimeEvent
 from app.providers.chat import DeepSeekChatModelProvider
 from app.providers.contracts import ChatModelProvider
 from app.rag.service import configured_rag_service
-from app.rag.v2.service import LlamaIndexRagService
+from app.rag.pipeline.service import LlamaIndexRagService
 from app.repositories.base import require_user_id
 from app.repositories import (
     AttachmentRepository,
@@ -87,6 +87,24 @@ class ArchitectureContractTest(unittest.TestCase):
         self.assertNotIn("app.database", source)
         self.assertNotIn("app.models", source)
         self.assertNotIn("sqlalchemy", source)
+
+    def test_memory_and_rag_modules_live_in_their_domain_packages(self) -> None:
+        app_root = Path(__file__).resolve().parents[1] / "app"
+        services_root = app_root / "services"
+        misplaced = (
+            "memory.py",
+            "memory_llm.py",
+            "memory_read.py",
+            "memory_service.py",
+            "agent_memory.py",
+            "rag_eval.py",
+        )
+        for name in misplaced:
+            self.assertFalse((services_root / name).exists(), name)
+        self.assertTrue((app_root / "memory" / "domain.py").exists())
+        self.assertTrue((app_root / "memory" / "service.py").exists())
+        self.assertTrue((app_root / "rag" / "evaluation.py").exists())
+        self.assertTrue((app_root / "rag" / "pipeline").is_dir())
 
 
 if __name__ == "__main__":

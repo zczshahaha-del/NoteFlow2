@@ -36,7 +36,7 @@ PostgreSQL / Redis / Object Storage / Provider
 | `services.ai.stream_chat` | `ChatModelProvider` | `LegacyChatModelProvider` 保持原 SSE chunk |
 | `services.embeddings.embed_texts` | `EmbeddingProvider` | `LegacyEmbeddingProvider` |
 | `services.note_library` | `RagService` / `VectorStoreProvider` | legacy adapter，不复制算法 |
-| `services.memory` | `MemoryProvider` / `MemoryService` | 读取 adapter，写入只走 Service |
+| `app.memory.domain` | `MemoryProvider` / `MemoryService` | 领域规则集中在 Memory 包，写入只走 Service |
 | Agent 运行与 checkpoint services | `RunService` / `RunRepository` | 取消和 scoped read 已迁移 |
 | Router 内附件 SQL/存储流程 | `AttachmentService` / `AttachmentRepository` | 已迁移 |
 | Router 内 Memory CRUD | `MemoryService` / `MemoryRepository` | 已迁移 |

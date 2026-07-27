@@ -97,7 +97,7 @@ LlamaIndex 不拥有第二套 NoteFlow 数据。映射规则如下：
 ## 当前验证方式
 
 隔离 PoC 已退役。请使用 `npm run test:backend`、`npm run test:architecture`、
-`npm run test:rag-v2` 和 `npm run test:memory-safety` 验证正式实现。
+`npm run test:rag` 和 `npm run test:memory-safety` 验证正式实现。
 
 ## 回滚与升级规则
 
