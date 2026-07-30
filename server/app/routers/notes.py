@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -15,9 +15,11 @@ from app.services.markdown_index import index_note_now
 from app.services.note_library import (
     build_note_context,
     hybrid_search_notes,
+    literal_search_notes,
     list_related_notes,
     read_note_sections,
     source_to_dict,
+    understand_literal_search_query,
     understand_note_query,
 )
 from app.rag.evaluation import RagEvalCase, build_auto_rag_eval_cases, run_rag_eval
@@ -74,6 +76,8 @@ class NoteSearchPayload(BaseModel):
     query: str
     noteId: Optional[str] = None
     limit: int = 8
+    mode: Literal["hybrid", "literal"] = "hybrid"
+    scope: Literal["all", "title", "content"] = "all"
 
 
 class RagEvalCasePayload(BaseModel):
@@ -361,14 +365,26 @@ async def search_notes(
     async with AsyncSessionLocal() as session:
         if payload.noteId:
             await _get_note(session, user.id, payload.noteId)
-        results = await hybrid_search_notes(
-            session,
-            user.id,
-            payload.query,
-            note_id=payload.noteId,
-            limit=max(1, min(payload.limit, 20)),
-        )
-        query_plan = understand_note_query(payload.query, note_id=payload.noteId)
+        limit = max(1, min(payload.limit, 20))
+        if payload.mode == "literal":
+            results = await literal_search_notes(
+                session,
+                user.id,
+                payload.query,
+                note_id=payload.noteId,
+                scope=payload.scope,
+                limit=limit,
+            )
+            query_plan = understand_literal_search_query(payload.query)
+        else:
+            results = await hybrid_search_notes(
+                session,
+                user.id,
+                payload.query,
+                note_id=payload.noteId,
+                limit=limit,
+            )
+            query_plan = understand_note_query(payload.query, note_id=payload.noteId)
         return {
             "query": {
                 "originalQuery": query_plan.original_query,

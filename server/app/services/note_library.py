@@ -161,6 +161,44 @@ def understand_note_query(
     )
 
 
+def _literal_query_tokens(value: str) -> list[str]:
+    return [
+        item
+        for item in re.split(
+            r"[\s,，。:：;；!?！？|()\[\]{}<>《》\"'`]+",
+            _normalize(value),
+        )
+        if item
+    ]
+
+
+def understand_literal_search_query(query: str) -> QueryUnderstanding:
+    """Build a predictable plan for the library search dialog.
+
+    Unlike conversational RAG queries, UI search text is treated literally:
+    no natural-language stop words are removed and no semantic rewrite is
+    introduced. The complete phrase ranks first, followed by explicit tokens.
+    """
+
+    normalized = _normalize(query)
+    search_query = re.sub(
+        r"^(?:(?:请|麻烦)\s*)?(?:帮我\s*)?(?:搜索|搜|查找|查|找)\s+",
+        "",
+        normalized,
+    ).strip() or normalized
+    parts = _literal_query_tokens(search_query)
+    terms = _unique([search_query, *parts], limit=8)
+    return QueryUnderstanding(
+        original_query=query,
+        normalized_query=normalized,
+        search_query=search_query,
+        intent="locate",
+        scope_hint="library",
+        terms=terms,
+        rewritten_queries=[search_query] if search_query else [],
+    )
+
+
 def is_library_search_query(question: str) -> bool:
     q = _normalize(question)
     return any(hint in q for hint in LIBRARY_SEARCH_HINTS)
@@ -193,22 +231,57 @@ def _contains_score(text: str, terms: list[str], weight: float) -> float:
 
 
 def _sql_term_params(terms: list[str]) -> dict[str, str]:
-    return {f"term_{index}": f"%{term}%" for index, term in enumerate(terms)}
+    return {
+        f"term_{index}": f"%{term.replace('!', '!!').replace('%', '!%').replace('_', '!_')}%"
+        for index, term in enumerate(terms)
+    }
 
 
 def _sql_match_condition(columns: list[str], terms: list[str]) -> str:
     pieces = []
     for index, _term in enumerate(terms):
         for column in columns:
-            pieces.append(f"lower(coalesce({column}, '')) LIKE :term_{index}")
+            pieces.append(
+                f"lower(coalesce({column}, '')) LIKE :term_{index} ESCAPE '!'"
+            )
     return "(" + " OR ".join(pieces) + ")" if pieces else "false"
+
+
+def _sql_all_terms_match_condition(
+    columns: list[str],
+    all_terms: list[str],
+    required_terms: list[str],
+) -> str:
+    term_indexes = {term: index for index, term in enumerate(all_terms)}
+    required_conditions: list[str] = []
+    for term in required_terms:
+        index = term_indexes.get(term)
+        if index is None:
+            continue
+        column_conditions = [
+            f"lower(coalesce({column}, '')) LIKE :term_{index} ESCAPE '!'"
+            for column in columns
+        ]
+        required_conditions.append("(" + " OR ".join(column_conditions) + ")")
+    return "(" + " AND ".join(required_conditions) + ")" if required_conditions else "false"
+
+
+def _sql_markdown_body(column: str) -> str:
+    return (
+        f"regexp_replace(coalesce({column}, ''), "
+        "'^[ \\t]{0,3}#{1,6}[ \\t]+.*$', '', 'gn')"
+    )
 
 
 def _sql_score_expression(weighted_columns: list[tuple[str, float]], terms: list[str]) -> str:
     pieces = []
     for index, _term in enumerate(terms):
         for column, weight in weighted_columns:
-            pieces.append(f"CASE WHEN lower(coalesce({column}, '')) LIKE :term_{index} THEN {weight} ELSE 0 END")
+            pieces.append(
+                "CASE WHEN "
+                f"lower(coalesce({column}, '')) LIKE :term_{index} ESCAPE '!' "
+                f"THEN {weight} ELSE 0 END"
+            )
     return " + ".join(pieces) if pieces else "0"
 
 
@@ -515,20 +588,44 @@ async def _heading_search_sources(
     query_plan: QueryUnderstanding,
     note_id: Optional[str] = None,
     limit: int = 16,
+    literal_fields_only: bool = False,
 ) -> list[LibrarySource]:
     terms = query_plan.terms
     if not terms:
         return []
 
-    note_match = _sql_match_condition(["n.title", "coalesce(cat.name, '')", "n.tags::text"], terms)
-    note_score = _sql_score_expression([("n.title", 30), ("coalesce(cat.name, '')", 12), ("n.tags::text", 10)], terms)
-    section_match = _sql_match_condition(["s.title", "n.title"], terms)
-    section_score = _sql_score_expression([("s.title", 28), ("n.title", 8)], terms)
+    note_columns = ["n.title"] if literal_fields_only else [
+        "n.title",
+        "coalesce(cat.name, '')",
+        "n.tags::text",
+    ]
+    note_weighted_columns = [("n.title", 30)] if literal_fields_only else [
+        ("n.title", 30),
+        ("coalesce(cat.name, '')", 12),
+        ("n.tags::text", 10),
+    ]
+    section_columns = ["s.title"] if literal_fields_only else ["s.title", "n.title"]
+    section_weighted_columns = [("s.title", 28)] if literal_fields_only else [
+        ("s.title", 28),
+        ("n.title", 8),
+    ]
+    required_terms = _literal_query_tokens(query_plan.search_query)
+    note_match = (
+        _sql_all_terms_match_condition(note_columns, terms, required_terms)
+        if literal_fields_only
+        else _sql_match_condition(note_columns, terms)
+    )
+    note_score = _sql_score_expression(note_weighted_columns, terms)
+    section_match = (
+        _sql_all_terms_match_condition(section_columns, terms, required_terms)
+        if literal_fields_only
+        else _sql_match_condition(section_columns, terms)
+    )
+    section_score = _sql_score_expression(section_weighted_columns, terms)
     note_filter = "AND n.id = :note_id" if note_id else ""
     section_filter = "AND s.note_id = :note_id" if note_id else ""
 
-    sql = f"""
-        SELECT * FROM (
+    ranked_sql = f"""
             SELECT
                 'note_heading' AS source_type,
                 n.id AS note_id,
@@ -562,11 +659,30 @@ async def _heading_search_sources(
               AND n.deleted_at IS NULL
               {section_filter}
               AND {section_match}
-        ) ranked
-        WHERE raw_score > 0
-        ORDER BY raw_score DESC
-        LIMIT :limit
     """
+    if literal_fields_only:
+        sql = f"""
+            SELECT * FROM (
+                SELECT
+                    ranked.*,
+                    row_number() OVER (
+                        PARTITION BY note_id
+                        ORDER BY raw_score DESC, source_type, section_id NULLS FIRST
+                    ) AS note_rank
+                FROM ({ranked_sql}) ranked
+                WHERE raw_score > 0
+            ) balanced
+            WHERE note_rank <= 3
+            ORDER BY raw_score DESC
+            LIMIT :limit
+        """
+    else:
+        sql = f"""
+            SELECT * FROM ({ranked_sql}) ranked
+            WHERE raw_score > 0
+            ORDER BY raw_score DESC
+            LIMIT :limit
+        """
     params = {"user_id": user_id, "limit": limit, **_sql_term_params(terms)}
     if note_id:
         params["note_id"] = note_id
@@ -580,20 +696,42 @@ async def _content_search_sources(
     query_plan: QueryUnderstanding,
     note_id: Optional[str] = None,
     limit: int = 24,
+    literal_fields_only: bool = False,
 ) -> list[LibrarySource]:
     terms = query_plan.terms
     if not terms:
         return []
 
-    chunk_match = _sql_match_condition(["c.content", "s.title"], terms)
-    chunk_score = _sql_score_expression([("c.content", 18), ("s.title", 6), ("n.title", 4)], terms)
-    note_match = _sql_match_condition(["n.content"], terms)
-    note_score = _sql_score_expression([("n.content", 5), ("n.title", 3)], terms)
+    chunk_body = _sql_markdown_body("c.content") if literal_fields_only else "c.content"
+    note_body = _sql_markdown_body("n.content") if literal_fields_only else "n.content"
+    chunk_columns = [chunk_body] if literal_fields_only else ["c.content", "s.title"]
+    chunk_weighted_columns = [(chunk_body, 18)] if literal_fields_only else [
+        ("c.content", 18),
+        ("s.title", 6),
+        ("n.title", 4),
+    ]
+    required_terms = _literal_query_tokens(query_plan.search_query)
+    chunk_match = (
+        _sql_all_terms_match_condition(chunk_columns, terms, required_terms)
+        if literal_fields_only
+        else _sql_match_condition(chunk_columns, terms)
+    )
+    chunk_score = _sql_score_expression(chunk_weighted_columns, terms)
+    note_columns = [note_body]
+    note_match = (
+        _sql_all_terms_match_condition(note_columns, terms, required_terms)
+        if literal_fields_only
+        else _sql_match_condition(note_columns, terms)
+    )
+    note_weighted_columns = [(note_body, 5)] if literal_fields_only else [
+        ("n.content", 5),
+        ("n.title", 3),
+    ]
+    note_score = _sql_score_expression(note_weighted_columns, terms)
     chunk_filter = "AND c.note_id = :note_id" if note_id else ""
     note_filter = "AND n.id = :note_id" if note_id else ""
 
-    sql = f"""
-        SELECT * FROM (
+    ranked_sql = f"""
             SELECT
                 'chunk_content' AS source_type,
                 n.id AS note_id,
@@ -601,7 +739,7 @@ async def _content_search_sources(
                 s.id AS section_id,
                 s.title AS section_title,
                 c.id AS chunk_id,
-                c.content AS snippet,
+                {chunk_body} AS snippet,
                 ({chunk_score})::float AS raw_score
             FROM note_chunks c
             JOIN notes n ON n.id = c.note_id
@@ -620,18 +758,37 @@ async def _content_search_sources(
                 NULL::varchar AS section_id,
                 NULL::varchar AS section_title,
                 NULL::varchar AS chunk_id,
-                n.content AS snippet,
+                {note_body} AS snippet,
                 ({note_score})::float AS raw_score
             FROM notes n
             WHERE n.user_id = :user_id
               AND n.deleted_at IS NULL
               {note_filter}
               AND {note_match}
-        ) ranked
-        WHERE raw_score > 0
-        ORDER BY raw_score DESC
-        LIMIT :limit
     """
+    if literal_fields_only:
+        sql = f"""
+            SELECT * FROM (
+                SELECT
+                    ranked.*,
+                    row_number() OVER (
+                        PARTITION BY note_id
+                        ORDER BY raw_score DESC, source_type, section_id NULLS FIRST
+                    ) AS note_rank
+                FROM ({ranked_sql}) ranked
+                WHERE raw_score > 0
+            ) balanced
+            WHERE note_rank <= 3
+            ORDER BY raw_score DESC
+            LIMIT :limit
+        """
+    else:
+        sql = f"""
+            SELECT * FROM ({ranked_sql}) ranked
+            WHERE raw_score > 0
+            ORDER BY raw_score DESC
+            LIMIT :limit
+        """
     params = {"user_id": user_id, "limit": limit, **_sql_term_params(terms)}
     if note_id:
         params["note_id"] = note_id
@@ -759,6 +916,79 @@ async def hybrid_search_notes(
     deduplicated = deduplicate_logical_sources(fused, limit=max(limit * 2, limit))
     precise_sources = prefer_section_sources(deduplicated, limit=max(limit * 2, limit))
     return filter_query_relevant_sources(precise_sources, query_plan, limit=limit)
+
+
+async def literal_search_notes(
+    session: AsyncSession,
+    user_id: str,
+    query: str,
+    *,
+    note_id: Optional[str] = None,
+    scope: str = "all",
+    limit: int = 20,
+) -> list[LibrarySource]:
+    """Search explicit title/content evidence without vector fallback."""
+
+    if scope not in {"all", "title", "content"}:
+        scope = "all"
+    query_plan = understand_literal_search_query(query)
+    if not query_plan.terms:
+        return []
+
+    ranked_lists: list[tuple[str, list[LibrarySource]]] = []
+    if scope in {"all", "title"}:
+        heading_sources = await _heading_search_sources(
+            session,
+            user_id,
+            query_plan,
+            note_id=note_id,
+            limit=max(limit * 3, 30),
+            literal_fields_only=True,
+        )
+        ranked_lists.append(("heading", heading_sources))
+    if scope in {"all", "content"}:
+        content_sources = await _content_search_sources(
+            session,
+            user_id,
+            query_plan,
+            note_id=note_id,
+            limit=max(limit * 3, 24),
+            literal_fields_only=True,
+        )
+        ranked_lists.append(("content", content_sources))
+
+    candidate_limit = max(limit * 6, 60)
+    fused = _merge_rrf(ranked_lists, limit=candidate_limit)
+    deduplicated = deduplicate_logical_sources(fused, limit=candidate_limit)
+    notes_with_chunk_match = {
+        source.note_id
+        for source in deduplicated
+        if source.chunk_id and "content" in (source.retrieval_channels or [])
+    }
+    deduplicated = [
+        source
+        for source in deduplicated
+        if not (
+            source.source_type == "note_content"
+            and source.note_id in notes_with_chunk_match
+        )
+    ]
+    results: list[LibrarySource] = []
+    note_match_counts: dict[str, int] = {}
+    included_note_ids: set[str] = set()
+    for source in deduplicated:
+        if (
+            source.note_id not in included_note_ids
+            and len(included_note_ids) >= limit
+        ):
+            continue
+        match_count = note_match_counts.get(source.note_id, 0)
+        if match_count >= 3:
+            continue
+        included_note_ids.add(source.note_id)
+        note_match_counts[source.note_id] = match_count + 1
+        results.append(source)
+    return results
 
 
 def route_context_mode(question: str, selected_text: str = "") -> str:

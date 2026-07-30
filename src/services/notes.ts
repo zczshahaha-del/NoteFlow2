@@ -67,6 +67,9 @@ export interface NoteSearchResponse {
   results: ChatSource[];
 }
 
+export type NoteSearchMode = "hybrid" | "literal";
+export type NoteSearchScope = "all" | "title" | "content";
+
 export interface NotePayload {
   id?: string;
   title: string;
@@ -103,7 +106,13 @@ export async function listNotes(includeDeleted = false): Promise<NoteRecord[]> {
 
 export async function searchNotes(
   query: string,
-  options: { noteId?: string | null; limit?: number; signal?: AbortSignal } = {}
+  options: {
+    noteId?: string | null;
+    limit?: number;
+    signal?: AbortSignal;
+    mode?: NoteSearchMode;
+    scope?: NoteSearchScope;
+  } = {}
 ): Promise<NoteSearchResponse> {
   const response = await apiFetch("/api/notes/search", {
     method: "POST",
@@ -112,6 +121,8 @@ export async function searchNotes(
       query,
       noteId: options.noteId ?? null,
       limit: options.limit ?? 12,
+      mode: options.mode ?? "hybrid",
+      scope: options.scope ?? "all",
     }),
     signal: options.signal,
   });

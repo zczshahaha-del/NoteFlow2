@@ -14,7 +14,6 @@ import {
   Italic,
   Link,
   List,
-  ListTree,
   ListChecks,
   ListOrdered,
   Menu,
@@ -535,7 +534,7 @@ export default function NoteEditor() {
         {isMobile && headings.length > 1 && !mobileOutlineOpen && (
           <button
             type="button"
-            className="floating-launcher absolute left-3 top-3 z-40 flex h-10 w-10 items-center justify-center text-jelly-text-soft"
+            className="floating-launcher absolute right-3 top-3 z-40 flex h-10 w-10 items-center justify-center text-jelly-text-soft"
             onClick={() => setMobileOutlineOpen(true)}
             aria-label="展开目录"
           >
@@ -757,15 +756,6 @@ export default function NoteEditor() {
 
       {!isMobile && headings.length > 1 && !mobileOutlineOpen && (
         <nav className="chapter-rail" aria-label="章节快速导航">
-          <button
-            type="button"
-            className="chapter-rail-toc"
-            onClick={() => setMobileOutlineOpen(true)}
-            aria-label="打开本文目录"
-          >
-            <ListTree size={15} strokeWidth={1.8} />
-            <span>本文目录</span>
-          </button>
           <div className="chapter-rail-track">
             {visibleHeadings.map((heading) => (
               <button

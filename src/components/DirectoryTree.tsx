@@ -20,7 +20,6 @@ import {
   RotateCcw,
   ChevronsLeft,
   ChevronsRight,
-  Loader2,
   Star,
   Check,
 } from "lucide-react";
@@ -28,106 +27,13 @@ import { generateId } from "../store";
 import { useEditorSlice, useWorkspaceSlice } from "../store/selectors";
 import type { ChatSource, FileNode } from "../types";
 import AccountMenu, { type AccountMenuProps } from "./AppNav";
-import { searchNotes, type NoteSearchQueryPlan } from "../services/notes";
-
-function filterTree(nodes: FileNode[], query: string): FileNode[] {
-  if (!query) return nodes;
-  const result: FileNode[] = [];
-  for (const node of nodes) {
-    if (node.type === "file" && node.name.toLowerCase().includes(query.toLowerCase())) {
-      result.push(node);
-    } else if (node.type === "folder" && node.children) {
-      const filtered = filterTree(node.children, query);
-      if (filtered.length > 0) {
-        result.push({ ...node, children: filtered });
-      } else if (node.name.toLowerCase().includes(query.toLowerCase())) {
-        result.push(node);
-      }
-    }
-  }
-  return result;
-}
-
-type LibraryView = "all" | "pinned" | "favorites" | "recent";
-
-function filterTreeByMetadata(
-  nodes: FileNode[],
-  view: LibraryView,
-  tag: string
-): FileNode[] {
-  if (view === "recent") {
-    const files: FileNode[] = [];
-    const visit = (items: FileNode[]) => items.forEach((item) => {
-      if (item.type === "file") files.push(item);
-      else visit(item.children ?? []);
-    });
-    visit(nodes);
-    return files
-      .filter((node) => !tag || (node.tags ?? []).includes(tag))
-      .sort((a, b) => {
-        const left = new Date(a.lastOpenedAt ?? a.updatedAt ?? a.createdAt ?? 0).getTime();
-        const right = new Date(b.lastOpenedAt ?? b.updatedAt ?? b.createdAt ?? 0).getTime();
-        return right - left;
-      })
-      .slice(0, 16);
-  }
-
-  return nodes.flatMap((node) => {
-    if (node.type === "file") {
-      const matchesView = view === "all" || (view === "pinned" ? node.pinned : node.favorite);
-      const matchesTag = !tag || (node.tags ?? []).includes(tag);
-      return matchesView && matchesTag ? [node] : [];
-    }
-    const children = filterTreeByMetadata(node.children ?? [], view, tag);
-    if (view === "all" && !tag) {
-      return [{ ...node, children }];
-    }
-    return children.length ? [{ ...node, children }] : [];
-  });
-}
-
-function collectTags(nodes: FileNode[], result = new Set<string>()): string[] {
-  nodes.forEach((node) => {
-    (node.tags ?? []).forEach((tag) => result.add(tag));
-    if (node.children) collectTags(node.children, result);
-  });
-  return Array.from(result).sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
-}
+import LibrarySearchDialog from "./LibrarySearchDialog";
 
 function countFiles(nodes: FileNode[]): number {
   return nodes.reduce((total, node) => {
     if (node.type === "file") return total + 1;
     return total + countFiles(node.children ?? []);
   }, 0);
-}
-
-function countFolders(nodes: FileNode[]): number {
-  return nodes.reduce((total, node) => {
-    if (node.type !== "folder") return total;
-    return total + 1 + countFolders(node.children ?? []);
-  }, 0);
-}
-
-function collectFilePaths(nodes: FileNode[], parents: string[] = [], paths = new Map<string, string>()): Map<string, string> {
-  nodes.forEach((node) => {
-    if (node.type === "file") {
-      paths.set(node.id, parents.join(" / ") || "知识库");
-      return;
-    }
-    collectFilePaths(node.children ?? [], [...parents, node.name], paths);
-  });
-  return paths;
-}
-
-function searchChannelLabel(source: ChatSource): string {
-  const channels = source.retrievalChannels ?? [];
-  const labels = [
-    channels.includes("heading") || source.sourceType === "heading" ? "标题" : "",
-    channels.includes("content") || source.sourceType === "content" ? "正文" : "",
-    channels.includes("vector") || source.sourceType === "vector" ? "语义" : "",
-  ].filter(Boolean);
-  if (labels.length) return labels.join("+");
-  return "匹配";
 }
 
 function sortPinnedFirst(nodes: FileNode[]): FileNode[] {
@@ -347,27 +253,32 @@ function TreeNode({
   return (
     <div>
       <div className="group/node relative flex min-w-0 items-center py-0.5 text-sm">
-        <button
-          className={`flex h-8 w-5 shrink-0 items-center justify-center rounded-md text-jelly-text-muted transition-colors ${isFolder ? "cursor-pointer hover:text-jelly-text" : ""}`}
-          style={{ marginLeft: `${depth * 14}px` }}
-          onClick={() => {
-            if (isFolder) {
-              toggleFolder(node.id);
-            }
-          }}
-        >
-          {isFolder ? (
+        {isFolder && hasChildren ? (
+          <button
+            type="button"
+            className="flex h-8 w-5 shrink-0 items-center justify-center rounded-md text-jelly-text-muted transition-colors hover:text-jelly-blue-deep focus-visible:text-jelly-blue-deep"
+            style={{ marginLeft: `${depth * 12}px` }}
+            onClick={() => toggleFolder(node.id)}
+            aria-label={isExpanded ? `收起${node.name}` : `展开${node.name}`}
+          >
             <ChevronRight
               size={14}
-              className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""} ${hasChildren ? "" : "opacity-0"}`}
+              className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
             />
-          ) : null}
-        </button>
+          </button>
+        ) : (
+          <span
+            className="h-8 w-5 shrink-0"
+            style={{ marginLeft: `${depth * 12}px` }}
+            aria-hidden="true"
+          />
+        )}
 
         <button
-          className={`flex min-h-8 flex-1 items-center gap-2 overflow-hidden rounded-md border px-2 text-left transition-all duration-150 ${isSelected
-            ? "border-transparent bg-transparent text-jelly-blue-deep shadow-none"
-            : "border-transparent text-jelly-text-soft hover:bg-white hover:text-jelly-text"
+          type="button"
+          className={`relative flex min-h-8 flex-1 items-center gap-2 overflow-hidden rounded-md border px-2 text-left transition-all duration-150 ${isSelected
+            ? "border-transparent bg-jelly-blue-pale font-medium text-jelly-blue-deep shadow-none"
+            : "border-transparent text-jelly-text-soft hover:bg-jelly-blue-pale/60 hover:text-jelly-text focus-visible:bg-jelly-blue-pale/60 focus-visible:text-jelly-blue-deep"
             }`}
           onClick={() => {
             if (isFolder) {
@@ -377,18 +288,40 @@ function TreeNode({
               onFileOpen?.();
             }
           }}
+          aria-expanded={isFolder ? isExpanded : undefined}
+          aria-current={isSelected ? "page" : undefined}
         >
+          {isSelected && (
+            <span
+              className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-jelly-blue"
+              aria-hidden="true"
+            />
+          )}
           {isFolder ? (
             isExpanded ? (
-              <FolderOpen size={16} className="text-jelly-blue shrink-0" strokeWidth={1.6} />
+              <FolderOpen
+                size={16}
+                className="shrink-0 text-jelly-text-muted transition-colors group-hover/node:text-jelly-blue"
+                strokeWidth={1.6}
+              />
             ) : (
-              <Folder size={16} className="text-jelly-blue shrink-0" strokeWidth={1.6} />
+              <Folder
+                size={16}
+                className="shrink-0 text-jelly-text-muted transition-colors group-hover/node:text-jelly-blue"
+                strokeWidth={1.6}
+              />
             )
           ) : (
-            <FileText size={16} className="text-jelly-text-muted shrink-0" strokeWidth={1.6} />
+            <FileText
+              size={16}
+              className={`shrink-0 transition-colors ${
+                isSelected
+                  ? "text-jelly-blue-deep"
+                  : "text-jelly-text-muted group-hover/node:text-jelly-blue"
+              }`}
+              strokeWidth={1.6}
+            />
           )}
-          {node.pinned && <Pin size={12} className="shrink-0 text-jelly-blue-deep" strokeWidth={1.8} />}
-          {node.favorite && <Star size={12} className="shrink-0 text-jelly-amber" fill="currentColor" strokeWidth={1.8} />}
           {isRenaming ? (
             <input
               value={renameDraft}
@@ -403,21 +336,38 @@ function TreeNode({
               className="min-w-0 flex-1 rounded-sm border border-jelly-blue/40 bg-white px-1.5 py-1 text-[13px] leading-none text-jelly-text outline-none"
             />
           ) : (
-            <span className="truncate text-[13px] leading-none">{node.name.replace(/\.md$/, "")}</span>
+            <span className="min-w-0 flex-1 truncate text-[13px] leading-[1.25]">
+              {node.name.replace(/\.md$/, "")}
+            </span>
+          )}
+          {node.pinned && (
+            <Pin size={12} className="shrink-0 text-jelly-text-muted" strokeWidth={1.8} aria-label="已置顶" />
+          )}
+          {node.favorite && (
+            <Star
+              size={12}
+              className="shrink-0 text-jelly-amber"
+              fill="currentColor"
+              strokeWidth={1.8}
+              aria-label="已收藏"
+            />
           )}
         </button>
 
         <div className="relative ml-1 shrink-0" data-file-menu-root>
           <button
             type="button"
-            className={`flex h-7 w-7 items-center justify-center rounded-md text-jelly-text-muted transition-all hover:bg-white hover:text-jelly-text ${
-              menuOpen ? "bg-white opacity-100" : "opacity-0 group-hover/node:opacity-100"
+            className={`file-node-menu-button flex h-7 w-7 items-center justify-center rounded-md text-jelly-text-muted transition-all hover:bg-jelly-blue-pale hover:text-jelly-blue-deep focus-visible:bg-jelly-blue-pale focus-visible:text-jelly-blue-deep ${
+              menuOpen
+                ? "bg-jelly-blue-pale text-jelly-blue-deep opacity-100"
+                : "opacity-0 group-hover/node:opacity-100 group-focus-within/node:opacity-100"
             }`}
             onClick={(event) => {
               event.stopPropagation();
               onMenuChange(menuOpen ? null : node.id);
             }}
             aria-label="文件操作"
+            aria-expanded={menuOpen}
           >
             <MoreHorizontal size={15} strokeWidth={1.8} />
           </button>
@@ -521,10 +471,10 @@ function TreeNode({
           ) : (
             <div
               className="flex items-center gap-1.5 py-2 text-[12px] text-jelly-text-muted"
-              style={{ paddingLeft: `${34 + depth * 14}px` }}
+              style={{ paddingLeft: `${34 + depth * 12}px` }}
             >
-              <Plus size={12} strokeWidth={1.8} />
-              <span>暂无笔记</span>
+              <FileText size={12} strokeWidth={1.7} aria-hidden="true" />
+              <span>文件夹为空</span>
             </div>
           )}
         </div>
@@ -537,6 +487,7 @@ type DirectoryTreeProps = {
   pinned: boolean;
   onPinnedChange: (pinned: boolean) => void;
   onFileOpen?: () => void;
+  searchShortcutEnabled?: boolean;
 } & Pick<AccountMenuProps, "themeMode" | "onThemeModeChange" | "userEmail" | "userName" | "onSignOut">;
 
 export default function DirectoryTree({
@@ -548,6 +499,7 @@ export default function DirectoryTree({
   userName,
   onSignOut,
   onFileOpen,
+  searchShortcutEnabled = true,
 }: DirectoryTreeProps) {
   const {
     treeData,
@@ -564,7 +516,7 @@ export default function DirectoryTree({
     restoreDeletedNote,
   } = useWorkspaceSlice();
   const { focusChatSource } = useEditorSlice();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const [newTooltipOpen, setNewTooltipOpen] = useState(false);
   const [menuNodeId, setMenuNodeId] = useState<string | null>(null);
@@ -578,29 +530,15 @@ export default function DirectoryTree({
   const [moveTargetId, setMoveTargetId] = useState<string | null>(null);
   const [trashOpen, setTrashOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTargetState | null>(null);
-  const [searchResults, setSearchResults] = useState<ChatSource[]>([]);
-  const [searchPlan, setSearchPlan] = useState<NoteSearchQueryPlan | null>(null);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [searchError, setSearchError] = useState("");
-  const [libraryView, setLibraryView] = useState<LibraryView>("all");
-  const [activeTag, setActiveTag] = useState("");
   const newMenuRef = useRef<HTMLDivElement>(null);
   const deleteConfirmRef = useRef<HTMLDivElement>(null);
   const expanded = pinned;
 
-  const metadataFilteredTree = useMemo(
-    () => filterTreeByMetadata(treeData, libraryView, activeTag),
-    [activeTag, libraryView, treeData]
-  );
   const filteredTree = useMemo(
-    () => sortPinnedFirst(filterTree(metadataFilteredTree, searchQuery)),
-    [metadataFilteredTree, searchQuery]
+    () => sortPinnedFirst(treeData),
+    [treeData]
   );
-  const isSearching = searchQuery.length > 0;
   const fileCount = useMemo(() => countFiles(treeData), [treeData]);
-  const folderCount = useMemo(() => countFolders(treeData), [treeData]);
-  const filePaths = useMemo(() => collectFilePaths(treeData), [treeData]);
-  const availableTags = useMemo(() => collectTags(treeData), [treeData]);
   const moveTargets = useMemo(() => {
     const excludeIds =
       movingNode?.type === "folder" ? collectFolderIds(movingNode) : new Set<string>();
@@ -680,40 +618,18 @@ export default function DirectoryTree({
   }, [movingNode, newFolderOpen]);
 
   useEffect(() => {
-    const query = searchQuery.trim();
-    if (!query) {
-      setSearchResults([]);
-      setSearchPlan(null);
-      setSearchLoading(false);
-      setSearchError("");
-      return;
+    if (!searchShortcutEnabled) return;
+
+    function handleSearchShortcut(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLocaleLowerCase() !== "k") return;
+      event.preventDefault();
+      setNewMenuOpen(false);
+      setSearchOpen(true);
     }
 
-    const controller = new AbortController();
-    setSearchLoading(true);
-    setSearchError("");
-    const timer = window.setTimeout(() => {
-      void searchNotes(query, { limit: 16, signal: controller.signal })
-        .then((response) => {
-          setSearchResults(response.results);
-          setSearchPlan(response.query);
-        })
-        .catch((error) => {
-          if (controller.signal.aborted) return;
-          setSearchResults([]);
-          setSearchPlan(null);
-          setSearchError(error instanceof Error ? error.message : "搜索失败，请稍后重试");
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setSearchLoading(false);
-        });
-    }, 260);
-
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [searchQuery]);
+    document.addEventListener("keydown", handleSearchShortcut);
+    return () => document.removeEventListener("keydown", handleSearchShortcut);
+  }, [searchShortcutEnabled]);
 
   useEffect(() => {
     if (!deleteTarget) return;
@@ -746,7 +662,7 @@ export default function DirectoryTree({
     setMovingNode(null);
     setTrashOpen(false);
     setDeleteTarget(null);
-    setSearchQuery("");
+    setSearchOpen(false);
     setNewTooltipOpen(false);
     setFolderPickerQuery("");
   }, [expanded]);
@@ -900,41 +816,58 @@ export default function DirectoryTree({
     [toggleNodeFavorite]
   );
 
+  const handleSearchClose = useCallback(() => {
+    setSearchOpen(false);
+  }, []);
+
+  const handleSearchSelect = useCallback(
+    (source: ChatSource) => {
+      focusChatSource(source);
+      setSearchOpen(false);
+      onFileOpen?.();
+    },
+    [focusChatSource, onFileOpen]
+  );
+
   return (
     <aside
       className={`directory-tree relative top-0 left-0 z-40 flex h-full flex-col border-r border-jelly-border bg-white/80 transition-[width,box-shadow] duration-200 ease-out ${
         expanded
-          ? "w-[260px] shadow-none"
+          ? "w-full shadow-none"
           : "w-[52px] shadow-none"
       }`}
     >
       {/* Header */}
-      <div className={`shrink-0 ${expanded ? "px-5 pb-4 pt-6" : "px-2 py-3"}`}>
+      <div className={`shrink-0 ${expanded ? "px-4 pb-3 pt-5" : "px-2 py-3"}`}>
         {expanded ? (
           <>
-            <div className="mb-3 flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="-ml-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-jelly-text">
-                  <BookOpen size={17} className="text-jelly-blue-deep" strokeWidth={1.8} />
-                  <h1 className="truncate text-[15px] font-semibold">目录</h1>
-                </div>
-                <p className="mt-1 text-[12px] text-jelly-text-muted">
-                  {fileCount} 篇笔记 · {folderCount} 个文件夹
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="flex min-w-0 flex-1 items-center gap-2 text-jelly-text">
+                <BookOpen size={16} className="shrink-0 text-jelly-text-muted" strokeWidth={1.8} />
+                <h1 className="shrink-0 text-[15px] font-semibold">目录</h1>
+                <p className="min-w-0 truncate text-[11px] text-jelly-text-muted">
+                  {fileCount} 篇
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1">
-                <button
-                  className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
-                    expanded
-                      ? "bg-jelly-blue-pale text-jelly-blue-deep"
-                      : "text-jelly-text-soft hover:bg-white hover:text-jelly-text"
-                  }`}
-                  onClick={() => onPinnedChange(!pinned)}
-                  aria-label="收起知识库"
-                  title="收起知识库"
-                >
-                  <ChevronsLeft size={15} strokeWidth={1.8} />
-                </button>
+                <div className="group/collapse-directory relative">
+                  <button
+                    type="button"
+                    className="flex h-8 w-8 items-center justify-center rounded-md text-jelly-text-muted transition-colors hover:bg-jelly-blue-pale hover:text-jelly-blue-deep focus-visible:bg-jelly-blue-pale focus-visible:text-jelly-blue-deep focus-visible:outline-none"
+                    onClick={() => onPinnedChange(!pinned)}
+                    aria-label="收起目录"
+                    aria-describedby="collapse-directory-tooltip"
+                  >
+                    <ChevronsLeft size={15} strokeWidth={1.8} />
+                  </button>
+                  <span
+                    id="collapse-directory-tooltip"
+                    role="tooltip"
+                    className="pointer-events-none absolute left-1/2 top-full z-50 mt-1.5 -translate-x-1/2 -translate-y-1 whitespace-nowrap rounded-md border border-jelly-border bg-white px-2.5 py-1 text-[12px] font-medium text-jelly-text-soft opacity-0 shadow-[0_6px_18px_rgba(30,44,56,0.08)] transition-all duration-150 group-hover/collapse-directory:translate-y-0 group-hover/collapse-directory:opacity-100 group-focus-within/collapse-directory:translate-y-0 group-focus-within/collapse-directory:opacity-100"
+                  >
+                    收起目录
+                  </span>
+                </div>
                 <div
                   className="relative"
                   ref={newMenuRef}
@@ -942,12 +875,14 @@ export default function DirectoryTree({
                   onMouseLeave={() => setNewTooltipOpen(false)}
                 >
                   <button
-                    className="flex h-8 w-8 items-center justify-center rounded-md text-jelly-text-soft transition-colors hover:bg-white hover:text-jelly-text"
+                    type="button"
+                    className="flex h-8 w-8 items-center justify-center rounded-md text-jelly-text-muted transition-colors hover:bg-jelly-blue-pale hover:text-jelly-blue-deep focus-visible:bg-jelly-blue-pale focus-visible:text-jelly-blue-deep"
                     onClick={() => {
                       setNewTooltipOpen(false);
                       setNewMenuOpen((v) => !v);
                     }}
                     aria-label="新建"
+                    aria-expanded={newMenuOpen}
                   >
                     <Plus size={16} strokeWidth={2} />
                   </button>
@@ -979,36 +914,30 @@ export default function DirectoryTree({
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
-
-            <div className="ui-input flex items-center gap-2 px-2.5 shadow-none">
-              <Search size={14} className="shrink-0 text-jelly-text-muted" strokeWidth={1.8} />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="搜索笔记"
-                className="min-w-0 flex-1 bg-transparent text-[13px] text-jelly-text outline-none placeholder:text-jelly-text-muted"
-              />
-              {searchQuery && (
                 <button
-                  className="shrink-0 rounded-sm text-jelly-text-muted transition-colors hover:text-jelly-text"
-                  onClick={() => setSearchQuery("")}
-                  aria-label="清空搜索"
+                  type="button"
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-jelly-text-muted transition-colors hover:bg-jelly-blue-pale hover:text-jelly-blue-deep focus-visible:bg-jelly-blue-pale focus-visible:text-jelly-blue-deep"
+                  onClick={() => {
+                    setNewMenuOpen(false);
+                    setNewTooltipOpen(false);
+                    setSearchOpen(true);
+                  }}
+                  aria-label="搜索全部笔记"
+                  title="搜索全部笔记（⌘K）"
                 >
-                  <X size={14} strokeWidth={2} />
+                  <Search size={15} strokeWidth={1.8} />
                 </button>
-              )}
+              </div>
             </div>
           </>
         ) : (
           <div className="flex flex-col items-center gap-2">
             <button
-              className="flex h-8 w-8 items-center justify-center rounded-md text-jelly-text-soft transition-colors hover:bg-jelly-blue-pale hover:text-jelly-blue-deep"
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-jelly-text-muted transition-colors hover:bg-jelly-blue-pale hover:text-jelly-blue-deep focus-visible:bg-jelly-blue-pale focus-visible:text-jelly-blue-deep"
               onClick={() => onPinnedChange(true)}
-              aria-label="展开知识库"
-              title="展开知识库"
+              aria-label="展开目录"
+              title="展开目录"
             >
               <ChevronsRight size={14} strokeWidth={1.8} />
             </button>
@@ -1018,72 +947,22 @@ export default function DirectoryTree({
 
       {/* Tree */}
       <div className={`flex-1 overflow-y-auto ${expanded ? "px-4 py-2" : "px-2 py-3"}`}>
-        {expanded && isSearching ? (
-          <div>
-            <div className="mb-2 flex items-center justify-between gap-2 px-1">
-              <span className="text-[12px] font-medium text-jelly-text-soft">
-                {searchLoading ? "正在检索知识库" : `${searchResults.length} 条相关结果`}
-              </span>
-              {searchLoading && <Loader2 size={13} className="animate-spin text-jelly-blue-deep" />}
-            </div>
-            {searchPlan?.searchQuery && searchPlan.searchQuery !== searchQuery.trim() && (
-              <p className="mb-2 truncate px-1 text-[11px] text-jelly-text-muted" title={searchPlan.searchQuery}>
-                检索词：{searchPlan.searchQuery}
-              </p>
-            )}
-
-            {searchError ? (
-              <div className="rounded-lg border border-jelly-red/25 bg-jelly-red-bg px-3 py-3 text-[12px] leading-5 text-jelly-red">
-                {searchError}
-              </div>
-            ) : searchLoading && searchResults.length === 0 ? (
-              <div className="empty-state flex flex-col items-center justify-center py-10">
-                <Loader2 size={20} className="mb-2 animate-spin text-jelly-blue-deep" />
-                <p className="text-[12px]">正在搜索标题、小节和正文</p>
-              </div>
-            ) : searchResults.length === 0 ? (
-              <div className="empty-state flex flex-col items-center justify-center px-3 py-10 text-center">
-                <Search size={20} strokeWidth={1.2} className="mb-2 opacity-40" />
-                <p className="text-[12px] font-medium text-jelly-text-soft">未找到相关内容</p>
-                <p className="mt-1 text-[11px] leading-5 text-jelly-text-muted">试试更具体的关键词或问题</p>
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                {searchResults.map((result, index) => (
-                  <button
-                    key={`${result.noteId}-${result.sectionId ?? "note"}-${result.chunkId ?? index}`}
-                    type="button"
-                    className="group w-full rounded-lg border border-transparent px-2.5 py-2.5 text-left transition-colors hover:border-jelly-border hover:bg-white"
-                    onClick={() => {
-                      focusChatSource(result);
-                      onFileOpen?.();
-                    }}
-                  >
-                    <span className="flex min-w-0 items-center justify-between gap-2">
-                      <span className="min-w-0 truncate text-[13px] font-semibold text-jelly-text">
-                        {result.noteTitle}
-                      </span>
-                      <span className="status-chip min-h-5 shrink-0 border-jelly-blue/15 bg-jelly-blue-pale px-1.5 py-0 text-[10px] text-jelly-blue-deep">
-                        {searchChannelLabel(result)}
-                      </span>
-                    </span>
-                    <span className="mt-1 block truncate text-[11px] text-jelly-text-muted">
-                      {filePaths.get(result.noteId) ?? "知识库"}
-                      {result.sectionTitle ? ` / ${result.sectionTitle}` : ""}
-                    </span>
-                    <span className="mt-1.5 line-clamp-3 block text-[12px] leading-5 text-jelly-text-soft">
-                      {result.snippet || "打开查看命中内容"}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : filteredTree.length === 0 ? (
+        {filteredTree.length === 0 ? (
           expanded ? (
-            <div className="empty-state flex flex-col items-center justify-center py-10">
-            <Search size={20} strokeWidth={1.2} className="opacity-30 mb-2" />
-            <p className="text-[12px]">未找到匹配的笔记</p>
+            <div className="empty-state flex flex-col items-center justify-center px-4 py-9 text-center">
+              <FilePlus size={21} strokeWidth={1.4} className="mb-2 text-jelly-text-muted" />
+              <p className="text-[13px] font-medium text-jelly-text-soft">还没有笔记</p>
+              <p className="mt-1 text-[11px] leading-5 text-jelly-text-muted">
+                从第一篇内容开始建立你的知识库
+              </p>
+              <button
+                type="button"
+                className="mt-3 flex h-8 items-center gap-1.5 rounded-md border border-jelly-border bg-white px-3 text-[12px] font-medium text-jelly-text-soft transition-colors hover:border-jelly-blue/30 hover:bg-jelly-blue-pale hover:text-jelly-blue-deep focus-visible:bg-jelly-blue-pale focus-visible:text-jelly-blue-deep"
+                onClick={handleNewFile}
+              >
+                <Plus size={13} strokeWidth={2} />
+                新建第一篇笔记
+              </button>
             </div>
           ) : null
         ) : (
@@ -1092,7 +971,6 @@ export default function DirectoryTree({
               <TreeNode
                 key={node.id}
                 node={node}
-                autoExpand={isSearching}
                 renamingId={renamingId}
                 renameDraft={renameDraft}
                 menuNodeId={menuNodeId}
@@ -1109,36 +987,16 @@ export default function DirectoryTree({
                 onFileOpen={onFileOpen}
               />
             ))
-          ) : (
-            <div className="space-y-1.5">
-              {filteredTree.slice(0, 9).map((node) => (
-                <button
-                  key={node.id}
-                  className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
-                    node.id === selectedFileId
-                      ? "bg-jelly-blue-pale text-jelly-blue-deep"
-                      : "text-jelly-text-muted hover:bg-jelly-blue-pale hover:text-jelly-text"
-                  }`}
-                  onClick={() => {
-                    if (node.type === "file") {
-                      setSelectedFileId(node.id);
-                      onFileOpen?.();
-                    }
-                  }}
-                  title={node.name.replace(/\.md$/, "")}
-                  aria-label={node.name.replace(/\.md$/, "")}
-                >
-                  {node.type === "folder" ? (
-                    <Folder size={15} strokeWidth={1.6} />
-                  ) : (
-                    <FileText size={15} strokeWidth={1.6} />
-                  )}
-                </button>
-              ))}
-            </div>
-          )
+          ) : null
         )}
       </div>
+
+      <LibrarySearchDialog
+        open={searchOpen}
+        treeData={treeData}
+        onClose={handleSearchClose}
+        onSelect={handleSearchSelect}
+      />
 
       <div className={`border-t border-jelly-border bg-white/65 ${expanded ? "px-3 py-2" : "flex justify-center px-2 py-2"}`}>
         <AccountMenu

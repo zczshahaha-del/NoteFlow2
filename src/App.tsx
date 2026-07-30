@@ -230,6 +230,8 @@ export default function App() {
     if (!libraryDrawerOpen && (isDesktop || !aiOpen)) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      const keyEvent = event as KeyboardEvent & { keyCode?: number };
+      if (keyEvent.isComposing || keyEvent.keyCode === 229) return;
       setLibraryDrawerOpen(false);
       if (!isDesktop) setAiOpen(false);
     };
@@ -286,6 +288,7 @@ export default function App() {
                 userEmail={session.user.email}
                 userName={session.user.displayName}
                 onSignOut={signOut}
+                searchShortcutEnabled={isDesktop || !libraryDrawerOpen}
               />
             </div>
           )}
@@ -348,6 +351,7 @@ export default function App() {
                   userEmail={session.user.email}
                   userName={session.user.displayName}
                   onSignOut={signOut}
+                  searchShortcutEnabled
                 />
               </div>
             </div>

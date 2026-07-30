@@ -9,6 +9,7 @@ const aiDraftWorkspace = readFileSync(new URL("../src/components/AIDraftWorkspac
 const editPreviewWorkspace = readFileSync(new URL("../src/components/EditPreviewWorkspace.tsx", import.meta.url), "utf8");
 const app = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
 const directoryTree = readFileSync(new URL("../src/components/DirectoryTree.tsx", import.meta.url), "utf8");
+const librarySearch = readFileSync(new URL("../src/components/LibrarySearchDialog.tsx", import.meta.url), "utf8");
 const accountMenu = readFileSync(new URL("../src/components/AppNav.tsx", import.meta.url), "utf8");
 const styles = readFileSync(new URL("../src/index.css", import.meta.url), "utf8");
 
@@ -31,7 +32,8 @@ assert.match(editor, /aria-label="选中文字格式工具栏"/);
 assert.match(editor, /placement: "top"/);
 assert.match(editor, /flip: false/);
 assert.match(editor, /className="chapter-rail"/);
-assert.match(editor, /aria-label="打开本文目录"/);
+assert.match(editor, /aria-label="章节快速导航"/);
+assert.doesNotMatch(editor, /className="chapter-rail-toc"/);
 assert.match(editor, /function smoothScrollToEditorHeading/);
 assert.match(editor, /closest<HTMLElement>\("\.document-scroll"\)/);
 assert.match(editor, /scroller\.scrollTo\(\{[\s\S]*?behavior: reduceMotion \? "auto" : "smooth"/);
@@ -99,6 +101,8 @@ assert.match(aiPanel, /requestDraftCommand\("generate_outline"\)/);
 assert.equal(aiPanel.includes("笔记索引 ·"), false);
 assert.equal(aiPanel.includes("listIndexJobs"), false);
 assert.match(aiPanel, /aria-label="收起 AI 助手"/);
+assert.match(aiPanel, /id="collapse-ai-tooltip"[\s\S]*?role="tooltip"[\s\S]*?收起聊天/);
+assert.doesNotMatch(aiPanel, /aria-label="收起 AI 助手"[\s\S]{0,120}title="收起 AI 助手"/);
 assert.doesNotMatch(aiPanel, /false && onCollapse/);
 assert.match(app, /className="ai-orb-launcher absolute bottom-5 right-5/);
 assert.match(app, /<AIDraftWorkspace key=\{draftWorkspaceKey\}/);
@@ -195,11 +199,44 @@ assert.match(aiDraftWorkspace, /bodyInstruction: instruction/);
 assert.match(aiDraftWorkspace, /正在后台逐章重写/);
 assert.match(aiDraftWorkspace, /aria-haspopup="dialog"/);
 assert.match(styles, /\.draft-modal-shell \.draft-control-no-focus-ring:focus[\s\S]*?outline: none !important;[\s\S]*?box-shadow: none !important;/);
-assert.match(directoryTree, /view === "all" && !tag/);
 assert.match(directoryTree, /const handleNewFolder[\s\S]*?setNewFolderOpen\(true\);/);
 assert.match(directoryTree, /aria-labelledby="new-folder-title"/);
 assert.match(directoryTree, /const handleCreateFolderConfirm[\s\S]*?addNode\(newFolderParentId/);
 assert.match(directoryTree, /className=\{`directory-tree/);
+assert.match(directoryTree, /<h1[^>]*>目录<\/h1>[\s\S]*?\{fileCount\} 篇/);
+assert.doesNotMatch(directoryTree, /folderCount|个文件夹/);
+assert.match(directoryTree, /id="collapse-directory-tooltip"[\s\S]*?role="tooltip"[\s\S]*?收起目录/);
+assert.doesNotMatch(directoryTree, /aria-label="收起目录"[\s\S]{0,120}title="收起目录"/);
+assert.match(directoryTree, /aria-label="搜索全部笔记"/);
+assert.match(directoryTree, /<Plus[\s\S]*?aria-label="搜索全部笔记"[\s\S]*?<Search/);
+assert.match(directoryTree, /<LibrarySearchDialog[\s\S]*?open=\{searchOpen\}/);
+assert.doesNotMatch(directoryTree, /searchQuery|searchResults\.map|正在检索知识库/);
+assert.match(directoryTree, /if \(!searchShortcutEnabled\) return/);
+assert.match(app, /searchShortcutEnabled=\{isDesktop \|\| !libraryDrawerOpen\}/);
+assert.match(app, /keyEvent\.isComposing \|\| keyEvent\.keyCode === 229/);
+assert.match(librarySearch, /const SEARCH_DEBOUNCE_MS = 340/);
+assert.match(librarySearch, /onCompositionStart=\{handleCompositionStart\}/);
+assert.match(librarySearch, /onCompositionEnd=\{handleCompositionEnd\}/);
+assert.match(librarySearch, /requestSequenceRef/);
+assert.match(librarySearch, /activeControllerRef/);
+assert.match(librarySearch, /mode: "literal"/);
+assert.match(librarySearch, /scope,/);
+assert.match(librarySearch, /搜索只显示真实文字命中/);
+assert.match(librarySearch, /SEARCH_SCOPES/);
+assert.match(librarySearch, /createPortal/);
+assert.match(
+  directoryTree,
+  /isSelected[\s\S]*?"border-transparent bg-jelly-blue-pale font-medium text-jelly-blue-deep shadow-none"/,
+  "the selected note must have a clear visual state"
+);
+assert.match(directoryTree, /bg-jelly-blue-pale\/60 hover:text-jelly-text/);
+assert.match(directoryTree, /depth \* 12/);
+assert.match(directoryTree, /group-focus-within\/node:opacity-100/);
+assert.match(directoryTree, /还没有笔记/);
+assert.match(directoryTree, /新建第一篇笔记/);
+assert.match(directoryTree, /expanded[\s\S]*?\? "w-full shadow-none"/);
+assert.doesNotMatch(directoryTree, /filteredTree\.slice\(0, 9\)/);
+assert.doesNotMatch(directoryTree, /未找到匹配的笔记/);
 assert.match(directoryTree, /newTooltipOpen && !newMenuOpen/);
 assert.match(directoryTree, /border border-jelly-border bg-white[\s\S]*?text-jelly-text-soft/);
 assert.match(directoryTree, /fixed inset-0 z-\[70\] flex items-center justify-center/);
@@ -215,11 +252,47 @@ assert.match(accountMenu, />设置</);
 assert.match(accountMenu, />回收站</);
 assert.match(accountMenu, /onOpenTrash/);
 assert.match(styles, /\.directory-tree :where\(button, input, select, textarea, \[tabindex\]\):focus-visible[\s\S]*?outline: none !important;/);
-assert.match(styles, /\.directory-tree \.ui-input:focus-within[\s\S]*?box-shadow: none;/);
 assert.match(
   styles,
-  /\.chapter-rail-toc,[\s\S]*?\.chapter-rail-item \{[\s\S]*?justify-content: flex-start;/,
-  "chapter rail controls must align from the left"
+  /\.directory-tree :where\(button, input, select, textarea, \[tabindex\]\):focus-visible[\s\S]*?box-shadow: inset 0 -2px 0 color-mix/,
+  "directory keyboard focus must remain visible without drawing a full frame"
+);
+assert.match(styles, /\.directory-tree \.ui-input:focus-within[\s\S]*?box-shadow: none;/);
+assert.match(styles, /@media \(hover: none\)[\s\S]*?\.directory-tree \.file-node-menu-button[\s\S]*?opacity: 1;/);
+assert.match(
+  editor,
+  /className="floating-launcher absolute right-3 top-3 z-40[\s\S]*?aria-label="展开目录"/,
+  "the mobile document outline launcher must not overlap the left-side library launcher"
+);
+assert.match(
+  app,
+  /className="floating-launcher absolute left-3 top-3 z-50[\s\S]*?aria-label="打开知识库"/,
+  "the mobile library launcher remains on the left"
+);
+assert.match(
+  styles,
+  /\.chapter-rail-item \{[\s\S]*?justify-content: flex-start;/,
+  "expanded chapter rail items must align from the left"
+);
+assert.match(
+  styles,
+  /\.chapter-rail \{[\s\S]*?width: 34px;[\s\S]*?color: var\(--color-jelly-text-muted\);/,
+  "the collapsed chapter rail must leave enough room for active chapter markers"
+);
+assert.match(
+  styles,
+  /\.chapter-rail:not\(:hover\):not\(:focus-within\) \.chapter-rail-item \{[\s\S]*?gap: 0;[\s\S]*?justify-content: center;[\s\S]*?min-height: 16px;[\s\S]*?padding-left: 0 !important;/,
+  "collapsed chapter rail must contain only compact, centered markers"
+);
+assert.match(
+  styles,
+  /\.chapter-rail-track \{[\s\S]*?display: flex;[\s\S]*?flex-direction: column;[\s\S]*?gap: 2px;/,
+  "collapsed chapter markers must form one continuous vertical track"
+);
+assert.doesNotMatch(
+  styles,
+  /var\(--jelly-/,
+  "chapter rail colors must use the defined --color-jelly-* theme variables"
 );
 assert.match(
   styles,

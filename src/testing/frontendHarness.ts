@@ -4,3 +4,4 @@ export { default as LoginPage } from "../components/LoginPage";
 export { default as NoteMetadataControls } from "../components/NoteMetadataControls";
 export { default as EditPreviewWorkspace } from "../components/EditPreviewWorkspace";
 export { default as DirectoryTree } from "../components/DirectoryTree";
+export { default as LibrarySearchDialog } from "../components/LibrarySearchDialog";

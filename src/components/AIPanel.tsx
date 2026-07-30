@@ -961,15 +961,24 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
             </span>
           </div>
           {onCollapse && (
-            <button
-              type="button"
-              onClick={onCollapse}
-              className="grid h-8 w-8 place-items-center rounded-lg text-jelly-text-muted transition-colors hover:bg-[#eef5f8] hover:text-jelly-blue-deep"
-              aria-label="收起 AI 助手"
-              title="收起 AI 助手"
-            >
-              <ChevronsRight size={17} strokeWidth={1.9} />
-            </button>
+            <div className="group/collapse-ai relative">
+              <button
+                type="button"
+                onClick={onCollapse}
+                className="grid h-8 w-8 place-items-center rounded-lg text-jelly-text-muted transition-colors hover:bg-[#eef5f8] hover:text-jelly-blue-deep focus-visible:bg-[#eef5f8] focus-visible:text-jelly-blue-deep focus-visible:outline-none"
+                aria-label="收起 AI 助手"
+                aria-describedby="collapse-ai-tooltip"
+              >
+                <ChevronsRight size={17} strokeWidth={1.9} />
+              </button>
+              <span
+                id="collapse-ai-tooltip"
+                role="tooltip"
+                className="pointer-events-none absolute left-1/2 top-full z-50 mt-1.5 -translate-x-1/2 -translate-y-1 whitespace-nowrap rounded-md border border-jelly-border bg-white px-2.5 py-1 text-[12px] font-medium text-jelly-text-soft opacity-0 shadow-[0_6px_18px_rgba(30,44,56,0.08)] transition-all duration-150 group-hover/collapse-ai:translate-y-0 group-hover/collapse-ai:opacity-100 group-focus-within/collapse-ai:translate-y-0 group-focus-within/collapse-ai:opacity-100"
+              >
+                收起聊天
+              </span>
+            </div>
           )}
         </div>
 

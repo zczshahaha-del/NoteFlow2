@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 
 import React, { act } from "react";
-import { createRoot } from "react-dom/client";
 import { JSDOM } from "jsdom";
 import { createServer } from "vite";
 
@@ -27,7 +26,9 @@ window.matchMedia ??= () => ({
 });
 dom.window.HTMLElement.prototype.attachEvent ??= function attachEvent() {};
 dom.window.HTMLElement.prototype.detachEvent ??= function detachEvent() {};
+dom.window.HTMLElement.prototype.scrollIntoView ??= function scrollIntoView() {};
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+const { createRoot } = await import("react-dom/client");
 const testFetch = async () => new Response(JSON.stringify({ revisions: [] }), {
   status: 200,
   headers: { "Content-Type": "application/json" },
@@ -63,6 +64,7 @@ try {
     NoteMetadataControls,
     EditPreviewWorkspace,
     DirectoryTree,
+    LibrarySearchDialog,
   } = await vite.ssrLoadModule("/src/testing/frontendHarness.ts");
 
   const initialState = useAppStore.getInitialState();
@@ -215,6 +217,12 @@ try {
       onSignOut() {},
     }));
   });
+  const activeFileButton = directoryContainer.querySelector('button[aria-current="page"]');
+  assert.ok(activeFileButton);
+  assert.match(activeFileButton.className, /bg-jelly-blue-pale/);
+  assert.match(directoryContainer.textContent ?? "", /目录1 篇/);
+  assert.doesNotMatch(directoryContainer.textContent ?? "", /\d+\s*个文件夹/);
+  assert.ok(directoryContainer.querySelector('button[aria-label="搜索全部笔记"]'));
   const newButton = directoryContainer.querySelector('button[aria-label="新建"]');
   assert.ok(newButton);
   await act(async () => {
@@ -261,11 +269,180 @@ try {
   await act(async () => directoryRoot.unmount());
   directoryContainer.remove();
 
+  useAppStore.setState({
+    treeData: [],
+    fileContents: {},
+    selectedFileId: null,
+    deletedNotes: [],
+  });
+  const emptyDirectoryContainer = document.createElement("div");
+  document.body.appendChild(emptyDirectoryContainer);
+  const emptyDirectoryRoot = createRoot(emptyDirectoryContainer);
+  await act(async () => {
+    emptyDirectoryRoot.render(React.createElement(DirectoryTree, {
+      pinned: true,
+      onPinnedChange() {},
+      themeMode: "light",
+      onThemeModeChange() {},
+      userEmail: "test@example.com",
+      userName: "测试用户",
+      onSignOut() {},
+    }));
+  });
+  assert.match(emptyDirectoryContainer.textContent ?? "", /还没有笔记/);
+  assert.ok(
+    Array.from(emptyDirectoryContainer.querySelectorAll("button"))
+      .some((button) => button.textContent?.includes("新建第一篇笔记"))
+  );
+  await act(async () => emptyDirectoryRoot.unmount());
+  emptyDirectoryContainer.remove();
+
+  useAppStore.setState({
+    treeData: [note],
+    fileContents: { [note.id]: note.content },
+    selectedFileId: note.id,
+    deletedNotes: [],
+  });
+  const collapsedDirectoryContainer = document.createElement("div");
+  document.body.appendChild(collapsedDirectoryContainer);
+  const collapsedDirectoryRoot = createRoot(collapsedDirectoryContainer);
+  await act(async () => {
+    collapsedDirectoryRoot.render(React.createElement(DirectoryTree, {
+      pinned: false,
+      onPinnedChange() {},
+      themeMode: "light",
+      onThemeModeChange() {},
+      userEmail: "test@example.com",
+      userName: "测试用户",
+      onSignOut() {},
+    }));
+  });
+  assert.ok(collapsedDirectoryContainer.querySelector('button[aria-label="展开目录"]'));
+  assert.equal(
+    (collapsedDirectoryContainer.textContent ?? "").includes("组件测试笔记"),
+    false
+  );
+  await act(async () => collapsedDirectoryRoot.unmount());
+  collapsedDirectoryContainer.remove();
+
+  const searchCalls = [];
+  let searchCloseCalls = 0;
+  let selectedSearchSource = null;
+  const searchNotesStub = async (query, options) => {
+    searchCalls.push({ query, options });
+    return {
+      query: {
+        originalQuery: query,
+        searchQuery: query,
+        intent: "lookup",
+        scopeHint: "library",
+        terms: [query],
+        rewrittenQueries: [query],
+      },
+      results: [
+        {
+          noteId: note.id,
+          noteTitle: "组件测试笔记",
+          sectionId: "section-test-1",
+          sectionTitle: "输入法",
+          chunkId: null,
+          sourceType: "section_heading",
+          snippet: "中文输入法",
+          score: 10,
+          retrievalChannels: ["heading"],
+        },
+        {
+          noteId: note.id,
+          noteTitle: "组件测试笔记",
+          sectionId: "section-test-2",
+          sectionTitle: "防抖",
+          chunkId: "chunk-test-2",
+          sourceType: "chunk_content",
+          snippet: "中文输入法的第二处命中",
+          score: 9,
+          retrievalChannels: ["content"],
+        },
+      ],
+    };
+  };
+  const searchDialogContainer = document.createElement("div");
+  document.body.appendChild(searchDialogContainer);
+  const searchDialogRoot = createRoot(searchDialogContainer);
+  await act(async () => {
+    searchDialogRoot.render(React.createElement(LibrarySearchDialog, {
+      open: true,
+      treeData: [note],
+      onClose() {
+        searchCloseCalls += 1;
+      },
+      onSelect(source) {
+        selectedSearchSource = source;
+      },
+      searchNotesFn: searchNotesStub,
+    }));
+  });
+  const searchInput = document.querySelector('input[aria-label="搜索全部笔记"]');
+  assert.ok(searchInput);
+
+  await act(async () => {
+    searchInput.dispatchEvent(new dom.window.CompositionEvent("compositionstart", {
+      bubbles: true,
+      data: "zhong",
+    }));
+  });
+  await act(async () => {
+    document.dispatchEvent(new dom.window.KeyboardEvent("keydown", {
+      bubbles: true,
+      key: "Escape",
+    }));
+  });
+  assert.equal(searchCloseCalls, 0);
+  await act(async () => {
+    searchInput.value = "zhong";
+    searchInput.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    await new Promise((resolve) => window.setTimeout(resolve, 380));
+  });
+  assert.equal(searchCalls.length, 0);
+
+  await act(async () => {
+    searchInput.value = "中文";
+    searchInput.dispatchEvent(new dom.window.CompositionEvent("compositionend", {
+      bubbles: true,
+      data: "中文",
+    }));
+  });
+  await act(async () => {
+    await new Promise((resolve) => window.setTimeout(resolve, 380));
+  });
+  assert.equal(searchCalls.length, 1);
+  assert.equal(searchCalls[0].query, "中文");
+  assert.equal(searchCalls[0].options.mode, "literal");
+  assert.equal(searchCalls[0].options.scope, "all");
+  assert.equal(document.querySelectorAll('[id^="library-search-result-"]').length, 1);
+  assert.match(document.body.textContent ?? "", /另有 1 处命中/);
+  const groupedResult = document.querySelector('[id^="library-search-result-"]');
+  assert.ok(groupedResult);
+  await act(async () => {
+    groupedResult.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+  });
+  assert.equal(selectedSearchSource?.sourceType, "section_heading");
+  assert.equal(searchCloseCalls, 1);
+  await act(async () => searchDialogRoot.unmount());
+  searchDialogContainer.remove();
+
   console.log(JSON.stringify({
     ok: true,
     storeAssertions: 10,
-    componentAssertions: 19,
-    components: ["LoginPage", "NoteMetadataControls", "EditPreviewWorkspace", "DirectoryTree"],
+    componentAssertions: 39,
+    components: [
+      "LoginPage",
+      "NoteMetadataControls",
+      "EditPreviewWorkspace",
+      "DirectoryTree",
+      "LibrarySearchDialog",
+    ],
   }));
 } finally {
   await vite.close();
