@@ -137,6 +137,22 @@ try {
     completedSections: 0,
     totalSections: 3,
   });
+  useAppStore.setState({
+    pendingCheckpoint: {
+      id: "checkpoint-draft-test-1",
+      sessionId: "session-draft-test-1",
+      runId: "run-draft-test-1",
+      checkpointType: "draft_workspace",
+      status: "waiting_user_confirm",
+      payload: { seed: "测试主题", draftId: "draft-test-1" },
+    },
+  });
+  useAppStore.getState().openPendingDraft();
+  assert.equal(useAppStore.getState().centerMode, "draft");
+  assert.equal(useAppStore.getState().activeDraftContext?.stage, "outline_ready");
+  useAppStore.getState().dismissDraftWorkspace();
+  assert.equal(useAppStore.getState().centerMode, "note");
+  assert.equal(useAppStore.getState().activeDraftContext?.stage, "outline_ready");
   useAppStore.getState().openPendingDraft();
   assert.equal(useAppStore.getState().centerMode, "draft");
   useAppStore.getState().closeDraft();
@@ -160,12 +176,14 @@ try {
   const loginHtml = await renderClient(
     React.createElement(LoginPage, {
       onSignIn: async () => {},
+      onEmailCodeSignIn: async () => {},
       onSignUp: async () => {},
     }),
   );
   assert.match(loginHtml, /登录 NoteFlow/);
-  assert.match(loginHtml, /忘记密码/);
-  assert.match(loginHtml, /注册/);
+  assert.match(loginHtml, /验证码登录/);
+  assert.match(loginHtml, /密码登录/);
+  assert.match(loginHtml, /获取验证码/);
 
   const metadataHtml = await renderClient(React.createElement(NoteMetadataControls, { note }));
   assert.match(metadataHtml, /测试/);

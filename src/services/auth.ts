@@ -11,6 +11,7 @@ export interface AuthUser {
   id: string;
   email: string;
   displayName: string;
+  emailVerified: boolean;
 }
 
 export interface AuthSession {
@@ -101,6 +102,57 @@ export function register(payload: AuthPayload): Promise<AuthSession> {
   return submitAuth("/api/auth/register", payload);
 }
 
+export async function requestEmailLoginCode(email: string): Promise<{
+  message: string;
+  developmentCode?: string;
+}> {
+  const response = await publicApiFetch("/api/auth/email-code/request", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!response.ok) throw new Error(await readApiError(response));
+  return readApiJson<{ message: string; developmentCode?: string }>(response);
+}
+
+export async function loginWithEmailCode(email: string, code: string): Promise<AuthSession> {
+  clearLegacyToken();
+  const response = await publicApiFetch("/api/auth/email-code/confirm", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code }),
+  });
+  if (!response.ok) throw new Error(await readApiError(response));
+  const session = await readApiJson<AuthSession>(response);
+  cacheAuthSession(session);
+  return session;
+}
+
+export async function requestEmailChange(email: string): Promise<{
+  message: string;
+  developmentCode?: string;
+}> {
+  const response = await apiFetch("/api/auth/email-change/request", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!response.ok) throw new Error(await readApiError(response));
+  return readApiJson<{ message: string; developmentCode?: string }>(response);
+}
+
+export async function confirmEmailChange(email: string, code: string): Promise<AuthSession> {
+  const response = await apiFetch("/api/auth/email-change/confirm", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code }),
+  });
+  if (!response.ok) throw new Error(await readApiError(response));
+  const session = await readApiJson<AuthSession>(response);
+  cacheAuthSession(session);
+  return session;
+}
+
 export async function loadCurrentSession(): Promise<AuthSession | null> {
   try {
     const response = await apiFetch("/api/auth/me");
@@ -142,7 +194,6 @@ export async function revokeUserSession(sessionId: string): Promise<boolean> {
 
 export async function requestPasswordReset(email: string): Promise<{
   message: string;
-  developmentToken?: string;
 }> {
   const response = await publicApiFetch("/api/auth/password-reset/request", {
     method: "POST",
@@ -150,18 +201,18 @@ export async function requestPasswordReset(email: string): Promise<{
     body: JSON.stringify({ email }),
   });
   if (!response.ok) throw new Error(await readApiError(response));
-  return readApiJson<{ message: string; developmentToken?: string }>(response);
+  return readApiJson<{ message: string }>(response);
 }
 
 export async function confirmPasswordReset(
   email: string,
-  token: string,
+  code: string,
   newPassword: string
 ): Promise<string> {
   const response = await publicApiFetch("/api/auth/password-reset/confirm", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, token, newPassword }),
+    body: JSON.stringify({ email, code, newPassword }),
   });
   if (!response.ok) throw new Error(await readApiError(response));
   const result = await readApiJson<{ message: string }>(response);

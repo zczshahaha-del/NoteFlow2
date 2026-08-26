@@ -22,8 +22,9 @@ class User(Base):
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: uuid.uuid4().hex)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    email_verified_at: Mapped[Optional[datetime]] = mapped_column("email_verified_at", DateTime, nullable=True)
     display_name: Mapped[str] = mapped_column("display_name", String(120), nullable=False)
-    password_hash: Mapped[str] = mapped_column("password_hash", String(255), nullable=False)
+    password_hash: Mapped[Optional[str]] = mapped_column("password_hash", String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column("created_at", DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column("updated_at", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -35,6 +36,7 @@ class User(Base):
     note_edit_previews: Mapped[list["NoteEditPreview"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     sessions: Mapped[list["UserSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     password_reset_tokens: Mapped[list["PasswordResetToken"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    email_login_codes: Mapped[list["EmailLoginCode"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     note_embeddings: Mapped[list["NoteEmbedding"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     user_memories: Mapped[list["UserMemory"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     user_memory_events: Mapped[list["UserMemoryEvent"]] = relationship(back_populates="user", cascade="all, delete-orphan")
@@ -86,6 +88,26 @@ class PasswordResetToken(Base):
     used_at: Mapped[Optional[datetime]] = mapped_column("used_at", DateTime, nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="password_reset_tokens")
+
+
+class EmailLoginCode(Base):
+    __tablename__ = "email_login_codes"
+    __table_args__ = (
+        Index("ix_email_login_codes_lookup", "email", "purpose", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[Optional[str]] = mapped_column("user_id", String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    purpose: Mapped[str] = mapped_column(String(32), nullable=False)
+    code_hash: Mapped[str] = mapped_column("code_hash", String(64), nullable=False)
+    requested_ip: Mapped[Optional[str]] = mapped_column("requested_ip", String(64), nullable=True)
+    attempt_count: Mapped[int] = mapped_column("attempt_count", Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column("created_at", DateTime, default=datetime.utcnow)
+    expires_at: Mapped[datetime] = mapped_column("expires_at", DateTime, nullable=False, index=True)
+    used_at: Mapped[Optional[datetime]] = mapped_column("used_at", DateTime, nullable=True)
+
+    user: Mapped[Optional["User"]] = relationship(back_populates="email_login_codes")
 
 
 class KnowledgeBase(Base):

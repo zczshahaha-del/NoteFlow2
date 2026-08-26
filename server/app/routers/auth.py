@@ -11,8 +11,13 @@ from sqlalchemy.exc import IntegrityError
 from app.config import cfg
 from app.database import AsyncSessionLocal
 from app.deps import CurrentUser, auth_token_from_request, get_current_user, public_rate_limit
-from app.models.db import PasswordResetToken, User, UserSession
-from app.services.password_reset import deliver_reset_token, generate_reset_token, hash_reset_token
+from app.models.db import EmailLoginCode, User, UserSession
+from app.services.email_auth import (
+    deliver_email_code,
+    generate_email_code,
+    hash_email_code,
+    verify_email_code,
+)
 from app.utils import (
     create_token,
     decode_token,
@@ -37,6 +42,7 @@ class AuthUserOut(BaseModel):
     id: str
     email: str
     displayName: str
+    emailVerified: bool
 
 
 class AuthResponse(BaseModel):
@@ -60,14 +66,28 @@ class PasswordResetRequest(BaseModel):
 
 class PasswordResetConfirm(BaseModel):
     email: str
-    token: str
+    code: str
     newPassword: str
 
 
 class PasswordResetRequestResponse(BaseModel):
     ok: bool = True
     message: str
-    developmentToken: Optional[str] = None
+
+
+class EmailCodeRequest(BaseModel):
+    email: str
+
+
+class EmailCodeConfirm(BaseModel):
+    email: str
+    code: str
+
+
+class EmailCodeRequestResponse(BaseModel):
+    ok: bool = True
+    message: str
+    developmentCode: Optional[str] = None
 
 
 def _client_ip(request: Request) -> Optional[str]:
@@ -155,9 +175,130 @@ async def _active_cookie_session(request: Request) -> Optional[tuple[User, UserS
 
 def _auth_response(user: User, auth_session: UserSession) -> AuthResponse:
     return AuthResponse(
-        user=AuthUserOut(id=user.id, email=user.email, displayName=user.display_name),
+        user=AuthUserOut(
+            id=user.id,
+            email=user.email,
+            displayName=user.display_name,
+            emailVerified=user.email_verified_at is not None,
+        ),
         sessionExpiresAt=auth_session.expires_at.isoformat(),
     )
+
+
+async def _issue_email_code(
+    *,
+    email: str,
+    purpose: str,
+    request: Request,
+    user_id: Optional[str] = None,
+) -> EmailCodeRequestResponse:
+    now = datetime.utcnow()
+    recent_after = now - timedelta(seconds=cfg.EMAIL_CODE_RESEND_SECONDS)
+    code = generate_email_code()
+    record = EmailLoginCode(
+        id=random_id(),
+        user_id=user_id,
+        email=email,
+        purpose=purpose,
+        code_hash=hash_email_code(email, code, purpose, user_id),
+        requested_ip=_client_ip(request),
+        expires_at=now + timedelta(minutes=cfg.EMAIL_CODE_TTL_MINUTES),
+    )
+
+    async with AsyncSessionLocal() as session:
+        user_condition = (
+            EmailLoginCode.user_id == user_id
+            if user_id is not None
+            else EmailLoginCode.user_id.is_(None)
+        )
+        recent_result = await session.execute(
+            select(EmailLoginCode)
+            .where(
+                EmailLoginCode.email == email,
+                EmailLoginCode.purpose == purpose,
+                user_condition,
+                EmailLoginCode.created_at > recent_after,
+                EmailLoginCode.used_at.is_(None),
+            )
+            .order_by(EmailLoginCode.created_at.desc())
+            .limit(1)
+        )
+        if recent_result.scalar_one_or_none() is not None:
+            raise HTTPException(
+                status_code=429,
+                detail=f"验证码发送较频繁，请等待 {cfg.EMAIL_CODE_RESEND_SECONDS} 秒后重试。",
+            )
+        active_result = await session.execute(
+            select(EmailLoginCode).where(
+                EmailLoginCode.email == email,
+                EmailLoginCode.purpose == purpose,
+                user_condition,
+                EmailLoginCode.used_at.is_(None),
+            )
+        )
+        for previous in active_result.scalars().all():
+            previous.used_at = now
+        session.add(record)
+        await session.commit()
+
+    try:
+        delivered = await deliver_email_code(email, code, purpose)
+    except Exception:
+        delivered = False
+    if delivered:
+        return EmailCodeRequestResponse(message="验证码已发送，请检查邮箱。")
+    if cfg.ENVIRONMENT != "production":
+        return EmailCodeRequestResponse(
+            message="开发环境验证码已生成。",
+            developmentCode=code,
+        )
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(EmailLoginCode).where(EmailLoginCode.id == record.id))
+        failed_record = result.scalar_one_or_none()
+        if failed_record is not None:
+            failed_record.used_at = datetime.utcnow()
+            await session.commit()
+    raise HTTPException(status_code=503, detail="验证码暂时无法发送，请稍后重试。")
+
+
+async def _consume_email_code(
+    *,
+    email: str,
+    code: str,
+    purpose: str,
+    session,
+    user_id: Optional[str] = None,
+) -> None:
+    now = datetime.utcnow()
+    user_condition = (
+        EmailLoginCode.user_id == user_id
+        if user_id is not None
+        else EmailLoginCode.user_id.is_(None)
+    )
+    result = await session.execute(
+        select(EmailLoginCode)
+        .where(
+            EmailLoginCode.email == email,
+            EmailLoginCode.purpose == purpose,
+            user_condition,
+            EmailLoginCode.used_at.is_(None),
+            EmailLoginCode.expires_at > now,
+        )
+        .order_by(EmailLoginCode.created_at.desc())
+        .limit(1)
+        .with_for_update()
+    )
+    record = result.scalar_one_or_none()
+    if record is None or record.attempt_count >= cfg.EMAIL_CODE_MAX_ATTEMPTS:
+        raise HTTPException(status_code=400, detail="验证码无效或已过期。")
+    if not verify_email_code(email, code, purpose, record.code_hash, user_id):
+        record.attempt_count += 1
+        if record.attempt_count >= cfg.EMAIL_CODE_MAX_ATTEMPTS:
+            record.used_at = now
+        await session.commit()
+        raise HTTPException(status_code=400, detail="验证码不正确，请重新输入。")
+    record.used_at = now
 
 
 @router.post(
@@ -208,13 +349,153 @@ async def login(payload: AuthPayload, request: Request, response: Response):
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
-        if user is None or not verify_password(payload.password, user.password_hash):
+        if user is None or not user.password_hash or not verify_password(payload.password, user.password_hash):
             raise HTTPException(status_code=401, detail="邮箱或密码不正确")
 
         if password_needs_rehash(user.password_hash):
             user.password_hash = hash_password(payload.password)
         auth_session = _new_session(user.id, request)
         session.add(auth_session)
+        await session.commit()
+
+    _set_auth_cookie(
+        response,
+        create_token(user.id, user.email, user.display_name, auth_session.id),
+    )
+    return _auth_response(user, auth_session)
+
+
+@router.post(
+    "/email-code/request",
+    response_model=EmailCodeRequestResponse,
+    response_model_exclude_none=True,
+    dependencies=[Depends(public_rate_limit("email-code", 6, 300))],
+)
+async def request_email_login_code(payload: EmailCodeRequest, request: Request):
+    email = normalize_email(payload.email)
+    if not is_valid_email(email):
+        raise HTTPException(status_code=400, detail="请输入有效邮箱地址。")
+    return await _issue_email_code(email=email, purpose="login", request=request)
+
+
+@router.post(
+    "/email-code/confirm",
+    response_model=AuthResponse,
+    dependencies=[Depends(public_rate_limit("email-code-confirm", 12, 300))],
+)
+async def confirm_email_login_code(
+    payload: EmailCodeConfirm,
+    request: Request,
+    response: Response,
+):
+    email = normalize_email(payload.email)
+    code = payload.code.strip()
+    if not is_valid_email(email) or len(code) != 6 or not code.isdigit():
+        raise HTTPException(status_code=400, detail="邮箱或验证码格式不正确。")
+    now = datetime.utcnow()
+
+    async with AsyncSessionLocal() as session:
+        await _consume_email_code(
+            email=email,
+            code=code,
+            purpose="login",
+            session=session,
+        )
+        result = await session.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        if user is None:
+            user = User(
+                id=random_id(),
+                email=email,
+                email_verified_at=now,
+                display_name=email.split("@", 1)[0],
+                password_hash=None,
+            )
+            session.add(user)
+        elif user.email_verified_at is None:
+            user.email_verified_at = now
+        auth_session = _new_session(user.id, request)
+        session.add(auth_session)
+        await session.commit()
+
+    _set_auth_cookie(
+        response,
+        create_token(user.id, user.email, user.display_name, auth_session.id),
+    )
+    return _auth_response(user, auth_session)
+
+
+@router.post("/email-change/request", response_model=EmailCodeRequestResponse, response_model_exclude_none=True)
+async def request_email_change(
+    payload: EmailCodeRequest,
+    request: Request,
+    user: CurrentUser = Depends(get_current_user),
+):
+    email = normalize_email(payload.email)
+    if not is_valid_email(email):
+        raise HTTPException(status_code=400, detail="请输入有效邮箱地址。")
+    async with AsyncSessionLocal() as session:
+        existing_result = await session.execute(
+            select(User).where(User.email == email, User.id != user.id)
+        )
+        if existing_result.scalar_one_or_none() is not None:
+            raise HTTPException(status_code=409, detail="该邮箱已经绑定其他账号。")
+    return await _issue_email_code(
+        email=email,
+        purpose="change_email",
+        request=request,
+        user_id=user.id,
+    )
+
+
+@router.post("/email-change/confirm", response_model=AuthResponse)
+async def confirm_email_change(
+    payload: EmailCodeConfirm,
+    request: Request,
+    response: Response,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    email = normalize_email(payload.email)
+    code = payload.code.strip()
+    if not is_valid_email(email) or len(code) != 6 or not code.isdigit():
+        raise HTTPException(status_code=400, detail="邮箱或验证码格式不正确。")
+    now = datetime.utcnow()
+
+    async with AsyncSessionLocal() as session:
+        await _consume_email_code(
+            email=email,
+            code=code,
+            purpose="change_email",
+            session=session,
+            user_id=current_user.id,
+        )
+        existing_result = await session.execute(
+            select(User).where(User.email == email, User.id != current_user.id)
+        )
+        if existing_result.scalar_one_or_none() is not None:
+            raise HTTPException(status_code=409, detail="该邮箱已经绑定其他账号。")
+        user_result = await session.execute(select(User).where(User.id == current_user.id))
+        user = user_result.scalar_one()
+        user.email = email
+        user.email_verified_at = now
+        session_result = await session.execute(
+            select(UserSession).where(
+                UserSession.user_id == user.id,
+                UserSession.id != current_user.session_id,
+                UserSession.revoked_at.is_(None),
+            )
+        )
+        for other_session in session_result.scalars().all():
+            other_session.revoked_at = now
+        auth_session = None
+        if current_user.session_id:
+            current_session_result = await session.execute(
+                select(UserSession).where(UserSession.id == current_user.session_id)
+            )
+            auth_session = current_session_result.scalar_one_or_none()
+        if auth_session is None:
+            auth_session = _new_session(user.id, request)
+            session.add(auth_session)
         await session.commit()
 
     _set_auth_cookie(
@@ -330,8 +611,16 @@ async def logout(request: Request, response: Response):
 
 @router.get("/me")
 async def me(user: CurrentUser = Depends(get_current_user)):
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(User).where(User.id == user.id))
+        user_record = result.scalar_one()
     return {
-        "user": {"id": user.id, "email": user.email, "displayName": user.display_name},
+        "user": {
+            "id": user_record.id,
+            "email": user_record.email,
+            "displayName": user_record.display_name,
+            "emailVerified": user_record.email_verified_at is not None,
+        },
         "sessionId": user.session_id,
     }
 
@@ -395,35 +684,23 @@ async def revoke_session(
 )
 async def request_password_reset(payload: PasswordResetRequest, request: Request):
     email = normalize_email(payload.email)
-    generic_message = "如果账号存在，重置说明会发送到已配置的通知渠道。"
-    development_token: Optional[str] = None
+    if not is_valid_email(email):
+        raise HTTPException(status_code=400, detail="请输入有效邮箱地址。")
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
-        if user:
-            token, token_hash = generate_reset_token()
-            session.add(
-                PasswordResetToken(
-                    id=random_id(),
-                    user_id=user.id,
-                    token_hash=token_hash,
-                    requested_ip=_client_ip(request),
-                    expires_at=datetime.utcnow() + timedelta(minutes=max(5, cfg.PASSWORD_RESET_TTL_MINUTES)),
-                )
-            )
-            await session.commit()
-            try:
-                delivered = await deliver_reset_token(user.email, token)
-            except Exception:
-                delivered = False
-            if not delivered and cfg.ENVIRONMENT != "production":
-                development_token = token
-
-    return PasswordResetRequestResponse(
-        message=generic_message,
-        developmentToken=development_token,
+        if user is None and cfg.ENVIRONMENT != "production":
+            raise HTTPException(status_code=404, detail="该邮箱还没有账号。")
+    if user is None:
+        return PasswordResetRequestResponse(message="如果账号存在，验证码已发送。")
+    result = await _issue_email_code(
+        email=user.email,
+        purpose="reset_password",
+        request=request,
+        user_id=user.id,
     )
+    return PasswordResetRequestResponse(message=result.message)
 
 
 @router.post(
@@ -432,28 +709,26 @@ async def request_password_reset(payload: PasswordResetRequest, request: Request
 )
 async def confirm_password_reset(payload: PasswordResetConfirm, response: Response):
     if len(payload.newPassword) < 8:
-        raise HTTPException(status_code=400, detail="password must be at least 8 characters")
+        raise HTTPException(status_code=400, detail="新密码至少需要 8 位。")
     email = normalize_email(payload.email)
-    token_hash = hash_reset_token(payload.token)
+    code = payload.code.strip()
+    if not is_valid_email(email) or len(code) != 6 or not code.isdigit():
+        raise HTTPException(status_code=400, detail="邮箱或验证码格式不正确。")
     now = datetime.utcnow()
 
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(PasswordResetToken, User)
-            .join(User, User.id == PasswordResetToken.user_id)
-            .where(
-                User.email == email,
-                PasswordResetToken.token_hash == token_hash,
-                PasswordResetToken.used_at.is_(None),
-                PasswordResetToken.expires_at > now,
-            )
+        result = await session.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        if user is None:
+            raise HTTPException(status_code=400, detail="验证码不正确或已失效。")
+        await _consume_email_code(
+            email=email,
+            code=code,
+            purpose="reset_password",
+            session=session,
+            user_id=user.id,
         )
-        row = result.one_or_none()
-        if row is None:
-            raise HTTPException(status_code=400, detail="password reset token is invalid or expired")
-        reset_record, user = row
         user.password_hash = hash_password(payload.newPassword)
-        reset_record.used_at = now
         session_result = await session.execute(
             select(UserSession).where(
                 UserSession.user_id == user.id,

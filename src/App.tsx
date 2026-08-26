@@ -12,6 +12,7 @@ import { useChatSlice, useDraftSlice } from "./store/selectors";
 const NoteEditor = lazy(() => import("./components/NoteEditor"));
 
 const THEME_STORAGE_KEY = "noteflow-theme-mode";
+const AI_PANEL_DEFAULT_WIDTH = 500;
 
 type ThemeMode = "light" | "dark";
 
@@ -177,7 +178,7 @@ function useMediaQuery(query: string) {
 export default function App() {
   const [filePanelPinned, setFilePanelPinned] = useState(true);
   const [aiOpen, setAiOpen] = useState(false);
-  const [aiPanelWidth, setAiPanelWidth] = useState(350);
+  const [aiPanelWidth, setAiPanelWidth] = useState(AI_PANEL_DEFAULT_WIDTH);
   const [libraryDrawerOpen, setLibraryDrawerOpen] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(loadThemeMode);
   const isDesktop = useMediaQuery("(min-width: 1280px)");
@@ -197,7 +198,7 @@ export default function App() {
       : "";
   const draftWorkspaceKey =
     draftSeed.trim() || checkpointDraftSeed || activeDraftContext?.topic || "draft-workspace";
-  const { loading: authLoading, session, signIn, signUp, signOut } = useAuthSession();
+  const { loading: authLoading, session, signIn, signInWithEmailCode, signUp, signOut, updateSession } = useAuthSession();
   const desktopLeftWidth = isDesktop && !focusedWorkspace
     ? (filePanelPinned ? 260 : 52)
     : 0;
@@ -254,7 +255,7 @@ export default function App() {
   }
 
   if (!session) {
-    return <LoginPage onSignIn={signIn} onSignUp={signUp} />;
+    return <LoginPage onSignIn={signIn} onEmailCodeSignIn={signInWithEmailCode} onSignUp={signUp} />;
   }
 
   return (
@@ -286,7 +287,9 @@ export default function App() {
                 themeMode={themeMode}
                 onThemeModeChange={setThemeMode}
                 userEmail={session.user.email}
+                userEmailVerified={session.user.emailVerified}
                 userName={session.user.displayName}
+                onEmailChanged={updateSession}
                 onSignOut={signOut}
                 searchShortcutEnabled={isDesktop || !libraryDrawerOpen}
               />
@@ -312,9 +315,9 @@ export default function App() {
           {isDesktop && !focusedWorkspace && (
             <div className="relative z-40 ml-auto flex h-full shrink-0">
               <ResizablePanel
-                defaultWidth={350}
-                minWidth={300}
-                maxWidth={600}
+                defaultWidth={AI_PANEL_DEFAULT_WIDTH}
+                minWidth={320}
+                maxWidth={680}
                 resizeEdge="left"
                 collapsed={!aiOpen}
                 onWidthChange={setAiPanelWidth}
@@ -349,7 +352,9 @@ export default function App() {
                   themeMode={themeMode}
                   onThemeModeChange={setThemeMode}
                   userEmail={session.user.email}
+                  userEmailVerified={session.user.emailVerified}
                   userName={session.user.displayName}
+                  onEmailChanged={updateSession}
                   onSignOut={signOut}
                   searchShortcutEnabled
                 />

@@ -53,6 +53,15 @@ LOGIN_RATE_LIMIT_PER_5_MINUTES=12
 FRONTEND_BASE_URL=http://127.0.0.1:5173
 PASSWORD_RESET_WEBHOOK_URL=
 PASSWORD_RESET_TTL_MINUTES=30
+AUTH_EMAIL_WEBHOOK_URL=
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM_EMAIL=
+SMTP_USE_SSL=false
+SMTP_USE_TLS=true
+EMAIL_CODE_TTL_MINUTES=10
 
 DEEPSEEK_API_KEY=your_deepseek_api_key_here
 DEEPSEEK_BASE_URL=https://api.deepseek.com
@@ -82,7 +91,11 @@ ATTACHMENT_MAX_BYTES=10485760
 
 新密码使用 Argon2id。旧 PBKDF2 密码仍可登录，并会在成功登录后自动升级。
 
-密码重置通过 `PASSWORD_RESET_WEBHOOK_URL` 发送。开发环境未配置 Webhook 时会在响应中返回一次性 Token；生产环境不会暴露该 Token。
+邮箱验证码是默认登录方式。验证码验证成功后会复用同邮箱的现有用户 ID，未注册邮箱则自动创建账号。旧账号继续支持密码登录；如果旧邮箱不可用，可在账号设置中验证并改绑真实邮箱，笔记、记忆和会话归属不会迁移到新用户。
+
+验证码邮件优先通过 `AUTH_EMAIL_WEBHOOK_URL` 发送；未配置 Webhook 时可使用标准 SMTP 配置。开发环境未配置投递渠道时会返回开发验证码并由前端自动填入，生产环境不会暴露验证码。
+
+密码重置复用验证码邮件渠道：用户输入邮箱获取 6 位验证码，再在登录页填写验证码和新密码。验证码只保存 HMAC 哈希、限时且单次有效，完成改密时会注销该账号的现有会话，不依赖前端公网地址。
 
 ## 数据库迁移
 

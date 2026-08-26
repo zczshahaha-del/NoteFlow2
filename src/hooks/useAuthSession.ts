@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   loadCurrentSession,
   login,
+  loginWithEmailCode,
   logout,
   register,
   type AuthSession,
@@ -28,6 +29,15 @@ export function useAuthSession() {
     queryClient.setQueryData(authSessionQueryKey, nextSession);
   }, [queryClient]);
 
+  const signInWithEmailCode = useCallback(async (email: string, code: string) => {
+    const nextSession = await loginWithEmailCode(email, code);
+    queryClient.setQueryData(authSessionQueryKey, nextSession);
+  }, [queryClient]);
+
+  const updateSession = useCallback((nextSession: AuthSession) => {
+    queryClient.setQueryData(authSessionQueryKey, nextSession);
+  }, [queryClient]);
+
   const signOut = useCallback(() => {
     void logout();
     queryClient.setQueryData(authSessionQueryKey, null);
@@ -38,7 +48,9 @@ export function useAuthSession() {
     loading: sessionQuery.isLoading,
     session: sessionQuery.data ?? null,
     signIn,
+    signInWithEmailCode,
     signUp,
     signOut,
+    updateSession,
   };
 }

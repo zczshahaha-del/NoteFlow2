@@ -118,7 +118,14 @@ def normalize_email(email: str) -> str:
 
 
 def is_valid_email(email: str) -> bool:
-    return bool(email) and "@" in email and "." in email and len(email) <= 255
+    if not email or len(email) > 255 or any(character in email for character in "\r\n\t "):
+        return False
+    local, separator, domain = email.rpartition("@")
+    if separator != "@" or not local or not domain or len(local) > 64:
+        return False
+    if domain.startswith(".") or domain.endswith(".") or "." not in domain:
+        return False
+    return all(part and not part.startswith("-") and not part.endswith("-") for part in domain.split("."))
 
 
 def is_duplicate_error(err: Exception) -> bool:

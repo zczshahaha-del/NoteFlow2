@@ -112,7 +112,12 @@ assert.match(editor, /选择一篇笔记开始阅读/);
 assert.match(editor, /从左侧目录打开笔记/);
 assert.match(
   app,
-  /defaultWidth=\{350\}[\s\S]*?minWidth=\{300\}[\s\S]*?maxWidth=\{600\}[\s\S]*?resizeEdge="left"/,
+  /const AI_PANEL_DEFAULT_WIDTH = 500/,
+  "desktop AI panel should open at the wider default"
+);
+assert.match(
+  app,
+  /defaultWidth=\{AI_PANEL_DEFAULT_WIDTH\}[\s\S]*?minWidth=\{320\}[\s\S]*?maxWidth=\{680\}[\s\S]*?resizeEdge="left"/,
   "desktop AI panel must remain horizontally resizable"
 );
 assert.match(app, /className=\{`app-frame[\s\S]*?stable-workspace-layout/);
@@ -143,9 +148,10 @@ assert.doesNotMatch(app, /<span className="hidden sm:inline">AI 助手<\/span>/)
 for (const requiredDraftControl of [
   "大纲目录",
   "全部生成",
-  "生成本章正文",
-  "重新生成本章",
-  "告诉 AI 如何修改本章内容",
+  "生成正文",
+  "停止生成",
+  "重新生成",
+  "告诉 AI 如何修改",
   "按要求修改",
   "添加一级章节",
   "按新要求调整大纲",
@@ -180,10 +186,24 @@ assert.equal(aiDraftWorkspace.includes("· AI 草稿"), false, "draft header mus
 assert.equal(aiDraftWorkspace.includes("workspaceStatus"), false, "draft header must not repeat persistent status text");
 assert.equal(aiDraftWorkspace.includes("statusClass("), false, "chapter header must not repeat a status badge");
 assert.equal(
-  aiDraftWorkspace.match(/生成本章正文/g)?.length ?? 0,
+  aiDraftWorkspace.match(/>\s*生成正文\s*</g)?.length ?? 0,
   1,
   "an ungenerated chapter must expose exactly one primary generate action"
 );
+for (const redundantChapterLabel of [
+  "生成本章正文",
+  "停止本章",
+  "重新生成本章",
+  "编辑本章",
+  "确认本章",
+  "告诉 AI 如何修改本章内容",
+]) {
+  assert.equal(
+    aiDraftWorkspace.includes(redundantChapterLabel),
+    false,
+    `selected-chapter controls must avoid redundant wording: ${redundantChapterLabel}`
+  );
+}
 assert.equal(
   aiDraftWorkspace.includes("完整大纲"),
   false,
@@ -196,6 +216,8 @@ assert.match(aiDraftWorkspace, /outlineGenerationError\(error\)/);
 assert.doesNotMatch(aiDraftWorkspace, /\{\(statusText \|\| errorText\) && \(/);
 assert.match(aiDraftWorkspace, /draft-control-no-focus-ring/);
 assert.match(aiDraftWorkspace, /bodyInstruction: instruction/);
+assert.match(aiDraftWorkspace, /source: "generation_stopped"/);
+assert.match(aiDraftWorkspace, /status: stoppedStatus/);
 assert.match(aiDraftWorkspace, /正在后台逐章重写/);
 assert.match(aiDraftWorkspace, /aria-haspopup="dialog"/);
 assert.match(styles, /\.draft-modal-shell \.draft-control-no-focus-ring:focus[\s\S]*?outline: none !important;[\s\S]*?box-shadow: none !important;/);
@@ -248,8 +270,18 @@ assert.match(directoryTree, /onOpenTrash=\{\(\) => setTrashOpen\(true\)\}/);
 assert.match(directoryTree, /fixed inset-0 z-\[85\]/);
 assert.match(directoryTree, /role="dialog"[\s\S]*?aria-modal="true"[\s\S]*?aria-label="回收站"/);
 assert.doesNotMatch(directoryTree, /max-h-36/);
-assert.match(accountMenu, />设置</);
-assert.match(accountMenu, />回收站</);
+assert.match(accountMenu, /aria-label="我的账号"/);
+assert.match(accountMenu, /aria-label="设置"/);
+assert.match(accountMenu, /createPortal/);
+assert.match(accountMenu, /role="dialog" aria-modal="true" aria-label="设置"/);
+assert.match(accountMenu, /登录邮箱/);
+assert.match(accountMenu, /登录设备/);
+assert.match(accountMenu, /数据管理/);
+assert.match(accountMenu, /AI 与记忆/);
+assert.match(accountMenu, /settingsTab === "general"/);
+assert.match(accountMenu, /settingsTab === "data"/);
+assert.match(accountMenu, /settingsTab === "memory"/);
+assert.match(accountMenu, /aria-label="回收站"/);
 assert.match(accountMenu, /onOpenTrash/);
 assert.match(styles, /\.directory-tree :where\(button, input, select, textarea, \[tabindex\]\):focus-visible[\s\S]*?outline: none !important;/);
 assert.match(

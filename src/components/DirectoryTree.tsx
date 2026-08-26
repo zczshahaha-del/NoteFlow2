@@ -488,7 +488,7 @@ type DirectoryTreeProps = {
   onPinnedChange: (pinned: boolean) => void;
   onFileOpen?: () => void;
   searchShortcutEnabled?: boolean;
-} & Pick<AccountMenuProps, "themeMode" | "onThemeModeChange" | "userEmail" | "userName" | "onSignOut">;
+} & Pick<AccountMenuProps, "themeMode" | "onThemeModeChange" | "userEmail" | "userEmailVerified" | "userName" | "onEmailChanged" | "onSignOut">;
 
 export default function DirectoryTree({
   pinned,
@@ -496,7 +496,9 @@ export default function DirectoryTree({
   themeMode,
   onThemeModeChange,
   userEmail,
+  userEmailVerified,
   userName,
+  onEmailChanged,
   onSignOut,
   onFileOpen,
   searchShortcutEnabled = true,
@@ -1004,7 +1006,9 @@ export default function DirectoryTree({
           themeMode={themeMode}
           onThemeModeChange={onThemeModeChange}
           userEmail={userEmail}
+          userEmailVerified={userEmailVerified}
           userName={userName}
+          onEmailChanged={onEmailChanged}
           onSignOut={onSignOut}
           trashCount={deletedNotes.length}
           onOpenTrash={() => setTrashOpen(true)}
