@@ -1,0 +1,1054 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NoteFlow Redesign Concept</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --canvas: #e8e9e7;
+        --nav: #f3f2ee;
+        --paper: #fcfbf8;
+        --surface: #f7f7f4;
+        --ai: #f1f3f8;
+        --ink: #22272d;
+        --soft: #626d78;
+        --muted: #929aa2;
+        --line: rgba(38, 48, 58, 0.09);
+        --blue: #527f9d;
+        --blue-soft: #e5eef3;
+        --violet: #746de1;
+        --violet-soft: #e9e7fb;
+        --green: #3e8065;
+        --green-soft: #e6f0ea;
+        --shadow: 0 22px 65px rgba(31, 39, 47, 0.14), 0 2px 10px rgba(31, 39, 47, 0.05);
+      }
+
+      * { box-sizing: border-box; }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: var(--canvas);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display",
+          "PingFang SC", "Microsoft YaHei", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button,
+      input,
+      textarea { font: inherit; }
+
+      button { color: inherit; }
+
+      .app {
+        display: grid;
+        width: 100vw;
+        height: 100vh;
+        min-width: 1160px;
+        grid-template-columns: 232px minmax(620px, 1fr) 398px;
+        background: var(--paper);
+      }
+
+      .icon {
+        width: 17px;
+        height: 17px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.7;
+      }
+
+      .nav {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        border-right: 1px solid var(--line);
+        background:
+          radial-gradient(circle at -20% 0%, rgba(82, 127, 157, 0.09), transparent 32%),
+          var(--nav);
+        padding: 20px 14px 14px;
+      }
+
+      .brand {
+        display: flex;
+        height: 40px;
+        align-items: center;
+        gap: 10px;
+        padding: 0 8px;
+      }
+
+      .brand-mark {
+        position: relative;
+        display: grid;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        border-radius: 9px;
+        background: linear-gradient(145deg, #5d8ba8, #436f8b);
+        box-shadow: 0 7px 18px rgba(66, 111, 139, 0.2);
+        color: white;
+      }
+
+      .brand-mark::after {
+        position: absolute;
+        right: 6px;
+        bottom: 6px;
+        width: 5px;
+        height: 5px;
+        border: 1.5px solid white;
+        border-radius: 50%;
+        content: "";
+      }
+
+      .brand-name {
+        font-size: 14px;
+        font-weight: 720;
+        letter-spacing: -0.02em;
+      }
+
+      .brand-version {
+        margin-left: auto;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.45);
+        padding: 2px 6px;
+        color: var(--muted);
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+
+      .quick-actions {
+        display: grid;
+        grid-template-columns: 1fr 42px;
+        gap: 7px;
+        margin-top: 19px;
+      }
+
+      .search,
+      .square-button {
+        display: flex;
+        height: 38px;
+        align-items: center;
+        border: 1px solid rgba(38, 48, 58, 0.08);
+        border-radius: 11px;
+        background: rgba(255, 255, 255, 0.58);
+        box-shadow: 0 3px 10px rgba(38, 48, 58, 0.035);
+      }
+
+      .search {
+        gap: 8px;
+        padding: 0 11px;
+        color: #7a858e;
+        font-size: 12px;
+      }
+
+      .search kbd {
+        margin-left: auto;
+        color: #a2a9af;
+        font-size: 10px;
+      }
+
+      .square-button {
+        justify-content: center;
+        color: var(--blue);
+      }
+
+      .section-label {
+        margin: 22px 9px 7px;
+        color: #9aa1a8;
+        font-size: 10px;
+        font-weight: 750;
+        letter-spacing: 0.11em;
+      }
+
+      .nav-item,
+      .tree-row {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        border: 0;
+        background: transparent;
+        text-align: left;
+      }
+
+      .nav-item {
+        height: 36px;
+        gap: 10px;
+        border-radius: 10px;
+        padding: 0 10px;
+        color: #68737c;
+        font-size: 12.5px;
+        font-weight: 560;
+      }
+
+      .nav-item .count {
+        margin-left: auto;
+        color: #a0a8ae;
+        font-size: 10px;
+      }
+
+      .nav-item.active-soft {
+        background: rgba(255, 255, 255, 0.48);
+        color: #3f4d58;
+      }
+
+      .folder {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 9px 5px;
+        color: #626d76;
+        font-size: 11.5px;
+        font-weight: 680;
+      }
+
+      .folder .chevron { color: #9ca4aa; font-size: 10px; }
+      .folder span:nth-child(3) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+      .tree-row {
+        position: relative;
+        height: 37px;
+        gap: 8px;
+        border-radius: 10px;
+        padding: 0 9px 0 27px;
+        color: #747e86;
+        font-size: 12px;
+      }
+
+      .tree-row.selected {
+        background: var(--blue-soft);
+        color: #315d77;
+        font-weight: 660;
+      }
+
+      .tree-row.selected::before {
+        position: absolute;
+        top: 8px;
+        bottom: 8px;
+        left: 5px;
+        width: 2px;
+        border-radius: 99px;
+        background: var(--blue);
+        content: "";
+      }
+
+      .tree-row .label {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .tree-row .tiny-status {
+        width: 6px;
+        height: 6px;
+        flex: 0 0 auto;
+        margin-left: auto;
+        border-radius: 50%;
+        background: var(--green);
+        box-shadow: 0 0 0 3px rgba(62, 128, 101, 0.1);
+      }
+
+      .profile {
+        display: flex;
+        height: 51px;
+        align-items: center;
+        gap: 9px;
+        margin-top: auto;
+        border: 1px solid rgba(38, 48, 58, 0.07);
+        border-radius: 13px;
+        background: rgba(255, 255, 255, 0.5);
+        padding: 0 10px;
+      }
+
+      .avatar {
+        display: grid;
+        width: 29px;
+        height: 29px;
+        flex: 0 0 auto;
+        place-items: center;
+        border-radius: 9px;
+        background: #476f88;
+        color: white;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .profile-copy { min-width: 0; }
+      .profile-copy strong { display: block; font-size: 11.5px; }
+      .profile-copy span { display: block; margin-top: 1px; color: var(--muted); font-size: 9.5px; }
+      .profile .dots { margin-left: auto; color: var(--muted); }
+
+      .workspace {
+        position: relative;
+        min-width: 0;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 48% -10%, rgba(255, 255, 255, 0.96), transparent 38%),
+          #f6f6f3;
+      }
+
+      .workspace-topbar {
+        position: absolute;
+        z-index: 3;
+        top: 0;
+        right: 0;
+        left: 0;
+        display: flex;
+        height: 54px;
+        align-items: center;
+        padding: 0 28px;
+        color: #838c94;
+        font-size: 11px;
+      }
+
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .saved {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: auto;
+        color: #7e8a84;
+      }
+
+      .saved::before {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--green);
+        content: "";
+      }
+
+      .doc-scroll {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        padding: 72px clamp(36px, 5vw, 84px) 38px;
+      }
+
+      .document {
+        position: relative;
+        width: min(100%, 740px);
+        min-height: calc(100vh - 92px);
+        margin: 0 auto;
+        border: 1px solid rgba(50, 56, 62, 0.055);
+        border-radius: 18px 18px 0 0;
+        background: var(--paper);
+        box-shadow: 0 10px 36px rgba(39, 45, 51, 0.055);
+        padding: 50px 58px 80px;
+      }
+
+      .doc-kicker {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: #78848c;
+        font-size: 11px;
+        font-weight: 620;
+      }
+
+      .doc-kicker .pill {
+        border-radius: 6px;
+        background: #edf2f4;
+        padding: 4px 7px;
+        color: #557184;
+      }
+
+      .title {
+        max-width: 620px;
+        margin: 17px 0 11px;
+        color: #20252a;
+        font-size: clamp(30px, 3.05vw, 43px);
+        font-weight: 735;
+        line-height: 1.18;
+        letter-spacing: -0.042em;
+      }
+
+      .meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #99a0a6;
+        font-size: 10.5px;
+      }
+
+      .meta .tag {
+        border-radius: 999px;
+        background: #f0efeb;
+        padding: 3px 7px;
+        color: #777e83;
+      }
+
+      .insight {
+        position: relative;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin: 34px 0 36px;
+        border: 1px solid rgba(74, 122, 151, 0.09);
+        border-radius: 14px;
+        background: linear-gradient(120deg, #eaf1ee 0%, #e8f0f3 100%);
+        padding: 17px 18px;
+        color: #3e515a;
+        font-size: 13.5px;
+        line-height: 1.7;
+      }
+
+      .insight-mark {
+        display: grid;
+        width: 27px;
+        height: 27px;
+        flex: 0 0 auto;
+        place-items: center;
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--blue);
+      }
+
+      .content h2 {
+        margin: 0 0 15px;
+        font-size: 21px;
+        font-weight: 715;
+        letter-spacing: -0.025em;
+      }
+
+      .content p {
+        margin: 0 0 17px;
+        color: #4b545c;
+        font-family: ui-serif, "Songti SC", "STSong", serif;
+        font-size: 15.5px;
+        line-height: 1.86;
+      }
+
+      .principles {
+        display: grid;
+        gap: 9px;
+        margin: 20px 0 28px;
+      }
+
+      .principle {
+        display: grid;
+        grid-template-columns: 31px minmax(0, 1fr);
+        gap: 11px;
+        align-items: start;
+        border-top: 1px solid var(--line);
+        padding: 13px 0 4px;
+      }
+
+      .principle-num {
+        color: var(--blue);
+        font-size: 11px;
+        font-weight: 750;
+        letter-spacing: 0.04em;
+      }
+
+      .principle strong {
+        display: block;
+        margin-bottom: 3px;
+        font-size: 13px;
+      }
+
+      .principle span {
+        color: #6d777e;
+        font-family: ui-serif, "Songti SC", "STSong", serif;
+        font-size: 13px;
+        line-height: 1.65;
+      }
+
+      .quote {
+        margin-top: 24px;
+        border-left: 2px solid #79a0b5;
+        padding: 2px 0 2px 15px;
+        color: #5d6970;
+        font-family: ui-serif, "Songti SC", "STSong", serif;
+        font-size: 13.5px;
+        font-style: italic;
+        line-height: 1.75;
+      }
+
+      .selection {
+        border-radius: 4px;
+        background: rgba(116, 109, 225, 0.13);
+        box-shadow: 0 0 0 2px rgba(116, 109, 225, 0.05);
+      }
+
+      .selection-toolbar {
+        position: absolute;
+        z-index: 4;
+        top: 389px;
+        right: 44px;
+        display: flex;
+        height: 34px;
+        align-items: center;
+        gap: 2px;
+        border: 1px solid rgba(32, 39, 45, 0.09);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 12px 28px rgba(28, 35, 42, 0.13);
+        padding: 3px;
+        backdrop-filter: blur(14px);
+        animation: toolbar-in 0.42s cubic-bezier(0.2, 0.75, 0.2, 1) both;
+      }
+
+      .selection-toolbar button {
+        display: grid;
+        min-width: 27px;
+        height: 27px;
+        place-items: center;
+        border: 0;
+        border-radius: 7px;
+        background: transparent;
+        color: #6f7981;
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .selection-toolbar .ask {
+        display: flex;
+        gap: 5px;
+        width: auto;
+        padding: 0 8px;
+        background: var(--violet-soft);
+        color: #5f59bd;
+      }
+
+      .chapter-rail {
+        position: absolute;
+        top: 37%;
+        right: 17px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .chapter-rail span {
+        width: 10px;
+        height: 2px;
+        border-radius: 99px;
+        background: #cbd0d2;
+      }
+
+      .chapter-rail span.active { width: 16px; background: var(--blue); }
+
+      .ai-panel {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        border-left: 1px solid rgba(48, 55, 66, 0.08);
+        background:
+          radial-gradient(circle at 100% 0%, rgba(116, 109, 225, 0.11), transparent 31%),
+          linear-gradient(180deg, #f3f4f8 0%, #eef1f5 100%);
+        padding: 15px 17px 17px;
+      }
+
+      .ai-header {
+        display: flex;
+        height: 42px;
+        align-items: center;
+        gap: 9px;
+        padding: 0 4px;
+      }
+
+      .ai-symbol {
+        position: relative;
+        display: grid;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        border-radius: 9px;
+        background: linear-gradient(140deg, var(--violet), #5b7fa9);
+        box-shadow: 0 7px 17px rgba(105, 98, 204, 0.2);
+        color: white;
+      }
+
+      .ai-symbol::after {
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        width: 7px;
+        height: 7px;
+        border: 2px solid #f4f5f8;
+        border-radius: 50%;
+        background: #55a27f;
+        content: "";
+      }
+
+      .ai-title strong { display: block; font-size: 13px; }
+      .ai-title span { display: block; margin-top: 1px; color: #8b929d; font-size: 9.5px; }
+
+      .ai-header-actions {
+        display: flex;
+        gap: 2px;
+        margin-left: auto;
+      }
+
+      .ghost-icon {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        place-items: center;
+        border: 0;
+        border-radius: 9px;
+        background: transparent;
+        color: #7d8590;
+      }
+
+      .context-strip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 13px 1px 0;
+        border: 1px solid rgba(70, 79, 91, 0.08);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.6);
+        padding: 8px 10px;
+      }
+
+      .context-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        border-radius: 7px;
+        background: var(--blue-soft);
+        padding: 4px 7px;
+        color: #4f748a;
+        font-size: 10px;
+        font-weight: 680;
+      }
+
+      .context-note {
+        min-width: 0;
+        overflow: hidden;
+        color: #68737d;
+        font-size: 10.5px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .chat {
+        display: flex;
+        min-height: 0;
+        flex: 1;
+        flex-direction: column;
+        gap: 18px;
+        overflow: hidden;
+        padding: 26px 2px 15px;
+      }
+
+      .message-user {
+        align-self: flex-end;
+        max-width: 82%;
+        border: 1px solid rgba(82, 127, 157, 0.1);
+        border-radius: 14px 14px 5px 14px;
+        background: #e4edf3;
+        padding: 11px 13px;
+        color: #3f515c;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+
+      .ai-progress {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        align-self: flex-start;
+        border: 1px solid rgba(94, 89, 189, 0.1);
+        border-radius: 11px;
+        background: rgba(255, 255, 255, 0.6);
+        padding: 8px 9px;
+      }
+
+      .progress-step {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: #767e89;
+        font-size: 9.5px;
+        font-weight: 650;
+      }
+
+      .progress-step::before {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #b8bec5;
+        content: "";
+      }
+
+      .progress-step.done::before { background: var(--green); }
+      .progress-step.live { color: #5c57b3; }
+      .progress-step.live::before {
+        background: var(--violet);
+        box-shadow: 0 0 0 4px rgba(116, 109, 225, 0.1);
+        animation: breathe 1.9s ease-in-out infinite;
+      }
+
+      .progress-line { width: 17px; height: 1px; background: #d4d7dc; }
+
+      .message-ai {
+        position: relative;
+        align-self: stretch;
+        border: 1px solid rgba(57, 66, 76, 0.08);
+        border-radius: 15px;
+        background: rgba(255, 255, 255, 0.74);
+        box-shadow: 0 10px 28px rgba(42, 50, 60, 0.05);
+        padding: 15px 15px 13px;
+      }
+
+      .message-ai::before {
+        position: absolute;
+        top: 16px;
+        bottom: 16px;
+        left: 0;
+        width: 2px;
+        border-radius: 99px;
+        background: linear-gradient(var(--violet), var(--blue));
+        content: "";
+      }
+
+      .message-ai .answer-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #6964c1;
+        font-size: 9.5px;
+        font-weight: 740;
+        letter-spacing: 0.04em;
+      }
+
+      .message-ai p {
+        margin: 10px 0 0;
+        color: #48525c;
+        font-size: 12px;
+        line-height: 1.72;
+      }
+
+      .answer-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .answer-item {
+        display: grid;
+        grid-template-columns: 19px 1fr;
+        gap: 7px;
+        color: #56616b;
+        font-size: 11.5px;
+        line-height: 1.55;
+      }
+
+      .answer-item b {
+        display: grid;
+        width: 18px;
+        height: 18px;
+        place-items: center;
+        border-radius: 6px;
+        background: var(--violet-soft);
+        color: #625dbd;
+        font-size: 8.5px;
+      }
+
+      .citation {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 14px;
+        border-radius: 10px;
+        background: #f2f3f5;
+        padding: 9px 10px;
+      }
+
+      .citation-icon {
+        display: grid;
+        width: 23px;
+        height: 23px;
+        place-items: center;
+        border-radius: 7px;
+        background: white;
+        color: var(--blue);
+      }
+
+      .citation-copy { min-width: 0; }
+      .citation-copy strong { display: block; font-size: 9.5px; }
+      .citation-copy span {
+        display: block;
+        margin-top: 2px;
+        overflow: hidden;
+        color: #879099;
+        font-size: 9px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .composer {
+        border: 1px solid rgba(50, 58, 70, 0.1);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.83);
+        box-shadow: 0 13px 34px rgba(41, 49, 59, 0.075);
+        padding: 10px;
+        backdrop-filter: blur(16px);
+      }
+
+      .composer-contexts {
+        display: flex;
+        gap: 6px;
+      }
+
+      .composer-chip {
+        display: inline-flex;
+        height: 24px;
+        align-items: center;
+        gap: 5px;
+        border-radius: 7px;
+        background: #edf2f5;
+        padding: 0 8px;
+        color: #637986;
+        font-size: 9.5px;
+        font-weight: 650;
+      }
+
+      .composer-chip.violet { background: #eeecfa; color: #6862bd; }
+
+      .composer textarea {
+        width: 100%;
+        height: 54px;
+        resize: none;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        padding: 11px 5px 6px;
+        color: #404a53;
+        font-size: 12.5px;
+        line-height: 1.55;
+      }
+
+      .composer textarea::placeholder { color: #a0a7ae; }
+
+      .composer-footer {
+        display: flex;
+        align-items: center;
+        border-top: 1px solid rgba(52, 61, 72, 0.07);
+        padding: 8px 2px 0;
+      }
+
+      .mode {
+        display: inline-flex;
+        height: 28px;
+        align-items: center;
+        gap: 6px;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: #65717b;
+        font-size: 10.5px;
+        font-weight: 650;
+      }
+
+      .mode .mode-dot {
+        display: grid;
+        width: 18px;
+        height: 18px;
+        place-items: center;
+        border-radius: 6px;
+        background: var(--violet-soft);
+        color: var(--violet);
+      }
+
+      .send {
+        display: grid;
+        width: 31px;
+        height: 31px;
+        margin-left: auto;
+        place-items: center;
+        border: 0;
+        border-radius: 10px;
+        background: linear-gradient(145deg, var(--violet), #5c79a1);
+        box-shadow: 0 7px 16px rgba(104, 98, 198, 0.22);
+        color: white;
+      }
+
+      @keyframes breathe {
+        0%, 100% { box-shadow: 0 0 0 3px rgba(116, 109, 225, 0.08); }
+        50% { box-shadow: 0 0 0 6px rgba(116, 109, 225, 0.02); }
+      }
+
+      @keyframes toolbar-in {
+        from { opacity: 0; transform: translateY(5px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      @media (max-width: 1280px) {
+        .app { grid-template-columns: 58px minmax(620px, 1fr) 380px; }
+        .nav { padding-right: 8px; padding-left: 8px; }
+        .brand-name, .brand-version, .quick-actions .search, .section-label,
+        .nav-item span, .nav-item .count, .folder span, .tree-row .label,
+        .tree-row .tiny-status, .profile-copy, .profile .dots { display: none; }
+        .brand, .nav-item, .folder, .tree-row, .profile { justify-content: center; padding: 0; }
+        .quick-actions { grid-template-columns: 1fr; }
+        .tree-row { padding: 0; }
+        .profile { border: 0; background: transparent; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: 0.01ms !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app" aria-label="NoteFlow redesign concept">
+      <aside class="nav">
+        <div class="brand">
+          <span class="brand-mark">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M7 5.5h8.2c1 0 1.8.8 1.8 1.8V19H8.8A1.8 1.8 0 0 1 7 17.2V5.5Z"/><path d="M10 9h4M10 12h4"/><path d="M7 7H5.8A1.8 1.8 0 0 0 4 8.8v8.4A1.8 1.8 0 0 0 5.8 19H9"/></svg>
+          </span>
+          <span class="brand-name">NoteFlow</span>
+          <span class="brand-version">BETA</span>
+        </div>
+
+        <div class="quick-actions">
+          <div class="search">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+            <span>搜索</span><kbd>⌘ K</kbd>
+          </div>
+          <button class="square-button" aria-label="新建">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </div>
+
+        <p class="section-label">工作空间</p>
+        <button class="nav-item active-soft">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.7"/><path d="M4 4v5h5M12 8v4l2.5 2"/></svg>
+          <span>最近</span><span class="count">8</span>
+        </button>
+        <button class="nav-item">
+          <svg class="icon" viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z"/></svg>
+          <span>收藏</span><span class="count">12</span>
+        </button>
+        <button class="nav-item">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M16 4v4h4M8 12h8M8 16h6"/></svg>
+          <span>全部笔记</span><span class="count">46</span>
+        </button>
+
+        <p class="section-label">知识库</p>
+        <div class="folder"><span class="chevron">⌄</span><svg class="icon" viewBox="0 0 24 24"><path d="M3.5 6.5h6l2 2H20a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 20 19H4a1.5 1.5 0 0 1-1.5-1.5V8A1.5 1.5 0 0 1 4 6.5Z"/></svg><span>产品与设计</span></div>
+        <button class="tree-row selected">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M6 3.5h9l3 3V20H6z"/><path d="M15 3.5V7h3M9 11h6M9 14.5h5"/></svg>
+          <span class="label">NoteFlow 3.0 产品愿景</span><span class="tiny-status"></span>
+        </button>
+        <button class="tree-row">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M6 3.5h9l3 3V20H6z"/><path d="M15 3.5V7h3M9 11h6M9 14.5h5"/></svg>
+          <span class="label">AI 知识库体验研究</span>
+        </button>
+        <div class="folder"><span class="chevron">›</span><svg class="icon" viewBox="0 0 24 24"><path d="M3.5 6.5h6l2 2H20a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 20 19H4a1.5 1.5 0 0 1-1.5-1.5V8A1.5 1.5 0 0 1 4 6.5Z"/></svg><span>用户研究</span></div>
+        <div class="folder"><span class="chevron">›</span><svg class="icon" viewBox="0 0 24 24"><path d="M3.5 6.5h6l2 2H20a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 20 19H4a1.5 1.5 0 0 1-1.5-1.5V8A1.5 1.5 0 0 1 4 6.5Z"/></svg><span>项目归档</span></div>
+
+        <div class="profile">
+          <span class="avatar">ZC</span>
+          <span class="profile-copy"><strong>产品体验审计</strong><span>个人工作区</span></span>
+          <span class="dots">•••</span>
+        </div>
+      </aside>
+
+      <section class="workspace">
+        <header class="workspace-topbar">
+          <span class="breadcrumb">全部笔记 <span>›</span> 产品与设计</span>
+          <span class="saved">已自动保存</span>
+        </header>
+        <div class="doc-scroll">
+          <article class="document">
+            <div class="doc-kicker"><span class="pill">产品策略</span><span>最后编辑于 2 分钟前</span></div>
+            <h1 class="title">NoteFlow 3.0 产品愿景</h1>
+            <div class="meta"><span>2026 年 9 月 7 日</span><span>·</span><span class="tag">产品</span><span class="tag">AI</span></div>
+
+            <div class="insight">
+              <span class="insight-mark">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M9 18h6M10 22h4"/><path d="M8.2 14.5A7 7 0 1 1 15.8 14.5 4.3 4.3 0 0 0 14.5 17h-5a4.3 4.3 0 0 0-1.3-2.5Z"/></svg>
+              </span>
+              <span>让知识不是被收藏，而是在每一次思考与创作中自然重新出现。</span>
+            </div>
+
+            <div class="content">
+              <h2>核心体验原则</h2>
+              <p>NoteFlow 不应该成为另一个堆放信息的文件柜。它更像一张持续生长的工作桌，把记录、理解和创造连接成自然的思考流。</p>
+              <div class="principles">
+                <div class="principle"><span class="principle-num">01</span><div><strong>内容始终是主角</strong><span>界面在需要时出现，完成任务后安静退场。</span></div></div>
+                <div class="principle"><span class="principle-num">02</span><div><strong>AI 的上下文清晰可见</strong><span>用户随时知道 AI 参考了什么，以及这些信息如何影响建议。</span></div></div>
+                <div class="principle"><span class="principle-num">03</span><div><strong>每一次重要动作都可逆</strong><span>修改先预览，来源可追溯，结果可以撤销。</span></div></div>
+              </div>
+              <p>真正的效率不是少点击几次，而是减少在工具之间切换时丢失的思路，让<span class="selection">知识持续参与当前工作</span>。</p>
+              <div class="quote">“现代感来自清晰的层级、即时的反馈，以及对用户注意力的克制。”</div>
+            </div>
+
+            <div class="selection-toolbar" aria-label="selected text toolbar">
+              <button>B</button><button>✦</button><button class="ask">✦ 问 AI</button>
+            </div>
+          </article>
+        </div>
+        <div class="chapter-rail"><span></span><span class="active"></span><span></span><span></span></div>
+      </section>
+
+      <aside class="ai-panel">
+        <header class="ai-header">
+          <span class="ai-symbol">
+            <svg class="icon" viewBox="0 0 24 24"><path d="m12 3 1.4 4.2a4.7 4.7 0 0 0 3 3L21 12l-4.6 1.8a4.7 4.7 0 0 0-3 3L12 21l-1.4-4.2a4.7 4.7 0 0 0-3-3L3 12l4.6-1.8a4.7 4.7 0 0 0 3-3L12 3Z"/></svg>
+          </span>
+          <span class="ai-title"><strong>AI 助手</strong><span>已连接当前工作区</span></span>
+          <span class="ai-header-actions">
+            <button class="ghost-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+            <button class="ghost-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+          </span>
+        </header>
+
+        <div class="context-strip">
+          <span class="context-label"><svg class="icon" viewBox="0 0 24 24"><path d="M6 3.5h9l3 3V20H6z"/><path d="M15 3.5V7h3"/></svg>当前笔记</span>
+          <span class="context-note">NoteFlow 3.0 产品愿景</span>
+        </div>
+
+        <section class="chat">
+          <div class="message-user">根据这篇笔记，帮我找出最值得强化的产品原则。</div>
+          <div class="ai-progress"><span class="progress-step done">理解</span><span class="progress-line"></span><span class="progress-step done">检索</span><span class="progress-line"></span><span class="progress-step live">生成</span></div>
+          <div class="message-ai">
+            <span class="answer-label">✦ 基于当前笔记</span>
+            <p>最值得强化的是“AI 的上下文清晰可见”。这不仅是功能原则，也可以成为 NoteFlow 与普通笔记工具之间最鲜明的体验差异。</p>
+            <div class="answer-list">
+              <div class="answer-item"><b>1</b><span><strong>明确来源</strong>：让用户看到 AI 正在参考哪篇笔记和具体段落。</span></div>
+              <div class="answer-item"><b>2</b><span><strong>解释影响</strong>：说明上下文如何改变了建议，而不是只给结论。</span></div>
+              <div class="answer-item"><b>3</b><span><strong>保持掌控</strong>：引用可以移除，修改必须经过预览确认。</span></div>
+            </div>
+            <div class="citation">
+              <span class="citation-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M6 3.5h9l3 3V20H6z"/><path d="M15 3.5V7h3M9 11h6M9 14.5h5"/></svg></span>
+              <span class="citation-copy"><strong>来源 · 核心体验原则</strong><span>AI 的上下文清晰可见，建议需要说明引用了什么……</span></span>
+            </div>
+          </div>
+        </section>
+
+        <div class="composer">
+          <div class="composer-contexts"><span class="composer-chip">当前笔记</span><span class="composer-chip violet">选中内容</span></div>
+          <textarea aria-label="AI input" placeholder="继续追问，或让 AI 修改这篇笔记…"></textarea>
+          <div class="composer-footer">
+            <button class="mode"><span class="mode-dot">✦</span>对话 <span>⌄</span></button>
+            <button class="send" aria-label="发送"><svg class="icon" viewBox="0 0 24 24"><path d="m5 12 14-7-4.5 14-3-6-6.5-1Z"/><path d="m11.5 13 3-3"/></svg></button>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </body>
+</html>
