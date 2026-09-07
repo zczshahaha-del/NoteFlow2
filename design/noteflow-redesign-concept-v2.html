@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NoteFlow · AI-native workspace concept</title>
+  <style>
+    :root {
+      --ink: #17181d;
+      --muted: #777b88;
+      --line: rgba(24, 28, 38, .085);
+      --blue: #5b6cff;
+      --violet: #8167ff;
+      --lime: #c8f56a;
+      --surface: rgba(255, 255, 255, .76);
+      --glass: rgba(250, 251, 255, .72);
+      --shadow: 0 24px 80px rgba(35, 42, 68, .12), 0 4px 18px rgba(35, 42, 68, .06);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+
+    body {
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background:
+        radial-gradient(circle at 72% -18%, rgba(116, 129, 255, .17), transparent 38%),
+        radial-gradient(circle at 28% 112%, rgba(200, 245, 106, .13), transparent 34%),
+        #f4f5f8;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button { font: inherit; color: inherit; }
+    svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+    .app {
+      position: relative;
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr);
+      width: 100vw;
+      height: 100vh;
+      min-width: 1120px;
+      isolation: isolate;
+    }
+
+    .ambient {
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      opacity: .5;
+      background-image: radial-gradient(rgba(65, 70, 90, .12) .6px, transparent .6px);
+      background-size: 18px 18px;
+      mask-image: linear-gradient(to right, transparent 8%, #000 48%, transparent 94%);
+    }
+
+    .rail {
+      position: relative;
+      z-index: 5;
+      margin: 12px 0 12px 12px;
+      border-radius: 24px;
+      color: rgba(255, 255, 255, .76);
+      background: #181a21;
+      box-shadow: 0 24px 50px rgba(25, 28, 40, .22);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 13px 0 12px;
+    }
+
+    .brand {
+      width: 44px;
+      height: 44px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      color: #17181d;
+      background: var(--lime);
+      box-shadow: 0 7px 20px rgba(200, 245, 106, .18);
+      margin-bottom: 20px;
+    }
+
+    .brand svg { width: 22px; height: 22px; stroke-width: 2; }
+
+    .rail-group { display: grid; gap: 8px; }
+    .rail-spacer { flex: 1; }
+
+    .rail-button {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      border: 0;
+      border-radius: 14px;
+      background: transparent;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: color .2s ease, background .2s ease, transform .2s ease;
+    }
+
+    .rail-button:hover { color: white; background: rgba(255,255,255,.09); transform: translateY(-1px); }
+    .rail-button.active { color: white; background: rgba(255,255,255,.12); }
+    .rail-button.active::before {
+      content: "";
+      position: absolute;
+      left: -7px;
+      width: 3px;
+      height: 17px;
+      border-radius: 4px;
+      background: var(--lime);
+      box-shadow: 0 0 12px rgba(200,245,106,.6);
+    }
+
+    .rail-button .dot {
+      position: absolute;
+      right: 8px;
+      top: 7px;
+      width: 6px;
+      height: 6px;
+      border-radius: 99px;
+      background: #7f8cff;
+      border: 1.5px solid #181a21;
+    }
+
+    .avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 750;
+      background: linear-gradient(145deg, #7484ff, #7654dc);
+    }
+
+    .stage { position: relative; min-width: 0; overflow: hidden; }
+
+    .topbar {
+      position: absolute;
+      z-index: 4;
+      left: 30px;
+      right: 26px;
+      top: 13px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 13px;
+    }
+
+    .workspace-switcher {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 165px;
+      font-size: 13px;
+      font-weight: 660;
+    }
+
+    .workspace-switcher .mini-logo {
+      width: 27px;
+      height: 27px;
+      border-radius: 9px;
+      display: grid;
+      place-items: center;
+      background: white;
+      border: 1px solid var(--line);
+      box-shadow: 0 4px 14px rgba(39,44,62,.06);
+    }
+
+    .workspace-switcher svg { width: 14px; height: 14px; }
+    .workspace-switcher .chev { color: #a1a4ae; margin-left: -3px; }
+
+    .command-button {
+      margin: 0 auto;
+      width: 298px;
+      height: 40px;
+      padding: 0 13px;
+      border: 1px solid rgba(255,255,255,.7);
+      border-radius: 14px;
+      color: #777c8a;
+      background: rgba(255,255,255,.62);
+      box-shadow: inset 0 0 0 1px rgba(55,61,79,.045), 0 7px 22px rgba(42,47,66,.055);
+      backdrop-filter: blur(18px);
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      cursor: pointer;
+    }
+
+    .command-button span:nth-child(2) { font-size: 12px; }
+    .command-button kbd {
+      margin-left: auto;
+      color: #9397a4;
+      font: 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: rgba(60,65,82,.065);
+      border-radius: 6px;
+      padding: 3px 6px;
+    }
+
+    .top-actions { min-width: 165px; display: flex; justify-content: flex-end; align-items: center; gap: 7px; }
+
+    .online {
+      font-size: 11px;
+      color: #747987;
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      margin-right: 7px;
+    }
+
+    .online::before { content: ""; width: 6px; height: 6px; border-radius: 99px; background: #55b889; box-shadow: 0 0 0 4px rgba(85,184,137,.1); }
+
+    .top-icon {
+      width: 37px;
+      height: 37px;
+      display: grid;
+      place-items: center;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      background: transparent;
+      color: #767b88;
+      cursor: pointer;
+    }
+
+    .top-icon:hover { border-color: var(--line); background: rgba(255,255,255,.55); }
+
+    .tabs {
+      position: absolute;
+      z-index: 3;
+      left: 30px;
+      right: 438px;
+      top: 75px;
+      height: 49px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .tab {
+      height: 36px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 11px;
+      color: #8b8f9b;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .tab svg { width: 15px; height: 15px; }
+    .tab.current { color: #23252c; background: rgba(255,255,255,.7); box-shadow: 0 4px 14px rgba(45,50,67,.05); }
+    .tab .close { opacity: .45; font-size: 14px; margin-left: 3px; }
+    .tab-new { border: 0; color: #9a9eaa; background: none; font-size: 19px; cursor: pointer; }
+
+    .canvas {
+      position: absolute;
+      left: 0;
+      right: 420px;
+      top: 124px;
+      bottom: 0;
+      overflow: hidden;
+    }
+
+    .document {
+      position: relative;
+      width: min(760px, calc(100% - 150px));
+      height: 100%;
+      margin: 0 auto;
+      padding: 54px 26px 110px;
+    }
+
+    .doc-overline {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #8d919d;
+      font-size: 11px;
+      letter-spacing: .01em;
+      margin-bottom: 19px;
+    }
+
+    .status-pill {
+      color: #4c567f;
+      background: rgba(105,121,255,.09);
+      border-radius: 99px;
+      padding: 5px 9px;
+      font-weight: 680;
+    }
+
+    h1 {
+      max-width: 690px;
+      margin: 0;
+      font-size: clamp(40px, 3.4vw, 56px);
+      line-height: 1.08;
+      letter-spacing: -.055em;
+      font-weight: 740;
+    }
+
+    .subtitle {
+      max-width: 650px;
+      margin: 20px 0 0;
+      color: #777b87;
+      font-size: 17px;
+      line-height: 1.7;
+      letter-spacing: -.01em;
+    }
+
+    .collab-row {
+      height: 46px;
+      margin: 24px 0 32px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #969aa5;
+      font-size: 11px;
+    }
+
+    .face {
+      width: 25px;
+      height: 25px;
+      border: 2px solid #f4f5f8;
+      border-radius: 9px;
+      display: grid;
+      place-items: center;
+      margin-right: -12px;
+      color: white;
+      font-size: 8px;
+      font-weight: 750;
+    }
+
+    .face.one { background: #252831; }
+    .face.two { background: #7b66e7; }
+    .collab-row .edited { margin-left: 12px; }
+    .collab-row .meta-action { margin-left: auto; color: #777c89; }
+
+    .body-copy { font-size: 16px; line-height: 1.85; color: #3c3e46; letter-spacing: -.008em; }
+    .body-copy p { margin: 0 0 23px; }
+    .body-copy h2 { margin: 34px 0 14px; font-size: 22px; letter-spacing: -.025em; }
+
+    .concept-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 23px 0 28px;
+    }
+
+    .concept {
+      min-height: 125px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,255,.46);
+      transition: transform .25s ease, background .25s ease, box-shadow .25s ease;
+    }
+
+    .concept:hover { transform: translateY(-4px); background: rgba(255,255,255,.85); box-shadow: 0 16px 35px rgba(44,49,67,.08); }
+    .concept-index { color: #9ca0ad; font-size: 10px; font-weight: 700; }
+    .concept strong { display: block; font-size: 13px; margin: 22px 0 8px; }
+    .concept p { margin: 0; color: #858994; font-size: 11px; line-height: 1.6; }
+
+    .active-sentence {
+      position: relative;
+      margin: 28px -13px 24px;
+      padding: 16px 19px 16px 18px;
+      border-radius: 16px;
+      color: #30323a;
+      background: linear-gradient(90deg, rgba(102,118,255,.11), rgba(102,118,255,.035));
+      box-shadow: inset 3px 0 #6d79ff;
+    }
+
+    .selection-menu {
+      position: absolute;
+      right: -3px;
+      top: -35px;
+      height: 31px;
+      padding: 0 5px 0 9px;
+      border-radius: 10px;
+      color: white;
+      background: #20222a;
+      box-shadow: 0 12px 28px rgba(28,31,43,.22);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 10px;
+      animation: float-in .45s cubic-bezier(.2,.8,.2,1) both;
+    }
+
+    .selection-menu span { color: rgba(255,255,255,.55); }
+    .selection-menu button { border: 0; border-radius: 7px; padding: 5px 8px; color: #20222a; background: var(--lime); font-size: 10px; font-weight: 700; }
+
+    .outline {
+      position: absolute;
+      left: 21px;
+      top: 64px;
+      width: 92px;
+      display: grid;
+      gap: 10px;
+      color: #a3a7b2;
+      font-size: 9px;
+    }
+
+    .outline::before { content: "内容"; letter-spacing: .14em; color: #b7bac3; margin-bottom: 2px; }
+    .outline-item { padding-left: 10px; border-left: 1px solid rgba(42,46,61,.1); line-height: 1.45; }
+    .outline-item.current { color: #4e5360; border-color: #6877ff; }
+
+    .assistant {
+      position: absolute;
+      z-index: 8;
+      right: 18px;
+      top: 79px;
+      bottom: 17px;
+      width: 397px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.72);
+      border-radius: 28px;
+      color: rgba(255,255,255,.88);
+      background:
+        radial-gradient(circle at 80% 0%, rgba(113,102,255,.28), transparent 35%),
+        linear-gradient(158deg, rgba(35,37,49,.96), rgba(24,26,34,.985));
+      box-shadow: 0 28px 85px rgba(29,32,46,.24), inset 0 1px rgba(255,255,255,.07);
+      display: flex;
+      flex-direction: column;
+      transform-origin: right center;
+      transition: transform .45s cubic-bezier(.2,.8,.2,1), opacity .35s ease;
+    }
+
+    .assistant-header {
+      height: 70px;
+      padding: 0 19px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      border-bottom: 1px solid rgba(255,255,255,.075);
+    }
+
+    .ai-orb {
+      position: relative;
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      color: #181a21;
+      background: var(--lime);
+      box-shadow: 0 0 28px rgba(200,245,106,.16);
+    }
+
+    .ai-orb::after {
+      content: "";
+      position: absolute;
+      inset: -4px;
+      border: 1px solid rgba(200,245,106,.2);
+      border-radius: 15px;
+      animation: pulse 2.6s ease-out infinite;
+    }
+
+    .ai-orb svg { width: 17px; height: 17px; stroke-width: 2; }
+    .assistant-title { display: grid; gap: 2px; }
+    .assistant-title strong { font-size: 13px; }
+    .assistant-title span { color: rgba(255,255,255,.43); font-size: 9px; }
+    .assistant-actions { margin-left: auto; display: flex; gap: 2px; }
+    .dark-button { width: 31px; height: 31px; border: 0; border-radius: 10px; color: rgba(255,255,255,.56); background: transparent; display: grid; place-items: center; cursor: pointer; }
+    .dark-button:hover { background: rgba(255,255,255,.07); color: white; }
+    .dark-button svg { width: 16px; height: 16px; }
+
+    .context-line {
+      margin: 14px 17px 0;
+      padding: 11px 12px;
+      border: 1px solid rgba(255,255,255,.075);
+      border-radius: 13px;
+      color: rgba(255,255,255,.47);
+      background: rgba(255,255,255,.035);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 9px;
+    }
+
+    .context-line svg { width: 14px; height: 14px; color: #a6afff; }
+    .context-line strong { color: rgba(255,255,255,.8); font-size: 10px; font-weight: 600; }
+    .context-line .live { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    .context-line .live::before { content: ""; width: 5px; height: 5px; border-radius: 99px; background: var(--lime); box-shadow: 0 0 9px var(--lime); }
+
+    .thread { flex: 1; overflow: hidden; padding: 22px 18px 145px; }
+
+    .request {
+      margin-left: 42px;
+      padding: 13px 15px;
+      border-radius: 16px 16px 4px 16px;
+      color: rgba(255,255,255,.83);
+      background: rgba(255,255,255,.075);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .agent-run {
+      margin-top: 19px;
+      padding: 0 4px;
+    }
+
+    .run-label { display: flex; align-items: center; gap: 8px; color: #cbd0ff; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+    .run-label::before { content: ""; width: 13px; height: 1px; background: #7986ff; }
+
+    .thinking {
+      margin: 15px 0 17px;
+      display: grid;
+      grid-template-columns: 18px 1fr auto;
+      align-items: start;
+      gap: 10px;
+      color: rgba(255,255,255,.44);
+      font-size: 9px;
+      line-height: 1.45;
+    }
+
+    .thinking-index { width: 18px; height: 18px; border-radius: 6px; color: #171920; background: var(--lime); display: grid; place-items: center; font-size: 8px; font-weight: 800; }
+    .thinking strong { display: block; color: rgba(255,255,255,.76); font-size: 10px; margin-bottom: 3px; }
+    .thinking time { padding-top: 2px; color: rgba(255,255,255,.28); }
+
+    .answer {
+      position: relative;
+      padding: 16px 16px 15px;
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 18px;
+      background: rgba(255,255,255,.055);
+      box-shadow: inset 0 1px rgba(255,255,255,.035);
+      animation: answer-in .6s .12s cubic-bezier(.2,.8,.2,1) both;
+    }
+
+    .answer::before { content: ""; position: absolute; left: -1px; top: 20px; bottom: 20px; width: 2px; background: linear-gradient(#8c96ff, var(--lime)); border-radius: 4px; }
+    .answer-kicker { color: #aab2ff; font-size: 9px; font-weight: 700; }
+    .answer h3 { margin: 11px 0 9px; font-size: 16px; line-height: 1.4; letter-spacing: -.02em; }
+    .answer p { margin: 0; color: rgba(255,255,255,.58); font-size: 11px; line-height: 1.7; }
+
+    .signal-list { display: grid; gap: 7px; margin-top: 14px; }
+    .signal {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      gap: 9px;
+      align-items: center;
+      padding: 9px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.045);
+      font-size: 9px;
+      color: rgba(255,255,255,.49);
+    }
+
+    .signal b { width: 22px; height: 22px; border-radius: 8px; display: grid; place-items: center; color: #bfc5ff; background: rgba(123,135,255,.13); }
+    .signal strong { color: rgba(255,255,255,.78); }
+
+    .answer-footer { margin-top: 13px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.07); display: flex; align-items: center; color: rgba(255,255,255,.34); font-size: 9px; }
+    .sources { display: flex; margin-right: 8px; }
+    .source-dot { width: 18px; height: 18px; margin-right: -5px; border-radius: 6px; border: 1px solid #30323c; display: grid; place-items: center; color: rgba(255,255,255,.6); background: #454955; font-size: 7px; }
+    .answer-footer button { margin-left: auto; border: 0; color: var(--lime); background: transparent; font-size: 9px; cursor: pointer; }
+
+    .composer {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      min-height: 112px;
+      padding: 13px 13px 11px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 20px;
+      background: rgba(47,50,62,.8);
+      box-shadow: 0 18px 50px rgba(8,10,17,.3), inset 0 1px rgba(255,255,255,.06);
+      backdrop-filter: blur(24px);
+    }
+
+    .chips { display: flex; gap: 6px; }
+    .chip { padding: 5px 8px; border-radius: 8px; color: rgba(255,255,255,.62); background: rgba(255,255,255,.065); font-size: 8px; }
+    .chip.active { color: #ced3ff; background: rgba(108,120,255,.14); }
+    .composer-placeholder { padding: 14px 2px 11px; color: rgba(255,255,255,.37); font-size: 11px; }
+    .composer-bottom { display: flex; align-items: center; }
+    .mode { border: 0; padding: 0; color: rgba(255,255,255,.48); background: transparent; font-size: 9px; }
+    .send { margin-left: auto; width: 31px; height: 31px; border: 0; border-radius: 10px; color: #171920; background: var(--lime); display: grid; place-items: center; cursor: pointer; transition: transform .2s ease, box-shadow .2s ease; }
+    .send:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(200,245,106,.22); }
+    .send svg { width: 15px; height: 15px; stroke-width: 2; }
+
+    .floating-create {
+      position: absolute;
+      z-index: 6;
+      left: 98px;
+      bottom: 18px;
+      height: 43px;
+      padding: 0 15px 0 10px;
+      border: 1px solid rgba(255,255,255,.8);
+      border-radius: 14px;
+      color: #41444e;
+      background: rgba(255,255,255,.72);
+      box-shadow: 0 13px 35px rgba(39,44,61,.1);
+      backdrop-filter: blur(18px);
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 11px;
+    }
+
+    .floating-create span:first-child { width: 25px; height: 25px; border-radius: 8px; color: white; background: #24262e; display: grid; place-items: center; font-size: 16px; }
+    .floating-create kbd { margin-left: 7px; color: #999da8; font: 9px ui-monospace, monospace; }
+
+    .assistant.hidden { transform: translateX(430px) scale(.96); opacity: 0; pointer-events: none; }
+    .assistant.hidden ~ .tabs { right: 30px; }
+
+    @keyframes pulse { 0% { transform: scale(.92); opacity: .8; } 70%,100% { transform: scale(1.2); opacity: 0; } }
+    @keyframes float-in { from { opacity: 0; transform: translateY(7px) scale(.95); } to { opacity: 1; transform: none; } }
+    @keyframes answer-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+    @media (max-width: 1200px) {
+      .assistant { width: 365px; }
+      .canvas { right: 388px; }
+      .tabs { right: 405px; }
+      .document { width: calc(100% - 70px); }
+      .outline { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="ambient"></div>
+
+    <nav class="rail" aria-label="主导航">
+      <div class="brand" aria-label="NoteFlow">
+        <svg viewBox="0 0 24 24"><path d="M6 5.5h8.5A2.5 2.5 0 0 1 17 8v10.5H8.5A2.5 2.5 0 0 1 6 16V5.5Z"/><path d="M9 9h5M9 12h4"/><path d="M6 8H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h10"/></svg>
+      </div>
+      <div class="rail-group">
+        <button class="rail-button active" title="工作台"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg></button>
+        <button class="rail-button" title="全局搜索"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg></button>
+        <button class="rail-button" title="知识网络"><svg viewBox="0 0 24 24"><circle cx="6" cy="7" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="14" cy="18" r="2.5"/><path d="m8.5 7 7-.6M7.5 9l5.2 7M17.2 8.4l-2.1 7.2"/></svg></button>
+        <button class="rail-button" title="收件箱"><span class="dot"></span><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z"/><path d="M5 14h4l1.5 2h3l1.5-2h4"/></svg></button>
+      </div>
+      <div class="rail-spacer"></div>
+      <div class="rail-group">
+        <button class="rail-button" title="设置"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7.4 7.4 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7.8 7.8 0 0 0-1.7-1L14.5 3h-4l-.4 3a8 8 0 0 0-1.7 1l-2.4-1-2 3.4L6.1 11a7.4 7.4 0 0 0 0 2L4 14.5l2 3.4 2.4-1a7.8 7.8 0 0 0 1.7 1l.4 3h4l.4-3a8 8 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.5a7.4 7.4 0 0 0 .1-1Z"/></svg></button>
+        <div class="avatar">ZC</div>
+      </div>
+    </nav>
+
+    <section class="stage">
+      <header class="topbar">
+        <div class="workspace-switcher"><span class="mini-logo"><svg viewBox="0 0 24 24"><path d="M4 6h6l2 2h8v10H4z"/></svg></span><span>产品体验组</span><span class="chev">⌄</span></div>
+        <button class="command-button"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><span>搜索、跳转或执行命令</span><kbd>⌘ K</kbd></button>
+        <div class="top-actions"><span class="online">已同步</span><button class="top-icon"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></button><button class="top-icon" id="assistantToggle" title="收起 AI"><svg viewBox="0 0 24 24"><path d="m12 3 1.4 4.2a4.7 4.7 0 0 0 3 3L21 12l-4.6 1.8a4.7 4.7 0 0 0-3 3L12 21l-1.4-4.2a4.7 4.7 0 0 0-3-3L3 12l4.6-1.8a4.7 4.7 0 0 0 3-3L12 3Z"/></svg></button></div>
+      </header>
+
+      <div class="tabs"><button class="tab current"><svg viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6zM15 4v4h4"/></svg>NoteFlow 3.0 产品愿景 <span class="close">×</span></button><button class="tab"><svg viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6zM15 4v4h4"/></svg>AI 体验研究 <span class="close">×</span></button><button class="tab-new">＋</button></div>
+
+      <section class="canvas">
+        <div class="outline"><span class="outline-item current">愿景定义</span><span class="outline-item">核心原则</span><span class="outline-item">体验指标</span></div>
+        <article class="document">
+          <div class="doc-overline"><span class="status-pill">策略草案</span><span>产品与设计</span><span>／</span><span>2026 Q4</span></div>
+          <h1>让知识持续参与<br/>正在发生的工作</h1>
+          <p class="subtitle">NoteFlow 不是另一个信息仓库，而是一层始终理解当前任务、主动连接知识与行动的工作界面。</p>
+          <div class="collab-row"><span class="face one">ZC</span><span class="face two">YL</span><span class="edited">2 人正在协作 · 刚刚更新</span><span class="meta-action">•••</span></div>
+
+          <div class="body-copy">
+            <h2>核心体验原则</h2>
+            <p>真正的效率不是少点击几次，而是减少思路在工具切换中丢失。界面应该理解用户此刻的目标，在恰当的时间提供恰当的能力。</p>
+            <div class="concept-grid">
+              <article class="concept"><span class="concept-index">01 / QUIET</span><strong>安静地存在</strong><p>不制造新的注意力负担，能力只在需要时浮现。</p></article>
+              <article class="concept"><span class="concept-index">02 / CONTEXT</span><strong>理解当前语境</strong><p>AI 的来源、推理过程与影响始终清晰可见。</p></article>
+              <article class="concept"><span class="concept-index">03 / CONTROL</span><strong>保持人的掌控</strong><p>所有生成和修改均可预览、追溯与撤销。</p></article>
+            </div>
+            <p class="active-sentence">AI 不应该占据一个独立世界，而应该成为当前内容上的协作层：它理解选区，也理解这篇笔记在整个工作区中的位置。<span class="selection-menu"><span>已选择 43 字</span><button>交给 AI ✦</button></span></p>
+          </div>
+        </article>
+      </section>
+
+      <aside class="assistant" id="assistant">
+        <header class="assistant-header"><span class="ai-orb"><svg viewBox="0 0 24 24"><path d="m12 3 1.4 4.2a4.7 4.7 0 0 0 3 3L21 12l-4.6 1.8a4.7 4.7 0 0 0-3 3L12 21l-1.4-4.2a4.7 4.7 0 0 0-3-3L3 12l4.6-1.8a4.7 4.7 0 0 0 3-3L12 3Z"/></svg></span><span class="assistant-title"><strong>Flow</strong><span>正在参与这篇笔记</span></span><span class="assistant-actions"><button class="dark-button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><button class="dark-button"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></span></header>
+        <div class="context-line"><svg viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6zM15 4v4h4"/></svg><strong>当前选区</strong><span>核心体验原则</span><span class="live">实时上下文</span></div>
+        <div class="thread">
+          <div class="request">把这段原则变得更鲜明，并检查它是否与前文重复。</div>
+          <div class="agent-run">
+            <div class="run-label">Agent run · 已完成</div>
+            <div class="thinking"><span class="thinking-index">✓</span><span><strong>对照整篇笔记</strong>扫描 6 个段落与 3 条产品原则，发现 1 处语义重复。</span><time>0.8s</time></div>
+            <article class="answer">
+              <span class="answer-kicker">✦ 建议强化“协作层”这个差异点</span>
+              <h3>AI 不在内容之外，<br/>而在工作发生之处。</h3>
+              <p>建议删除“理解选区”的重复描述，保留更有辨识度的空间关系，让产品定位更容易被记住。</p>
+              <div class="signal-list"><div class="signal"><b>↗</b><span><strong>表达力度 +32%</strong><br/>从功能描述转为品牌主张</span></div><div class="signal"><b>−</b><span><strong>减少 18 个重复字</strong><br/>与前文“理解当前任务”合并</span></div></div>
+              <div class="answer-footer"><span class="sources"><span class="source-dot">01</span><span class="source-dot">02</span></span><span>引用 2 处内容</span><button>预览替换 →</button></div>
+            </article>
+          </div>
+        </div>
+        <div class="composer"><div class="chips"><span class="chip active">当前选区</span><span class="chip">整篇笔记</span><span class="chip">＋ 添加来源</span></div><div class="composer-placeholder">继续调整，或交给 Flow 执行…</div><div class="composer-bottom"><button class="mode">Agent 模式⌄</button><button class="send"><svg viewBox="0 0 24 24"><path d="m5 12 14-7-4.5 14-3-6-6.5-1Z"/><path d="m11.5 13 3-3"/></svg></button></div></div>
+      </aside>
+
+      <button class="floating-create"><span>＋</span>快速记录 <kbd>⌘ N</kbd></button>
+    </section>
+  </main>
+
+  <script>
+    const assistant = document.getElementById('assistant');
+    const assistantToggle = document.getElementById('assistantToggle');
+    assistantToggle.addEventListener('click', () => {
+      assistant.classList.toggle('hidden');
+      assistantToggle.title = assistant.classList.contains('hidden') ? '打开 AI' : '收起 AI';
+    });
+  </script>
+</body>
+</html>
