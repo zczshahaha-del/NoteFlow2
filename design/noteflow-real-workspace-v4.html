@@ -1,0 +1,1741 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Noteflow Real Workspace</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+</head>
+<body>
+<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="Noteflow Real Workspace" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;Noteflow Real Workspace&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(
+    --background,
+    var(--color-background-primary, light-dark(rgb(255 255 255), rgb(24 24 24)))
+  ) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: var(
+    --color-background-primary,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --card: color-mix(in oklab, var(--foreground) 5%, var(--background));
+  --card-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --popover: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255), rgb(45 45 45))
+  );
+  --popover-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --primary: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --primary-foreground: var(
+    --color-text-inverse,
+    light-dark(rgb(255 255 255), rgb(13 13 13))
+  );
+  --secondary: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%))
+  );
+  --secondary-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: var(
+    --color-text-secondary,
+    light-dark(rgb(26 28 31 / 49.4%), rgb(255 255 255 / 49.8%))
+  );
+  --accent: var(
+    --color-background-info,
+    light-dark(rgb(229 242 255), rgb(13 39 63))
+  );
+  --accent-foreground: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --destructive: var(
+    --color-text-warning,
+    light-dark(rgb(226 85 7), rgb(255 133 73))
+  );
+  --border: var(
+    --color-border-secondary,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+  --input: var(
+    --color-border-primary,
+    light-dark(
+      rgb(26 28 31 / 11.8%),
+      color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+    )
+  );
+  --ring: var(
+    --color-ring-primary,
+    light-dark(rgb(51 156 255), rgb(131 195 255 / 76%))
+  );
+  --font-size-base: var(--font-text-md-size, 14px);
+  --blue: light-dark(rgb(51 156 255), rgb(51 156 255));
+  --orange: light-dark(rgb(226 85 7), rgb(251 106 34));
+  --green: light-dark(rgb(0 162 64), rgb(64 201 119));
+  --red: light-dark(rgb(224 46 42), rgb(255 103 100));
+  --purple: light-dark(rgb(146 79 247), rgb(173 123 249));
+  --yellow: light-dark(rgb(255 195 0), rgb(255 210 64));
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, &quot;Segoe UI&quot;, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --radius: var(--border-radius-lg, 12.5px);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  /* Preserve MCP aliases for older inline renderers without creating :root cycles. */
+  --color-background-primary: var(
+    --background,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --color-text-primary: var(
+    --foreground,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --color-border-secondary: var(
+    --border,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+
+  margin: 0;
+  padding: 5px;
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans) !important;
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: pointer;
+  font-weight: var(--font-weight-medium, 500);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table-responsive &gt; .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead th {
+  padding-block: 8px;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 6px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align=&quot;right&quot;]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align=&quot;center&quot;]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: superellipse(1.5);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget &gt; :not(.card, .progress) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.progress {
+  display: flex;
+  height: 6px;
+  margin-block: calc((var(--line-height-normal, 1.5em) - 6px) / 2);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+}
+
+.progress-bar {
+  height: 100%;
+  flex-shrink: 0;
+  border: 0;
+  background: var(--viz-series-1);
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  padding: 0;
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  min-height: 26px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: 28px;
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: superellipse(1.5);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+  [aria-pressed=&quot;true&quot;],
+  [aria-selected=&quot;true&quot;],
+  .is-selected
+) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+/* Model-authored chart rules can otherwise stretch icons after these styles load. */
+svg.lucide {
+  display: block;
+  width: 16px !important;
+  height: 16px !important;
+  flex: none;
+  margin: 0 !important;
+  stroke-width: 1.6;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;section id=&quot;noteflow-real-workspace&quot; aria-label=&quot;NoteFlow 真实工作台改版设计&quot;&gt;
+  &lt;style&gt;
+    #noteflow-real-workspace {
+      color-scheme: light dark;
+      position: relative;
+      width: 100%;
+      min-height: 720px;
+      overflow: hidden;
+      color: light-dark(#202124, #edf0f2);
+      background: light-dark(#f4f4f2, #121416);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, &quot;SF Pro Text&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, sans-serif;
+      container-type: inline-size;
+    }
+
+    #noteflow-real-workspace * { box-sizing: border-box; }
+    #noteflow-real-workspace button,
+    #noteflow-real-workspace textarea { font: inherit; color: inherit; }
+    #noteflow-real-workspace button { cursor: pointer; }
+
+    #noteflow-real-workspace .nfr-shell {
+      display: grid;
+      grid-template-columns: 238px minmax(340px, 1fr) 382px;
+      width: 100%;
+      height: 720px;
+      overflow: hidden;
+      background: light-dark(#ffffff, #181b1e);
+    }
+
+    #noteflow-real-workspace .nfr-library {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      overflow: hidden;
+      border-right: 1px solid light-dark(#e5e5e1, #2b2f33);
+      background: light-dark(#f3f3f0, #151719);
+      transition: width .24s ease;
+    }
+
+    #noteflow-real-workspace .nfr-library-head {
+      padding: 18px 16px 12px;
+    }
+
+    #noteflow-real-workspace .nfr-brand-row,
+    #noteflow-real-workspace .nfr-account,
+    #noteflow-real-workspace .nfr-panel-head,
+    #noteflow-real-workspace .nfr-note-topbar,
+    #noteflow-real-workspace .nfr-composer-foot,
+    #noteflow-real-workspace .nfr-source-row,
+    #noteflow-real-workspace .nfr-message-meta {
+      display: flex;
+      align-items: center;
+    }
+
+    #noteflow-real-workspace .nfr-brand-mark {
+      position: relative;
+      width: 29px;
+      height: 29px;
+      flex: 0 0 auto;
+      overflow: hidden;
+      border-radius: 9px;
+      background: light-dark(#202124, #f4f5f6);
+    }
+
+    #noteflow-real-workspace .nfr-brand-mark::before,
+    #noteflow-real-workspace .nfr-brand-mark::after {
+      position: absolute;
+      left: 6px;
+      width: 18px;
+      height: 6px;
+      border-radius: 5px;
+      content: &quot;&quot;;
+      transform: rotate(-35deg);
+    }
+
+    #noteflow-real-workspace .nfr-brand-mark::before { top: 7px; background: #8db9ff; }
+    #noteflow-real-workspace .nfr-brand-mark::after { top: 16px; background: #b8e5cb; }
+    #noteflow-real-workspace .nfr-brand-name { margin-left: 9px; font-weight: 500; letter-spacing: -.02em; }
+    #noteflow-real-workspace .nfr-workspace-name { margin-left: auto; color: light-dark(#7a7d80, #92979c); }
+
+    #noteflow-real-workspace .nfr-library-actions {
+      display: grid;
+      grid-template-columns: 1fr 34px;
+      gap: 7px;
+      margin-top: 17px;
+    }
+
+    #noteflow-real-workspace .nfr-search,
+    #noteflow-real-workspace .nfr-new,
+    #noteflow-real-workspace .nfr-icon-action,
+    #noteflow-real-workspace .nfr-collapse,
+    #noteflow-real-workspace .nfr-send {
+      border: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #noteflow-real-workspace .nfr-search {
+      justify-content: flex-start;
+      gap: 8px;
+      height: 34px;
+      padding: 0 10px;
+      border-radius: 9px;
+      color: light-dark(#777a7e, #979ba0);
+      background: light-dark(#e9e9e5, #202326);
+    }
+
+    #noteflow-real-workspace .nfr-search span { margin-left: auto; font-family: ui-monospace, monospace; opacity: .6; }
+    #noteflow-real-workspace .nfr-new {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      color: light-dark(#ffffff, #16181a);
+      background: light-dark(#292b2f, #edf0f2);
+    }
+
+    #noteflow-real-workspace .nfr-nav-scroll { min-height: 0; flex: 1; overflow-y: auto; padding: 2px 9px 16px; }
+    #noteflow-real-workspace .nfr-section-label { margin: 16px 8px 6px; color: light-dark(#949691, #74787d); font-size: .72em; }
+
+    #noteflow-real-workspace .nfr-nav-row,
+    #noteflow-real-workspace .nfr-tree-row,
+    #noteflow-real-workspace .nfr-folder-row {
+      width: 100%;
+      min-width: 0;
+      height: 34px;
+      border: 0;
+      border-radius: 8px;
+      padding: 0 9px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: light-dark(#5d6064, #b3b7bb);
+      background: transparent;
+      text-align: left;
+    }
+
+    #noteflow-real-workspace .nfr-nav-row:hover,
+    #noteflow-real-workspace .nfr-tree-row:hover { background: light-dark(#e9e9e5, #202326); }
+    #noteflow-real-workspace .nfr-nav-row span:last-child { margin-left: auto; color: light-dark(#a1a39f, #70757a); font-size: .75em; }
+    #noteflow-real-workspace .nfr-folder-row { height: 30px; padding-left: 7px; color: light-dark(#686b6e, #aaaeb2); }
+    #noteflow-real-workspace .nfr-folder-row strong { font-weight: 500; }
+    #noteflow-real-workspace .nfr-tree-row { position: relative; padding-left: 30px; }
+    #noteflow-real-workspace .nfr-tree-row.nfr-active {
+      color: light-dark(#1d2023, #f0f2f4);
+      background: light-dark(#e3e8f0, #242b34);
+      font-weight: 500;
+    }
+
+    #noteflow-real-workspace .nfr-tree-row.nfr-active::before {
+      position: absolute;
+      left: 0;
+      top: 8px;
+      width: 3px;
+      height: 18px;
+      border-radius: 0 3px 3px 0;
+      background: #6387c8;
+      content: &quot;&quot;;
+    }
+
+    #noteflow-real-workspace .nfr-tree-text { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #noteflow-real-workspace .nfr-pin { color: #6387c8; }
+
+    #noteflow-real-workspace .nfr-account {
+      flex: 0 0 auto;
+      margin: 8px;
+      padding: 9px 10px;
+      border-top: 1px solid light-dark(#dfdfda, #292c2f);
+    }
+
+    #noteflow-real-workspace .nfr-avatar {
+      width: 28px;
+      height: 28px;
+      flex: 0 0 auto;
+      border-radius: 9px;
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      background: #607ca7;
+      font-size: .72em;
+      font-weight: 500;
+    }
+
+    #noteflow-real-workspace .nfr-account-copy { min-width: 0; margin-left: 9px; }
+    #noteflow-real-workspace .nfr-account-copy strong,
+    #noteflow-real-workspace .nfr-account-copy span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #noteflow-real-workspace .nfr-account-copy strong { font-weight: 500; }
+    #noteflow-real-workspace .nfr-account-copy span { margin-top: 1px; color: light-dark(#8d908d, #74797d); font-size: .72em; }
+    #noteflow-real-workspace .nfr-collapse { margin-left: auto; color: light-dark(#888b8c, #898d91); background: transparent; }
+
+    #noteflow-real-workspace .nfr-document {
+      position: relative;
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      overflow: hidden;
+      background: light-dark(#fbfbfa, #1a1d20);
+    }
+
+    #noteflow-real-workspace .nfr-note-topbar {
+      height: 52px;
+      flex: 0 0 auto;
+      padding: 0 18px;
+      border-bottom: 1px solid light-dark(#ededeb, #282c2f);
+      color: light-dark(#777a7d, #979b9f);
+      background: light-dark(rgba(251,251,250,.94), rgba(26,29,32,.94));
+      backdrop-filter: blur(18px);
+    }
+
+    #noteflow-real-workspace .nfr-crumbs { min-width: 0; display: flex; align-items: center; gap: 6px; }
+    #noteflow-real-workspace .nfr-crumbs strong { overflow: hidden; color: light-dark(#4a4d50, #c7cbce); font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+    #noteflow-real-workspace .nfr-save { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    #noteflow-real-workspace .nfr-save::before { width: 6px; height: 6px; border-radius: 50%; background: #50a47a; content: &quot;&quot;; }
+
+    #noteflow-real-workspace .nfr-icon-action {
+      width: 32px;
+      height: 32px;
+      margin-left: 2px;
+      border-radius: 8px;
+      color: light-dark(#737679, #989ca0);
+      background: transparent;
+    }
+    #noteflow-real-workspace .nfr-icon-action:hover { background: light-dark(#eeeeeb, #24282b); }
+    #noteflow-real-workspace .nfr-ai-toggle { margin-left: 7px; color: #4f6f9f; background: light-dark(#e8eef6, #27313d); }
+
+    #noteflow-real-workspace .nfr-document-scroll { min-height: 0; flex: 1; overflow-y: auto; }
+    #noteflow-real-workspace .nfr-page { width: min(700px, calc(100% - 72px)); margin: 0 auto; padding: 58px 0 120px; }
+    #noteflow-real-workspace .nfr-kicker { display: flex; align-items: center; gap: 8px; color: light-dark(#8c8f91, #82878b); font-size: .76em; }
+    #noteflow-real-workspace .nfr-kicker span:first-child { color: #4f6f9f; }
+
+    #noteflow-real-workspace .nfr-page h1 {
+      margin: 14px 0 0;
+      max-width: 640px;
+      color: light-dark(#1c1e21, #f0f2f3);
+      font-size: clamp(2rem, 3.4vw, 2.8rem);
+      font-weight: 500;
+      line-height: 1.12;
+      letter-spacing: -.045em;
+    }
+
+    #noteflow-real-workspace .nfr-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 9px;
+      margin-top: 18px;
+      padding-bottom: 25px;
+      border-bottom: 1px solid light-dark(#e7e7e3, #2a2e31);
+      color: light-dark(#898c8e, #858a8e);
+      font-size: .78em;
+    }
+
+    #noteflow-real-workspace .nfr-tag { padding: 3px 7px; border-radius: 6px; background: light-dark(#efefec, #24272a); }
+    #noteflow-real-workspace .nfr-page-content { padding-top: 25px; color: light-dark(#3f4245, #c6c9cc); }
+    #noteflow-real-workspace .nfr-page-content h2 { margin: 24px 0 12px; color: light-dark(#242629, #e1e4e6); font-size: 1.18em; font-weight: 500; letter-spacing: -.02em; }
+    #noteflow-real-workspace .nfr-page-content p { margin: 0 0 16px; line-height: 1.78; }
+
+    #noteflow-real-workspace .nfr-callout {
+      margin: 22px 0;
+      padding: 15px 16px;
+      border-left: 2px solid #6387c8;
+      color: light-dark(#37414d, #d1d8df);
+      background: light-dark(#f0f4f8, #202830);
+    }
+
+    #noteflow-real-workspace .nfr-principles { border-top: 1px solid light-dark(#e7e7e3, #2a2e31); }
+    #noteflow-real-workspace .nfr-principle {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 10px;
+      padding: 13px 0;
+      border-bottom: 1px solid light-dark(#e7e7e3, #2a2e31);
+    }
+    #noteflow-real-workspace .nfr-principle &gt; span { color: light-dark(#a0a29e, #71767a); font-family: ui-monospace, monospace; font-size: .72em; }
+    #noteflow-real-workspace .nfr-principle strong { display: block; margin-bottom: 3px; color: light-dark(#303235, #d9dcde); font-weight: 500; }
+    #noteflow-real-workspace .nfr-principle small { color: light-dark(#7a7d7f, #8f9498); }
+
+    #noteflow-real-workspace .nfr-selected-copy {
+      position: relative;
+      margin: 22px -9px 0;
+      padding: 9px;
+      border-radius: 7px;
+      background: light-dark(#e6ecf5, #25303c);
+      box-shadow: inset 2px 0 #6387c8;
+    }
+
+    #noteflow-real-workspace .nfr-selection-menu {
+      position: absolute;
+      right: 4px;
+      bottom: calc(100% + 7px);
+      display: flex;
+      align-items: center;
+      padding: 3px;
+      border-radius: 10px;
+      color: #e8eaed;
+      background: #292b30;
+      box-shadow: 0 10px 28px rgba(20,22,26,.18);
+      animation: nfr-rise .22s ease-out both;
+    }
+    #noteflow-real-workspace .nfr-selection-menu button { height: 28px; border: 0; border-radius: 7px; padding: 0 8px; color: #c7c9cc; background: transparent; }
+    #noteflow-real-workspace .nfr-selection-menu button:last-child { color: #ffffff; background: #4f6f9f; }
+
+    #noteflow-real-workspace .nfr-outline {
+      position: absolute;
+      right: 10px;
+      top: 47%;
+      display: grid;
+      gap: 5px;
+    }
+    #noteflow-real-workspace .nfr-outline span { width: 13px; height: 2px; border-radius: 2px; background: light-dark(#d1d2cf, #3b3f42); }
+    #noteflow-real-workspace .nfr-outline span:nth-child(2) { width: 18px; background: #6387c8; }
+
+    #noteflow-real-workspace .nfr-ai-panel {
+      position: relative;
+      z-index: 4;
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      overflow: hidden;
+      border-left: 1px solid light-dark(#e3e5e7, #2b2f33);
+      background: light-dark(#f7f8f9, #171a1d);
+      transition: transform .26s ease, opacity .22s ease;
+    }
+
+    #noteflow-real-workspace .nfr-panel-head {
+      height: 52px;
+      flex: 0 0 auto;
+      padding: 0 13px 0 16px;
+      border-bottom: 1px solid light-dark(#e4e6e8, #292d31);
+    }
+    #noteflow-real-workspace .nfr-ai-mark { width: 25px; height: 25px; border-radius: 8px; display: grid; place-items: center; color: #ffffff; background: #4f6f9f; }
+    #noteflow-real-workspace .nfr-ai-name { margin-left: 9px; }
+    #noteflow-real-workspace .nfr-ai-name strong { display: block; font-weight: 500; }
+    #noteflow-real-workspace .nfr-ai-name span { display: block; margin-top: 1px; color: light-dark(#85898d, #858a8e); font-size: .72em; }
+    #noteflow-real-workspace .nfr-panel-head .nfr-icon-action:first-of-type { margin-left: auto; }
+
+    #noteflow-real-workspace .nfr-mode-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      flex: 0 0 auto;
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid light-dark(#e8eaeb, #292d31);
+    }
+    #noteflow-real-workspace .nfr-mode-tabs button {
+      position: relative;
+      height: 30px;
+      border: 0;
+      color: light-dark(#7d8185, #878c90);
+      background: transparent;
+    }
+    #noteflow-real-workspace .nfr-mode-tabs button[aria-pressed=&quot;true&quot;] { color: light-dark(#24272a, #edf0f2); font-weight: 500; }
+    #noteflow-real-workspace .nfr-mode-tabs button[aria-pressed=&quot;true&quot;]::after {
+      position: absolute;
+      left: 50%;
+      bottom: -9px;
+      width: 28px;
+      height: 2px;
+      border-radius: 2px;
+      background: #6387c8;
+      content: &quot;&quot;;
+      transform: translateX(-50%);
+    }
+
+    #noteflow-real-workspace .nfr-context {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex: 0 0 auto;
+      margin: 11px 12px 0;
+      padding: 8px 10px;
+      border-radius: 8px;
+      color: light-dark(#66717c, #aab4bd);
+      background: light-dark(#eaf0f5, #202933);
+    }
+    #noteflow-real-workspace .nfr-context strong { font-weight: 500; }
+    #noteflow-real-workspace .nfr-context span:last-child { margin-left: auto; color: light-dark(#8a8f93, #7f858a); font-size: .72em; }
+
+    #noteflow-real-workspace .nfr-chat { min-height: 0; flex: 1; overflow-y: auto; padding: 17px 16px 138px; }
+    #noteflow-real-workspace .nfr-user-message { max-width: 88%; margin-left: auto; padding: 10px 12px; border-radius: 12px 12px 3px 12px; background: light-dark(#e8eaed, #24282c); line-height: 1.55; }
+
+    #noteflow-real-workspace .nfr-trace {
+      margin: 18px 0 13px;
+      padding: 10px 0;
+      border-top: 1px solid light-dark(#e6e8ea, #292d31);
+      border-bottom: 1px solid light-dark(#e6e8ea, #292d31);
+    }
+    #noteflow-real-workspace .nfr-trace-title { display: flex; align-items: center; gap: 7px; color: light-dark(#62676b, #b0b5b9); }
+    #noteflow-real-workspace .nfr-trace-title::before { width: 6px; height: 6px; border-radius: 50%; background: #50a47a; content: &quot;&quot;; }
+    #noteflow-real-workspace .nfr-trace-title span { margin-left: auto; color: light-dark(#989b9e, #73787c); font-size: .72em; }
+    #noteflow-real-workspace .nfr-trace-steps { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: light-dark(#878b8e, #82878b); font-size: .76em; }
+    #noteflow-real-workspace .nfr-trace-steps i { width: 18px; height: 1px; background: light-dark(#c9ccce, #3b4044); }
+
+    #noteflow-real-workspace .nfr-answer-label { color: #4f6f9f; font-size: .78em; font-weight: 500; }
+    #noteflow-real-workspace .nfr-answer h2 { margin: 8px 0 10px; color: light-dark(#292c2f, #e4e7e9); font-size: 1.08em; font-weight: 500; }
+    #noteflow-real-workspace .nfr-answer p { margin: 0 0 13px; color: light-dark(#55595d, #b4b9bd); line-height: 1.68; }
+    #noteflow-real-workspace .nfr-answer ol { margin: 0; padding: 0; list-style: none; }
+    #noteflow-real-workspace .nfr-answer li { display: grid; grid-template-columns: 20px 1fr; gap: 8px; margin: 10px 0; color: light-dark(#4c5054, #bdc2c6); line-height: 1.55; }
+    #noteflow-real-workspace .nfr-answer li b { color: #6387c8; font-family: ui-monospace, monospace; font-weight: 500; }
+    #noteflow-real-workspace .nfr-citation { display: inline-flex; align-items: center; margin-left: 4px; padding: 1px 5px; border-radius: 5px; color: #4f6f9f; background: light-dark(#e7eef7, #25313d); font-size: .72em; }
+
+    #noteflow-real-workspace .nfr-sources { margin-top: 17px; padding-top: 12px; border-top: 1px solid light-dark(#e6e8ea, #292d31); }
+    #noteflow-real-workspace .nfr-sources-title { color: light-dark(#777b7f, #92979b); font-size: .76em; }
+    #noteflow-real-workspace .nfr-source-row { gap: 9px; margin-top: 8px; padding: 7px 0; }
+    #noteflow-real-workspace .nfr-source-icon { width: 25px; height: 29px; border-radius: 5px; display: grid; place-items: center; color: #4f6f9f; background: light-dark(#e7edf4, #222b35); }
+    #noteflow-real-workspace .nfr-source-copy { min-width: 0; flex: 1; }
+    #noteflow-real-workspace .nfr-source-copy strong,
+    #noteflow-real-workspace .nfr-source-copy span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #noteflow-real-workspace .nfr-source-copy strong { font-weight: 500; }
+    #noteflow-real-workspace .nfr-source-copy span { margin-top: 2px; color: light-dark(#929699, #777d81); font-size: .72em; }
+
+    #noteflow-real-workspace .nfr-composer {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      min-height: 110px;
+      padding: 10px 11px 9px;
+      border: 1px solid light-dark(#d9dde1, #34393e);
+      border-radius: 13px;
+      background: light-dark(#ffffff, #202428);
+      box-shadow: 0 12px 34px light-dark(rgba(32,38,43,.11), rgba(0,0,0,.22));
+    }
+    #noteflow-real-workspace .nfr-selection-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; border-radius: 6px; color: #4f6f9f; background: light-dark(#edf2f7, #27313b); font-size: .72em; }
+    #noteflow-real-workspace .nfr-composer textarea { width: 100%; height: 43px; resize: none; border: 0; outline: 0; padding: 9px 2px 4px; color: light-dark(#35383b, #d9dcdf); background: transparent; }
+    #noteflow-real-workspace .nfr-composer textarea::placeholder { color: light-dark(#9ca0a3, #73787c); }
+    #noteflow-real-workspace .nfr-composer-foot { color: light-dark(#888c8f, #858a8e); }
+    #noteflow-real-workspace .nfr-composer-foot span { margin-left: 6px; }
+    #noteflow-real-workspace .nfr-send { width: 31px; height: 31px; margin-left: auto; border-radius: 9px; color: #ffffff; background: #4f6f9f; }
+
+    #noteflow-real-workspace .nfr-resize-handle { position: absolute; left: -3px; top: 0; bottom: 0; width: 6px; cursor: col-resize; }
+    #noteflow-real-workspace .nfr-resize-handle::after { position: absolute; left: 2px; top: 44%; width: 2px; height: 48px; border-radius: 2px; background: transparent; content: &quot;&quot;; transition: background .15s ease; }
+    #noteflow-real-workspace .nfr-resize-handle:hover::after { background: #6387c8; }
+
+    #noteflow-real-workspace.nfr-ai-hidden .nfr-shell { grid-template-columns: 238px minmax(340px, 1fr) 0; }
+    #noteflow-real-workspace.nfr-ai-hidden .nfr-ai-panel { opacity: 0; pointer-events: none; transform: translateX(24px); }
+    #noteflow-real-workspace.nfr-library-compact .nfr-shell { grid-template-columns: 54px minmax(340px, 1fr) 382px; }
+    #noteflow-real-workspace.nfr-library-compact .nfr-library-head { padding: 14px 12px; }
+    #noteflow-real-workspace.nfr-library-compact .nfr-brand-name,
+    #noteflow-real-workspace.nfr-library-compact .nfr-workspace-name,
+    #noteflow-real-workspace.nfr-library-compact .nfr-library-actions,
+    #noteflow-real-workspace.nfr-library-compact .nfr-nav-scroll,
+    #noteflow-real-workspace.nfr-library-compact .nfr-account-copy { display: none; }
+    #noteflow-real-workspace.nfr-library-compact .nfr-account { margin-top: auto; justify-content: center; padding: 10px 0; }
+    #noteflow-real-workspace.nfr-library-compact .nfr-collapse { display: none; }
+
+    #noteflow-real-workspace .nfr-mode-content[hidden] { display: none; }
+    #noteflow-real-workspace .nfr-mode-note { color: light-dark(#85898d, #858a8e); }
+
+    @keyframes nfr-rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    @container (max-width: 940px) {
+      #noteflow-real-workspace .nfr-shell { grid-template-columns: 54px minmax(300px, 1fr) 330px; }
+      #noteflow-real-workspace .nfr-library-head { padding: 14px 12px; }
+      #noteflow-real-workspace .nfr-brand-name,
+      #noteflow-real-workspace .nfr-workspace-name,
+      #noteflow-real-workspace .nfr-library-actions,
+      #noteflow-real-workspace .nfr-nav-scroll,
+      #noteflow-real-workspace .nfr-account-copy,
+      #noteflow-real-workspace .nfr-collapse { display: none; }
+      #noteflow-real-workspace .nfr-account { margin-top: auto; justify-content: center; padding: 10px 0; }
+      #noteflow-real-workspace .nfr-page { width: calc(100% - 48px); }
+      #noteflow-real-workspace .nfr-note-topbar { padding-inline: 12px; }
+      #noteflow-real-workspace .nfr-crumbs span:not(:last-child),
+      #noteflow-real-workspace .nfr-save { display: none; }
+    }
+
+    @container (max-width: 620px) {
+      #noteflow-real-workspace { min-height: 660px; }
+      #noteflow-real-workspace .nfr-shell { height: 660px; grid-template-columns: 1fr; }
+      #noteflow-real-workspace .nfr-library { display: none; }
+      #noteflow-real-workspace .nfr-document { grid-column: 1; grid-row: 1; }
+      #noteflow-real-workspace .nfr-ai-panel { position: absolute; inset: 42px 8px 8px auto; width: min(360px, calc(100% - 16px)); border: 1px solid light-dark(#dfe2e4, #303438); border-radius: 14px; box-shadow: 0 20px 60px rgba(19,22,25,.2); }
+      #noteflow-real-workspace.nfr-ai-hidden .nfr-ai-panel { transform: translateX(105%); }
+      #noteflow-real-workspace .nfr-page { width: calc(100% - 32px); padding-top: 42px; }
+      #noteflow-real-workspace .nfr-page h1 { font-size: 2rem; }
+      #noteflow-real-workspace .nfr-icon-action:not(.nfr-ai-toggle) { display: none; }
+    }
+  &lt;/style&gt;
+
+  &lt;div class=&quot;nfr-shell&quot;&gt;
+    &lt;aside class=&quot;nfr-library&quot; aria-label=&quot;知识库目录&quot;&gt;
+      &lt;div class=&quot;nfr-library-head&quot;&gt;
+        &lt;div class=&quot;nfr-brand-row&quot;&gt;&lt;span class=&quot;nfr-brand-mark&quot; aria-hidden=&quot;true&quot;&gt;&lt;/span&gt;&lt;strong class=&quot;nfr-brand-name&quot;&gt;NoteFlow&lt;/strong&gt;&lt;span class=&quot;nfr-workspace-name&quot;&gt;个人空间⌄&lt;/span&gt;&lt;/div&gt;
+        &lt;div class=&quot;nfr-library-actions&quot;&gt;&lt;button class=&quot;nfr-search&quot; type=&quot;button&quot;&gt;&lt;i data-lucide=&quot;search&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;搜索笔记&lt;span&gt;⌘K&lt;/span&gt;&lt;/button&gt;&lt;button class=&quot;nfr-new&quot; type=&quot;button&quot; aria-label=&quot;新建&quot;&gt;&lt;i data-lucide=&quot;plus&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;div class=&quot;nfr-nav-scroll&quot;&gt;
+        &lt;div class=&quot;nfr-section-label&quot;&gt;工作台&lt;/div&gt;
+        &lt;button class=&quot;nfr-nav-row&quot; type=&quot;button&quot;&gt;&lt;i data-lucide=&quot;clock-3&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;最近&lt;span&gt;8&lt;/span&gt;&lt;/button&gt;
+        &lt;button class=&quot;nfr-nav-row&quot; type=&quot;button&quot;&gt;&lt;i data-lucide=&quot;star&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;收藏&lt;span&gt;12&lt;/span&gt;&lt;/button&gt;
+        &lt;button class=&quot;nfr-nav-row&quot; type=&quot;button&quot;&gt;&lt;i data-lucide=&quot;files&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;全部笔记&lt;span&gt;46&lt;/span&gt;&lt;/button&gt;
+
+        &lt;div class=&quot;nfr-section-label&quot;&gt;知识库&lt;/div&gt;
+        &lt;div class=&quot;nfr-folder-row&quot;&gt;&lt;i data-lucide=&quot;chevron-down&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;i data-lucide=&quot;folder&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;strong&gt;产品与设计&lt;/strong&gt;&lt;/div&gt;
+        &lt;button class=&quot;nfr-tree-row nfr-active&quot; type=&quot;button&quot;&gt;&lt;i data-lucide=&quot;file-text&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span class=&quot;nfr-tree-text&quot;&gt;NoteFlow 3.0 产品愿景&lt;/span&gt;&lt;i class=&quot;nfr-pin&quot; data-lucide=&quot;pin&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+        &lt;button class=&quot;nfr-tree-row&quot; type=&quot;button&quot;&gt;&lt;i data-lucide=&quot;file-text&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span class=&quot;nfr-tree-text&quot;&gt;AI 知识库体验研究&lt;/span&gt;&lt;/button&gt;
+        &lt;button class=&quot;nfr-tree-row&quot; type=&quot;button&quot;&gt;&lt;i data-lucide=&quot;file-text&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span class=&quot;nfr-tree-text&quot;&gt;UI 重构评审记录&lt;/span&gt;&lt;/button&gt;
+        &lt;div class=&quot;nfr-folder-row&quot;&gt;&lt;i data-lucide=&quot;chevron-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;i data-lucide=&quot;folder&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;strong&gt;用户研究&lt;/strong&gt;&lt;/div&gt;
+        &lt;div class=&quot;nfr-folder-row&quot;&gt;&lt;i data-lucide=&quot;chevron-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;i data-lucide=&quot;folder&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;strong&gt;技术方案&lt;/strong&gt;&lt;/div&gt;
+        &lt;div class=&quot;nfr-folder-row&quot;&gt;&lt;i data-lucide=&quot;chevron-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;i data-lucide=&quot;trash-2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;strong&gt;回收站&lt;/strong&gt;&lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;div class=&quot;nfr-account&quot;&gt;&lt;span class=&quot;nfr-avatar&quot;&gt;ZC&lt;/span&gt;&lt;span class=&quot;nfr-account-copy&quot;&gt;&lt;strong&gt;张成&lt;/strong&gt;&lt;span&gt;zhangcheng@example.com&lt;/span&gt;&lt;/span&gt;&lt;button class=&quot;nfr-collapse&quot; id=&quot;nfr-library-toggle&quot; type=&quot;button&quot; aria-label=&quot;收起目录&quot;&gt;&lt;i data-lucide=&quot;panel-left-close&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;
+    &lt;/aside&gt;
+
+    &lt;main class=&quot;nfr-document&quot;&gt;
+      &lt;header class=&quot;nfr-note-topbar&quot;&gt;
+        &lt;div class=&quot;nfr-crumbs&quot;&gt;&lt;span&gt;产品与设计&lt;/span&gt;&lt;i data-lucide=&quot;chevron-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;strong&gt;NoteFlow 3.0 产品愿景&lt;/strong&gt;&lt;/div&gt;
+        &lt;span class=&quot;nfr-save&quot;&gt;已自动保存&lt;/span&gt;
+        &lt;button class=&quot;nfr-icon-action&quot; type=&quot;button&quot; aria-label=&quot;附件&quot;&gt;&lt;i data-lucide=&quot;paperclip&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+        &lt;button class=&quot;nfr-icon-action&quot; type=&quot;button&quot; aria-label=&quot;版本历史&quot;&gt;&lt;i data-lucide=&quot;history&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+        &lt;button class=&quot;nfr-icon-action&quot; type=&quot;button&quot; aria-label=&quot;笔记关系&quot;&gt;&lt;i data-lucide=&quot;git-fork&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+        &lt;button class=&quot;nfr-icon-action nfr-ai-toggle&quot; id=&quot;nfr-ai-toggle&quot; type=&quot;button&quot; aria-label=&quot;切换 AI 助手&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+      &lt;/header&gt;
+
+      &lt;div class=&quot;nfr-document-scroll&quot;&gt;
+        &lt;article class=&quot;nfr-page&quot;&gt;
+          &lt;div class=&quot;nfr-kicker&quot;&gt;&lt;span&gt;产品策略&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;&lt;span&gt;最后更新于 2 分钟前&lt;/span&gt;&lt;/div&gt;
+          &lt;h1&gt;NoteFlow 3.0 产品愿景&lt;/h1&gt;
+          &lt;div class=&quot;nfr-meta&quot;&gt;&lt;span&gt;创建于 2026 年 8 月 26 日&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;&lt;span&gt;1,284 字&lt;/span&gt;&lt;span class=&quot;nfr-tag&quot;&gt;产品&lt;/span&gt;&lt;span class=&quot;nfr-tag&quot;&gt;AI&lt;/span&gt;&lt;/div&gt;
+
+          &lt;div class=&quot;nfr-page-content&quot;&gt;
+            &lt;div class=&quot;nfr-callout&quot;&gt;NoteFlow 的价值不是保存更多信息，而是让已有知识在用户需要时重新参与工作。&lt;/div&gt;
+            &lt;h2&gt;核心体验原则&lt;/h2&gt;
+            &lt;p&gt;产品应该把记录、理解和行动连接成连续的工作流，让用户始终知道当前内容来自哪里、AI 做了什么，以及下一步会发生什么。&lt;/p&gt;
+            &lt;div class=&quot;nfr-principles&quot;&gt;
+              &lt;div class=&quot;nfr-principle&quot;&gt;&lt;span&gt;01&lt;/span&gt;&lt;div&gt;&lt;strong&gt;内容始终是主角&lt;/strong&gt;&lt;small&gt;导航和工具在需要时出现，完成任务后安静退场。&lt;/small&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;div class=&quot;nfr-principle&quot;&gt;&lt;span&gt;02&lt;/span&gt;&lt;div&gt;&lt;strong&gt;AI 的上下文清晰可见&lt;/strong&gt;&lt;small&gt;来源、执行状态和影响范围必须能够被理解。&lt;/small&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;div class=&quot;nfr-principle&quot;&gt;&lt;span&gt;03&lt;/span&gt;&lt;div&gt;&lt;strong&gt;重要修改必须可逆&lt;/strong&gt;&lt;small&gt;生成结果先预览，确认后再写入正式笔记。&lt;/small&gt;&lt;/div&gt;&lt;/div&gt;
+            &lt;/div&gt;
+            &lt;p class=&quot;nfr-selected-copy&quot;&gt;真正的效率不是减少几次点击，而是减少在工具之间切换时丢失的思路。&lt;span class=&quot;nfr-selection-menu&quot;&gt;&lt;button type=&quot;button&quot; aria-label=&quot;加粗&quot;&gt;B&lt;/button&gt;&lt;button type=&quot;button&quot; aria-label=&quot;链接&quot;&gt;&lt;i data-lucide=&quot;link&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;button type=&quot;button&quot;&gt;加入对话&lt;/button&gt;&lt;/span&gt;&lt;/p&gt;
+          &lt;/div&gt;
+        &lt;/article&gt;
+      &lt;/div&gt;
+      &lt;div class=&quot;nfr-outline&quot; aria-label=&quot;章节快速导航&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;span&gt;&lt;/span&gt;&lt;span&gt;&lt;/span&gt;&lt;span&gt;&lt;/span&gt;&lt;/div&gt;
+    &lt;/main&gt;
+
+    &lt;aside class=&quot;nfr-ai-panel&quot; aria-label=&quot;AI 助手&quot;&gt;
+      &lt;div class=&quot;nfr-resize-handle&quot; aria-hidden=&quot;true&quot;&gt;&lt;/div&gt;
+      &lt;header class=&quot;nfr-panel-head&quot;&gt;&lt;span class=&quot;nfr-ai-mark&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;span class=&quot;nfr-ai-name&quot;&gt;&lt;strong&gt;AI 助手&lt;/strong&gt;&lt;span&gt;当前笔记已连接&lt;/span&gt;&lt;/span&gt;&lt;button class=&quot;nfr-icon-action&quot; type=&quot;button&quot; aria-label=&quot;新对话&quot;&gt;&lt;i data-lucide=&quot;square-pen&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;button class=&quot;nfr-icon-action&quot; type=&quot;button&quot; aria-label=&quot;历史会话&quot;&gt;&lt;i data-lucide=&quot;history&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;button class=&quot;nfr-icon-action&quot; type=&quot;button&quot; aria-label=&quot;关闭 AI&quot;&gt;&lt;i data-lucide=&quot;panel-right-close&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/header&gt;
+
+      &lt;div class=&quot;nfr-mode-tabs&quot; aria-label=&quot;AI 模式&quot;&gt;
+        &lt;button type=&quot;button&quot; data-nfr-mode=&quot;chat&quot; aria-pressed=&quot;false&quot;&gt;对话&lt;/button&gt;
+        &lt;button type=&quot;button&quot; data-nfr-mode=&quot;note&quot; aria-pressed=&quot;true&quot;&gt;问当前笔记&lt;/button&gt;
+        &lt;button type=&quot;button&quot; data-nfr-mode=&quot;library&quot; aria-pressed=&quot;false&quot;&gt;搜索全库&lt;/button&gt;
+      &lt;/div&gt;
+
+      &lt;div class=&quot;nfr-context&quot;&gt;&lt;i data-lucide=&quot;file-text&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;strong&gt;NoteFlow 3.0 产品愿景&lt;/strong&gt;&lt;span&gt;当前上下文&lt;/span&gt;&lt;/div&gt;
+
+      &lt;div class=&quot;nfr-chat&quot; aria-live=&quot;polite&quot;&gt;
+        &lt;div class=&quot;nfr-user-message&quot;&gt;根据当前笔记，归纳最需要优先优化的三个体验问题。&lt;/div&gt;
+        &lt;div class=&quot;nfr-trace&quot;&gt;&lt;div class=&quot;nfr-trace-title&quot;&gt;任务已完成&lt;span&gt;1.4 秒&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;nfr-trace-steps&quot;&gt;&lt;span&gt;读取当前笔记&lt;/span&gt;&lt;i&gt;&lt;/i&gt;&lt;span&gt;分析结构&lt;/span&gt;&lt;i&gt;&lt;/i&gt;&lt;span&gt;生成回答&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;
+
+        &lt;div class=&quot;nfr-mode-content&quot; data-nfr-content=&quot;note&quot;&gt;
+          &lt;article class=&quot;nfr-answer&quot;&gt;&lt;span class=&quot;nfr-answer-label&quot;&gt;基于当前笔记&lt;/span&gt;&lt;h2&gt;最需要先解决的是信息层级，而不是增加更多功能。&lt;/h2&gt;&lt;ol&gt;&lt;li&gt;&lt;b&gt;01&lt;/b&gt;&lt;span&gt;让正文成为视觉中心，降低目录和 AI 面板的常驻存在感。&lt;span class=&quot;nfr-citation&quot;&gt;来源 1&lt;/span&gt;&lt;/span&gt;&lt;/li&gt;&lt;li&gt;&lt;b&gt;02&lt;/b&gt;&lt;span&gt;把 AI 的上下文、执行过程与结果分层展示，避免所有信息堆成聊天记录。&lt;span class=&quot;nfr-citation&quot;&gt;来源 2&lt;/span&gt;&lt;/span&gt;&lt;/li&gt;&lt;li&gt;&lt;b&gt;03&lt;/b&gt;&lt;span&gt;统一草稿、编辑预览和正式笔记的视觉语言，减少模式切换造成的割裂。&lt;span class=&quot;nfr-citation&quot;&gt;来源 3&lt;/span&gt;&lt;/span&gt;&lt;/li&gt;&lt;/ol&gt;&lt;/article&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;nfr-mode-content nfr-mode-note&quot; data-nfr-content=&quot;chat&quot; hidden&gt;普通对话不会自动引用笔记。输入问题后，AI 会直接回答并保留会话历史。&lt;/div&gt;
+        &lt;div class=&quot;nfr-mode-content nfr-mode-note&quot; data-nfr-content=&quot;library&quot; hidden&gt;全库搜索会检索标题、关键词和向量结果，并在回答中显示真实来源。&lt;/div&gt;
+
+        &lt;section class=&quot;nfr-sources&quot;&gt;&lt;div class=&quot;nfr-sources-title&quot;&gt;本次引用 · 3&lt;/div&gt;&lt;div class=&quot;nfr-source-row&quot;&gt;&lt;span class=&quot;nfr-source-icon&quot;&gt;&lt;i data-lucide=&quot;file-text&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;span class=&quot;nfr-source-copy&quot;&gt;&lt;strong&gt;核心体验原则&lt;/strong&gt;&lt;span&gt;NoteFlow 3.0 产品愿景 · 第 2 节&lt;/span&gt;&lt;/span&gt;&lt;i data-lucide=&quot;chevron-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/div&gt;&lt;div class=&quot;nfr-source-row&quot;&gt;&lt;span class=&quot;nfr-source-icon&quot;&gt;&lt;i data-lucide=&quot;file-text&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;span class=&quot;nfr-source-copy&quot;&gt;&lt;strong&gt;AI 知识库体验研究&lt;/strong&gt;&lt;span&gt;产品与设计 · 相关笔记&lt;/span&gt;&lt;/span&gt;&lt;i data-lucide=&quot;chevron-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/div&gt;&lt;/section&gt;
+      &lt;/div&gt;
+
+      &lt;div class=&quot;nfr-composer&quot;&gt;&lt;span class=&quot;nfr-selection-chip&quot;&gt;&lt;i data-lucide=&quot;text-select&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;已加入选中文字&lt;/span&gt;&lt;textarea aria-label=&quot;向 AI 提问&quot; placeholder=&quot;继续提问，或让 AI 修改当前笔记…&quot;&gt;&lt;/textarea&gt;&lt;div class=&quot;nfr-composer-foot&quot;&gt;&lt;i data-lucide=&quot;mic&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;问当前笔记&lt;/span&gt;&lt;button class=&quot;nfr-send&quot; type=&quot;button&quot; aria-label=&quot;发送&quot;&gt;&lt;i data-lucide=&quot;arrow-up&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
+    &lt;/aside&gt;
+  &lt;/div&gt;
+
+  &lt;script&gt;
+    (() =&gt; {
+      const root = document.getElementById(&#x27;noteflow-real-workspace&#x27;);
+      const aiToggle = root.querySelector(&#x27;#nfr-ai-toggle&#x27;);
+      const libraryToggle = root.querySelector(&#x27;#nfr-library-toggle&#x27;);
+      const closeAi = root.querySelector(&#x27;.nfr-ai-panel .nfr-panel-head button:last-child&#x27;);
+      const modeButtons = [...root.querySelectorAll(&#x27;[data-nfr-mode]&#x27;)];
+      const modeContents = [...root.querySelectorAll(&#x27;[data-nfr-content]&#x27;)];
+
+      const toggleAi = () =&gt; root.classList.toggle(&#x27;nfr-ai-hidden&#x27;);
+      aiToggle.addEventListener(&#x27;click&#x27;, toggleAi);
+      closeAi.addEventListener(&#x27;click&#x27;, toggleAi);
+      libraryToggle.addEventListener(&#x27;click&#x27;, () =&gt; root.classList.toggle(&#x27;nfr-library-compact&#x27;));
+
+      modeButtons.forEach((button) =&gt; button.addEventListener(&#x27;click&#x27;, () =&gt; {
+        const mode = button.dataset.nfrMode;
+        modeButtons.forEach((item) =&gt; item.setAttribute(&#x27;aria-pressed&#x27;, String(item === button)));
+        modeContents.forEach((content) =&gt; { content.hidden = content.dataset.nfrContent !== mode; });
+      }));
+    })();
+  &lt;/script&gt;
+&lt;/section&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+
+  const getTrigger = (target) =&gt;
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest(&quot;[data-tooltip]&quot;)
+      : null;
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handleLeave = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    document.removeEventListener(&quot;pointerover&quot;, handlePointerOpen);
+    document.removeEventListener(&quot;pointerout&quot;, handleLeave);
+    document.removeEventListener(&quot;focusin&quot;, handleFocusIn);
+    document.removeEventListener(&quot;focusout&quot;, handleLeave);
+    document.removeEventListener(&quot;keydown&quot;, handleKeyDown);
+    document.removeEventListener(&quot;contextmenu&quot;, handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener(&quot;pointerover&quot;, handlePointerOpen);
+  document.addEventListener(&quot;pointerout&quot;, handleLeave);
+  document.addEventListener(&quot;focusin&quot;, handleFocusIn);
+  document.addEventListener(&quot;focusout&quot;, handleLeave);
+  document.addEventListener(&quot;keydown&quot;, handleKeyDown);
+  document.addEventListener(&quot;contextmenu&quot;, handleContextMenu);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+</body>
+</html>
