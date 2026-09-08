@@ -1,0 +1,8 @@
+[Unit]
+Description=Renew NoteFlow TLS certificate
+After=network-online.target nginx.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/certbot/bin/certbot renew --quiet
+ExecStartPost=/usr/bin/systemctl reload nginx

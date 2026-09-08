@@ -1,0 +1,52 @@
+services:
+  postgres:
+    ports: !reset []
+    mem_limit: 512m
+    shm_size: 128m
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    ports: !reset []
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - 96mb
+      - --maxmemory-policy
+      - allkeys-lru
+    mem_limit: 160m
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  backend:
+    ports: !reset []
+    expose:
+      - "8080"
+    environment:
+      ENVIRONMENT: production
+      ATTACHMENT_STORAGE_ROOT: /app/data/attachments
+    volumes:
+      - attachment_data:/app/data/attachments
+    mem_limit: 900m
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    ports: !override
+      - "127.0.0.1:3000:80"
+    mem_limit: 128m
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  attachment_data:
