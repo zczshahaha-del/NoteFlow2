@@ -725,7 +725,10 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       centerMode: "draft",
       draftSeed: seed,
       draftCommand: null,
-      activeDraftContext: null,
+      // Keep the conversation card's durable status while the workspace is
+      // open. Clearing it here made the card fall back to "configuring" after
+      // the workspace was dismissed, even though the outline already existed.
+      activeDraftContext: state.activeDraftContext,
       activeEditPreview: null,
       chatSelection: null,
       pendingCheckpoint: checkpoint,

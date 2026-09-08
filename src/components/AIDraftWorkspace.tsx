@@ -602,9 +602,14 @@ export default function AIDraftWorkspace() {
   }, [checkpointMatchesCurrentSeed, draft, pendingCheckpoint, replaceDraft]);
 
   const stopActiveRequest = useCallback(() => {
-    activeRequestRef.current?.abort();
+    const controller = activeRequestRef.current;
+    controller?.abort();
     activeRequestRef.current = null;
-    setBusyMode("idle");
+    if (controller) {
+      setStatusText("正在停止当前生成…");
+    } else {
+      setBusyMode("idle");
+    }
   }, []);
 
   const createOutline = useCallback(async (feedbackText = "", topicOverride = "") => {
@@ -818,7 +823,28 @@ export default function AIDraftWorkspace() {
         replaceDraft(nextDraft);
         return nextDraft;
       } catch (error) {
-        if (!(error instanceof Error && error.name === "AbortError")) {
+        if (error instanceof Error && error.name === "AbortError") {
+          const partialContent = generated.trim();
+          const stoppedStatus = partialContent ? "needs_revision" : "outline_only";
+          const stoppedDraft = await updateDraftSection(baseDraft.id, section.id, {
+            content: partialContent,
+            status: stoppedStatus,
+            source: "generation_stopped",
+          }).catch(() => null);
+          if (stoppedDraft) {
+            replaceDraft(stoppedDraft);
+          } else {
+            patchSection(section.id, {
+              content: partialContent,
+              status: stoppedStatus,
+            });
+          }
+          setStatusText(
+            partialContent
+              ? `${section.title} 已停止生成，已保留当前内容。`
+              : `${section.title} 已停止生成。`
+          );
+        } else {
           patchSection(section.id, { status: "failed" });
           await updateDraftSection(baseDraft.id, section.id, {
             status: "failed",
@@ -1314,7 +1340,7 @@ export default function AIDraftWorkspace() {
                       maxLength={4000}
                     />
                     <p className="mt-1.5 text-[10px] text-jelly-text-muted">
-                      {draft.status === "generating" ? "保存后从下一章开始生效。" : "本章单独要求与全文要求冲突时，以本章要求为准。"}
+                      {draft.status === "generating" ? "保存后从下一章开始生效。" : "章节要求与全文要求冲突时，以章节要求为准。"}
                     </p>
                     <div className="mt-3 flex items-center justify-end gap-2">
                       {generatedSectionCount > 0 && (
@@ -1476,10 +1502,23 @@ export default function AIDraftWorkspace() {
                   </h2>
                 </div>
                 {selectedSection?.status === "generating" && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-jelly-blue-pale px-2.5 py-1 text-[11px] text-jelly-blue-deep">
-                    <Loader2 size={12} className="animate-spin" />
-                    生成中
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-jelly-blue-pale px-2.5 py-1 text-[11px] text-jelly-blue-deep">
+                      <Loader2 size={12} className="animate-spin" />
+                      生成中
+                    </span>
+                    {busyMode === "section" && (
+                      <button
+                        type="button"
+                        onClick={stopActiveRequest}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-jelly-red/25 bg-white px-2.5 text-[11px] font-medium text-jelly-red hover:bg-jelly-red-bg"
+                        aria-label={`停止生成 ${selectedSection.title}`}
+                      >
+                        <Square size={11} fill="currentColor" />
+                        停止生成
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -1517,9 +1556,9 @@ export default function AIDraftWorkspace() {
                   ) : selectedSection ? (
                     <div className="flex min-h-[360px] flex-col items-center justify-center text-center">
                       <BookOpenCheck size={30} className="text-jelly-blue" strokeWidth={1.5} />
-                      <h3 className="mt-4 text-[16px] font-semibold text-jelly-text">本章正文尚未生成</h3>
+                      <h3 className="mt-4 text-[16px] font-semibold text-jelly-text">正文尚未生成</h3>
                       <p className="mt-2 max-w-md text-[13px] leading-relaxed text-jelly-text-muted">
-                        {selectedSection.outlineText.replace(/^#{1,4}\s*/u, "") || "点击下方按钮，让 AI 生成当前章节正文。"}
+                        {selectedSection.outlineText.replace(/^#{1,4}\s*/u, "") || "点击下方按钮，让 AI 生成正文。"}
                       </p>
                       <button
                         type="button"
@@ -1528,7 +1567,7 @@ export default function AIDraftWorkspace() {
                         className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl bg-jelly-blue px-5 text-[13px] font-semibold text-white shadow-[0_8px_20px_rgba(54,125,163,0.18)] hover:brightness-95 disabled:opacity-45"
                       >
                         <Wand2 size={15} />
-                        生成本章正文
+                        生成正文
                       </button>
                     </div>
                   ) : (
@@ -1551,7 +1590,7 @@ export default function AIDraftWorkspace() {
                           className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dfe5e9] bg-white px-3 text-[12px] text-jelly-text-soft hover:bg-[#f6f8f9] disabled:opacity-45"
                         >
                           <RefreshCcw size={13} />
-                          重新生成本章
+                          重新生成
                         </button>
                         <button
                           type="button"
@@ -1566,7 +1605,7 @@ export default function AIDraftWorkspace() {
                           className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dfe5e9] bg-white px-3 text-[12px] text-jelly-text-soft hover:bg-[#f6f8f9] disabled:opacity-45"
                         >
                           <Pencil size={13} />
-                          {sectionEditing ? "保存修改" : "编辑本章"}
+                          {sectionEditing ? "保存修改" : "编辑"}
                         </button>
                         {selectedSection.status !== "confirmed" && selectedSection.content.trim() && (
                           <button
@@ -1576,7 +1615,7 @@ export default function AIDraftWorkspace() {
                             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-jelly-green/25 bg-jelly-green-bg px-3 text-[12px] text-jelly-green disabled:opacity-45"
                           >
                             <CheckCircle2 size={13} />
-                            确认本章
+                            确认
                           </button>
                         )}
                       </>
@@ -1622,7 +1661,7 @@ export default function AIDraftWorkspace() {
                   <div className="mt-3 flex items-end gap-2 rounded-xl border border-[#dde6eb] bg-[#f8fbfc] p-2.5">
                     <div className="min-w-0 flex-1">
                       <label htmlFor="draft-section-instruction" className="mb-1 block text-[10px] font-semibold text-jelly-text-muted">
-                        告诉 AI 如何修改本章内容
+                        告诉 AI 如何修改
                       </label>
                       <textarea
                         id="draft-section-instruction"
