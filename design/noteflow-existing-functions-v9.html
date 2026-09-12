@@ -1,0 +1,2029 @@
+<!doctype html>
+<html lang="en" data-visualize-standalone>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>NoteFlow V9 Existing Functions Workspace</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+</head>
+<body>
+<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="NoteFlow V9 Existing Functions Workspace" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot; data-visualize-standalone&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;NoteFlow V9 Existing Functions Workspace&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(
+    --background,
+    var(--color-background-primary, light-dark(rgb(255 255 255), rgb(24 24 24)))
+  ) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: var(
+    --color-background-primary,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --card: color-mix(in oklab, var(--foreground) 5%, var(--background));
+  --card-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --popover: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255), rgb(45 45 45))
+  );
+  --popover-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --primary: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --primary-foreground: var(
+    --color-text-inverse,
+    light-dark(rgb(255 255 255), rgb(13 13 13))
+  );
+  --secondary: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%))
+  );
+  --secondary-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: var(
+    --color-text-secondary,
+    light-dark(rgb(26 28 31 / 49.4%), rgb(255 255 255 / 49.8%))
+  );
+  --accent: var(
+    --color-background-info,
+    light-dark(rgb(229 242 255), rgb(13 39 63))
+  );
+  --accent-foreground: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --destructive: var(
+    --color-text-warning,
+    light-dark(rgb(226 85 7), rgb(255 133 73))
+  );
+  --border: var(
+    --color-border-secondary,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+  --input: var(
+    --color-border-primary,
+    light-dark(
+      rgb(26 28 31 / 11.8%),
+      color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+    )
+  );
+  --ring: var(
+    --color-ring-primary,
+    light-dark(rgb(51 156 255), rgb(131 195 255 / 76%))
+  );
+  --font-size-base: var(--font-text-md-size, 14px);
+  --blue: light-dark(rgb(51 156 255), rgb(51 156 255));
+  --orange: light-dark(rgb(226 85 7), rgb(251 106 34));
+  --green: light-dark(rgb(0 162 64), rgb(64 201 119));
+  --red: light-dark(rgb(224 46 42), rgb(255 103 100));
+  --purple: light-dark(rgb(146 79 247), rgb(173 123 249));
+  --yellow: light-dark(rgb(255 195 0), rgb(255 210 64));
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, &quot;Segoe UI&quot;, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --icon-size: 16px;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --corner-shape: round;
+  --radius: var(--border-radius-lg, 10px);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  /* Preserve MCP aliases for older inline renderers without creating :root cycles. */
+  --color-background-primary: var(
+    --background,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --color-text-primary: var(
+    --foreground,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --color-border-secondary: var(
+    --border,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+
+  margin: 0;
+  padding: var(--visualize-paint-gutter, 0px);
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans) !important;
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: pointer;
+  font-weight: var(--font-weight-medium, 500);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: var(--corner-shape);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table-responsive &gt; .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead th {
+  padding-block: 8px;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 6px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align=&quot;right&quot;]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align=&quot;center&quot;]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: var(--corner-shape);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget &gt; :not(.card, .progress) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+hr {
+  width: 100%;
+  height: 1px;
+  margin-block: 6px;
+  border: 0;
+  background: var(--border);
+}
+
+.nav {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.progress {
+  display: flex;
+  height: 8px;
+  margin-block: calc((var(--line-height-normal, 1.5em) - 8px) / 2);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+}
+
+.progress-bar:only-child {
+  border-radius: var(--radius-full);
+}
+
+.progress-bar {
+  height: 100%;
+  flex-shrink: 0;
+  border: 0;
+  background: var(--viz-series-1);
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.nav-link,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn,
+.nav-link {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover,
+.nav-link:not(:disabled):not([aria-disabled=&quot;true&quot;]):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.nav-pills .nav-link {
+  min-width: 0;
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.nav-justified .nav-link {
+  flex: 1 1 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.nav-pills .nav-link.active {
+  color: var(--foreground);
+  background: var(--muted);
+}
+
+.btn:disabled,
+.nav-link:disabled,
+.nav-link[aria-disabled=&quot;true&quot;] {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  padding: 0;
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  min-height: 26px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: 28px;
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: var(--corner-shape);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  corner-shape: var(--corner-shape);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+  [aria-pressed=&quot;true&quot;],
+  [aria-selected=&quot;true&quot;],
+  .is-selected
+) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible,
+.nav-link:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+  .btn,
+  .nav-link,
+  .form-control,
+  .form-select {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Keep small-screen WebKit from zooming when a text field receives focus. */
+  .form-control,
+  .form-select {
+    font-size: max(16px, var(--font-size-normal));
+  }
+
+  .form-control[type=&quot;file&quot;]::file-selector-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .form-control-color[type=&quot;color&quot;] {
+    width: 44px;
+    height: 44px;
+  }
+
+  .form-control:is(
+    [type=&quot;date&quot;],
+    [type=&quot;datetime-local&quot;],
+    [type=&quot;month&quot;],
+    [type=&quot;time&quot;],
+    [type=&quot;week&quot;]
+  ) {
+    min-width: 0;
+    max-width: 100%;
+    padding-block: 8px;
+  }
+
+  .form-check {
+    min-height: 44px;
+    padding-inline: 15px;
+  }
+
+  .form-check-input {
+    position: relative;
+  }
+
+  .form-check-input::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    content: &quot;&quot;;
+    transform: translate(-50%, -50%);
+  }
+
+  .form-check-label {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .form-range {
+    height: 44px;
+    touch-action: pan-y;
+  }
+
+  .form-range::-webkit-slider-runnable-track {
+    height: 44px;
+  }
+
+  .form-range::-moz-range-track {
+    height: 44px;
+  }
+
+  .form-range::-webkit-slider-thumb {
+    margin-top: 12px;
+  }
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+/* Model-authored chart rules can otherwise stretch icons after these styles load. */
+svg.lucide {
+  display: block;
+  width: var(--icon-size) !important;
+  height: var(--icon-size) !important;
+  flex: none;
+  margin: 0 !important;
+  stroke-width: 1.6;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div id=&quot;noteflow-v9&quot; class=&quot;nf9-shell&quot; aria-label=&quot;NoteFlow V9 现有功能重排工作台&quot;&gt;
+  &lt;style&gt;
+    #noteflow-v9 {
+      --nf9-canvas: #f7f4ef;
+      --nf9-page: #fcfbf8;
+      --nf9-nav: #f1eee8;
+      --nf9-ai: #eef3fa;
+      --nf9-ai-deep: #e2eaf6;
+      --nf9-ink: #242a34;
+      --nf9-text: #515b6a;
+      --nf9-muted: #858e9c;
+      --nf9-line: rgba(62, 73, 91, .12);
+      --nf9-line-strong: rgba(62, 73, 91, .18);
+      --nf9-accent: #5975ca;
+      --nf9-accent-ink: #405a9e;
+      --nf9-accent-soft: #e2e9f7;
+      --nf9-success: #4c8b72;
+      --nf9-danger: #b96565;
+      --nf9-nav-width: 260px;
+      --nf9-ai-width: 500px;
+      --nf9-page-width: 780px;
+      --nf9-radius: 24px;
+      --nf9-ease: cubic-bezier(.22, 1, .36, 1);
+      position: relative;
+      width: 100%;
+      height: clamp(760px, 72vw, 960px);
+      min-height: 760px;
+      overflow: hidden;
+      border: 1px solid rgba(45, 54, 68, .13);
+      border-radius: 28px;
+      color: var(--nf9-ink);
+      background: var(--nf9-canvas);
+      box-shadow: 0 24px 70px rgba(35, 43, 57, .12), 0 3px 10px rgba(35, 43, 57, .04);
+      font-family: Inter, &quot;SF Pro Display&quot;, &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #noteflow-v9 * { box-sizing: border-box; }
+    #noteflow-v9 button,
+    #noteflow-v9 input,
+    #noteflow-v9 textarea { font: inherit; }
+    #noteflow-v9 button { color: inherit; }
+
+    #noteflow-v9 .nf9-layout {
+      display: grid;
+      grid-template-columns: var(--nf9-nav-width) minmax(0, 1fr) var(--nf9-ai-width);
+      height: 100%;
+      transition: grid-template-columns 260ms var(--nf9-ease);
+    }
+
+    #noteflow-v9.is-nav-collapsed .nf9-layout { grid-template-columns: 52px minmax(0, 1fr) var(--nf9-ai-width); }
+    #noteflow-v9.is-ai-collapsed .nf9-layout { grid-template-columns: var(--nf9-nav-width) minmax(0, 1fr) 0; }
+    #noteflow-v9.is-nav-collapsed.is-ai-collapsed .nf9-layout { grid-template-columns: 52px minmax(0, 1fr) 0; }
+
+    #noteflow-v9 .nf9-icon-action,
+    #noteflow-v9 .nf9-row-action,
+    #noteflow-v9 .nf9-send-action,
+    #noteflow-v9 .nf9-mode-action {
+      border: 0;
+      cursor: pointer;
+      transition: color 170ms var(--nf9-ease), background 170ms var(--nf9-ease), transform 170ms var(--nf9-ease), box-shadow 170ms var(--nf9-ease);
+    }
+
+    #noteflow-v9 .nf9-icon-action {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border-radius: 11px;
+      color: var(--nf9-muted);
+      background: transparent;
+    }
+    #noteflow-v9 .nf9-icon-action:hover { color: var(--nf9-accent-ink); background: rgba(89,117,202,.09); }
+    #noteflow-v9 .nf9-icon-action:active,
+    #noteflow-v9 .nf9-row-action:active,
+    #noteflow-v9 .nf9-send-action:active,
+    #noteflow-v9 .nf9-mode-action:active { transform: scale(.97); }
+    #noteflow-v9 .nf9-icon-action i { width: 17px; height: 17px; stroke-width: 1.75; }
+
+    #noteflow-v9 .nf9-library {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: visible;
+      border-right: 1px solid var(--nf9-line);
+      background: rgba(241,238,232,.96);
+      box-shadow: inset -1px 0 0 rgba(255,255,255,.45);
+    }
+
+    #noteflow-v9 .nf9-library-head {
+      height: 67px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 0 13px 0 17px;
+      border-bottom: 1px solid rgba(62,73,91,.08);
+    }
+    #noteflow-v9 .nf9-library-title { min-width: 0; display: flex; align-items: center; gap: 9px; flex: 1; }
+    #noteflow-v9 .nf9-library-title &gt; i { width: 17px; height: 17px; flex: 0 0 auto; color: #707987; stroke-width: 1.7; }
+    #noteflow-v9 .nf9-library-title strong { font-size: 14px; font-weight: 500; white-space: nowrap; }
+    #noteflow-v9 .nf9-library-title small { color: var(--nf9-muted); font-size: 11px; white-space: nowrap; }
+    #noteflow-v9 .nf9-library-actions { display: flex; align-items: center; gap: 1px; }
+
+    #noteflow-v9.is-nav-collapsed .nf9-library-head { justify-content: center; padding: 0; }
+    #noteflow-v9.is-nav-collapsed .nf9-library-title,
+    #noteflow-v9.is-nav-collapsed .nf9-library-actions &gt; :not(:first-child),
+    #noteflow-v9.is-nav-collapsed .nf9-tree,
+    #noteflow-v9.is-nav-collapsed .nf9-account-copy,
+    #noteflow-v9.is-nav-collapsed .nf9-account-chevron,
+    #noteflow-v9.is-nav-collapsed .nf9-foot-action { display: none; }
+
+    #noteflow-v9 .nf9-create-wrap { position: relative; }
+    #noteflow-v9 .nf9-create-menu,
+    #noteflow-v9 .nf9-document-menu,
+    #noteflow-v9 .nf9-mode-menu,
+    #noteflow-v9 .nf9-history-menu {
+      position: absolute;
+      z-index: 50;
+      display: none;
+      border: 1px solid var(--nf9-line);
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 16px 42px rgba(38,48,67,.15);
+    }
+    #noteflow-v9 .nf9-create-menu.is-open,
+    #noteflow-v9 .nf9-document-menu.is-open,
+    #noteflow-v9 .nf9-mode-menu.is-open,
+    #noteflow-v9 .nf9-history-menu.is-open { display: block; }
+    #noteflow-v9 .nf9-create-menu { top: 40px; right: 0; width: 154px; padding: 6px; }
+
+    #noteflow-v9 .nf9-menu-item {
+      width: 100%;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 9px;
+      color: var(--nf9-text);
+      background: transparent;
+      font-size: 12px;
+      text-align: left;
+      cursor: pointer;
+    }
+    #noteflow-v9 .nf9-menu-item:hover { color: var(--nf9-accent-ink); background: #eef3fb; }
+    #noteflow-v9 .nf9-menu-item i { width: 15px; height: 15px; stroke-width: 1.7; }
+
+    #noteflow-v9 .nf9-tree { flex: 1; min-height: 0; padding: 14px 11px; overflow: hidden; }
+    #noteflow-v9 .nf9-tree-row {
+      position: relative;
+      width: 100%;
+      min-height: 36px;
+      display: grid;
+      grid-template-columns: 18px 18px minmax(0,1fr) auto;
+      align-items: center;
+      gap: 5px;
+      padding: 0 5px 0 var(--nf9-indent, 5px);
+      border: 0;
+      border-radius: 11px;
+      color: #586271;
+      background: transparent;
+      font-size: 12px;
+      text-align: left;
+      cursor: pointer;
+      transition: background 170ms var(--nf9-ease), color 170ms var(--nf9-ease), transform 170ms var(--nf9-ease);
+    }
+    #noteflow-v9 .nf9-tree-row:hover { color: var(--nf9-ink); background: rgba(255,255,255,.48); }
+    #noteflow-v9 .nf9-tree-row:active { transform: scale(.992); }
+    #noteflow-v9 .nf9-tree-row &gt; i { width: 15px; height: 15px; color: #788290; stroke-width: 1.65; }
+    #noteflow-v9 .nf9-tree-row .nf9-disclosure { width: 13px; height: 13px; color: #8b94a0; }
+    #noteflow-v9 .nf9-tree-row span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #noteflow-v9 .nf9-tree-row.is-selected {
+      color: var(--nf9-accent-ink);
+      background: rgba(220,228,246,.88);
+      font-weight: 500;
+    }
+    #noteflow-v9 .nf9-tree-row.is-selected::before {
+      content: &quot;&quot;;
+      position: absolute;
+      top: 8px;
+      bottom: 8px;
+      left: 0;
+      width: 2px;
+      border-radius: 2px;
+      background: var(--nf9-accent);
+    }
+    #noteflow-v9 .nf9-tree-row.is-selected &gt; i { color: var(--nf9-accent); }
+    #noteflow-v9 .nf9-tree-state { display: flex; align-items: center; gap: 4px; color: var(--nf9-muted); }
+    #noteflow-v9 .nf9-tree-state i { width: 12px; height: 12px; stroke-width: 1.8; }
+    #noteflow-v9 .nf9-tree-state .is-favorite { color: #b8954e; fill: currentColor; }
+    #noteflow-v9 .nf9-node-more { opacity: 0; }
+    #noteflow-v9 .nf9-tree-row:hover .nf9-node-more,
+    #noteflow-v9 .nf9-tree-row.is-selected .nf9-node-more { opacity: 1; }
+
+    #noteflow-v9 .nf9-library-foot {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 8px 11px;
+      border-top: 1px solid var(--nf9-line);
+    }
+    #noteflow-v9 .nf9-account {
+      min-width: 0;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex: 1;
+      padding: 0 7px;
+      border: 0;
+      border-radius: 12px;
+      color: var(--nf9-text);
+      background: transparent;
+      cursor: pointer;
+    }
+    #noteflow-v9 .nf9-account:hover { background: rgba(255,255,255,.48); }
+    #noteflow-v9 .nf9-avatar {
+      width: 31px;
+      height: 31px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border-radius: 11px;
+      color: #fff;
+      background: var(--nf9-accent);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.30), 0 5px 14px rgba(69,91,159,.17);
+    }
+    #noteflow-v9 .nf9-avatar i { width: 15px; height: 15px; stroke-width: 1.8; }
+    #noteflow-v9 .nf9-account-copy { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 500; text-align: left; }
+    #noteflow-v9 .nf9-account-chevron { width: 13px; height: 13px; color: var(--nf9-muted); }
+    #noteflow-v9.is-nav-collapsed .nf9-library-foot { flex-direction: column; justify-content: flex-end; padding: 8px 6px; }
+    #noteflow-v9.is-nav-collapsed .nf9-account { flex: 0 0 38px; width: 38px; justify-content: center; padding: 0; }
+
+    #noteflow-v9 .nf9-editor {
+      position: relative;
+      min-width: 0;
+      overflow: hidden;
+      background: var(--nf9-page);
+    }
+    #noteflow-v9 .nf9-document-scroll { height: 100%; overflow: hidden; padding: 72px 32px 80px; }
+    #noteflow-v9 .nf9-document { width: min(100%, var(--nf9-page-width)); margin: 0 auto; }
+    #noteflow-v9 .nf9-title {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      outline: 0;
+      color: #222731;
+      background: transparent;
+      font-size: 39px;
+      font-weight: 500;
+      line-height: 1.18;
+      letter-spacing: -.035em;
+    }
+    #noteflow-v9 .nf9-meta-row { position: relative; min-height: 34px; display: flex; align-items: center; gap: 8px; margin: 13px 0 38px; color: var(--nf9-muted); font-size: 12px; }
+    #noteflow-v9 .nf9-document-options { position: relative; margin-left: auto; }
+    #noteflow-v9 .nf9-document-menu { top: 39px; right: 0; width: 210px; padding: 7px; }
+    #noteflow-v9 .nf9-check-row { width: 100%; display: grid; grid-template-columns: 18px minmax(0,1fr); gap: 9px; padding: 9px; border: 0; border-radius: 10px; color: var(--nf9-text); background: transparent; text-align: left; cursor: pointer; }
+    #noteflow-v9 .nf9-check-row:hover { background: #f2f5f8; }
+    #noteflow-v9 .nf9-check-box { width: 16px; height: 16px; display: grid; place-items: center; border-radius: 5px; color: #fff; background: var(--nf9-accent); font-size: 11px; }
+    #noteflow-v9 .nf9-check-row strong { display: block; font-size: 12px; font-weight: 500; }
+    #noteflow-v9 .nf9-check-row small { display: block; margin-top: 3px; color: var(--nf9-muted); font-size: 11px; line-height: 1.45; }
+
+    #noteflow-v9 .nf9-note-body { color: #48515f; font-family: &quot;Songti SC&quot;, STSong, Georgia, serif; font-size: 15px; line-height: 1.78; }
+    #noteflow-v9 .nf9-note-body p { margin: 0 0 18px; }
+    #noteflow-v9 .nf9-note-body h2 { margin: 29px 0 11px; color: #2d3440; font-family: Inter, &quot;PingFang SC&quot;, sans-serif; font-size: 21px; font-weight: 500; line-height: 1.35; letter-spacing: -.01em; }
+    #noteflow-v9 .nf9-selected-text { position: relative; margin: 5px -5px 18px; padding: 6px 5px; border-radius: 7px; background: rgba(207,221,249,.62); }
+
+    #noteflow-v9 .nf9-selection-toolbar {
+      position: absolute;
+      top: -43px;
+      left: 50%;
+      z-index: 20;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 1px;
+      padding: 0 5px;
+      transform: translateX(-50%);
+      border: 1px solid var(--nf9-line);
+      border-radius: 12px;
+      background: rgba(255,255,255,.97);
+      box-shadow: 0 11px 30px rgba(39,49,69,.14);
+    }
+    #noteflow-v9 .nf9-selection-toolbar::after { content: &quot;&quot;; position: absolute; left: 50%; bottom: -5px; width: 9px; height: 9px; transform: translateX(-50%) rotate(45deg); border-right: 1px solid var(--nf9-line); border-bottom: 1px solid var(--nf9-line); background: #fff; }
+    #noteflow-v9 .nf9-selection-toolbar button { width: 27px; height: 27px; display: grid; place-items: center; border: 0; border-radius: 8px; color: #697486; background: transparent; cursor: pointer; }
+    #noteflow-v9 .nf9-selection-toolbar button:hover { color: var(--nf9-accent-ink); background: var(--nf9-accent-soft); }
+    #noteflow-v9 .nf9-selection-toolbar button:first-child { width: 34px; color: var(--nf9-accent-ink); }
+    #noteflow-v9 .nf9-selection-toolbar i { width: 14px; height: 14px; stroke-width: 1.8; }
+    #noteflow-v9 .nf9-toolbar-divider { width: 1px; height: 17px; margin: 0 3px; background: var(--nf9-line-strong); }
+
+    #noteflow-v9 .nf9-chapter-rail {
+      position: absolute;
+      top: 50%;
+      right: 9px;
+      z-index: 18;
+      width: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      align-items: center;
+      padding: 10px 6px;
+      transform: translateY(-50%);
+      border-radius: 13px;
+      transition: width 190ms var(--nf9-ease), align-items 190ms var(--nf9-ease), background 190ms var(--nf9-ease), box-shadow 190ms var(--nf9-ease);
+      overflow: hidden;
+    }
+    #noteflow-v9 .nf9-chapter-rail:hover { width: 196px; align-items: stretch; background: rgba(255,255,255,.96); box-shadow: 0 15px 40px rgba(38,48,66,.12), 0 0 0 1px var(--nf9-line); }
+    #noteflow-v9 .nf9-chapter-row { min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; background: transparent; color: var(--nf9-muted); font-size: 11px; cursor: pointer; }
+    #noteflow-v9 .nf9-chapter-mark { width: 10px; height: 2px; flex: 0 0 auto; border-radius: 99px; background: #d1d6dd; }
+    #noteflow-v9 .nf9-chapter-row.is-active .nf9-chapter-mark { width: 15px; background: var(--nf9-accent); }
+    #noteflow-v9 .nf9-chapter-label { width: 0; overflow: hidden; opacity: 0; text-overflow: ellipsis; white-space: nowrap; transition: width 170ms var(--nf9-ease), opacity 130ms var(--nf9-ease); }
+    #noteflow-v9 .nf9-chapter-rail:hover .nf9-chapter-label { width: 155px; opacity: 1; }
+
+    #noteflow-v9 .nf9-ai-launcher {
+      position: absolute;
+      right: 20px;
+      bottom: 20px;
+      z-index: 30;
+      width: 46px;
+      height: 46px;
+      display: none;
+      place-items: center;
+      border: 1px solid rgba(89,117,202,.20);
+      border-radius: 16px;
+      color: var(--nf9-accent-ink);
+      background: rgba(255,255,255,.92);
+      box-shadow: 0 10px 28px rgba(53,68,104,.14);
+      cursor: pointer;
+    }
+    #noteflow-v9.is-ai-collapsed .nf9-ai-launcher { display: grid; }
+    #noteflow-v9 .nf9-ai-launcher i { width: 20px; height: 20px; stroke-width: 1.75; }
+
+    #noteflow-v9 .nf9-ai-panel {
+      position: relative;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: visible;
+      border-left: 1px solid rgba(70,84,110,.12);
+      background: rgba(238,243,250,.97);
+      box-shadow: inset 1px 0 0 rgba(255,255,255,.62);
+      transition: opacity 220ms var(--nf9-ease), transform 260ms var(--nf9-ease);
+    }
+    #noteflow-v9.is-ai-collapsed .nf9-ai-panel { opacity: 0; transform: translateX(22px); pointer-events: none; }
+    #noteflow-v9 .nf9-resize-edge { position: absolute; top: 0; bottom: 0; left: -5px; width: 10px; cursor: col-resize; }
+    #noteflow-v9 .nf9-resize-edge::after { content: &quot;&quot;; position: absolute; top: 42%; bottom: 42%; left: 5px; width: 1px; border-radius: 2px; background: transparent; transition: background 160ms var(--nf9-ease); }
+    #noteflow-v9 .nf9-resize-edge:hover::after { background: rgba(89,117,202,.40); }
+
+    #noteflow-v9 .nf9-ai-head { position: relative; z-index: 20; height: 59px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 16px 0 18px; border-bottom: 1px solid rgba(70,84,110,.10); }
+    #noteflow-v9 .nf9-history-wrap { position: relative; min-width: 0; }
+    #noteflow-v9 .nf9-history-action { max-width: 310px; height: 36px; display: flex; align-items: center; gap: 6px; padding: 0 9px; border: 0; border-radius: 11px; color: #303846; background: transparent; font-size: 13px; font-weight: 500; cursor: pointer; }
+    #noteflow-v9 .nf9-history-action:hover { background: rgba(255,255,255,.56); }
+    #noteflow-v9 .nf9-history-action span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #noteflow-v9 .nf9-history-action i { width: 14px; height: 14px; flex: 0 0 auto; color: var(--nf9-muted); stroke-width: 1.8; }
+    #noteflow-v9 .nf9-ai-head-actions { display: flex; align-items: center; gap: 1px; }
+    #noteflow-v9 .nf9-history-menu { top: 42px; left: 0; width: 324px; padding: 8px; }
+    #noteflow-v9 .nf9-history-search { height: 37px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 11px; background: #f5f7fa; color: var(--nf9-muted); }
+    #noteflow-v9 .nf9-history-search i { width: 15px; height: 15px; }
+    #noteflow-v9 .nf9-history-search input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; font-size: 12px; }
+
+    #noteflow-v9 .nf9-message-list { flex: 1; min-height: 0; overflow: hidden; padding: 25px 20px 14px; }
+    #noteflow-v9 .nf9-message-row { display: flex; margin-bottom: 20px; }
+    #noteflow-v9 .nf9-message-row.is-user { justify-content: flex-end; }
+    #noteflow-v9 .nf9-message {
+      max-width: 92%;
+      padding: 14px 15px;
+      border: 1px solid rgba(66,81,107,.10);
+      border-radius: 16px;
+      color: #4d5869;
+      background: rgba(255,255,255,.74);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    #noteflow-v9 .nf9-message-row.is-user .nf9-message { border-color: rgba(89,117,202,.12); background: rgba(225,234,248,.72); }
+    #noteflow-v9 .nf9-message p { margin: 0; }
+    #noteflow-v9 .nf9-message p + p { margin-top: 9px; }
+    #noteflow-v9 .nf9-attached-selection { margin-top: 10px; padding-left: 10px; border-left: 2px solid rgba(89,117,202,.32); color: #687486; font-size: 11px; }
+    #noteflow-v9 .nf9-attached-selection strong { display: block; margin-bottom: 4px; color: var(--nf9-accent-ink); font-weight: 500; }
+    #noteflow-v9 .nf9-source-block { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--nf9-line); }
+    #noteflow-v9 .nf9-source-summary { margin-bottom: 7px; color: var(--nf9-muted); font-size: 11px; }
+    #noteflow-v9 .nf9-source-row { width: 100%; min-height: 28px; display: flex; align-items: center; gap: 7px; padding: 0 3px; border: 0; border-radius: 8px; color: #697486; background: transparent; font-size: 11px; text-align: left; cursor: pointer; }
+    #noteflow-v9 .nf9-source-row:hover { color: var(--nf9-accent-ink); background: rgba(226,234,247,.60); }
+    #noteflow-v9 .nf9-source-index { min-width: 18px; height: 18px; display: grid; place-items: center; border-radius: 99px; color: var(--nf9-accent-ink); background: var(--nf9-accent-soft); font-size: 10px; font-weight: 500; }
+    #noteflow-v9 .nf9-understanding-action { min-height: 30px; display: inline-flex; align-items: center; margin-top: 11px; padding: 0 11px; border: 1px solid rgba(89,117,202,.13); border-radius: 11px; color: var(--nf9-accent-ink); background: rgba(247,250,253,.84); font-size: 11px; cursor: pointer; }
+
+    #noteflow-v9 .nf9-composer-wrap { flex: 0 0 auto; padding: 0 15px 15px; }
+    #noteflow-v9 .nf9-composer {
+      min-height: 158px;
+      display: flex;
+      flex-direction: column;
+      padding: 11px 12px 10px;
+      border: 1px solid rgba(68,83,111,.14);
+      border-radius: 18px;
+      background: rgba(255,255,255,.84);
+      box-shadow: 0 9px 26px rgba(49,63,93,.08), inset 0 1px 0 rgba(255,255,255,.84);
+      transition: border-color 170ms var(--nf9-ease), box-shadow 170ms var(--nf9-ease), transform 170ms var(--nf9-ease);
+    }
+    #noteflow-v9 .nf9-composer:focus-within { border-color: rgba(89,117,202,.34); box-shadow: 0 11px 30px rgba(49,63,93,.10), 0 0 0 4px rgba(89,117,202,.06); transform: translateY(-1px); }
+    #noteflow-v9 .nf9-contexts { display: flex; flex-wrap: wrap; gap: 6px; min-height: 31px; }
+    #noteflow-v9 .nf9-context-chip { max-width: 100%; height: 27px; display: inline-flex; align-items: center; gap: 6px; padding: 0 7px 0 9px; border: 1px solid rgba(68,83,111,.10); border-radius: 99px; color: #6b7584; background: #f8f9fa; font-size: 11px; }
+    #noteflow-v9 .nf9-context-chip.is-selection { color: #536d88; background: #f1f7fb; }
+    #noteflow-v9 .nf9-context-chip &gt; i { width: 13px; height: 13px; flex: 0 0 auto; stroke-width: 1.7; }
+    #noteflow-v9 .nf9-context-chip span { min-width: 0; max-width: 225px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #noteflow-v9 .nf9-context-chip button { width: 19px; height: 19px; display: grid; place-items: center; border: 0; border-radius: 99px; color: #78818e; background: #eceff2; cursor: pointer; }
+    #noteflow-v9 .nf9-context-chip button i { width: 11px; height: 11px; stroke-width: 2; }
+    #noteflow-v9 .nf9-composer textarea { min-height: 64px; flex: 1; resize: none; border: 0; outline: 0; padding: 6px 2px; color: var(--nf9-ink); background: transparent; font-size: 13px; line-height: 1.65; }
+    #noteflow-v9 .nf9-composer textarea::placeholder { color: #9ba3ae; }
+    #noteflow-v9 .nf9-compose-foot { display: flex; align-items: center; justify-content: space-between; padding-top: 8px; border-top: 1px solid rgba(67,81,106,.08); }
+    #noteflow-v9 .nf9-mode-wrap { position: relative; }
+    #noteflow-v9 .nf9-mode-action { min-width: 92px; height: 34px; display: flex; align-items: center; gap: 7px; padding: 0 9px; border-radius: 10px; color: #617080; background: transparent; font-size: 12px; font-weight: 500; }
+    #noteflow-v9 .nf9-mode-action:hover { color: var(--nf9-accent-ink); background: #eef4f9; }
+    #noteflow-v9 .nf9-mode-action i { width: 14px; height: 14px; stroke-width: 1.8; }
+    #noteflow-v9 .nf9-mode-action .nf9-mode-chevron { width: 12px; height: 12px; margin-left: auto; }
+    #noteflow-v9 .nf9-mode-menu { left: 0; bottom: 40px; width: 168px; padding: 6px; }
+    #noteflow-v9 .nf9-send-action { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 12px; color: #fff; background: var(--nf9-accent); box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 6px 15px rgba(66,88,157,.20); }
+    #noteflow-v9 .nf9-send-action:hover { transform: translateY(-1px); background: #4e69bd; box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 8px 19px rgba(66,88,157,.24); }
+    #noteflow-v9 .nf9-send-action i { width: 15px; height: 15px; stroke-width: 2; }
+
+    @media (max-width: 1160px) {
+      #noteflow-v9 { --nf9-nav-width: 52px; --nf9-ai-width: 400px; }
+      #noteflow-v9 .nf9-layout { grid-template-columns: 52px minmax(0,1fr); }
+      #noteflow-v9 .nf9-library-head { justify-content: center; padding: 0; }
+      #noteflow-v9 .nf9-library-title,
+      #noteflow-v9 .nf9-library-actions &gt; :not(:first-child),
+      #noteflow-v9 .nf9-tree,
+      #noteflow-v9 .nf9-account-copy,
+      #noteflow-v9 .nf9-account-chevron,
+      #noteflow-v9 .nf9-foot-action { display: none; }
+      #noteflow-v9 .nf9-library-foot { flex-direction: column; justify-content: flex-end; padding: 8px 6px; }
+      #noteflow-v9 .nf9-account { flex: 0 0 38px; width: 38px; justify-content: center; padding: 0; }
+      #noteflow-v9 .nf9-ai-panel { position: absolute; z-index: 40; top: 0; right: 0; bottom: 0; width: min(400px, calc(100% - 52px)); box-shadow: -18px 0 48px rgba(35,46,68,.13); }
+      #noteflow-v9.is-ai-collapsed .nf9-layout { grid-template-columns: 52px minmax(0,1fr); }
+    }
+
+    @media (max-width: 700px) {
+      #noteflow-v9 .nf9-document-scroll { padding: 66px 26px 70px; }
+      #noteflow-v9 .nf9-title { font-size: 34px; }
+      #noteflow-v9 .nf9-note-body { font-size: 14px; }
+      #noteflow-v9 .nf9-selection-toolbar { left: 0; transform: none; }
+      #noteflow-v9 .nf9-selection-toolbar::after { left: 26px; }
+    }
+
+    @media (max-width: 520px) {
+      #noteflow-v9 { border-radius: 20px; }
+      #noteflow-v9 .nf9-layout { grid-template-columns: 1fr; }
+      #noteflow-v9 .nf9-library { display: none; }
+      #noteflow-v9 .nf9-ai-panel { width: 92%; }
+      #noteflow-v9 .nf9-document-scroll { padding: 58px 20px 64px; }
+      #noteflow-v9 .nf9-title { font-size: 31px; }
+      #noteflow-v9 .nf9-meta-row { margin-bottom: 31px; }
+      #noteflow-v9 .nf9-note-body h2 { font-size: 19px; }
+      #noteflow-v9 .nf9-selection-toolbar button:nth-of-type(n+7) { display: none; }
+    }
+  &lt;/style&gt;
+
+  &lt;div class=&quot;nf9-layout&quot;&gt;
+    &lt;aside class=&quot;nf9-library&quot; aria-label=&quot;目录&quot;&gt;
+      &lt;header class=&quot;nf9-library-head&quot;&gt;
+        &lt;div class=&quot;nf9-library-title&quot;&gt;&lt;i data-lucide=&quot;book-open&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;strong&gt;目录&lt;/strong&gt;&lt;small&gt;6 篇&lt;/small&gt;&lt;/div&gt;
+        &lt;div class=&quot;nf9-library-actions&quot;&gt;
+          &lt;button class=&quot;nf9-icon-action&quot; type=&quot;button&quot; aria-label=&quot;收起目录&quot; onclick=&quot;nf9ToggleNav()&quot;&gt;&lt;i data-lucide=&quot;chevrons-left&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+          &lt;div class=&quot;nf9-create-wrap&quot;&gt;
+            &lt;button class=&quot;nf9-icon-action&quot; type=&quot;button&quot; aria-label=&quot;新建&quot; onclick=&quot;nf9ToggleMenu(&#x27;nf9-create-menu&#x27;)&quot;&gt;&lt;i data-lucide=&quot;plus&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+            &lt;div id=&quot;nf9-create-menu&quot; class=&quot;nf9-create-menu&quot; aria-label=&quot;新建菜单&quot;&gt;
+              &lt;button class=&quot;nf9-menu-item&quot; type=&quot;button&quot;&gt;&lt;i data-lucide=&quot;file-plus-2&quot;&gt;&lt;/i&gt;新建笔记&lt;/button&gt;
+              &lt;button class=&quot;nf9-menu-item&quot; type=&quot;button&quot;&gt;&lt;i data-lucide=&quot;folder-plus&quot;&gt;&lt;/i&gt;新建文件夹&lt;/button&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+          &lt;button class=&quot;nf9-icon-action&quot; type=&quot;button&quot; aria-label=&quot;搜索全部笔记&quot;&gt;&lt;i data-lucide=&quot;search&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+        &lt;/div&gt;
+      &lt;/header&gt;
+
+      &lt;div class=&quot;nf9-tree&quot;&gt;
+        &lt;button class=&quot;nf9-tree-row&quot; style=&quot;--nf9-indent:5px&quot; type=&quot;button&quot;&gt;&lt;i class=&quot;nf9-disclosure&quot; data-lucide=&quot;chevron-down&quot;&gt;&lt;/i&gt;&lt;i data-lucide=&quot;folder-open&quot;&gt;&lt;/i&gt;&lt;span&gt;产品思考&lt;/span&gt;&lt;span class=&quot;nf9-tree-state&quot;&gt;&lt;i data-lucide=&quot;pin&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;/button&gt;
+        &lt;button class=&quot;nf9-tree-row&quot; style=&quot;--nf9-indent:29px&quot; type=&quot;button&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;i data-lucide=&quot;file-text&quot;&gt;&lt;/i&gt;&lt;span&gt;AI 原生笔记方法论&lt;/span&gt;&lt;span class=&quot;nf9-tree-state&quot;&gt;&lt;/span&gt;&lt;/button&gt;
+        &lt;button class=&quot;nf9-tree-row is-selected&quot; style=&quot;--nf9-indent:29px&quot; type=&quot;button&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;i data-lucide=&quot;file-text&quot;&gt;&lt;/i&gt;&lt;span&gt;让信息真正流动起来&lt;/span&gt;&lt;span class=&quot;nf9-tree-state&quot;&gt;&lt;i class=&quot;is-favorite&quot; data-lucide=&quot;star&quot;&gt;&lt;/i&gt;&lt;i class=&quot;nf9-node-more&quot; data-lucide=&quot;more-horizontal&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;/button&gt;
+        &lt;button class=&quot;nf9-tree-row&quot; style=&quot;--nf9-indent:5px&quot; type=&quot;button&quot;&gt;&lt;i class=&quot;nf9-disclosure&quot; data-lucide=&quot;chevron-down&quot;&gt;&lt;/i&gt;&lt;i data-lucide=&quot;folder-open&quot;&gt;&lt;/i&gt;&lt;span&gt;项目记录&lt;/span&gt;&lt;span class=&quot;nf9-tree-state&quot;&gt;&lt;/span&gt;&lt;/button&gt;
+        &lt;button class=&quot;nf9-tree-row&quot; style=&quot;--nf9-indent:29px&quot; type=&quot;button&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;i data-lucide=&quot;file-text&quot;&gt;&lt;/i&gt;&lt;span&gt;上线检查清单&lt;/span&gt;&lt;span class=&quot;nf9-tree-state&quot;&gt;&lt;/span&gt;&lt;/button&gt;
+        &lt;button class=&quot;nf9-tree-row&quot; style=&quot;--nf9-indent:29px&quot; type=&quot;button&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;i data-lucide=&quot;file-text&quot;&gt;&lt;/i&gt;&lt;span&gt;用户访谈记录&lt;/span&gt;&lt;span class=&quot;nf9-tree-state&quot;&gt;&lt;/span&gt;&lt;/button&gt;
+        &lt;button class=&quot;nf9-tree-row&quot; style=&quot;--nf9-indent:5px&quot; type=&quot;button&quot;&gt;&lt;i class=&quot;nf9-disclosure&quot; data-lucide=&quot;chevron-down&quot;&gt;&lt;/i&gt;&lt;i data-lucide=&quot;folder-open&quot;&gt;&lt;/i&gt;&lt;span&gt;学习笔记&lt;/span&gt;&lt;span class=&quot;nf9-tree-state&quot;&gt;&lt;/span&gt;&lt;/button&gt;
+        &lt;button class=&quot;nf9-tree-row&quot; style=&quot;--nf9-indent:29px&quot; type=&quot;button&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;i data-lucide=&quot;file-text&quot;&gt;&lt;/i&gt;&lt;span&gt;React 编辑器实践&lt;/span&gt;&lt;span class=&quot;nf9-tree-state&quot;&gt;&lt;/span&gt;&lt;/button&gt;
+        &lt;button class=&quot;nf9-tree-row&quot; style=&quot;--nf9-indent:29px&quot; type=&quot;button&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;i data-lucide=&quot;file-text&quot;&gt;&lt;/i&gt;&lt;span&gt;本周待整理&lt;/span&gt;&lt;span class=&quot;nf9-tree-state&quot;&gt;&lt;/span&gt;&lt;/button&gt;
+      &lt;/div&gt;
+
+      &lt;footer class=&quot;nf9-library-foot&quot;&gt;
+        &lt;button class=&quot;nf9-account&quot; type=&quot;button&quot; aria-label=&quot;我的账号&quot;&gt;&lt;span class=&quot;nf9-avatar&quot;&gt;&lt;i data-lucide=&quot;user-round&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;span class=&quot;nf9-account-copy&quot;&gt;我的账号&lt;/span&gt;&lt;i class=&quot;nf9-account-chevron&quot; data-lucide=&quot;chevron-right&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+        &lt;button class=&quot;nf9-icon-action nf9-foot-action&quot; type=&quot;button&quot; aria-label=&quot;回收站&quot;&gt;&lt;i data-lucide=&quot;trash-2&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+        &lt;button class=&quot;nf9-icon-action nf9-foot-action&quot; type=&quot;button&quot; aria-label=&quot;设置&quot;&gt;&lt;i data-lucide=&quot;settings-2&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+      &lt;/footer&gt;
+    &lt;/aside&gt;
+
+    &lt;main class=&quot;nf9-editor&quot; aria-label=&quot;笔记编辑器&quot;&gt;
+      &lt;div class=&quot;nf9-document-scroll&quot;&gt;
+        &lt;article class=&quot;nf9-document&quot;&gt;
+          &lt;input class=&quot;nf9-title&quot; aria-label=&quot;文档标题&quot; value=&quot;让信息真正流动起来&quot;/&gt;
+          &lt;div class=&quot;nf9-meta-row&quot;&gt;
+            &lt;span&gt;创建于 2026年9月8日&lt;/span&gt;&lt;span&gt;·&lt;/span&gt;&lt;span&gt;更新于 2分钟前&lt;/span&gt;
+            &lt;div class=&quot;nf9-document-options&quot;&gt;
+              &lt;button class=&quot;nf9-icon-action&quot; type=&quot;button&quot; aria-label=&quot;文档显示设置&quot; onclick=&quot;nf9ToggleMenu(&#x27;nf9-document-menu&#x27;)&quot;&gt;&lt;i data-lucide=&quot;more-horizontal&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+              &lt;div id=&quot;nf9-document-menu&quot; class=&quot;nf9-document-menu&quot; aria-label=&quot;文档显示设置&quot;&gt;
+                &lt;button class=&quot;nf9-check-row&quot; type=&quot;button&quot;&gt;&lt;span class=&quot;nf9-check-box&quot;&gt;✓&lt;/span&gt;&lt;span&gt;&lt;strong&gt;显示章节编号&lt;/strong&gt;&lt;small&gt;自动编号一级和二级标题&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
+              &lt;/div&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+
+          &lt;div class=&quot;nf9-note-body&quot;&gt;
+            &lt;p&gt;真正有用的笔记，不是被整齐地收藏，而是在需要时自然回到眼前。&lt;/p&gt;
+            &lt;h2&gt;1 捕捉不是终点&lt;/h2&gt;
+            &lt;p&gt;信息进入笔记之后，需要被理解、连接并再次使用。记录只负责留下内容，工作流则负责让内容参与下一次思考。&lt;/p&gt;
+            &lt;p class=&quot;nf9-selected-text&quot;&gt;笔记的价值不在数量，而在它能否缩短一次判断、补全一段上下文，或者推动一个真实行动。
+              &lt;span class=&quot;nf9-selection-toolbar&quot; aria-label=&quot;选中文字格式工具栏&quot;&gt;
+                &lt;button type=&quot;button&quot; aria-label=&quot;加入对话&quot; onclick=&quot;nf9AddSelection()&quot;&gt;&lt;i data-lucide=&quot;message-square-plus&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;span class=&quot;nf9-toolbar-divider&quot;&gt;&lt;/span&gt;
+                &lt;button type=&quot;button&quot; aria-label=&quot;加粗&quot;&gt;&lt;i data-lucide=&quot;bold&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;button type=&quot;button&quot; aria-label=&quot;斜体&quot;&gt;&lt;i data-lucide=&quot;italic&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;button type=&quot;button&quot; aria-label=&quot;下划线&quot;&gt;&lt;i data-lucide=&quot;underline&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;button type=&quot;button&quot; aria-label=&quot;删除线&quot;&gt;&lt;i data-lucide=&quot;strikethrough&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;button type=&quot;button&quot; aria-label=&quot;高亮&quot;&gt;&lt;i data-lucide=&quot;highlighter&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;button type=&quot;button&quot; aria-label=&quot;行内代码&quot;&gt;&lt;i data-lucide=&quot;code-2&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;button type=&quot;button&quot; aria-label=&quot;添加链接&quot;&gt;&lt;i data-lucide=&quot;link-2&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;span class=&quot;nf9-toolbar-divider&quot;&gt;&lt;/span&gt;&lt;button type=&quot;button&quot; aria-label=&quot;无序列表&quot;&gt;&lt;i data-lucide=&quot;list&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;button type=&quot;button&quot; aria-label=&quot;有序列表&quot;&gt;&lt;i data-lucide=&quot;list-ordered&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;button type=&quot;button&quot; aria-label=&quot;引用&quot;&gt;&lt;i data-lucide=&quot;quote&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;button type=&quot;button&quot; aria-label=&quot;清除格式&quot;&gt;&lt;i data-lucide=&quot;remove-formatting&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+              &lt;/span&gt;
+            &lt;/p&gt;
+            &lt;h2&gt;2 让上下文主动靠近&lt;/h2&gt;
+            &lt;p&gt;当用户写到一个概念时，相关笔记、过往决策和未完成任务应该安静地出现，而不是要求用户重新搜索。&lt;/p&gt;
+            &lt;h2&gt;3 AI 是协作者&lt;/h2&gt;
+            &lt;p&gt;AI 应当理解当前笔记与明确加入对话的选区，在同一条工作流中完成解释、检索和修改确认。&lt;/p&gt;
+          &lt;/div&gt;
+        &lt;/article&gt;
+      &lt;/div&gt;
+
+      &lt;nav class=&quot;nf9-chapter-rail&quot; aria-label=&quot;章节快速导航&quot;&gt;
+        &lt;button class=&quot;nf9-chapter-row is-active&quot; type=&quot;button&quot;&gt;&lt;span class=&quot;nf9-chapter-mark&quot;&gt;&lt;/span&gt;&lt;span class=&quot;nf9-chapter-label&quot;&gt;1 捕捉不是终点&lt;/span&gt;&lt;/button&gt;
+        &lt;button class=&quot;nf9-chapter-row&quot; type=&quot;button&quot;&gt;&lt;span class=&quot;nf9-chapter-mark&quot;&gt;&lt;/span&gt;&lt;span class=&quot;nf9-chapter-label&quot;&gt;2 让上下文主动靠近&lt;/span&gt;&lt;/button&gt;
+        &lt;button class=&quot;nf9-chapter-row&quot; type=&quot;button&quot;&gt;&lt;span class=&quot;nf9-chapter-mark&quot;&gt;&lt;/span&gt;&lt;span class=&quot;nf9-chapter-label&quot;&gt;3 AI 是协作者&lt;/span&gt;&lt;/button&gt;
+      &lt;/nav&gt;
+      &lt;button class=&quot;nf9-ai-launcher&quot; type=&quot;button&quot; aria-label=&quot;展开 AI 助手&quot; onclick=&quot;nf9ToggleAi()&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+    &lt;/main&gt;
+
+    &lt;aside class=&quot;nf9-ai-panel&quot; aria-label=&quot;AI 助手&quot;&gt;
+      &lt;span class=&quot;nf9-resize-edge&quot; aria-label=&quot;拖拽调整面板宽度&quot;&gt;&lt;/span&gt;
+      &lt;header class=&quot;nf9-ai-head&quot;&gt;
+        &lt;div class=&quot;nf9-history-wrap&quot;&gt;
+          &lt;button class=&quot;nf9-history-action&quot; type=&quot;button&quot; aria-label=&quot;打开历史对话&quot; onclick=&quot;nf9ToggleMenu(&#x27;nf9-history-menu&#x27;)&quot;&gt;&lt;span&gt;产品思考讨论&lt;/span&gt;&lt;i data-lucide=&quot;chevron-down&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+          &lt;div id=&quot;nf9-history-menu&quot; class=&quot;nf9-history-menu&quot; aria-label=&quot;历史对话&quot;&gt;
+            &lt;label class=&quot;nf9-history-search&quot;&gt;&lt;i data-lucide=&quot;search&quot;&gt;&lt;/i&gt;&lt;input aria-label=&quot;搜索历史对话&quot; placeholder=&quot;搜索历史对话&quot;/&gt;&lt;/label&gt;
+            &lt;button class=&quot;nf9-menu-item&quot; type=&quot;button&quot;&gt;&lt;i data-lucide=&quot;plus&quot;&gt;&lt;/i&gt;新建对话&lt;/button&gt;
+            &lt;button class=&quot;nf9-menu-item&quot; type=&quot;button&quot;&gt;&lt;i data-lucide=&quot;message-circle&quot;&gt;&lt;/i&gt;产品思考讨论&lt;/button&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;nf9-ai-head-actions&quot;&gt;
+          &lt;button class=&quot;nf9-icon-action&quot; type=&quot;button&quot; aria-label=&quot;新建对话&quot;&gt;&lt;i data-lucide=&quot;plus&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+          &lt;button class=&quot;nf9-icon-action&quot; type=&quot;button&quot; aria-label=&quot;收起 AI 助手&quot; onclick=&quot;nf9ToggleAi()&quot;&gt;&lt;i data-lucide=&quot;chevrons-right&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+        &lt;/div&gt;
+      &lt;/header&gt;
+
+      &lt;div class=&quot;nf9-message-list&quot;&gt;
+        &lt;div class=&quot;nf9-message-row is-user&quot;&gt;
+          &lt;div class=&quot;nf9-message&quot;&gt;
+            &lt;p&gt;结合我选中的这段话，说明怎样让笔记参与下一次行动。&lt;/p&gt;
+            &lt;div class=&quot;nf9-attached-selection&quot;&gt;&lt;strong&gt;已引用 · 让信息真正流动起来&lt;/strong&gt;笔记的价值不在数量，而在它能否缩短一次判断、补全一段上下文……&lt;/div&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;nf9-message-row&quot;&gt;
+          &lt;div class=&quot;nf9-message&quot;&gt;
+            &lt;p&gt;可以把“再次使用”设计成三个真实触发点：写作时补充相关内容、做决定时回看依据、任务结束后沉淀结论。&lt;/p&gt;
+            &lt;p&gt;重点不是让更多内容常驻，而是只在当前上下文确实相关时出现，并让用户决定是否采用。&lt;/p&gt;
+            &lt;button class=&quot;nf9-understanding-action&quot; type=&quot;button&quot;&gt;补充理解&lt;/button&gt;
+            &lt;div class=&quot;nf9-source-block&quot;&gt;
+              &lt;div class=&quot;nf9-source-summary&quot;&gt;参考 · 2 篇笔记 · 2 处原文&lt;/div&gt;
+              &lt;button class=&quot;nf9-source-row&quot; type=&quot;button&quot;&gt;&lt;span class=&quot;nf9-source-index&quot;&gt;1&lt;/span&gt;&lt;span&gt;AI 原生笔记方法论 · 上下文触发&lt;/span&gt;&lt;/button&gt;
+              &lt;button class=&quot;nf9-source-row&quot; type=&quot;button&quot;&gt;&lt;span class=&quot;nf9-source-index&quot;&gt;2&lt;/span&gt;&lt;span&gt;用户访谈记录 · 信息回访&lt;/span&gt;&lt;/button&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;div class=&quot;nf9-composer-wrap&quot;&gt;
+        &lt;div class=&quot;nf9-composer&quot;&gt;
+          &lt;div class=&quot;nf9-contexts&quot;&gt;
+            &lt;span class=&quot;nf9-context-chip&quot;&gt;&lt;i data-lucide=&quot;file-text&quot;&gt;&lt;/i&gt;&lt;span&gt;让信息真正流动起来&lt;/span&gt;&lt;button type=&quot;button&quot; aria-label=&quot;移除当前笔记引用&quot; onclick=&quot;this.parentElement.remove()&quot;&gt;&lt;i data-lucide=&quot;x&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/span&gt;
+            &lt;span id=&quot;nf9-selection-chip&quot; class=&quot;nf9-context-chip is-selection&quot;&gt;&lt;span&gt;引用：笔记的价值不在数量…&lt;/span&gt;&lt;button type=&quot;button&quot; aria-label=&quot;移除选中文字引用&quot; onclick=&quot;this.parentElement.remove()&quot;&gt;&lt;i data-lucide=&quot;x&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/span&gt;
+          &lt;/div&gt;
+          &lt;textarea aria-label=&quot;AI 输入&quot; placeholder=&quot;使用 AI 处理各种任务...&quot;&gt;&lt;/textarea&gt;
+          &lt;div class=&quot;nf9-compose-foot&quot;&gt;
+            &lt;div class=&quot;nf9-mode-wrap&quot;&gt;
+              &lt;button class=&quot;nf9-mode-action&quot; type=&quot;button&quot; aria-label=&quot;选择输入模式&quot; onclick=&quot;nf9ToggleMenu(&#x27;nf9-mode-menu&#x27;)&quot;&gt;&lt;i data-lucide=&quot;message-circle&quot;&gt;&lt;/i&gt;&lt;span id=&quot;nf9-mode-label&quot;&gt;对话&lt;/span&gt;&lt;i class=&quot;nf9-mode-chevron&quot; data-lucide=&quot;chevron-down&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+              &lt;div id=&quot;nf9-mode-menu&quot; class=&quot;nf9-mode-menu&quot; aria-label=&quot;输入模式&quot;&gt;
+                &lt;button class=&quot;nf9-menu-item&quot; type=&quot;button&quot; onclick=&quot;nf9SetMode(&#x27;对话&#x27;,&#x27;message-circle&#x27;)&quot;&gt;&lt;i data-lucide=&quot;message-circle&quot;&gt;&lt;/i&gt;对话&lt;/button&gt;
+                &lt;button class=&quot;nf9-menu-item&quot; type=&quot;button&quot; onclick=&quot;nf9SetMode(&#x27;全库搜索&#x27;,&#x27;search&#x27;)&quot;&gt;&lt;i data-lucide=&quot;search&quot;&gt;&lt;/i&gt;全库搜索&lt;/button&gt;
+              &lt;/div&gt;
+            &lt;/div&gt;
+            &lt;button class=&quot;nf9-send-action&quot; type=&quot;button&quot; aria-label=&quot;发送&quot;&gt;&lt;i data-lucide=&quot;send&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/aside&gt;
+  &lt;/div&gt;
+
+  &lt;script&gt;
+    function nf9ToggleMenu(id) {
+      var menu = document.getElementById(id);
+      if (menu) menu.classList.toggle(&#x27;is-open&#x27;);
+    }
+    function nf9ToggleNav() {
+      document.getElementById(&#x27;noteflow-v9&#x27;).classList.toggle(&#x27;is-nav-collapsed&#x27;);
+    }
+    function nf9ToggleAi() {
+      document.getElementById(&#x27;noteflow-v9&#x27;).classList.toggle(&#x27;is-ai-collapsed&#x27;);
+    }
+    function nf9AddSelection() {
+      var root = document.getElementById(&#x27;noteflow-v9&#x27;);
+      var chip = document.getElementById(&#x27;nf9-selection-chip&#x27;);
+      root.classList.remove(&#x27;is-ai-collapsed&#x27;);
+      if (chip) chip.style.display = &#x27;inline-flex&#x27;;
+    }
+    function nf9SetMode(label) {
+      document.getElementById(&#x27;nf9-mode-label&#x27;).textContent = label;
+      document.getElementById(&#x27;nf9-mode-menu&#x27;).classList.remove(&#x27;is-open&#x27;);
+    }
+    (function () {
+      var root = document.getElementById(&#x27;noteflow-v9&#x27;);
+      var design = { navWidth: 260, aiWidth: 500, readingWidth: 780, radius: 24 };
+      function renderDesign() {
+        root.style.setProperty(&#x27;--nf9-nav-width&#x27;, design.navWidth + &#x27;px&#x27;);
+        root.style.setProperty(&#x27;--nf9-ai-width&#x27;, design.aiWidth + &#x27;px&#x27;);
+        root.style.setProperty(&#x27;--nf9-page-width&#x27;, design.readingWidth + &#x27;px&#x27;);
+        root.style.setProperty(&#x27;--nf9-radius&#x27;, design.radius + &#x27;px&#x27;);
+      }
+      renderDesign();
+      if (globalThis.Tweak) {
+        var tweak = new Tweak({ container: root, onChange: renderDesign });
+        tweak.addSlider(design, &#x27;navWidth&#x27;, { label: &#x27;目录宽度&#x27;, min: 230, max: 300, unit: &#x27;px&#x27;, reference: &#x27;--nf9-nav-width&#x27; });
+        tweak.addSlider(design, &#x27;aiWidth&#x27;, { label: &#x27;AI 面板宽度&#x27;, min: 320, max: 680, unit: &#x27;px&#x27;, reference: &#x27;--nf9-ai-width&#x27; });
+        tweak.addSlider(design, &#x27;readingWidth&#x27;, { label: &#x27;正文最大宽度&#x27;, min: 660, max: 820, unit: &#x27;px&#x27;, reference: &#x27;--nf9-page-width&#x27; });
+        tweak.addSlider(design, &#x27;radius&#x27;, { label: &#x27;工作台圆角&#x27;, min: 16, max: 30, unit: &#x27;px&#x27;, reference: &#x27;--nf9-radius&#x27; });
+      }
+    }());
+  &lt;/script&gt;
+&lt;/div&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+  let lastPointerWasTouch = false;
+  let pinnedByTouch = false;
+
+  const getTrigger = (target) =&gt;
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest(&quot;[data-tooltip]&quot;)
+      : null;
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    pinnedByTouch = false;
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handlePointer = (event) =&gt; {
+    lastPointerWasTouch =
+      event.type === &quot;pointerdown&quot; &amp;&amp; event.pointerType === &quot;touch&quot;;
+  };
+  const handleTouchClick = (event) =&gt; {
+    const isTouch = event.pointerType === &quot;touch&quot; || lastPointerWasTouch;
+    lastPointerWasTouch = false;
+    if (!isTouch || event.detail === 0) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (
+      trigger == null ||
+      !trigger.isConnected ||
+      getContent(trigger).length === 0 ||
+      (pinnedByTouch &amp;&amp; activeTrigger === trigger)
+    ) {
+      if (pinnedByTouch) {
+        closeTooltip();
+      }
+      return;
+    }
+    openTooltip(trigger);
+    pinnedByTouch = activeTrigger === trigger;
+    window.setTimeout(() =&gt; {
+      if (activeTrigger === trigger &amp;&amp; !trigger.isConnected) {
+        closeTooltip(false);
+      }
+    }, 0);
+  };
+  const handleLeave = (event) =&gt; {
+    if (pinnedByTouch) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    lastPointerWasTouch = false;
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    lastPointerWasTouch = false;
+    document.removeEventListener(&quot;pointerover&quot;, handlePointerOpen);
+    document.removeEventListener(&quot;pointerdown&quot;, handlePointer);
+    document.removeEventListener(&quot;pointercancel&quot;, handlePointer);
+    document.removeEventListener(&quot;click&quot;, handleTouchClick);
+    document.removeEventListener(&quot;pointerout&quot;, handleLeave);
+    document.removeEventListener(&quot;focusin&quot;, handleFocusIn);
+    document.removeEventListener(&quot;focusout&quot;, handleLeave);
+    document.removeEventListener(&quot;keydown&quot;, handleKeyDown);
+    document.removeEventListener(&quot;contextmenu&quot;, handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener(&quot;pointerover&quot;, handlePointerOpen);
+  document.addEventListener(&quot;pointerdown&quot;, handlePointer);
+  document.addEventListener(&quot;pointercancel&quot;, handlePointer);
+  document.addEventListener(&quot;click&quot;, handleTouchClick);
+  document.addEventListener(&quot;pointerout&quot;, handleLeave);
+  document.addEventListener(&quot;focusin&quot;, handleFocusIn);
+  document.addEventListener(&quot;focusout&quot;, handleLeave);
+  document.addEventListener(&quot;keydown&quot;, handleKeyDown);
+  document.addEventListener(&quot;contextmenu&quot;, handleContextMenu);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-tabs&quot;&gt;
+(() =&gt; {
+  const selector = &#x27;.nav[role=&quot;tablist&quot;] [role=&quot;tab&quot;]&#x27;;
+  const disabled = &#x27;:disabled,[aria-disabled=&quot;true&quot;]&#x27;;
+  const selectTab = (selected) =&gt; {
+    const panelId = selected.getAttribute(&quot;aria-controls&quot;);
+    for (const tab of selected.closest(&#x27;[role=&quot;tablist&quot;]&#x27;).querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;)) {
+      const active = tab === selected;
+      tab.classList.toggle(&quot;active&quot;, active);
+      tab.setAttribute(&quot;aria-selected&quot;, String(active));
+      const id = tab.getAttribute(&quot;aria-controls&quot;);
+      const panel = id &amp;&amp; document.getElementById(id);
+      if (panel != null) {
+        panel.hidden = id !== panelId;
+        if (!panel.hidden &amp;&amp; selected.id) {
+          panel.setAttribute(&quot;aria-labelledby&quot;, selected.id);
+        }
+      }
+    }
+  };
+  const interact = (event) =&gt; {
+    const tab = event.target?.closest?.(selector);
+    if (event.defaultPrevented || tab == null || tab.matches(disabled)) {
+      return;
+    }
+    if (event.type === &quot;click&quot;) {
+      selectTab(tab);
+      return;
+    }
+    const tabs = Array.from(
+      tab.closest(&#x27;[role=&quot;tablist&quot;]&#x27;).querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;),
+    ).filter((candidate) =&gt; !candidate.matches(disabled));
+    const current = tabs.indexOf(tab);
+    let next;
+    if (event.key === &quot;ArrowRight&quot; || event.key === &quot;ArrowDown&quot;) {
+      next = (current + 1) % tabs.length;
+    } else if (event.key === &quot;ArrowLeft&quot; || event.key === &quot;ArrowUp&quot;) {
+      next = (current + tabs.length - 1) % tabs.length;
+    } else if (event.key === &quot;Home&quot;) {
+      next = 0;
+    } else if (event.key === &quot;End&quot;) {
+      next = tabs.length - 1;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    tabs[next].focus();
+    selectTab(tabs[next]);
+  };
+
+  for (const list of document.querySelectorAll(&#x27;.nav[role=&quot;tablist&quot;]&#x27;)) {
+    const selected =
+      list.querySelector(&#x27;[role=&quot;tab&quot;][aria-selected=&quot;true&quot;]&#x27;) ??
+      list.querySelector(&#x27;[role=&quot;tab&quot;].active&#x27;) ??
+      list.querySelector(&#x27;[role=&quot;tab&quot;]&#x27;);
+    if (selected != null) {
+      selectTab(selected);
+    }
+  }
+  document.addEventListener(&quot;click&quot;, interact);
+  document.addEventListener(&quot;keydown&quot;, interact);
+  window.addEventListener(&quot;pagehide&quot;, () =&gt; {
+    document.removeEventListener(&quot;click&quot;, interact);
+    document.removeEventListener(&quot;keydown&quot;, interact);
+  }, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+</body>
+</html>
