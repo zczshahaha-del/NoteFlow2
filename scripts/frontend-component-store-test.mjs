@@ -230,10 +230,11 @@ try {
   const directoryContainer = document.createElement("div");
   document.body.appendChild(directoryContainer);
   const directoryRoot = createRoot(directoryContainer);
+  let directoryPinnedChange = null;
   await act(async () => {
     directoryRoot.render(React.createElement(DirectoryTree, {
       pinned: true,
-      onPinnedChange() {},
+      onPinnedChange(value) { directoryPinnedChange = value; },
       themeMode: "light",
       onThemeModeChange() {},
       userEmail: "test@example.com",
@@ -246,9 +247,35 @@ try {
   assert.match(activeFileButton.className, /bg-jelly-blue-pale/);
   assert.match(directoryContainer.textContent ?? "", /目录1 篇/);
   assert.doesNotMatch(directoryContainer.textContent ?? "", /\d+\s*个文件夹/);
-  assert.ok(directoryContainer.querySelector('button[aria-label="搜索全部笔记"]'));
+  const searchButton = directoryContainer.querySelector('button[aria-label="搜索全部笔记"]');
+  const collapseButton = directoryContainer.querySelector('button[aria-label="收起目录"]');
+  assert.ok(searchButton);
+  assert.ok(collapseButton);
+  assert.deepEqual(
+    Array.from(searchButton.parentElement.querySelectorAll("button"))
+      .map((button) => button.getAttribute("aria-label")),
+    ["搜索全部笔记", "新建", "收起目录"],
+    "directory actions must use the same search / new / collapse order for DOM and keyboard navigation"
+  );
+  assert.ok(collapseButton.parentElement.classList.contains("ml-1"));
+  await act(async () => {
+    collapseButton.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+  });
+  assert.equal(directoryPinnedChange, false);
   const newButton = directoryContainer.querySelector('button[aria-label="新建"]');
   assert.ok(newButton);
+  await act(async () => {
+    newButton.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+  });
+  await act(async () => {
+    searchButton.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+  });
+  assert.equal(newButton.getAttribute("aria-expanded"), "false");
+  assert.ok(document.querySelector('input[aria-label="搜索全部笔记"]'));
+  await act(async () => document.dispatchEvent(new dom.window.KeyboardEvent("keydown", {
+    key: "Escape", bubbles: true,
+  })));
+  assert.equal(document.querySelector('input[aria-label="搜索全部笔记"]'), null);
   await act(async () => {
     newButton.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
   });
@@ -367,6 +394,9 @@ try {
   };
   await act(async () => accountRoot.render(React.createElement(AccountMenu, accountProps)));
   const accountTrigger = accountContainer.querySelector('button[aria-label="我的账号"]');
+  assert.ok(accountTrigger.classList.contains("mr-2"));
+  assert.equal(accountTrigger.querySelector("span.block.truncate").parentElement.classList.contains("flex-1"), false);
+  assert.ok(accountTrigger.querySelector(".account-menu-chevron"));
   const accountPanel = () => accountContainer.querySelector('[role="dialog"][aria-label="账号操作"]');
   const accountAction = (label) => Array.from(accountPanel()?.querySelectorAll("button") ?? [])
     .find((button) => button.textContent?.includes(label));
@@ -430,6 +460,8 @@ try {
     ...accountProps, compact: true, themeMode: "dark", userName: "测试用户",
   })));
   const compactTrigger = compactAccountContainer.querySelector('button[aria-label="我的账号"]');
+  assert.equal(compactTrigger.classList.contains("mr-2"), false);
+  assert.equal(compactTrigger.querySelector(".account-menu-chevron"), null);
   await clickAccount(compactTrigger);
   assert.ok(compactAccountContainer.querySelector('.account-menu-root[data-compact="true"] .account-popover'));
   assert.match(compactAccountContainer.textContent, /测试用户/);

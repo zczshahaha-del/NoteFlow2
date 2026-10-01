@@ -852,24 +852,19 @@ export default function DirectoryTree({
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1">
-                <div className="group/collapse-directory relative">
-                  <button
-                    type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-md text-jelly-text-muted transition-colors hover:bg-jelly-blue-pale hover:text-jelly-blue-deep focus-visible:bg-jelly-blue-pale focus-visible:text-jelly-blue-deep focus-visible:outline-none"
-                    onClick={() => onPinnedChange(!pinned)}
-                    aria-label="收起目录"
-                    aria-describedby="collapse-directory-tooltip"
-                  >
-                    <ChevronsLeft size={15} strokeWidth={1.8} />
-                  </button>
-                  <span
-                    id="collapse-directory-tooltip"
-                    role="tooltip"
-                    className="pointer-events-none absolute left-1/2 top-full z-50 mt-1.5 -translate-x-1/2 -translate-y-1 whitespace-nowrap rounded-md border border-jelly-border bg-white px-2.5 py-1 text-[12px] font-medium text-jelly-text-soft opacity-0 shadow-[0_6px_18px_rgba(30,44,56,0.08)] transition-all duration-150 group-hover/collapse-directory:translate-y-0 group-hover/collapse-directory:opacity-100 group-focus-within/collapse-directory:translate-y-0 group-focus-within/collapse-directory:opacity-100"
-                  >
-                    收起目录
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-jelly-text-muted transition-colors hover:bg-jelly-blue-pale hover:text-jelly-blue-deep focus-visible:bg-jelly-blue-pale focus-visible:text-jelly-blue-deep"
+                  onClick={() => {
+                    setNewMenuOpen(false);
+                    setNewTooltipOpen(false);
+                    setSearchOpen(true);
+                  }}
+                  aria-label="搜索全部笔记"
+                  title="搜索全部笔记（⌘K）"
+                >
+                  <Search size={15} strokeWidth={1.8} />
+                </button>
                 <div
                   className="relative"
                   ref={newMenuRef}
@@ -916,19 +911,24 @@ export default function DirectoryTree({
                     </div>
                   )}
                 </div>
-                <button
-                  type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-md text-jelly-text-muted transition-colors hover:bg-jelly-blue-pale hover:text-jelly-blue-deep focus-visible:bg-jelly-blue-pale focus-visible:text-jelly-blue-deep"
-                  onClick={() => {
-                    setNewMenuOpen(false);
-                    setNewTooltipOpen(false);
-                    setSearchOpen(true);
-                  }}
-                  aria-label="搜索全部笔记"
-                  title="搜索全部笔记（⌘K）"
-                >
-                  <Search size={15} strokeWidth={1.8} />
-                </button>
+                <div className="group/collapse-directory relative ml-1">
+                  <button
+                    type="button"
+                    className="flex h-8 w-8 items-center justify-center rounded-md text-jelly-text-muted transition-colors hover:bg-jelly-blue-pale hover:text-jelly-blue-deep focus-visible:bg-jelly-blue-pale focus-visible:text-jelly-blue-deep focus-visible:outline-none"
+                    onClick={() => onPinnedChange(!pinned)}
+                    aria-label="收起目录"
+                    aria-describedby="collapse-directory-tooltip"
+                  >
+                    <ChevronsLeft size={15} strokeWidth={1.8} />
+                  </button>
+                  <span
+                    id="collapse-directory-tooltip"
+                    role="tooltip"
+                    className="pointer-events-none absolute right-0 top-full z-50 mt-1.5 -translate-y-1 whitespace-nowrap rounded-md border border-jelly-border bg-white px-2.5 py-1 text-[12px] font-medium text-jelly-text-soft opacity-0 shadow-[0_6px_18px_rgba(30,44,56,0.08)] transition-all duration-150 group-hover/collapse-directory:translate-y-0 group-hover/collapse-directory:opacity-100 group-focus-within/collapse-directory:translate-y-0 group-focus-within/collapse-directory:opacity-100"
+                  >
+                    收起目录
+                  </span>
+                </div>
               </div>
             </div>
           </>

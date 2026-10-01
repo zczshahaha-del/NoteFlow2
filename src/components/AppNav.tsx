@@ -432,7 +432,7 @@ export default function AccountMenu({
   const utilityButtonClass = "h-9 w-9 justify-center rounded-lg";
   const accountButtonClass = compact
     ? "h-9 w-9 justify-center rounded-lg"
-    : "h-11 flex-1 gap-2 rounded-lg px-1.5 text-left";
+    : "mr-2 h-11 flex-1 gap-2 rounded-lg px-1.5 text-left";
 
   return (
     <div ref={accountRef} data-compact={compact} className={`account-menu-root relative shrink-0 overflow-visible ${compact ? "" : "w-full"}`}>
@@ -496,7 +496,7 @@ export default function AccountMenu({
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-jelly-blue text-white">
               <UserRound size={16} strokeWidth={1.9} />
             </span>
-            <span className="min-w-0 flex-1">
+            <span className="min-w-0">
               <span className="block truncate text-[12.5px] font-semibold tracking-[-0.01em] text-jelly-text">{accountPrimary}</span>
             </span>
             <ChevronUp size={14} className="account-menu-chevron shrink-0 text-jelly-text-muted" strokeWidth={1.7} />

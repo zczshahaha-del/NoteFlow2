@@ -230,7 +230,7 @@ assert.doesNotMatch(directoryTree, /folderCount|个文件夹/);
 assert.match(directoryTree, /id="collapse-directory-tooltip"[\s\S]*?role="tooltip"[\s\S]*?收起目录/);
 assert.doesNotMatch(directoryTree, /aria-label="收起目录"[\s\S]{0,120}title="收起目录"/);
 assert.match(directoryTree, /aria-label="搜索全部笔记"/);
-assert.match(directoryTree, /<Plus[\s\S]*?aria-label="搜索全部笔记"[\s\S]*?<Search/);
+assert.match(directoryTree, /aria-label="搜索全部笔记"[\s\S]*?<Search[\s\S]*?aria-label="新建"[\s\S]*?<Plus[\s\S]*?aria-label="收起目录"[\s\S]*?<ChevronsLeft/);
 assert.match(directoryTree, /<LibrarySearchDialog[\s\S]*?open=\{searchOpen\}/);
 assert.doesNotMatch(directoryTree, /searchQuery|searchResults\.map|正在检索知识库/);
 assert.match(directoryTree, /if \(!searchShortcutEnabled\) return/);
