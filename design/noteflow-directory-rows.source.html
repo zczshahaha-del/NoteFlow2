@@ -1,0 +1,91 @@
+<div id="nf-directory-rows" aria-label="NoteFlow 目录列表局部设计">
+  <div class="viz-carousel viz-dotted-background" aria-label="目录排版方案" data-previous-label="上一稿" data-next-label="下一稿">
+    <section data-variant="柔和整行" aria-label="柔和整行目录设计">
+      <div class="ndr-stage"><aside class="ndr-panel ndr-soft" aria-label="优化后的目录">
+        <header class="ndr-heading"><i data-lucide="book-open" aria-hidden="true"></i><span>目录</span><span class="ndr-count">5 篇</span></header>
+        <div class="ndr-list" data-list="soft"></div>
+      </aside></div>
+    </section>
+    <section data-variant="现有排版参考" aria-label="依据实际尺寸重绘的现有目录参考" hidden>
+      <div class="ndr-stage"><aside class="ndr-panel ndr-current" aria-label="现有目录排版参考">
+        <header class="ndr-heading"><i data-lucide="book-open" aria-hidden="true"></i><span>目录</span><span class="ndr-count">5 篇</span></header>
+        <div class="ndr-list" data-list="current"></div>
+      </aside></div>
+    </section>
+  </div>
+  <span class="ndr-announcement" role="status" aria-live="polite"></span>
+</div>
+<style>
+  #nf-directory-rows { --ndr-text:light-dark(#303a45,#e4e8ed); --ndr-muted:light-dark(#697987,#afbac5); --ndr-icon:light-dark(#84919d,#99a8b7); --ndr-surface:light-dark(#fbfcfd,#242a31); --ndr-current-surface:light-dark(#ffffff,#242a31); --ndr-selection:light-dark(#eaf0f5,#384652); --ndr-old-selection:light-dark(#eef5f9,#304453); --ndr-old-accent:light-dark(#397594,#89c1dd); --ndr-hover:light-dark(#f0f3f6,#313a44); --ndr-edge:light-dark(#e7ebef,#3b4652); --ndr-row-height:36px; --ndr-radius:9px; width:100%; max-width:420px; margin:auto; color:var(--ndr-text); font:400 13.5px/1.35 -apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif; }
+  #nf-directory-rows * { box-sizing:border-box; }
+  #nf-directory-rows .ndr-stage { min-height:350px; padding:24px; display:flex; justify-content:center; align-items:flex-start; }
+  #nf-directory-rows .ndr-panel { width:260px; max-width:100%; min-height:302px; background:var(--ndr-surface); border:1px solid var(--ndr-edge); border-radius:14px; padding:0 11px 20px; }
+  #nf-directory-rows .ndr-heading { display:flex; gap:7px; align-items:center; height:56px; padding:0 9px; font-weight:500; font-size:14px; }
+  #nf-directory-rows .ndr-count { color:var(--ndr-muted); font-size:11px; font-weight:400; margin-left:1px; }
+  #nf-directory-rows .ndr-list { padding-top:5px; }
+  #nf-directory-rows .ndr-row { display:flex; align-items:center; min-width:0; height:var(--ndr-row-height); border-radius:var(--ndr-radius); margin:2px 0; padding:0 5px; transition:background-color 160ms ease; }
+  #nf-directory-rows .ndr-row[data-depth="1"] { margin-left:12px; }
+  #nf-directory-rows .ndr-row:hover,#nf-directory-rows .ndr-row:focus-within { background:var(--ndr-hover); }
+  #nf-directory-rows .ndr-row.ndr-selected { background:var(--ndr-selection); }
+  #nf-directory-rows button { appearance:none; border:0; margin:0; padding:0; background:transparent; font:inherit; color:inherit; }
+  #nf-directory-rows .ndr-arrow,#nf-directory-rows .ndr-slot { width:18px; height:32px; flex:none; display:grid; place-items:center; }
+  #nf-directory-rows .ndr-arrow { color:var(--ndr-muted); }
+  #nf-directory-rows .ndr-arrow svg { --ndr-size:14px; stroke-width:1.9; transition:transform 160ms ease; }
+  #nf-directory-rows .ndr-arrow[aria-expanded="false"] svg { transform:rotate(-90deg); }
+  #nf-directory-rows .ndr-open { min-width:0; display:flex; flex:1; height:100%; align-items:center; gap:8px; text-align:left; padding-left:5px; }
+  #nf-directory-rows .ndr-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #nf-directory-rows .ndr-folder .ndr-name,#nf-directory-rows .ndr-selected .ndr-name { font-weight:500; }
+  #nf-directory-rows .ndr-more { width:24px; height:32px; flex:none; color:var(--ndr-icon); display:grid; place-items:center; border-radius:6px; }
+  #nf-directory-rows .ndr-more svg { --ndr-size:15px; stroke-width:1.8; opacity:0; }
+  #nf-directory-rows .ndr-row:hover .ndr-more svg,#nf-directory-rows .ndr-row:focus-within .ndr-more svg,#nf-directory-rows .ndr-selected .ndr-more svg { opacity:1; }
+  #nf-directory-rows .ndr-more:hover { background:var(--ndr-selection); }
+  #nf-directory-rows svg.lucide { width:var(--ndr-size,16px)!important; height:var(--ndr-size,16px)!important; max-width:none; flex-shrink:0; stroke-width:1.6; color:var(--ndr-icon); }
+  #nf-directory-rows .ndr-selected .ndr-open svg { color:var(--ndr-muted); }
+  #nf-directory-rows .ndr-current { background:var(--ndr-current-surface); padding:0 15px 20px; }
+  #nf-directory-rows .ndr-current .ndr-row { height:33.75px; margin:0; padding:0; background:transparent; border-radius:0; font-size:13px; color:var(--ndr-muted); }
+  #nf-directory-rows .ndr-current .ndr-arrow,#nf-directory-rows .ndr-current .ndr-slot { width:18.75px; }
+  #nf-directory-rows .ndr-current .ndr-open { height:30px; border-radius:5.625px; padding:0 7.5px; gap:7.5px; position:relative; }
+  #nf-directory-rows .ndr-current .ndr-name { font-weight:400; }
+  #nf-directory-rows .ndr-current .ndr-selected .ndr-open { background:var(--ndr-old-selection); color:var(--ndr-old-accent); }
+  #nf-directory-rows .ndr-current .ndr-selected .ndr-open:before { content:""; position:absolute; left:0; top:6px; bottom:6px; width:2px; border-radius:2px; background:var(--ndr-old-accent); }
+  #nf-directory-rows .ndr-current .ndr-selected .ndr-open svg { color:var(--ndr-old-accent); }
+  #nf-directory-rows .ndr-current .ndr-more { width:26.25px; height:26.25px; margin-left:3.75px; }
+  #nf-directory-rows .ndr-announcement { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+  @media(max-width:380px) { #nf-directory-rows .ndr-stage { padding:18px 12px; } }
+  @media(pointer:coarse) { #nf-directory-rows .ndr-row,#nf-directory-rows .ndr-current .ndr-row { height:44px; } #nf-directory-rows .ndr-arrow,#nf-directory-rows .ndr-more { width:44px; height:44px; } #nf-directory-rows .ndr-row.ndr-folder .ndr-open { padding-left:0; } #nf-directory-rows .ndr-more svg { opacity:1; } #nf-directory-rows .ndr-stage { min-height:395px; } }
+  @media(prefers-reduced-motion:reduce) { #nf-directory-rows .ndr-row,#nf-directory-rows .ndr-arrow svg { transition:none; } }
+</style>
+<script>
+(() => {
+  const root=document.getElementById('nf-directory-rows');
+  const design='noteflow-directory-rows-v1';
+  const items=[{id:'folder',name:'全栈开发',folder:true,depth:0},{id:'go',name:'Go 语言',depth:1},{id:'ai',name:'AI应用开发学习笔记',depth:1},{id:'redis',name:'Redis',depth:0},{id:'python',name:'Python 的面试常问题',depth:0},{id:'git',name:'Git 入门学习笔记',depth:0}];
+  const valid=v=>v?.design===design&&Number.isSafeInteger(v.revision)&&v.revision>=0&&typeof v.expanded==='boolean'&&items.some(i=>!i.folder&&i.id===v.selected);
+  const unwrap=v=>v?.modelContent??v;
+  const saved=unwrap(window.openai?.widgetState);
+  const state=valid(saved)?{revision:saved.revision,expanded:saved.expanded,selected:saved.selected}:{revision:0,expanded:true,selected:'ai'};
+  const geometry={height:36,radius:9};
+  for(const list of root.querySelectorAll('[data-list]')) {
+    for(const item of items) {
+      const row=document.createElement('div');row.className='ndr-row'+(item.folder?' ndr-folder':'');row.dataset.id=item.id;row.dataset.depth=item.depth;
+      row.innerHTML=(item.folder?'<button class="ndr-arrow cursor-interaction" type="button" data-folder aria-label="展开全栈开发"><i data-lucide="chevron-down" aria-hidden="true"></i></button>':'<span class="ndr-slot" aria-hidden="true"></span>')+'<button class="ndr-open cursor-interaction" type="button" '+(item.folder?'data-folder':'data-note="'+item.id+'"')+' aria-label="'+item.name+'" data-tooltip="'+item.name+'"><i data-lucide="'+(item.folder?'folder-open':'file-text')+'" aria-hidden="true"></i><span class="ndr-name">'+item.name+'</span></button><button type="button" class="ndr-more cursor-interaction" aria-label="'+item.name+'的操作" data-demo="'+item.name+'的操作"><i data-lucide="ellipsis" aria-hidden="true"></i></button>';
+      list.append(row);
+    }
+  }
+  function render() {
+    root.style.setProperty('--ndr-row-height',geometry.height+'px');root.style.setProperty('--ndr-radius',geometry.radius+'px');
+    for(const row of root.querySelectorAll('[data-id]')) {
+      row.hidden=row.dataset.depth==='1'&&!state.expanded;row.style.display=row.hidden?'none':'';
+      const selected=row.dataset.id===state.selected;row.classList.toggle('ndr-selected',selected);
+      const note=row.querySelector('[data-note]');if(note){if(selected)note.setAttribute('aria-current','page');else note.removeAttribute('aria-current');}
+    }
+    for(const button of root.querySelectorAll('[data-folder]')){button.setAttribute('aria-expanded',String(state.expanded));if(button.classList.contains('ndr-arrow'))button.setAttribute('aria-label',(state.expanded?'收起':'展开')+'全栈开发');}
+  }
+  function save(action) { state.revision++;root.querySelector('.ndr-announcement').textContent=action;window.openai?.setWidgetState?.({modelContent:{design,...state},privateContent:null})?.catch(()=>{}); }
+  root.addEventListener('click',event=>{const button=event.target.closest('button');if(!button)return;if(button.hasAttribute('data-folder')){state.expanded=!state.expanded;render();save((state.expanded?'展开':'收起')+'全栈开发');}else if(button.dataset.note){state.selected=button.dataset.note;render();save('已选择'+items.find(i=>i.id===state.selected).name);}else if(button.dataset.demo){root.querySelector('.ndr-announcement').textContent=button.dataset.demo+'：本稿只展示行内入口，不执行文件操作';}});
+  window.addEventListener('openai:set_globals',event=>{const next=unwrap(event.detail?.globals?.widgetState);if(valid(next)&&next.revision>state.revision){Object.assign(state,{revision:next.revision,expanded:next.expanded,selected:next.selected});render();}});
+  render();
+  if(globalThis.lucide)lucide.createIcons();
+  if(globalThis.Tweak){const tweak=new Tweak({container:root.querySelector('.ndr-soft'),onChange:render});tweak.addSlider(geometry,'height',{label:'行高',min:34,max:40,step:1,unit:'px'});tweak.addSlider(geometry,'radius',{label:'选中底色圆角',min:6,max:11,step:1,unit:'px'});}
+})();
+</script>
