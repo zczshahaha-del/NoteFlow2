@@ -1,0 +1,97 @@
+<style>
+  #nf-account-preview { display: flex; justify-content: center; padding: 22px 16px; width: 100%; }
+  #nf-account-footer {
+    --nf-foot-bg: light-dark(#f6f7f5, #22272b);
+    --nf-foot-ink: light-dark(#35434c, #e1e8ee);
+    --nf-foot-muted: light-dark(#78858f, #a5b0ba);
+    --nf-foot-line: light-dark(#e7ebe8, #354047);
+    --nf-foot-avatar: light-dark(#e5edf1, #344752);
+    --nf-foot-blue: light-dark(#64849b, #b0cbdf);
+    --nf-foot-hover: light-dark(#e9edea, #303b40);
+    --nf-foot-menu: light-dark(#ffffff, #2b343b);
+    --nf-foot-shadow: light-dark(#273f4d14, #00000042);
+    --nf-foot-red: light-dark(#98605c, #d9a5a1);
+    --nf-foot-avatar-size: 28px;
+    --nf-foot-gap: 5px;
+    position: relative; width: 280px; max-width: 100%; padding: 26px 14px 13px;
+    background: var(--nf-foot-bg); color: var(--nf-foot-ink);
+    font: 400 14px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased; text-align: left;
+  }
+  #nf-account-footer * { box-sizing: border-box; }
+  #nf-account-footer [hidden] { display: none !important; }
+  #nf-account-footer button { font: inherit; padding: 0; border: 0; background: transparent; color: inherit; transition: background 160ms ease, color 160ms ease; }
+  #nf-account-footer svg { width: 18px; height: 18px; stroke-width: 1.65; flex-shrink: 0; }
+  #nf-account-footer .nf-foot-rule { height: 1px; background: var(--nf-foot-line); margin-bottom: 10px; }
+  #nf-account-footer .nf-foot-row { display: flex; align-items: center; gap: var(--nf-foot-gap); position: relative; }
+  #nf-account-footer .nf-foot-account { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0; height: 42px; padding: 0 6px; border-radius: 10px; text-align: left; }
+  #nf-account-footer .nf-foot-account:hover, #nf-account-footer .nf-foot-account[aria-expanded="true"] { background: var(--nf-foot-hover); }
+  #nf-account-footer .nf-foot-avatar { display: grid; place-items: center; width: var(--nf-foot-avatar-size); height: var(--nf-foot-avatar-size); border-radius: 50%; background: var(--nf-foot-avatar); color: var(--nf-foot-blue); flex-shrink: 0; }
+  #nf-account-footer .nf-foot-avatar svg { width: 16px; height: 16px; stroke-width: 1.6; }
+  #nf-account-footer .nf-foot-label { white-space: nowrap; font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+  #nf-account-footer .nf-foot-chevron { margin-left: auto; width: 12px; height: 12px; color: var(--nf-foot-muted); transition: transform 180ms ease; }
+  #nf-account-footer .nf-foot-account[aria-expanded="true"] .nf-foot-chevron { transform: rotate(180deg); }
+  #nf-account-footer .nf-foot-utility { display: grid; place-items: center; width: 33px; height: 36px; border-radius: 9px; color: var(--nf-foot-muted); flex-shrink: 0; }
+  #nf-account-footer .nf-foot-utility:hover { background: var(--nf-foot-hover); color: var(--nf-foot-ink); }
+  #nf-account-footer .nf-foot-menu { position: absolute; bottom: calc(100% + 13px); left: 0; right: 0; z-index: 2; padding: 7px; border-radius: 14px; border: 1px solid var(--nf-foot-line); background: var(--nf-foot-menu); box-shadow: 0 7px 24px var(--nf-foot-shadow); }
+  #nf-account-footer .nf-foot-menu button { display: flex; align-items: center; gap: 10px; width: 100%; height: 39px; padding: 0 10px; border-radius: 8px; font-size: 13px; text-align: left; }
+  #nf-account-footer .nf-foot-menu button svg { width: 16px; height: 16px; color: var(--nf-foot-muted); }
+  #nf-account-footer .nf-foot-menu button:hover { background: var(--nf-foot-hover); }
+  #nf-account-footer .nf-foot-menu-separator { height: 1px; margin: 5px 6px; background: var(--nf-foot-line); }
+  #nf-account-footer .nf-foot-menu .nf-foot-signout { color: var(--nf-foot-red); }
+  #nf-account-footer .nf-foot-menu .nf-foot-signout svg { color: var(--nf-foot-red); }
+  #nf-account-footer.is-menu-open { padding-top: 194px; }
+  #nf-account-footer .nf-foot-status { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  @media (pointer: coarse) { #nf-account-footer .nf-foot-account, #nf-account-footer .nf-foot-utility { min-height: 44px; } #nf-account-footer .nf-foot-utility { width: 40px; } }
+  @media (prefers-reduced-motion: reduce) { #nf-account-footer button, #nf-account-footer .nf-foot-chevron { transition: none; } }
+</style>
+<div id="nf-account-preview" class="viz-dotted-background">
+  <section id="nf-account-footer" aria-label="NoteFlow 左下角账号区设计">
+    <div class="nf-foot-rule"></div>
+    <div class="nf-foot-row">
+      <button type="button" class="nf-foot-account cursor-interaction" aria-label="我的账号" aria-expanded="false" aria-controls="nf-foot-menu">
+        <span class="nf-foot-avatar"><i data-lucide="user-round" aria-hidden="true"></i></span><span class="nf-foot-label">我的账号</span><i data-lucide="chevron-up" class="nf-foot-chevron" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="nf-foot-utility cursor-interaction" data-entry="回收站" aria-label="回收站" data-tooltip="回收站"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+      <button type="button" class="nf-foot-utility cursor-interaction" data-entry="设置" aria-label="设置" data-tooltip="设置"><i data-lucide="settings-2" aria-hidden="true"></i></button>
+      <div id="nf-foot-menu" class="nf-foot-menu" aria-label="账号操作" hidden>
+        <button type="button" class="cursor-interaction" data-entry="登录邮箱"><i data-lucide="mail-check" aria-hidden="true"></i>登录邮箱</button>
+        <button type="button" class="cursor-interaction" data-entry="已登录设备"><i data-lucide="monitor-smartphone" aria-hidden="true"></i>已登录设备</button>
+        <div class="nf-foot-menu-separator"></div>
+        <button type="button" class="nf-foot-signout cursor-interaction" data-entry="退出登录"><i data-lucide="log-out" aria-hidden="true"></i>退出登录</button>
+      </div>
+    </div>
+    <span class="nf-foot-status" role="status" aria-live="polite"></span>
+  </section>
+</div>
+<script>
+(() => {
+  const root = document.getElementById('nf-account-footer');
+  const button = root.querySelector('.nf-foot-account');
+  const menu = root.querySelector('.nf-foot-menu');
+  let open = false;
+  let revision = 0;
+  function render() { root.classList.toggle('is-menu-open', open); menu.hidden = !open; button.setAttribute('aria-expanded', String(open)); }
+  function remember() {
+    revision++;
+    if (window.openai && typeof window.openai.setWidgetState === 'function') window.openai.setWidgetState({ modelContent: { component: 'noteflow-account-footer', direction: '融入侧栏', menuOpen: open }, privateContent: { component: 'noteflow-account-footer', open, revision } }).catch(() => {});
+  }
+  function restore(saved) {
+    const previous = saved && saved.privateContent;
+    if (!previous || previous.component !== 'noteflow-account-footer' || typeof previous.open !== 'boolean' || !Number.isFinite(previous.revision) || previous.revision < revision) return;
+    revision = previous.revision; open = previous.open; render();
+  }
+  button.addEventListener('click', () => { open = !open; render(); remember(); });
+  root.querySelectorAll('[data-entry]').forEach(entry => entry.addEventListener('click', () => { open = false; render(); remember(); root.querySelector('.nf-foot-status').textContent = `${entry.dataset.entry}是已有入口，此设计预览不操作真实数据。`; }));
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && open) { open = false; render(); remember(); button.focus(); } });
+  document.addEventListener('click', event => { if (open && !root.contains(event.target)) { open = false; render(); remember(); } });
+  window.addEventListener('openai:set_globals', event => restore(event.detail && event.detail.globals && event.detail.globals.widgetState));
+  render(); restore(window.openai && window.openai.widgetState);
+  if (globalThis.Tweak) {
+    const design = { avatar: 28, gap: 5 };
+    const tweak = new Tweak({ container: root, onChange: () => { root.style.setProperty('--nf-foot-avatar-size', `${design.avatar}px`); root.style.setProperty('--nf-foot-gap', `${design.gap}px`); } });
+    tweak.addSlider(design, 'avatar', { label: '头像尺寸', min: 26, max: 32, unit: 'px', reference: '--nf-foot-avatar-size' });
+    tweak.addSlider(design, 'gap', { label: '按钮间距', min: 3, max: 8, unit: 'px', reference: '--nf-foot-gap' });
+  }
+})();
+</script>
