@@ -202,6 +202,101 @@ button,
   box-shadow: none;
 }
 
+/* Local directory-row typography must not inherit the global button reset.
+   Do not extend these rules to dialogs, the toolbar or the account controls. */
+.directory-tree .directory-node-list {
+  padding-inline: 12px;
+  --directory-row-text: light-dark(#303a45, #e4e8ed);
+  --directory-row-muted: light-dark(#697987, #afbac5);
+  --directory-row-icon: light-dark(#84919d, #99a8b7);
+  --directory-row-hover: light-dark(#f0f3f6, #313a44);
+  --directory-row-selected: light-dark(#eaf0f5, #384652);
+}
+
+.directory-tree .directory-node-row {
+  min-height: 36px;
+  margin-block: 2px;
+  padding-inline: 5px;
+  border-radius: 9px;
+  color: var(--directory-row-text);
+  font-size: 13.5px;
+  font-weight: 400;
+  line-height: 1.35;
+  transition: background-color 160ms ease;
+}
+
+.directory-tree .directory-node-row:hover,
+.directory-tree .directory-node-row:focus-within,
+.directory-tree .directory-node-row[data-menu-open="true"] {
+  background: var(--directory-row-hover);
+}
+
+.directory-tree .directory-node-row[data-selected="true"] {
+  background: var(--directory-row-selected);
+}
+
+.directory-tree .directory-node-row[data-folder="true"],
+.directory-tree .directory-node-row[data-selected="true"] {
+  font-weight: 500;
+}
+
+.directory-tree .directory-node-open {
+  min-height: 36px;
+  padding-left: 5px;
+  gap: 8px;
+  font: inherit;
+  color: inherit;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+}
+
+.directory-tree .directory-node-arrow,
+.directory-tree .directory-node-slot {
+  width: 18px;
+  height: 32px;
+  color: var(--directory-row-muted);
+}
+
+.directory-tree .directory-node-icon,
+.directory-tree .directory-node-more {
+  color: var(--directory-row-icon);
+}
+
+.directory-tree .directory-node-row[data-selected="true"] .directory-node-icon {
+  color: var(--directory-row-muted);
+}
+
+.directory-tree .directory-node-more {
+  width: 24px;
+  height: 32px;
+  border-radius: 6px;
+}
+
+.directory-tree .directory-node-more:hover {
+  background: var(--directory-row-selected);
+}
+
+@media (pointer: coarse) {
+  .directory-tree .directory-node-row,
+  .directory-tree .directory-node-open {
+    min-height: 44px;
+  }
+
+  .directory-tree .directory-node-arrow,
+  .directory-tree .directory-node-more {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .directory-tree .directory-node-row,
+  .directory-tree .directory-node-arrow svg {
+    transition: none;
+  }
+}
+
 @media (hover: none) {
   .directory-tree .file-node-menu-button {
     opacity: 1;

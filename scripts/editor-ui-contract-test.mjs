@@ -256,10 +256,14 @@ assert.match(librarySearch, /SEARCH_SCOPES/);
 assert.match(librarySearch, /createPortal/);
 assert.match(
   directoryTree,
-  /isSelected[\s\S]*?"border-transparent bg-jelly-blue-pale font-medium text-jelly-blue-deep shadow-none"/,
-  "the selected note must have a clear visual state"
+  /data-selected=\{isSelected \|\| undefined\}/,
+  "the selected note must style the entire row rather than just the middle button"
 );
-assert.match(directoryTree, /bg-jelly-blue-pale\/60 hover:text-jelly-text/);
+assert.match(styles, /\.directory-tree \.directory-node-row\[data-selected="true"\] \{\s*background: var\(--directory-row-selected\);/);
+assert.match(styles, /\.directory-tree \.directory-node-row \{[\s\S]*?min-height: 36px;[\s\S]*?font-size: 13\.5px;/);
+assert.match(styles, /\.directory-tree \.directory-node-open \{[\s\S]*?font: inherit;/);
+assert.match(styles, /\.directory-tree \.directory-node-row\[data-folder="true"\],[\s\S]*?font-weight: 500;/);
+assert.doesNotMatch(directoryTree, /absolute inset-y-1\.5 left-0 w-0\.5/);
 assert.match(directoryTree, /depth \* 12/);
 assert.match(directoryTree, /group-focus-within\/node:opacity-100/);
 assert.match(directoryTree, /还没有笔记/);

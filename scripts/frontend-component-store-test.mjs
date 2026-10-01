@@ -244,7 +244,13 @@ try {
   });
   const activeFileButton = directoryContainer.querySelector('button[aria-current="page"]');
   assert.ok(activeFileButton);
-  assert.match(activeFileButton.className, /bg-jelly-blue-pale/);
+  assert.ok(activeFileButton.classList.contains("directory-node-open"));
+  assert.equal(activeFileButton.closest(".directory-node-row").dataset.selected, "true");
+  assert.equal(activeFileButton.getAttribute("aria-label"), "组件测试笔记");
+  assert.equal(activeFileButton.getAttribute("title"), "组件测试笔记");
+  assert.equal(activeFileButton.querySelector("span[aria-hidden]"), null);
+  assert.ok(activeFileButton.closest(".directory-node-row")
+    .querySelector(".file-node-menu-button").classList.contains("opacity-100"));
   assert.match(directoryContainer.textContent ?? "", /目录1 篇/);
   assert.doesNotMatch(directoryContainer.textContent ?? "", /\d+\s*个文件夹/);
   const searchButton = directoryContainer.querySelector('button[aria-label="搜索全部笔记"]');
@@ -334,6 +340,52 @@ try {
   assert.ok(directoryContainer.querySelector('[role="dialog"][aria-labelledby="move-item-title"]'));
   await act(async () => directoryRoot.unmount());
   directoryContainer.remove();
+
+  // Row appearance must not couple disclosure, note opening or menu actions.
+  const nestedNote = { ...note, pinned: true };
+  const folder = { id: "row-folder", type: "folder", name: "全栈开发", children: [nestedNote] };
+  useAppStore.setState({
+    treeData: [folder], selectedFileId: nestedNote.id,
+    expandedFolderIds: new Set([folder.id]),
+  });
+  const rowContainer = document.createElement("div");
+  document.body.appendChild(rowContainer);
+  const rowRoot = createRoot(rowContainer);
+  let fileOpenCalls = 0;
+  await act(async () => rowRoot.render(React.createElement(DirectoryTree, {
+    pinned: true, onPinnedChange() {}, themeMode: "light", onThemeModeChange() {},
+    userEmail: "test@example.com", userName: "测试用户", onSignOut() {},
+    onFileOpen() { fileOpenCalls++; },
+  })));
+  const selectedRow = rowContainer.querySelector('[data-selected="true"]');
+  assert.equal(selectedRow.style.marginLeft, "12px");
+  assert.ok(selectedRow.querySelector('svg[aria-label="已置顶"]'));
+  assert.ok(selectedRow.querySelector('svg[aria-label="已收藏"]'));
+  const folderArrow = rowContainer.querySelector('button[aria-label="收起全栈开发"]');
+  await act(async () => folderArrow.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true })));
+  assert.equal(rowContainer.querySelector('[aria-current="page"]'), null);
+  assert.equal(useAppStore.getState().selectedFileId, nestedNote.id);
+  assert.equal(fileOpenCalls, 0);
+  const folderOpen = rowContainer.querySelector('.directory-node-row[data-folder] .directory-node-open');
+  assert.equal(folderOpen.getAttribute("aria-expanded"), "false");
+  await act(async () => folderOpen.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true })));
+  await act(async () => rowContainer.querySelector('[aria-current="page"]')
+    .dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true })));
+  assert.equal(fileOpenCalls, 1);
+  const rowMenu = rowContainer.querySelector('[data-selected] .file-node-menu-button');
+  await act(async () => rowMenu.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true })));
+  assert.equal(rowMenu.closest('.directory-node-row').dataset.menuOpen, "true");
+  assert.equal(fileOpenCalls, 1);
+  const rename = Array.from(rowContainer.querySelectorAll('button'))
+    .find(button => button.textContent?.trim() === "重命名");
+  await act(async () => rename.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true })));
+  const renameInput = rowContainer.querySelector('.directory-node-open input');
+  assert.equal(renameInput.value, "组件测试笔记");
+  await act(async () => renameInput.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  assert.equal(rowContainer.querySelector('.directory-node-open input'), null);
+  assert.equal(useAppStore.getState().treeData[0].children[0].name, note.name);
+  await act(async () => rowRoot.unmount());
+  rowContainer.remove();
 
   useAppStore.setState({
     treeData: [],
@@ -611,6 +663,7 @@ try {
       "AccountMenu",
     ],
     accountMenuCoverage: ["open-close", "email-form", "devices", "escape-focus", "IME", "outside-pointer", "focus-leave", "sign-out", "trash", "settings", "compact"],
+    directoryRowCoverage: ["whole-row-selection", "full-name", "selected-more", "nested-indent", "pin-favorite-glyphs", "folder-disclosure", "file-open-callback", "independent-menu", "rename-cancel"],
   }));
 } finally {
   await vite.close();

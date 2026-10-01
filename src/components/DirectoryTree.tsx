@@ -251,14 +251,20 @@ function TreeNode({
 
   return (
     <div>
-      <div className="group/node relative flex min-w-0 items-center py-0.5 text-sm">
+      <div
+        className="directory-node-row group/node relative flex min-w-0 items-center"
+        style={{ marginLeft: `${depth * 12}px` }}
+        data-selected={isSelected || undefined}
+        data-folder={isFolder || undefined}
+        data-menu-open={menuOpen || undefined}
+      >
         {isFolder && hasChildren ? (
           <button
             type="button"
-            className="flex h-8 w-5 shrink-0 items-center justify-center rounded-md text-jelly-text-muted transition-colors hover:text-jelly-blue-deep focus-visible:text-jelly-blue-deep"
-            style={{ marginLeft: `${depth * 12}px` }}
+            className="directory-node-arrow flex shrink-0 items-center justify-center rounded-md"
             onClick={() => toggleFolder(node.id)}
             aria-label={isExpanded ? `收起${node.name}` : `展开${node.name}`}
+            aria-expanded={isExpanded}
           >
             <ChevronDown
               size={14}
@@ -269,18 +275,14 @@ function TreeNode({
           </button>
         ) : (
           <span
-            className="h-8 w-5 shrink-0"
-            style={{ marginLeft: `${depth * 12}px` }}
+            className="directory-node-slot shrink-0"
             aria-hidden="true"
           />
         )}
 
         <button
           type="button"
-          className={`relative flex min-h-8 flex-1 items-center gap-2 overflow-hidden rounded-md border px-2 text-left transition-all duration-150 ${isSelected
-            ? "border-transparent bg-jelly-blue-pale font-medium text-jelly-blue-deep shadow-none"
-            : "border-transparent text-jelly-text-soft hover:bg-jelly-blue-pale/60 hover:text-jelly-text focus-visible:bg-jelly-blue-pale/60 focus-visible:text-jelly-blue-deep"
-            }`}
+          className="directory-node-open relative flex min-w-0 flex-1 items-center overflow-hidden text-left"
           onClick={() => {
             if (isFolder) {
               toggleFolder(node.id);
@@ -291,35 +293,27 @@ function TreeNode({
           }}
           aria-expanded={isFolder ? isExpanded : undefined}
           aria-current={isSelected ? "page" : undefined}
+          aria-label={node.name.replace(/\.md$/, "")}
+          title={isRenaming ? undefined : node.name.replace(/\.md$/, "")}
         >
-          {isSelected && (
-            <span
-              className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-jelly-blue"
-              aria-hidden="true"
-            />
-          )}
           {isFolder ? (
             isExpanded ? (
               <FolderOpen
                 size={16}
-                className="shrink-0 text-jelly-text-muted transition-colors group-hover/node:text-jelly-blue"
+                className="directory-node-icon shrink-0"
                 strokeWidth={1.6}
               />
             ) : (
               <Folder
                 size={16}
-                className="shrink-0 text-jelly-text-muted transition-colors group-hover/node:text-jelly-blue"
+                className="directory-node-icon shrink-0"
                 strokeWidth={1.6}
               />
             )
           ) : (
             <FileText
               size={16}
-              className={`shrink-0 transition-colors ${
-                isSelected
-                  ? "text-jelly-blue-deep"
-                  : "text-jelly-text-muted group-hover/node:text-jelly-blue"
-              }`}
+              className="directory-node-icon shrink-0"
               strokeWidth={1.6}
             />
           )}
@@ -337,7 +331,7 @@ function TreeNode({
               className="min-w-0 flex-1 rounded-sm border border-jelly-blue/40 bg-white px-1.5 py-1 text-[13px] leading-none text-jelly-text outline-none"
             />
           ) : (
-            <span className="min-w-0 flex-1 truncate text-[13px] leading-[1.25]">
+            <span className="directory-node-name min-w-0 flex-1 truncate">
               {node.name.replace(/\.md$/, "")}
             </span>
           )}
@@ -355,12 +349,12 @@ function TreeNode({
           )}
         </button>
 
-        <div className="relative ml-1 shrink-0" data-file-menu-root>
+        <div className="relative shrink-0" data-file-menu-root>
           <button
             type="button"
-            className={`file-node-menu-button flex h-7 w-7 items-center justify-center rounded-md text-jelly-text-muted transition-all hover:bg-jelly-blue-pale hover:text-jelly-blue-deep focus-visible:bg-jelly-blue-pale focus-visible:text-jelly-blue-deep ${
-              menuOpen
-                ? "bg-jelly-blue-pale text-jelly-blue-deep opacity-100"
+            className={`directory-node-more file-node-menu-button flex items-center justify-center transition-opacity ${
+              menuOpen || isSelected
+                ? "opacity-100"
                 : "opacity-0 group-hover/node:opacity-100 group-focus-within/node:opacity-100"
             }`}
             onClick={(event) => {
@@ -949,7 +943,7 @@ export default function DirectoryTree({
       </div>
 
       {/* Tree */}
-      <div className={`flex-1 overflow-y-auto ${expanded ? "px-4 py-2" : "px-2 py-3"}`}>
+      <div className={`flex-1 overflow-y-auto ${expanded ? "directory-node-list py-2" : "px-2 py-3"}`}>
         {filteredTree.length === 0 ? (
           expanded ? (
             <div className="empty-state flex flex-col items-center justify-center px-4 py-9 text-center">
