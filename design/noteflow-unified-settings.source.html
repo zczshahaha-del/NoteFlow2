@@ -1,0 +1,204 @@
+<div id="nf-unified-settings" aria-label="NoteFlow 账号入口与统一设置设计">
+  <section class="nus-stage viz-dotted-background" aria-label="统一设置界面标本">
+    <div class="nus-label">设置 · 分类在同一个界面切换</div>
+    <div class="nus-window" aria-label="统一设置工作区">
+      <aside class="nus-navigation">
+        <div class="nus-brand">设置</div>
+        <nav aria-label="设置分类">
+          <button type="button" class="nus-nav cursor-interaction" data-page="account"><i data-lucide="user-round" aria-hidden="true"></i>账号与安全</button>
+          <button type="button" class="nus-nav cursor-interaction" data-page="appearance"><i data-lucide="sun-moon" aria-hidden="true"></i>外观</button>
+          <button type="button" class="nus-nav cursor-interaction" data-page="memory"><i data-lucide="sparkles" aria-hidden="true"></i>AI 与记忆</button>
+          <button type="button" class="nus-nav cursor-interaction" data-page="data"><i data-lucide="database" aria-hidden="true"></i>数据管理</button>
+        </nav>
+      </aside>
+      <main class="nus-content">
+        <header class="nus-content-heading"><h2 data-heading>账号与安全</h2><button type="button" class="nus-close cursor-interaction" data-close-settings aria-label="关闭设置"><i data-lucide="x" aria-hidden="true"></i></button></header>
+        <div class="nus-pages">
+          <section data-panel="account" aria-label="账号与安全内容">
+            <div class="nus-identity"><span class="nus-avatar">张</span><span class="nus-username">张成</span></div>
+            <button type="button" class="nus-setting-row cursor-interaction" data-disclose="email" aria-expanded="false"><span class="nus-row-main"><i data-lucide="mail" aria-hidden="true"></i><span>登录邮箱</span></span><span class="nus-row-end">已验证<i data-lucide="chevron-down" aria-hidden="true"></i></span></button>
+            <div class="nus-detail" data-detail="email" hidden>
+              <label for="nus-email">登录邮箱地址</label><input id="nus-email" type="email" placeholder="name@example.com" autocomplete="off" aria-label="登录邮箱地址">
+              <button type="button" class="nus-small-button cursor-interaction" data-preview="本稿不发送验证码或更改邮箱">发送验证码</button>
+            </div>
+            <button type="button" class="nus-setting-row cursor-interaction" data-disclose="devices" aria-expanded="false"><span class="nus-row-main"><i data-lucide="monitor-smartphone" aria-hidden="true"></i><span>登录设备</span></span><span class="nus-row-end">管理<i data-lucide="chevron-down" aria-hidden="true"></i></span></button>
+            <div class="nus-detail nus-empty" data-detail="devices" hidden>暂无可管理的会话</div>
+          </section>
+          <section data-panel="appearance" aria-label="外观内容" hidden>
+            <div class="nus-setting-row"><span class="nus-row-main"><i data-lucide="sun-moon" aria-hidden="true"></i><span>显示模式</span></span><span class="nus-segment"><button type="button" class="cursor-interaction" data-appearance="light">浅色</button><button type="button" class="cursor-interaction" data-appearance="dark">深色</button></span></div>
+          </section>
+          <section data-panel="memory" aria-label="AI 与记忆内容" hidden>
+            <div class="nus-setting-row"><span class="nus-row-main"><i data-lucide="sparkles" aria-hidden="true"></i><span>长期记忆</span></span><button type="button" class="nus-switch cursor-interaction" data-memory aria-label="长期记忆" aria-pressed="true"><span></span></button></div>
+            <button type="button" class="nus-setting-row cursor-interaction" data-disclose="memories" aria-expanded="false"><span class="nus-row-main">记忆管理</span><span class="nus-row-end">查看<i data-lucide="chevron-down" aria-hidden="true"></i></span></button>
+            <div class="nus-detail nus-empty" data-detail="memories" hidden>暂无长期记忆</div>
+          </section>
+          <section data-panel="data" aria-label="数据管理内容" hidden>
+            <button type="button" class="nus-setting-row cursor-interaction" data-preview="本稿不导出或读取真实笔记"><span class="nus-row-main"><i data-lucide="file-archive" aria-hidden="true"></i><span>导出笔记备份</span></span><i data-lucide="arrow-up-right" aria-hidden="true"></i></button>
+            <button type="button" class="nus-setting-row cursor-interaction" data-preview="本稿不导出或读取真实数据"><span class="nus-row-main"><i data-lucide="file-json" aria-hidden="true"></i><span>导出完整数据</span></span><i data-lucide="arrow-up-right" aria-hidden="true"></i></button>
+            <button type="button" class="nus-setting-row cursor-interaction" data-preview="本稿不选择或上传真实文件"><span class="nus-row-main"><i data-lucide="upload" aria-hidden="true"></i><span>导入笔记文件</span></span><i data-lucide="arrow-up-right" aria-hidden="true"></i></button>
+            <button type="button" class="nus-setting-row cursor-interaction" data-trash><span class="nus-row-main"><i data-lucide="trash" aria-hidden="true"></i><span>回收站</span></span><i data-lucide="chevron-right" aria-hidden="true"></i></button>
+          </section>
+          <section data-panel="trash" aria-label="回收站内容" hidden><button type="button" class="nus-back cursor-interaction" data-page="data"><i data-lucide="chevron-left" aria-hidden="true"></i>数据管理</button><div class="nus-trash-empty"><i data-lucide="trash" aria-hidden="true"></i><span>回收站是空的</span></div></section>
+        </div>
+      </main>
+    </div>
+    <div class="nus-closed" hidden><button type="button" class="nus-small-button cursor-interaction" data-open-settings>打开设置</button></div>
+  </section>
+  <div class="nus-lower">
+    <section class="nus-sample viz-dotted-background" aria-label="底部单一账号入口标本">
+      <div class="nus-label">底部 · 只保留头像与用户名</div>
+      <div class="nus-footer-stage">
+        <div class="nus-account-popup" role="dialog" aria-label="账号菜单">
+          <div class="nus-account-heading"><span class="nus-avatar">张</span><span class="nus-username">张成</span></div>
+          <button type="button" class="nus-menu-item cursor-interaction" data-open-settings><i data-lucide="settings" aria-hidden="true"></i>设置</button>
+          <button type="button" class="nus-menu-item cursor-interaction" data-trash><i data-lucide="trash" aria-hidden="true"></i>回收站</button>
+          <div class="nus-divider"></div>
+          <button type="button" class="nus-menu-item cursor-interaction" data-preview="本稿不会退出真实账号"><i data-lucide="log-out" aria-hidden="true"></i>退出登录</button>
+        </div>
+        <footer class="nus-footer"><button type="button" class="nus-account-trigger cursor-interaction" aria-label="张成的账号菜单" aria-expanded="true" aria-haspopup="dialog" aria-controls="nus-account-dialog" data-account><span class="nus-avatar">张</span><span>张成</span></button></footer>
+      </div>
+    </section>
+    <section class="nus-sample viz-dotted-background" aria-label="统一删除确认标本">
+      <div class="nus-label">删除笔记 · 独立的轻量确认</div>
+      <div class="nus-delete-stage">
+        <div class="nus-note-row"><i data-lucide="file-text" aria-hidden="true"></i><span>Redis</span><button type="button" class="nus-close cursor-interaction" data-note-menu aria-label="Redis 的操作"><i data-lucide="ellipsis" aria-hidden="true"></i></button></div>
+        <div class="nus-note-menu" hidden><button type="button" class="nus-menu-item cursor-interaction" data-open-delete><i data-lucide="trash" aria-hidden="true"></i>删除</button></div>
+        <section class="nus-delete-confirm" role="dialog" aria-labelledby="nus-delete-title">
+          <h3 id="nus-delete-title">删除「Redis」？</h3><p>笔记将移至回收站，可随时恢复。</p>
+          <div class="nus-confirm-actions"><button type="button" class="nus-small-button cursor-interaction" data-cancel-delete>取消</button><button type="button" class="nus-small-button nus-danger cursor-interaction" data-confirm-delete>移至回收站</button></div>
+        </section>
+      </div>
+    </section>
+  </div>
+  <div class="nus-status" role="status" aria-live="polite"></div>
+</div>
+<style>
+  #nf-unified-settings { --nus-surface:light-dark(#fcfcfd,#22272e);--nus-soft:light-dark(#f4f5f7,#2b313a);--nus-text:light-dark(#30353c,#e9edf2);--nus-muted:light-dark(#747a84,#a7b0bc);--nus-line:light-dark(#e8eaee,#3a424d);--nus-selected:light-dark(#e9ebef,#3a434f);--nus-avatar:light-dark(#c37870,#be766c);--nus-avatar-text:light-dark(#ffffff,#ffffff);--nus-shadow:light-dark(rgba(33,39,48,.10),rgba(0,0,0,.25));--nus-danger:light-dark(#a94540,#ee9690);--nus-danger-soft:light-dark(#faeeee,#452d32);--nus-speed:180ms;--nus-radius:20px;--nus-row-height:64px;width:100%;max-width:736px;margin:auto;color:var(--nus-text);font:400 14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif; }
+  #nf-unified-settings * { box-sizing:border-box; }
+  #nf-unified-settings [hidden] { display:none!important; }
+  #nf-unified-settings button { appearance:none;font:inherit;color:inherit;border:0;background:transparent;margin:0;text-align:left;transition:background-color var(--nus-speed) ease,transform 120ms ease; }
+  #nf-unified-settings button:active { transform:translateY(1px); }
+  #nf-unified-settings svg.lucide { width:var(--nus-icon-size,17px)!important;height:var(--nus-icon-size,17px)!important;max-width:none;flex-shrink:0;stroke-width:1.6;color:var(--nus-muted); }
+  #nf-unified-settings .nus-label { font-size:12px;color:var(--nus-muted);margin-bottom:14px; }
+  #nf-unified-settings .nus-stage { padding:22px 20px;position:relative; }
+  #nf-unified-settings .nus-window { display:grid;grid-template-columns:168px minmax(0,1fr);min-height:400px;background:var(--nus-surface);border:1px solid var(--nus-line);border-radius:var(--nus-radius);box-shadow:0 8px 30px var(--nus-shadow);overflow:hidden;opacity:0;visibility:hidden;transform:translateY(6px);pointer-events:none;transition:opacity var(--nus-speed) ease,transform var(--nus-speed) ease,visibility 0s var(--nus-speed); }
+  #nf-unified-settings .nus-window.is-open { opacity:1;visibility:visible;transform:translateY(0);pointer-events:auto;transition-delay:0s; }
+  #nf-unified-settings .nus-navigation { padding:25px 12px;background:var(--nus-soft);border-right:1px solid var(--nus-line); }
+  #nf-unified-settings .nus-brand { padding:0 12px;margin-bottom:26px;font-size:17px;font-weight:500; }
+  #nf-unified-settings .nus-nav { display:flex;align-items:center;gap:10px;width:100%;min-height:42px;padding:0 12px;margin:3px 0;border-radius:9px;color:var(--nus-muted);font-size:13px; }
+  #nf-unified-settings .nus-nav:hover { background:var(--nus-selected); }
+  #nf-unified-settings .nus-nav[aria-current="page"] { background:var(--nus-selected);color:var(--nus-text);font-weight:500; }
+  #nf-unified-settings .nus-content { padding:24px 28px 32px;min-width:0; }
+  #nf-unified-settings .nus-content-heading { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:24px; }
+  #nf-unified-settings h2 { margin:0;font-family:inherit;font-size:19px;font-weight:500;line-height:1.4; }
+  #nf-unified-settings h3 { margin:0;font-size:16px;line-height:1.4;font-weight:500; }
+  #nf-unified-settings .nus-close { display:grid;place-items:center;width:32px;height:32px;border-radius:8px;padding:0;flex-shrink:0; }
+  #nf-unified-settings .nus-close:hover { background:var(--nus-soft); }
+  #nf-unified-settings .nus-identity { display:flex;align-items:center;gap:12px;padding:3px 0 28px; }
+  #nf-unified-settings .nus-avatar { display:grid;place-items:center;width:34px;height:34px;flex-shrink:0;border-radius:50%;background:var(--nus-avatar);color:var(--nus-avatar-text);font-size:14px;font-weight:400; }
+  #nf-unified-settings .nus-identity .nus-avatar { width:42px;height:42px;font-size:17px; }
+  #nf-unified-settings .nus-username { font-size:16px;font-weight:500; }
+  #nf-unified-settings .nus-setting-row { display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:var(--nus-row-height);padding:12px 0;border-bottom:1px solid var(--nus-line); }
+  #nf-unified-settings button.nus-setting-row:hover { background:var(--nus-soft); }
+  #nf-unified-settings .nus-row-main { display:flex;align-items:center;gap:12px;min-width:0; }
+  #nf-unified-settings .nus-row-end { display:flex;align-items:center;gap:9px;flex-shrink:0;color:var(--nus-muted);font-size:12px; }
+  #nf-unified-settings .nus-row-end svg { --nus-icon-size:14px;transition:transform var(--nus-speed) ease; }
+  #nf-unified-settings [aria-expanded="true"] .nus-row-end svg { transform:rotate(180deg); }
+  #nf-unified-settings .nus-detail { padding:18px 0;border-bottom:1px solid var(--nus-line); }
+  #nf-unified-settings .nus-detail label { display:block;color:var(--nus-muted);font-size:12px;margin-bottom:8px; }
+  #nf-unified-settings .nus-detail input { display:block;width:100%;min-width:0;font:inherit;padding:10px 12px;border:1px solid var(--nus-line);border-radius:9px;color:var(--nus-text);background:var(--nus-surface);margin-bottom:12px; }
+  #nf-unified-settings .nus-small-button { padding:9px 13px;border-radius:9px;background:var(--nus-soft);font-size:13px; }
+  #nf-unified-settings .nus-small-button:hover { background:var(--nus-selected); }
+  #nf-unified-settings .nus-empty { color:var(--nus-muted);font-size:13px; }
+  #nf-unified-settings .nus-segment { display:flex;padding:3px;background:var(--nus-soft);border-radius:9px; }
+  #nf-unified-settings .nus-segment button { padding:5px 10px;border-radius:6px;font-size:12px; }
+  #nf-unified-settings .nus-segment button[aria-pressed="true"] { background:var(--nus-surface);box-shadow:0 1px 4px var(--nus-shadow); }
+  #nf-unified-settings .nus-switch { padding:3px;width:40px;height:24px;flex-shrink:0;border-radius:16px;background:var(--nus-selected); }
+  #nf-unified-settings .nus-switch[aria-pressed="true"] { background:var(--nus-text); }
+  #nf-unified-settings .nus-switch span { display:block;width:18px;height:18px;border-radius:50%;background:var(--nus-surface);transition:transform var(--nus-speed) ease; }
+  #nf-unified-settings .nus-switch[aria-pressed="true"] span { transform:translateX(16px); }
+  #nf-unified-settings .nus-back { display:flex;align-items:center;gap:4px;font-size:12px;color:var(--nus-muted);padding:0; }
+  #nf-unified-settings .nus-trash-empty { display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:220px;color:var(--nus-muted);font-size:13px; }
+  #nf-unified-settings .nus-trash-empty svg { --nus-icon-size:24px; }
+  #nf-unified-settings .nus-lower { display:grid;grid-template-columns:280px minmax(0,1fr);gap:24px;padding:16px 20px 20px; }
+  #nf-unified-settings .nus-footer-stage { position:relative;min-height:285px;padding:0 10px;display:flex;align-items:flex-end; }
+  #nf-unified-settings .nus-footer { width:100%;height:60px;display:flex;align-items:center;background:var(--nus-surface);border-top:1px solid var(--nus-line);padding:5px 9px; }
+  #nf-unified-settings .nus-account-trigger { display:flex;align-items:center;gap:10px;min-height:44px;padding:5px 8px;border-radius:11px;font-weight:500; }
+  #nf-unified-settings .nus-account-trigger:hover,#nf-unified-settings .nus-account-trigger[aria-expanded="true"] { background:var(--nus-soft); }
+  #nf-unified-settings .nus-account-popup { position:absolute;bottom:70px;left:10px;right:10px;padding:10px;background:var(--nus-surface);border:1px solid var(--nus-line);border-radius:var(--nus-radius);box-shadow:0 7px 22px var(--nus-shadow);opacity:0;visibility:hidden;transform:translateY(6px);pointer-events:none;transition:opacity var(--nus-speed) ease,transform var(--nus-speed) ease,visibility 0s var(--nus-speed); }
+  #nf-unified-settings .nus-account-popup.is-open { opacity:1;visibility:visible;transform:translateY(0);pointer-events:auto;transition-delay:0s; }
+  #nf-unified-settings .nus-account-heading { display:flex;align-items:center;gap:10px;padding:4px 5px 12px;margin:0 5px 5px;border-bottom:1px solid var(--nus-line); }
+  #nf-unified-settings .nus-menu-item { display:flex;align-items:center;gap:11px;width:100%;min-height:40px;padding:8px 10px;border-radius:8px; }
+  #nf-unified-settings .nus-menu-item:hover { background:var(--nus-soft); }
+  #nf-unified-settings .nus-divider { border-top:1px solid var(--nus-line);margin:5px 10px; }
+  #nf-unified-settings .nus-delete-stage { position:relative;min-height:285px;padding:0 8px; }
+  #nf-unified-settings .nus-note-row { display:flex;align-items:center;gap:9px;background:var(--nus-surface);border-radius:9px;padding:6px 10px; }
+  #nf-unified-settings .nus-note-row .nus-close { margin-left:auto; }
+  #nf-unified-settings .nus-note-menu { position:absolute;right:8px;top:48px;z-index:3;width:140px;background:var(--nus-surface);border:1px solid var(--nus-line);border-radius:12px;padding:6px;box-shadow:0 7px 22px var(--nus-shadow); }
+  #nf-unified-settings .nus-delete-confirm { position:relative;margin-top:22px;background:var(--nus-surface);border:1px solid var(--nus-line);border-radius:var(--nus-radius);box-shadow:0 7px 22px var(--nus-shadow);padding:24px;opacity:0;visibility:hidden;transform:translateY(5px);pointer-events:none;transition:opacity var(--nus-speed) ease,transform var(--nus-speed) ease,visibility 0s var(--nus-speed); }
+  #nf-unified-settings .nus-delete-confirm.is-open { opacity:1;visibility:visible;transform:translateY(0);pointer-events:auto;transition-delay:0s; }
+  #nf-unified-settings .nus-delete-confirm p { color:var(--nus-muted);font-size:13px;line-height:1.6;margin:10px 0 24px; }
+  #nf-unified-settings .nus-confirm-actions { display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap; }
+  #nf-unified-settings .nus-danger { color:var(--nus-danger);background:var(--nus-danger-soft); }
+  #nf-unified-settings .nus-danger:hover { background:var(--nus-danger-soft); }
+  #nf-unified-settings .nus-status { color:var(--nus-muted);font-size:12px;min-height:22px;padding:0 20px; }
+  #nf-unified-settings .nus-closed { position:absolute;inset:54px 20px 22px;display:grid;place-items:center; }
+  #nf-unified-settings .nus-page-enter { animation:nus-content-enter var(--nus-speed) ease both; }
+  @keyframes nus-content-enter { from { opacity:0;transform:translateY(4px); } to { opacity:1;transform:translateY(0); } }
+  @media(max-width:620px) { #nf-unified-settings .nus-window { grid-template-columns:1fr; } #nf-unified-settings .nus-navigation { padding:15px;border-right:0;border-bottom:1px solid var(--nus-line); } #nf-unified-settings .nus-brand { padding:0;margin-bottom:10px;font-size:15px; } #nf-unified-settings .nus-navigation nav { display:grid;grid-template-columns:1fr 1fr;gap:2px; } #nf-unified-settings .nus-nav { padding:8px;gap:7px; } #nf-unified-settings .nus-content { padding:22px 18px;min-height:330px; } #nf-unified-settings .nus-lower { grid-template-columns:1fr;gap:24px; } #nf-unified-settings .nus-footer-stage { max-width:280px;margin:auto; } #nf-unified-settings .nus-delete-stage { max-width:380px;margin:auto; } }
+  @media(max-width:380px) { #nf-unified-settings .nus-stage,#nf-unified-settings .nus-lower { padding:16px 10px; } #nf-unified-settings .nus-content { padding:18px 14px; } #nf-unified-settings .nus-setting-row { gap:8px; } #nf-unified-settings .nus-row-main { gap:8px; } #nf-unified-settings .nus-delete-confirm { padding:20px 16px; } }
+  @media(pointer:coarse) { #nf-unified-settings .nus-close { width:44px;height:44px; } #nf-unified-settings .nus-menu-item,#nf-unified-settings .nus-nav,#nf-unified-settings .nus-small-button,#nf-unified-settings .nus-segment button { min-height:44px; } #nf-unified-settings .nus-detail input { font-size:16px; } #nf-unified-settings .nus-footer-stage { min-height:315px; } #nf-unified-settings .nus-switch { min-height:44px; } }
+  @media(prefers-reduced-motion:reduce) { #nf-unified-settings *,#nf-unified-settings .nus-page-enter { transition:none!important;animation:none!important; } }
+</style>
+<script>
+(() => {
+  const root=document.getElementById('nf-unified-settings');
+  const design='noteflow-unified-settings-v1';
+  const pages=['account','appearance','memory','data','trash'];
+  const labels={account:'账号与安全',appearance:'外观',memory:'AI 与记忆',data:'数据管理',trash:'回收站'};
+  const defaults={revision:0,page:'account',settingsOpen:true,accountOpen:true,deleteOpen:true,email:false,devices:false,memories:false,memory:true,appearance:null};
+  const valid=v=>v?.design===design&&Number.isSafeInteger(v.revision)&&v.revision>=0&&pages.includes(v.page)&&['settingsOpen','accountOpen','deleteOpen','email','devices','memories','memory'].every(k=>typeof v[k]==='boolean')&&[null,'light','dark'].includes(v.appearance);
+  const unwrap=v=>v?.modelContent??v;
+  const saved=unwrap(window.openai?.widgetState);
+  const state=valid(saved)?{...defaults,...saved}:{...defaults};
+  const geometry={radius:20,rowHeight:64};
+  const account=root.querySelector('.nus-account-popup');account.id='nus-account-dialog';
+  const confirm=root.querySelector('.nus-delete-confirm');
+  const trigger=root.querySelector('[data-account]');
+  const noteMenu=root.querySelector('.nus-note-menu');
+  function render() {
+    root.style.setProperty('--nus-radius',geometry.radius+'px');root.style.setProperty('--nus-row-height',geometry.rowHeight+'px');root.style.colorScheme=state.appearance??'';
+    const settings=root.querySelector('.nus-window');settings.classList.toggle('is-open',state.settingsOpen);settings.inert=!state.settingsOpen;settings.setAttribute('aria-hidden',String(!state.settingsOpen));root.querySelector('.nus-closed').hidden=state.settingsOpen;
+    root.querySelector('[data-heading]').textContent=labels[state.page];
+    for(const panel of root.querySelectorAll('[data-panel]'))panel.hidden=panel.dataset.panel!==state.page;
+    for(const button of root.querySelectorAll('.nus-nav')){if(button.dataset.page===(state.page==='trash'?'data':state.page))button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');}
+    for(const button of root.querySelectorAll('[data-disclose]'))button.setAttribute('aria-expanded',String(state[button.dataset.disclose]));
+    for(const detail of root.querySelectorAll('[data-detail]'))detail.hidden=!state[detail.dataset.detail];
+    root.querySelector('[data-memory]').setAttribute('aria-pressed',String(state.memory));
+    for(const button of root.querySelectorAll('[data-appearance]'))button.setAttribute('aria-pressed',String(button.dataset.appearance===(state.appearance??'light')));
+    account.classList.toggle('is-open',state.accountOpen);account.inert=!state.accountOpen;account.setAttribute('aria-hidden',String(!state.accountOpen));trigger.setAttribute('aria-expanded',String(state.accountOpen));
+    confirm.classList.toggle('is-open',state.deleteOpen);confirm.inert=!state.deleteOpen;confirm.setAttribute('aria-hidden',String(!state.deleteOpen));
+  }
+  function save(action){state.revision++;root.querySelector('.nus-status').textContent=action??'';const snapshot={design};for(const key of Object.keys(defaults))snapshot[key]=state[key];window.openai?.setWidgetState?.({modelContent:snapshot,privateContent:null})?.catch(()=>{});}
+  function page(next){state.page=next;state.settingsOpen=true;const panel=root.querySelector('[data-panel="'+next+'"]');panel.classList.remove('nus-page-enter');render();void panel.offsetWidth;panel.classList.add('nus-page-enter');}
+  render();
+  root.addEventListener('click',event=>{
+    const b=event.target.closest('button');if(!b||!root.contains(b))return;
+    if(b.dataset.page){page(b.dataset.page);save();}
+    else if(b.hasAttribute('data-account')){state.accountOpen=!state.accountOpen;render();save();}
+    else if(b.hasAttribute('data-open-settings')){state.settingsOpen=true;state.accountOpen=false;render();root.querySelector('[data-close-settings]').focus();save();}
+    else if(b.hasAttribute('data-close-settings')){state.settingsOpen=false;state.accountOpen=false;render();trigger.focus();save();}
+    else if(b.hasAttribute('data-trash')){page('trash');state.accountOpen=false;render();save();}
+    else if(b.dataset.disclose){const key=b.dataset.disclose;state[key]=!state[key];render();save();}
+    else if(b.dataset.appearance){state.appearance=b.dataset.appearance;render();save();}
+    else if(b.hasAttribute('data-memory')){state.memory=!state.memory;render();save('仅预览开关，不保存真实设置');}
+    else if(b.hasAttribute('data-note-menu')){noteMenu.hidden=!noteMenu.hidden;}
+    else if(b.hasAttribute('data-open-delete')){noteMenu.hidden=true;state.deleteOpen=true;render();root.querySelector('[data-cancel-delete]').focus();save();}
+    else if(b.hasAttribute('data-cancel-delete')||b.hasAttribute('data-confirm-delete')){state.deleteOpen=false;render();root.querySelector('[data-note-menu]').focus();save(b.hasAttribute('data-confirm-delete')?'仅预览：未删除任何笔记':'');}
+    else if(b.dataset.preview){root.querySelector('.nus-status').textContent=b.dataset.preview;}
+  });
+  root.addEventListener('keydown',event=>{if(event.key!=='Escape'||event.isComposing)return;noteMenu.hidden=true;if(confirm.contains(event.target)&&state.deleteOpen){state.deleteOpen=false;render();root.querySelector('[data-note-menu]').focus();save();}else if(account.contains(event.target)||event.target===trigger){state.accountOpen=false;render();trigger.focus();save();}else if(root.querySelector('.nus-window').contains(event.target)){state.settingsOpen=false;render();trigger.focus();save();}});
+  window.addEventListener('openai:set_globals',event=>{const next=unwrap(event.detail?.globals?.widgetState);if(valid(next)&&next.revision>state.revision){for(const k of Object.keys(defaults))state[k]=next[k];render();}});
+  if(globalThis.Tweak){const tweak=new Tweak({container:root.querySelector('.nus-window'),onChange:render});tweak.addSlider(geometry,'radius',{label:'统一圆角',min:16,max:24,step:1,unit:'px'});tweak.addSlider(geometry,'rowHeight',{label:'设置行高',min:56,max:72,step:2,unit:'px'});}
+})();
+</script>
