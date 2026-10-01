@@ -837,6 +837,86 @@ button,
   backdrop-filter: blur(2px);
 }
 
+/* Only the sidebar account disclosure: keep the rest of the workspace unchanged. */
+.account-menu-root {
+  --account-menu-reserved-height: 96px;
+}
+
+.account-menu-root[data-compact="true"] {
+  --account-menu-reserved-height: 168px;
+}
+
+.account-menu-chevron {
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.account-menu-trigger[aria-expanded="true"] .account-menu-chevron {
+  transform: rotate(180deg);
+}
+
+.account-popover {
+  position: absolute;
+  z-index: 50;
+  bottom: calc(100% + 10px);
+  left: 0;
+  width: max(100%, 248px);
+  max-width: min(340px, calc(100vw - 32px));
+  max-height: calc(100dvh - var(--account-menu-reserved-height));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 7px;
+  border: 1px solid var(--color-jelly-border);
+  border-radius: 16px;
+  background: var(--color-jelly-card);
+  color: var(--color-jelly-text);
+  box-shadow: 0 10px 32px var(--color-jelly-shadow), 0 2px 6px var(--color-jelly-shadow);
+  transform-origin: 24px bottom;
+  animation: account-popover-enter 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.account-menu-action {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 10px;
+  border-radius: 9px;
+  color: var(--color-jelly-text-soft);
+  font-size: 13px;
+  text-align: left;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.account-menu-action:hover,
+.account-menu-action:focus-visible {
+  background: var(--color-jelly-surface);
+  color: var(--color-jelly-text);
+}
+
+.account-menu-signout {
+  justify-content: flex-start;
+  color: var(--color-jelly-red);
+}
+
+.account-menu-signout:hover,
+.account-menu-signout:focus-visible {
+  background: var(--color-jelly-red-bg);
+  color: var(--color-jelly-red);
+}
+
+@keyframes account-popover-enter {
+  from { opacity: 0; transform: translateY(6px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .account-popover { animation: none; }
+  .account-menu-chevron, .account-menu-action { transition: none; }
+}
+
 .drawer-surface {
   background: var(--color-jelly-card);
   box-shadow: var(--shadow-panel);

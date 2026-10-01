@@ -5,3 +5,4 @@ export { default as NoteMetadataControls } from "../components/NoteMetadataContr
 export { default as EditPreviewWorkspace } from "../components/EditPreviewWorkspace";
 export { default as DirectoryTree } from "../components/DirectoryTree";
 export { default as LibrarySearchDialog } from "../components/LibrarySearchDialog";
+export { default as AccountMenu } from "../components/AppNav";

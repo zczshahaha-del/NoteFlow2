@@ -29,7 +29,12 @@ dom.window.HTMLElement.prototype.detachEvent ??= function detachEvent() {};
 dom.window.HTMLElement.prototype.scrollIntoView ??= function scrollIntoView() {};
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { createRoot } = await import("react-dom/client");
-const testFetch = async () => new Response(JSON.stringify({ revisions: [] }), {
+const testFetch = async (input) => new Response(JSON.stringify(
+  String(input).endsWith("/api/auth/sessions") ? []
+    : String(input).endsWith("/api/settings")
+      ? { settings: { memoryEnabled: true, preferences: {}, createdAt: null, updatedAt: null } }
+      : { revisions: [] }
+), {
   status: 200,
   headers: { "Content-Type": "application/json" },
 });
@@ -65,6 +70,7 @@ try {
     EditPreviewWorkspace,
     DirectoryTree,
     LibrarySearchDialog,
+    AccountMenu,
   } = await vite.ssrLoadModule("/src/testing/frontendHarness.ts");
 
   const initialState = useAppStore.getInitialState();
@@ -343,6 +349,95 @@ try {
   await act(async () => collapsedDirectoryRoot.unmount());
   collapsedDirectoryContainer.remove();
 
+  // Account disclosure keeps real actions, closes predictably, and never steals IME Escape.
+  let signOutCalls = 0;
+  let trashCalls = 0;
+  const accountContainer = document.createElement("div");
+  document.body.appendChild(accountContainer);
+  const accountRoot = createRoot(accountContainer);
+  const accountProps = {
+    themeMode: "light",
+    onThemeModeChange() {},
+    userEmail: "test@example.com",
+    userName: "test",
+    userEmailVerified: true,
+    trashCount: 2,
+    onOpenTrash() { trashCalls += 1; },
+    onSignOut() { signOutCalls += 1; },
+  };
+  await act(async () => accountRoot.render(React.createElement(AccountMenu, accountProps)));
+  const accountTrigger = accountContainer.querySelector('button[aria-label="我的账号"]');
+  const accountPanel = () => accountContainer.querySelector('[role="dialog"][aria-label="账号操作"]');
+  const accountAction = (label) => Array.from(accountPanel()?.querySelectorAll("button") ?? [])
+    .find((button) => button.textContent?.includes(label));
+  const clickAccount = async (button) => {
+    assert.ok(button);
+    await act(async () => button.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true })));
+  };
+  assert.equal(accountTrigger.getAttribute("aria-expanded"), "false");
+  assert.equal(accountPanel(), null);
+  assert.doesNotMatch(accountContainer.textContent, /test@example.com/);
+  await clickAccount(accountTrigger);
+  assert.equal(accountTrigger.getAttribute("aria-expanded"), "true");
+  assert.equal(accountTrigger.getAttribute("aria-controls"), accountPanel().id);
+  assert.equal(accountPanel().className, "account-popover");
+  assert.equal(document.activeElement, accountAction("登录邮箱"));
+  assert.ok(accountAction("登录设备"));
+  assert.ok(accountAction("退出登录"));
+  await act(async () => document.body.dispatchEvent(new dom.window.FocusEvent("focusin", { bubbles: true })));
+  assert.ok(accountPanel());
+  await clickAccount(accountAction("登录邮箱"));
+  assert.ok(accountPanel().querySelector('input[aria-label="登录邮箱地址"]'));
+  assert.equal(accountPanel().querySelector('input[type="email"]').value, "test@example.com");
+  assert.ok(accountAction("发送验证码"));
+  await clickAccount(accountAction("登录设备"));
+  assert.match(accountPanel().textContent, /有效会话/);
+  await act(async () => document.dispatchEvent(new dom.window.KeyboardEvent("keydown", {
+    key: "Escape", isComposing: true, bubbles: true,
+  })));
+  assert.ok(accountPanel());
+  await act(async () => document.dispatchEvent(new dom.window.KeyboardEvent("keydown", {
+    key: "Escape", bubbles: true,
+  })));
+  assert.equal(accountPanel(), null);
+  assert.equal(document.activeElement, accountTrigger);
+  await clickAccount(accountTrigger);
+  await act(async () => document.body.dispatchEvent(new dom.window.MouseEvent("pointerdown", { bubbles: true })));
+  assert.equal(accountPanel(), null);
+  await clickAccount(accountTrigger);
+  const outsideButton = document.createElement("button");
+  document.body.appendChild(outsideButton);
+  await act(async () => outsideButton.focus());
+  assert.equal(accountPanel(), null);
+  outsideButton.remove();
+  await clickAccount(accountTrigger);
+  await clickAccount(accountAction("退出登录"));
+  assert.equal(signOutCalls, 1);
+  await clickAccount(accountContainer.querySelector('button[aria-label="回收站"]'));
+  assert.equal(trashCalls, 1);
+  assert.equal(accountPanel(), null);
+  await clickAccount(accountTrigger);
+  await clickAccount(accountContainer.querySelector('button[aria-label="设置"]'));
+  assert.equal(accountPanel(), null);
+  assert.ok(document.querySelector('[role="dialog"][aria-label="设置"]'));
+  await act(async () => accountRoot.unmount());
+  accountContainer.remove();
+
+  const compactAccountContainer = document.createElement("div");
+  document.body.appendChild(compactAccountContainer);
+  const compactAccountRoot = createRoot(compactAccountContainer);
+  await act(async () => compactAccountRoot.render(React.createElement(AccountMenu, {
+    ...accountProps, compact: true, themeMode: "dark", userName: "测试用户",
+  })));
+  const compactTrigger = compactAccountContainer.querySelector('button[aria-label="我的账号"]');
+  await clickAccount(compactTrigger);
+  assert.ok(compactAccountContainer.querySelector('.account-menu-root[data-compact="true"] .account-popover'));
+  assert.match(compactAccountContainer.textContent, /测试用户/);
+  await clickAccount(compactTrigger);
+  assert.equal(compactTrigger.getAttribute("aria-expanded"), "false");
+  await act(async () => compactAccountRoot.unmount());
+  compactAccountContainer.remove();
+
   const searchCalls = [];
   let searchCloseCalls = 0;
   let selectedSearchSource = null;
@@ -460,7 +555,9 @@ try {
       "EditPreviewWorkspace",
       "DirectoryTree",
       "LibrarySearchDialog",
+      "AccountMenu",
     ],
+    accountMenuCoverage: ["open-close", "email-form", "devices", "escape-focus", "IME", "outside-pointer", "focus-leave", "sign-out", "trash", "settings", "compact"],
   }));
 } finally {
   await vite.close();

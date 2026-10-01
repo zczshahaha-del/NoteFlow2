@@ -283,6 +283,14 @@ assert.match(accountMenu, /settingsTab === "data"/);
 assert.match(accountMenu, /settingsTab === "memory"/);
 assert.match(accountMenu, /aria-label="回收站"/);
 assert.match(accountMenu, /onOpenTrash/);
+assert.match(accountMenu, /aria-expanded=\{accountOpen\}/);
+assert.match(accountMenu, /aria-haspopup="dialog"/);
+assert.match(accountMenu, /aria-label="账号操作"/);
+assert.doesNotMatch(accountMenu, /bottom-0 left-full/);
+assert.match(styles, /\.account-popover \{[\s\S]*?bottom: calc\(100% \+ 10px\);/);
+assert.match(styles, /\.account-popover \{[\s\S]*?max-width: min\(340px, calc\(100vw - 32px\)\);/);
+assert.match(styles, /\.account-popover \{[\s\S]*?background: var\(--color-jelly-card\);/);
+assert.match(styles, /\.account-popover \{ animation: none; \}/);
 assert.match(styles, /\.directory-tree :where\(button, input, select, textarea, \[tabindex\]\):focus-visible[\s\S]*?outline: none !important;/);
 assert.match(
   styles,

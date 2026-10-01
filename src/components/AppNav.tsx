@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Check,
   ChevronRight,
+  ChevronUp,
   FileArchive,
   FileJson,
   LogOut,
@@ -161,6 +162,9 @@ export default function AccountMenu({
   const [editingContent, setEditingContent] = useState("");
   const [importStatus, setImportStatus] = useState("");
   const accountRef = useRef<HTMLDivElement>(null);
+  const accountButtonRef = useRef<HTMLButtonElement>(null);
+  const accountPanelRef = useRef<HTMLDivElement>(null);
+  const accountPanelId = useId();
   const importInputRef = useRef<HTMLInputElement>(null);
   const displayName = userName?.trim() || userEmail.split("@")[0] || "NoteFlow";
   const emailLocalPart = userEmail.split("@")[0]?.trim().toLowerCase() || "";
@@ -172,15 +176,34 @@ export default function AccountMenu({
   const isDark = themeMode === "dark";
 
   useEffect(() => {
-    const handlePointerDown = (event: MouseEvent) => {
+    if (!accountOpen) return;
+
+    accountPanelRef.current?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+
+    const handleOutsideInteraction = (event: Event) => {
+      // Browser activation can focus the page itself without navigating away from the disclosure.
+      if (event.type === "focusin" && (event.target === document.body || event.target === document.documentElement)) return;
       if (!accountRef.current?.contains(event.target as Node)) {
         setAccountOpen(false);
       }
     };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.isComposing) {
+        event.preventDefault();
+        setAccountOpen(false);
+        accountButtonRef.current?.focus({ preventScroll: true });
+      }
+    };
 
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, []);
+    document.addEventListener("pointerdown", handleOutsideInteraction);
+    document.addEventListener("focusin", handleOutsideInteraction);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handleOutsideInteraction);
+      document.removeEventListener("focusin", handleOutsideInteraction);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [accountOpen]);
 
   useEffect(() => {
     if (!settingsOpen) return;
@@ -412,7 +435,7 @@ export default function AccountMenu({
     : "h-11 flex-1 gap-2 rounded-lg px-1.5 text-left";
 
   return (
-    <div ref={accountRef} className={`relative shrink-0 overflow-visible ${compact ? "" : "w-full"}`}>
+    <div ref={accountRef} data-compact={compact} className={`account-menu-root relative shrink-0 overflow-visible ${compact ? "" : "w-full"}`}>
       <div className={`flex items-center gap-1 ${compact ? "flex-col" : ""}`}>
       {onOpenTrash && (
         <button
@@ -447,17 +470,21 @@ export default function AccountMenu({
       </button>
 
       <button
+        ref={accountButtonRef}
         type="button"
         onClick={() => {
           setSettingsOpen(false);
           setAccountOpen((open) => !open);
         }}
-        className={`group order-1 flex ${accountButtonClass} min-w-0 items-center border border-transparent font-semibold transition-colors duration-150 ${
+        className={`account-menu-trigger group order-1 flex ${accountButtonClass} min-w-0 items-center border border-transparent font-semibold transition-colors duration-150 ${
           accountOpen
-            ? "bg-jelly-blue-pale text-jelly-blue-deep"
+            ? "bg-jelly-surface text-jelly-text"
             : "bg-transparent text-jelly-text-soft hover:bg-jelly-surface hover:text-jelly-text"
         }`}
         aria-label="我的账号"
+        aria-expanded={accountOpen}
+        aria-controls={accountOpen ? accountPanelId : undefined}
+        aria-haspopup="dialog"
         title={compact ? "我的账号" : undefined}
       >
         {compact ? (
@@ -472,22 +499,22 @@ export default function AccountMenu({
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[12.5px] font-semibold tracking-[-0.01em] text-jelly-text">{accountPrimary}</span>
             </span>
-            <ChevronRight size={14} className={`shrink-0 transition-transform ${accountOpen ? "rotate-90" : ""}`} strokeWidth={1.9} />
+            <ChevronUp size={14} className="account-menu-chevron shrink-0 text-jelly-text-muted" strokeWidth={1.7} />
           </>
         )}
       </button>
       </div>
 
       {accountOpen && (
-        <div className="panel-surface absolute bottom-0 left-full z-50 ml-2.5 max-h-[calc(100vh-24px)] w-[340px] overflow-y-auto p-2">
-          <div className="flex min-w-0 items-center gap-3 border-b border-jelly-border px-2 py-2.5">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-jelly-blue text-white">
-              <UserRound size={17} strokeWidth={1.9} />
+        <div ref={accountPanelRef} id={accountPanelId} role="dialog" aria-label="账号操作" className="account-popover">
+          <div className="flex min-w-0 items-center gap-2.5 border-b border-jelly-border px-2.5 pb-3 pt-2">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-jelly-blue-pale text-jelly-blue-deep">
+              <UserRound size={16} strokeWidth={1.7} />
             </div>
             <p className="truncate text-[13px] font-semibold text-jelly-text">{accountPrimary}</p>
           </div>
 
-          <div className="px-1.5 py-1.5">
+          <div className="py-1.5">
             <button
               type="button"
               onClick={() => {
@@ -495,11 +522,11 @@ export default function AccountMenu({
                 setEmailError("");
                 setEmailMessage("");
               }}
-              className="flex h-10 w-full items-center justify-between rounded-lg px-2 text-left text-[13px] text-jelly-text-soft hover:bg-jelly-blue-pale hover:text-jelly-text"
+              className="account-menu-action"
               aria-expanded={emailOpen}
             >
               <span className="flex items-center gap-2.5">
-                <MailCheck size={16} strokeWidth={1.8} />
+                <MailCheck size={17} strokeWidth={1.7} />
                 登录邮箱
               </span>
               <span className={`text-[11px] font-medium ${userEmailVerified ? "text-jelly-green" : "text-jelly-amber"}`}>
@@ -511,6 +538,7 @@ export default function AccountMenu({
               <div className="mb-1 mt-1 rounded-lg border border-jelly-border bg-jelly-surface p-2.5">
                 <input
                   type="email"
+                  aria-label="登录邮箱地址"
                   value={emailDraft}
                   onChange={(event) => {
                     setEmailDraft(event.target.value);
@@ -523,6 +551,7 @@ export default function AccountMenu({
                 {emailCodeSent && (
                   <input
                     value={emailCode}
+                    aria-label="邮箱验证码"
                     onChange={(event) => setEmailCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
                     inputMode="numeric"
                     autoComplete="one-time-code"
@@ -547,11 +576,11 @@ export default function AccountMenu({
             <button
               type="button"
               onClick={() => setSessionsOpen((open) => !open)}
-              className="flex h-10 w-full items-center justify-between rounded-lg px-2 text-left text-[13px] text-jelly-text-soft hover:bg-jelly-blue-pale hover:text-jelly-text"
+              className="account-menu-action"
               aria-expanded={sessionsOpen}
             >
               <span className="flex items-center gap-2.5">
-                <MonitorSmartphone size={16} strokeWidth={1.8} />
+                <MonitorSmartphone size={17} strokeWidth={1.7} />
                 登录设备
               </span>
               <span className="text-[11px] font-medium text-jelly-text-muted">
@@ -573,7 +602,7 @@ export default function AccountMenu({
                 ) : (
                   <div className="space-y-1.5">
                     {sessions.map((session) => (
-                      <div key={session.id} className="flex items-center gap-2 rounded-md border border-jelly-border bg-white px-2 py-2">
+                      <div key={session.id} className="flex items-center gap-2 rounded-md border border-jelly-border bg-jelly-card px-2 py-2">
                         <MonitorSmartphone size={14} className="shrink-0 text-jelly-text-muted" strokeWidth={1.8} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[12px] font-medium text-jelly-text">{sessionDeviceLabel(session.userAgent)}{session.current ? " · 当前设备" : ""}</p>
@@ -589,8 +618,8 @@ export default function AccountMenu({
           </div>
 
           <div className="border-t border-jelly-border pt-1.5">
-            <button type="button" onClick={() => void onSignOut()} className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] text-jelly-red hover:bg-jelly-red-bg">
-              <LogOut size={14} strokeWidth={1.8} />
+            <button type="button" onClick={() => void onSignOut()} className="account-menu-action account-menu-signout">
+              <LogOut size={17} strokeWidth={1.7} />
               退出登录
             </button>
           </div>
