@@ -1,0 +1,60 @@
+<div id="nf-toggle-soft" aria-label="NoteFlow 圆润无箭头收起图标候选">
+  <div class="nts-heading">收起目录 · 圆润无箭头</div>
+  <div class="nts-board viz-dotted-background">
+    <section class="nts-context" aria-label="实际尺寸的目录工具栏">
+      <div class="nts-label">实际尺寸</div>
+      <header class="nts-toolbar">
+        <div class="nts-title"><i data-lucide="book-open" aria-hidden="true"></i><span>目录</span><span class="nts-count">5 篇</span></div>
+        <div class="nts-actions">
+          <button type="button" class="nts-button cursor-interaction" aria-label="收起目录" data-demo="收起目录"><i data-lucide="panel-left" class="nts-soft-icon" aria-hidden="true"></i></button>
+          <button type="button" class="nts-button cursor-interaction" aria-label="新建" data-demo="新建"><i data-lucide="plus" aria-hidden="true"></i></button>
+          <button type="button" class="nts-button cursor-interaction" aria-label="搜索笔记" data-demo="搜索"><i data-lucide="search" aria-hidden="true"></i></button>
+        </div>
+      </header>
+    </section>
+    <section class="nts-enlarged" aria-label="四倍放大的收起图标">
+      <div class="nts-label">4× 放大</div>
+      <div class="nts-zoom-surface"><i data-lucide="panel-left" class="nts-soft-icon" aria-hidden="true"></i></div>
+    </section>
+  </div>
+  <div class="nts-status" role="status" aria-live="polite">仅图标预览 · 其他设计不变</div>
+</div>
+<style>
+  #nf-toggle-soft { --nts-text:light-dark(#28313b,#e6e9ee); --nts-secondary:light-dark(#69747f,#a6b0bb); --nts-icons:light-dark(#7d8893,#9ba8b6); --nts-surface:light-dark(#f6f7f9,#22272e); --nts-hover:light-dark(#eceef2,#3a414b); --nts-radius:4.5px; --nts-length:10; --nts-gap:18; --nts-offset:-4; --nts-weight:1.6; width:100%; max-width:520px; margin:0 auto; padding:20px; box-sizing:border-box; font:400 14px/1.45 -apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif; color:var(--nts-text); }
+  #nf-toggle-soft * { box-sizing:border-box; }
+  #nf-toggle-soft .nts-heading { font-weight:500; margin-bottom:22px; }
+  #nf-toggle-soft .nts-board { display:grid; grid-template-columns:260px 112px; gap:36px; justify-content:center; align-items:start; }
+  #nf-toggle-soft .nts-label { font-size:12px; color:var(--nts-secondary); margin:0 0 12px; }
+  #nf-toggle-soft .nts-toolbar { width:260px; max-width:100%; height:64px; display:flex; align-items:center; justify-content:space-between; gap:4px; padding:0 14px; background:var(--nts-surface); border-radius:16px; }
+  #nf-toggle-soft .nts-title { display:flex; align-items:center; gap:7px; white-space:nowrap; font-weight:500; }
+  #nf-toggle-soft .nts-count { font-size:11px; margin-left:1px; font-weight:400; color:var(--nts-secondary); }
+  #nf-toggle-soft .nts-actions { display:flex; gap:1px; }
+  #nf-toggle-soft svg.lucide { width:var(--nts-size,17px)!important; height:var(--nts-size,17px)!important; max-width:none; color:var(--nts-icons); stroke-width:1.6; flex-shrink:0; }
+  #nf-toggle-soft svg.nts-soft-icon { --nts-size:18px; stroke-width:var(--nts-weight); }
+  #nf-toggle-soft svg.nts-soft-icon rect { rx:var(--nts-radius); ry:var(--nts-radius); }
+  #nf-toggle-soft svg.nts-soft-icon path { stroke-dasharray:var(--nts-length) var(--nts-gap); stroke-dashoffset:var(--nts-offset); }
+  #nf-toggle-soft .nts-button { appearance:none; border:0; background:transparent; padding:0; margin:0; width:30px; height:32px; border-radius:8px; display:grid; place-items:center; color:var(--nts-icons); transition:background-color 160ms ease,transform 160ms ease; }
+  #nf-toggle-soft .nts-button:hover { background:var(--nts-hover); }
+  #nf-toggle-soft .nts-button:active { transform:scale(.95); }
+  #nf-toggle-soft .nts-zoom-surface { height:112px; width:112px; display:grid; place-items:center; background:var(--nts-surface); border-radius:16px; }
+  #nf-toggle-soft .nts-zoom-surface svg { --nts-size:72px; }
+  #nf-toggle-soft .nts-status { margin-top:20px; color:var(--nts-secondary); font-size:11px; }
+  @media(max-width:479px) { #nf-toggle-soft { padding:12px; } #nf-toggle-soft .nts-board { grid-template-columns:minmax(0,260px); gap:22px; } }
+  @media(pointer:coarse) { #nf-toggle-soft .nts-button { width:44px; height:44px; } }
+  @media(prefers-reduced-motion:reduce) { #nf-toggle-soft .nts-button { transition:none; } }
+</style>
+<script>
+(() => {
+  const root=document.getElementById('nf-toggle-soft');
+  const design='NoteFlow 圆润无箭头收起图标';
+  const saved=window.openai?.widgetState?.modelContent??window.openai?.widgetState;
+  const valid=value=>value?.design===design&&Number.isSafeInteger(value.revision)&&value.revision>=0&&typeof value.radius==='number'&&value.radius>=4&&value.radius<=5&&typeof value.length==='number'&&value.length>=9&&value.length<=11;
+  const state=valid(saved)?{revision:saved.revision,radius:saved.radius,length:saved.length}:{revision:0,radius:4.5,length:10};
+  function render(){root.style.setProperty('--nts-radius',state.radius+'px');root.style.setProperty('--nts-length',state.length);root.style.setProperty('--nts-offset',-(18-state.length)/2);}
+  function save(action){state.revision++;root.querySelector('.nts-status').textContent='仅图标预览 · '+action;window.openai?.setWidgetState?.({modelContent:{design,...state,lastAction:action},privateContent:null})?.catch(()=>{});}
+  render();
+  root.addEventListener('click',event=>{const button=event.target.closest('[data-demo]');if(button)save(button.dataset.demo+'（不执行真实操作）');});
+  window.addEventListener('openai:set_globals',event=>{const value=event.detail?.globals?.widgetState;const next=value?.modelContent??value;if(valid(next)&&next.revision>state.revision){Object.assign(state,{revision:next.revision,radius:next.radius,length:next.length});render();}});
+  if(globalThis.Tweak){const tweak=new Tweak({container:root,onChange:()=>{render();save('调整圆角与短竖线');}});tweak.addSlider(state,'radius',{label:'外框圆角',min:4,max:5,step:0.25});tweak.addSlider(state,'length',{label:'短竖线长度',min:9,max:11,step:0.5});}
+})();
+</script>
