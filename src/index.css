@@ -837,6 +837,17 @@ button,
   backdrop-filter: blur(2px);
 }
 
+/* Soft sidebar outline: round the library rectangle and expose a disconnected short bar. */
+.sidebar-toggle-icon rect {
+  rx: 4.5px;
+  ry: 4.5px;
+}
+
+.sidebar-toggle-icon path {
+  stroke-dasharray: 10 18;
+  stroke-dashoffset: -4;
+}
+
 /* Only the sidebar account disclosure: keep the rest of the workspace unchanged. */
 .account-menu-root {
   --account-menu-reserved-height: 96px;

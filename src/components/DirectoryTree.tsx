@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import {
-  ChevronRight,
+  ChevronDown,
   Folder,
   FolderOpen,
   FileText,
@@ -18,8 +18,6 @@ import {
   Trash2,
   Download,
   RotateCcw,
-  ChevronsLeft,
-  ChevronsRight,
   Star,
   Check,
 } from "lucide-react";
@@ -28,6 +26,7 @@ import { useEditorSlice, useWorkspaceSlice } from "../store/selectors";
 import type { ChatSource, FileNode } from "../types";
 import AccountMenu, { type AccountMenuProps } from "./AppNav";
 import LibrarySearchDialog from "./LibrarySearchDialog";
+import SidebarToggleIcon from "./SidebarToggleIcon";
 
 function countFiles(nodes: FileNode[]): number {
   return nodes.reduce((total, node) => {
@@ -261,9 +260,11 @@ function TreeNode({
             onClick={() => toggleFolder(node.id)}
             aria-label={isExpanded ? `收起${node.name}` : `展开${node.name}`}
           >
-            <ChevronRight
+            <ChevronDown
               size={14}
-              className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
+              strokeWidth={1.9}
+              aria-hidden="true"
+              className={`shrink-0 transition-transform duration-200 ${isExpanded ? "" : "-rotate-90"}`}
             />
           </button>
         ) : (
@@ -863,7 +864,7 @@ export default function DirectoryTree({
                   aria-label="搜索全部笔记"
                   title="搜索全部笔记（⌘K）"
                 >
-                  <Search size={15} strokeWidth={1.8} />
+                  <Search size={17} strokeWidth={1.8} className="shrink-0" aria-hidden="true" />
                 </button>
                 <div
                   className="relative"
@@ -881,7 +882,7 @@ export default function DirectoryTree({
                     aria-label="新建"
                     aria-expanded={newMenuOpen}
                   >
-                    <Plus size={16} strokeWidth={2} />
+                    <Plus size={19} strokeWidth={1.8} className="shrink-0" aria-hidden="true" />
                   </button>
                   <span
                     className={`pointer-events-none absolute left-1/2 top-full z-40 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md border border-jelly-border bg-white px-2.5 py-1 text-[12px] font-medium text-jelly-text-soft shadow-[0_6px_18px_rgba(30,44,56,0.08)] transition-all duration-150 ${
@@ -919,7 +920,7 @@ export default function DirectoryTree({
                     aria-label="收起目录"
                     aria-describedby="collapse-directory-tooltip"
                   >
-                    <ChevronsLeft size={15} strokeWidth={1.8} />
+                    <SidebarToggleIcon />
                   </button>
                   <span
                     id="collapse-directory-tooltip"
@@ -941,7 +942,7 @@ export default function DirectoryTree({
               aria-label="展开目录"
               title="展开目录"
             >
-              <ChevronsRight size={14} strokeWidth={1.8} />
+              <SidebarToggleIcon />
             </button>
           </div>
         )}

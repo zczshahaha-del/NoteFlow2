@@ -11,6 +11,7 @@ const app = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
 const directoryTree = readFileSync(new URL("../src/components/DirectoryTree.tsx", import.meta.url), "utf8");
 const librarySearch = readFileSync(new URL("../src/components/LibrarySearchDialog.tsx", import.meta.url), "utf8");
 const accountMenu = readFileSync(new URL("../src/components/AppNav.tsx", import.meta.url), "utf8");
+const sidebarToggleIcon = readFileSync(new URL("../src/components/SidebarToggleIcon.tsx", import.meta.url), "utf8");
 const styles = readFileSync(new URL("../src/index.css", import.meta.url), "utf8");
 
 for (const forbidden of [
@@ -230,7 +231,14 @@ assert.doesNotMatch(directoryTree, /folderCount|个文件夹/);
 assert.match(directoryTree, /id="collapse-directory-tooltip"[\s\S]*?role="tooltip"[\s\S]*?收起目录/);
 assert.doesNotMatch(directoryTree, /aria-label="收起目录"[\s\S]{0,120}title="收起目录"/);
 assert.match(directoryTree, /aria-label="搜索全部笔记"/);
-assert.match(directoryTree, /aria-label="搜索全部笔记"[\s\S]*?<Search[\s\S]*?aria-label="新建"[\s\S]*?<Plus[\s\S]*?aria-label="收起目录"[\s\S]*?<ChevronsLeft/);
+assert.match(directoryTree, /aria-label="搜索全部笔记"[\s\S]*?<Search[\s\S]*?aria-label="新建"[\s\S]*?<Plus[\s\S]*?aria-label="收起目录"[\s\S]*?<SidebarToggleIcon/);
+assert.doesNotMatch(directoryTree, /ChevronsLeft|ChevronsRight|PanelLeftClose/);
+assert.equal((directoryTree.match(/<SidebarToggleIcon \/>/g) ?? []).length, 2);
+assert.match(sidebarToggleIcon, /<PanelLeft[\s\S]*?size=\{18\}[\s\S]*?strokeWidth=\{1\.6\}/);
+assert.doesNotMatch(sidebarToggleIcon, /<svg|<path|PanelLeftClose/);
+assert.match(styles, /\.sidebar-toggle-icon rect \{[\s\S]*?rx: 4\.5px;[\s\S]*?ry: 4\.5px;/);
+assert.match(styles, /\.sidebar-toggle-icon path \{[\s\S]*?stroke-dasharray: 10 18;[\s\S]*?stroke-dashoffset: -4;/);
+assert.match(directoryTree, /<ChevronDown[\s\S]*?size=\{14\}[\s\S]*?strokeWidth=\{1\.9\}/);
 assert.match(directoryTree, /<LibrarySearchDialog[\s\S]*?open=\{searchOpen\}/);
 assert.doesNotMatch(directoryTree, /searchQuery|searchResults\.map|正在检索知识库/);
 assert.match(directoryTree, /if \(!searchShortcutEnabled\) return/);

@@ -251,6 +251,20 @@ try {
   const collapseButton = directoryContainer.querySelector('button[aria-label="收起目录"]');
   assert.ok(searchButton);
   assert.ok(collapseButton);
+  const assertIcon = (button, iconClass, size, weight) => {
+    const icon = button.querySelector(`svg.${iconClass}`);
+    assert.ok(icon);
+    assert.equal(icon.getAttribute("width"), String(size));
+    assert.equal(icon.getAttribute("height"), String(size));
+    assert.equal(icon.getAttribute("stroke-width"), String(weight));
+    assert.equal(icon.getAttribute("aria-hidden"), "true");
+    return icon;
+  };
+  assertIcon(searchButton, "lucide-search", 17, 1.8);
+  const collapseIcon = assertIcon(collapseButton, "sidebar-toggle-icon", 18, 1.6);
+  assert.equal(collapseIcon.querySelectorAll("rect").length, 1);
+  assert.equal(collapseIcon.querySelectorAll("path").length, 1);
+  assert.equal(collapseIcon.querySelector("path").getAttribute("d"), "M9 3v18");
   assert.deepEqual(
     Array.from(searchButton.parentElement.querySelectorAll("button"))
       .map((button) => button.getAttribute("aria-label")),
@@ -264,6 +278,7 @@ try {
   assert.equal(directoryPinnedChange, false);
   const newButton = directoryContainer.querySelector('button[aria-label="新建"]');
   assert.ok(newButton);
+  assertIcon(newButton, "lucide-plus", 19, 1.8);
   await act(async () => {
     newButton.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
   });
@@ -369,6 +384,7 @@ try {
     }));
   });
   assert.ok(collapsedDirectoryContainer.querySelector('button[aria-label="展开目录"]'));
+  assertIcon(collapsedDirectoryContainer.querySelector('button[aria-label="展开目录"]'), "sidebar-toggle-icon", 18, 1.6);
   assert.equal(
     (collapsedDirectoryContainer.textContent ?? "").includes("组件测试笔记"),
     false
@@ -397,6 +413,9 @@ try {
   assert.ok(accountTrigger.classList.contains("mr-2"));
   assert.equal(accountTrigger.querySelector("span.block.truncate").parentElement.classList.contains("flex-1"), false);
   assert.ok(accountTrigger.querySelector(".account-menu-chevron"));
+  assertIcon(accountTrigger, "lucide-chevron-up", 14, 1.9);
+  assertIcon(accountContainer.querySelector('button[aria-label="回收站"]'), "lucide-trash", 18, 1.65);
+  assertIcon(accountContainer.querySelector('button[aria-label="设置"]'), "lucide-settings", 18, 1.55);
   const accountPanel = () => accountContainer.querySelector('[role="dialog"][aria-label="账号操作"]');
   const accountAction = (label) => Array.from(accountPanel()?.querySelectorAll("button") ?? [])
     .find((button) => button.textContent?.includes(label));
@@ -462,6 +481,8 @@ try {
   const compactTrigger = compactAccountContainer.querySelector('button[aria-label="我的账号"]');
   assert.equal(compactTrigger.classList.contains("mr-2"), false);
   assert.equal(compactTrigger.querySelector(".account-menu-chevron"), null);
+  assertIcon(compactAccountContainer.querySelector('button[aria-label="回收站"]'), "lucide-trash", 18, 1.65);
+  assertIcon(compactAccountContainer.querySelector('button[aria-label="设置"]'), "lucide-settings", 18, 1.55);
   await clickAccount(compactTrigger);
   assert.ok(compactAccountContainer.querySelector('.account-menu-root[data-compact="true"] .account-popover'));
   assert.match(compactAccountContainer.textContent, /测试用户/);

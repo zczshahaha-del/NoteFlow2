@@ -11,6 +11,7 @@ import {
   MonitorSmartphone,
   Pencil,
   Settings,
+  Trash,
   Trash2,
   UserRound,
   Upload,
@@ -449,7 +450,7 @@ export default function AccountMenu({
           aria-label="回收站"
           title="回收站"
         >
-          <Trash2 size={16} strokeWidth={1.8} />
+          <Trash size={18} strokeWidth={1.65} className="shrink-0" aria-hidden="true" />
           {trashCount > 0 && (
             <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-jelly-blue" />
           )}
@@ -466,7 +467,7 @@ export default function AccountMenu({
         aria-label="设置"
         title="设置"
       >
-        <Settings size={16} strokeWidth={1.8} />
+        <Settings size={18} strokeWidth={1.55} className="shrink-0" aria-hidden="true" />
       </button>
 
       <button
@@ -499,7 +500,7 @@ export default function AccountMenu({
             <span className="min-w-0">
               <span className="block truncate text-[12.5px] font-semibold tracking-[-0.01em] text-jelly-text">{accountPrimary}</span>
             </span>
-            <ChevronUp size={14} className="account-menu-chevron shrink-0 text-jelly-text-muted" strokeWidth={1.7} />
+            <ChevronUp size={14} className="account-menu-chevron shrink-0 text-jelly-text-muted" strokeWidth={1.9} aria-hidden="true" />
           </>
         )}
       </button>
