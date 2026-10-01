@@ -1,0 +1,337 @@
+<div id="nf-sidebar-states" aria-label="NoteFlow 侧栏统一状态提案">
+  <div class="nf-board-heading"><span>NoteFlow</span><span>侧栏 · 状态对照</span><span class="nf-board-version">视觉提案 / 待评审</span></div>
+  <div class="nf-board viz-dotted-background">
+    <section class="nf-specimen" data-scene="default"><h3>目录 · 默认</h3><div class="nf-stage"></div></section>
+    <section class="nf-specimen" data-scene="selected"><h3>目录 · 选中与悬停</h3><div class="nf-stage"></div></section>
+    <section class="nf-specimen" data-scene="new"><h3>新建 · 展开</h3><div class="nf-stage"></div></section>
+    <section class="nf-specimen" data-scene="file"><h3>笔记操作 · 展开</h3><div class="nf-stage"></div></section>
+    <section class="nf-specimen" data-scene="account"><h3>账号 · 向上展开</h3><div class="nf-stage"></div></section>
+    <section class="nf-specimen" data-scene="email"><h3>登录邮箱 · 输入</h3><div class="nf-stage"></div></section>
+    <section class="nf-specimen" data-scene="code"><h3>登录邮箱 · 验证码</h3><div class="nf-stage"></div></section>
+    <section class="nf-specimen" data-scene="devices"><h3>登录设备 · 展开</h3><div class="nf-stage"></div></section>
+  </div>
+  <div class="nf-board-status" role="status" aria-live="polite">仅视觉预览 · 不发送验证码、不修改笔记或账号</div>
+  <template id="nf-sidebar-template">
+    <aside class="nf-sidebar" aria-label="目录预览">
+      <header class="nf-directory-header">
+        <div class="nf-directory-title"><i data-lucide="book-open" aria-hidden="true"></i><span>目录</span><span class="nf-count">5 篇</span></div>
+        <div class="nf-header-actions">
+          <button type="button" class="nf-icon-button cursor-interaction" aria-label="收起目录" data-demo="收起目录"><i data-lucide="chevrons-left" aria-hidden="true"></i></button>
+          <button type="button" class="nf-icon-button cursor-interaction" aria-label="新建" data-trigger="new" aria-expanded="false"><i data-lucide="plus" aria-hidden="true"></i></button>
+          <button type="button" class="nf-icon-button cursor-interaction" aria-label="搜索笔记" data-demo="全库搜索"><i data-lucide="search" aria-hidden="true"></i></button>
+        </div>
+      </header>
+      <nav class="nf-tree" aria-label="笔记目录">
+        <div class="nf-tree-row nf-folder-row"><button type="button" class="nf-folder cursor-interaction" aria-expanded="true"><i data-lucide="chevron-down" class="nf-chevron" aria-hidden="true"></i><i data-lucide="folder-open" aria-hidden="true"></i><span>全栈开发</span></button></div>
+        <div class="nf-folder-children">
+          <div class="nf-tree-row nf-child" data-note="Go 语言"><button type="button" class="nf-note cursor-interaction"><i data-lucide="file-text" aria-hidden="true"></i><span>Go 语言</span></button><button type="button" class="nf-more cursor-interaction" aria-label="Go 语言文件操作" data-trigger="file"><i data-lucide="ellipsis" aria-hidden="true"></i></button></div>
+          <div class="nf-tree-row nf-child" data-note="AI应用开发学习笔记"><button type="button" class="nf-note cursor-interaction"><i data-lucide="file-text" aria-hidden="true"></i><span>AI应用开发学习笔记</span></button><button type="button" class="nf-more cursor-interaction" aria-label="AI应用开发学习笔记文件操作" data-trigger="file"><i data-lucide="ellipsis" aria-hidden="true"></i></button></div>
+        </div>
+        <div class="nf-tree-row" data-note="Redis"><button type="button" class="nf-note cursor-interaction"><i data-lucide="file-text" aria-hidden="true"></i><span>Redis</span></button><button type="button" class="nf-more cursor-interaction" aria-label="Redis 文件操作" data-trigger="file"><i data-lucide="ellipsis" aria-hidden="true"></i></button></div>
+        <div class="nf-tree-row" data-note="Python 的面试常见问题"><button type="button" class="nf-note cursor-interaction"><i data-lucide="file-text" aria-hidden="true"></i><span>Python 的面试常见问题</span></button><button type="button" class="nf-more cursor-interaction" aria-label="Python 的面试常见问题文件操作" data-trigger="file"><i data-lucide="ellipsis" aria-hidden="true"></i></button></div>
+        <div class="nf-tree-row" data-note="Git 入门学习笔记"><button type="button" class="nf-note cursor-interaction"><i data-lucide="file-text" aria-hidden="true"></i><span>Git 入门学习笔记</span></button><button type="button" class="nf-more cursor-interaction" aria-label="Git 入门学习笔记文件操作" data-trigger="file"><i data-lucide="ellipsis" aria-hidden="true"></i></button></div>
+      </nav>
+      <div class="nf-new-menu nf-popover" hidden aria-label="新建菜单">
+        <button type="button" class="nf-menu-row cursor-interaction" data-demo="新建笔记"><i data-lucide="file-plus" aria-hidden="true"></i><span>新建笔记</span></button>
+        <button type="button" class="nf-menu-row cursor-interaction" data-demo="新建文件夹"><i data-lucide="folder-plus" aria-hidden="true"></i><span>新建文件夹</span></button>
+      </div>
+      <div class="nf-file-menu nf-popover" hidden aria-label="笔记操作菜单">
+        <button type="button" class="nf-menu-row cursor-interaction" data-demo="重命名"><i data-lucide="pencil" aria-hidden="true"></i><span>重命名</span></button>
+        <button type="button" class="nf-menu-row cursor-interaction" data-demo="移动到"><i data-lucide="folder-input" aria-hidden="true"></i><span>移动到</span></button>
+        <button type="button" class="nf-menu-row cursor-interaction" data-demo="导出"><i data-lucide="download" aria-hidden="true"></i><span>导出</span></button>
+        <button type="button" class="nf-menu-row cursor-interaction" data-demo="置顶"><i data-lucide="pin" aria-hidden="true"></i><span>置顶</span></button>
+        <button type="button" class="nf-menu-row cursor-interaction" data-demo="收藏"><i data-lucide="star" aria-hidden="true"></i><span>收藏</span></button>
+        <div class="nf-menu-divider"></div>
+        <button type="button" class="nf-menu-row nf-danger cursor-interaction" data-demo="删除"><i data-lucide="trash-2" aria-hidden="true"></i><span>删除</span></button>
+      </div>
+      <div class="nf-account-menu nf-popover" hidden role="dialog" aria-label="账号操作预览">
+        <div class="nf-account-heading"><span class="nf-avatar"><i data-lucide="user-round" aria-hidden="true"></i></span><span>我的账号</span></div>
+        <button type="button" class="nf-menu-row nf-account-email cursor-interaction" data-trigger="email" aria-expanded="false"><i data-lucide="mail-check" aria-hidden="true"></i><span>登录邮箱</span><span class="nf-meta nf-verified">已验证</span></button>
+        <div class="nf-email-body" hidden>
+          <label class="nf-field-label">邮箱地址<input class="nf-input" type="email" placeholder="name@example.com" autocomplete="off" aria-label="登录邮箱地址示例"></label>
+          <div class="nf-code-area" hidden><label class="nf-field-label">验证码<input class="nf-input nf-code-input" type="text" inputmode="numeric" maxlength="6" placeholder="输入 6 位验证码" autocomplete="off" aria-label="邮箱验证码示例"></label><span class="nf-form-message">验证码已发送至示例邮箱</span></div>
+          <button type="button" class="nf-primary-button cursor-interaction" data-trigger="send">发送验证码</button>
+        </div>
+        <button type="button" class="nf-menu-row nf-account-devices cursor-interaction" data-trigger="devices" aria-expanded="false"><i data-lucide="monitor-smartphone" aria-hidden="true"></i><span>登录设备</span><span class="nf-meta">管理</span></button>
+        <div class="nf-devices-body" hidden>
+          <div class="nf-device-heading"><span>有效会话</span><button type="button" class="nf-text-button cursor-interaction" data-demo="刷新设备"><i data-lucide="refresh-cw" aria-hidden="true"></i>刷新</button></div>
+          <div class="nf-device-row"><i data-lucide="monitor" aria-hidden="true"></i><div class="nf-device-copy"><span>macOS · 当前设备</span><span class="nf-device-meta">示例地址 · 10-01 14:20</span></div><button type="button" class="nf-text-button nf-danger cursor-interaction" data-demo="退出示例设备">退出</button></div>
+          <div class="nf-device-row"><i data-lucide="smartphone" aria-hidden="true"></i><div class="nf-device-copy"><span>iOS · 示例设备</span><span class="nf-device-meta">示例地址 · 09-30 18:45</span></div><button type="button" class="nf-text-button nf-danger cursor-interaction" data-demo="退出示例设备">退出</button></div>
+        </div>
+        <div class="nf-menu-divider"></div>
+        <button type="button" class="nf-menu-row nf-danger cursor-interaction" data-demo="退出登录"><i data-lucide="log-out" aria-hidden="true"></i><span>退出登录</span></button>
+      </div>
+      <footer class="nf-footer">
+        <button type="button" class="nf-account-trigger cursor-interaction" data-trigger="account" aria-label="我的账号" aria-expanded="false"><span class="nf-avatar"><i data-lucide="user-round" aria-hidden="true"></i></span><span>我的账号</span><i data-lucide="chevron-up" class="nf-footer-chevron" aria-hidden="true"></i></button>
+        <button type="button" class="nf-icon-button nf-trash cursor-interaction" aria-label="回收站（非空）" data-demo="回收站"><i data-lucide="trash-2" aria-hidden="true"></i><span class="nf-trash-dot" aria-hidden="true"></span></button>
+        <button type="button" class="nf-icon-button cursor-interaction" aria-label="设置" data-demo="设置"><i data-lucide="settings-2" aria-hidden="true"></i></button>
+      </footer>
+    </aside>
+  </template>
+</div>
+<style>
+  #nf-sidebar-states {
+    --nf-text: light-dark(#28313b, #e6e9ee);
+    --nf-secondary: light-dark(#69747f, #a6b0bb);
+    --nf-icons: light-dark(#7d8893, #9ba8b6);
+    --nf-sidebar: light-dark(#f6f7f9, #22272e);
+    --nf-panel: light-dark(#ffffff, #30363e);
+    --nf-hover: light-dark(#eceef2, #3a414b);
+    --nf-selected: light-dark(#e5ecf3, #354557);
+    --nf-selected-text: light-dark(#345772, #c3ddf2);
+    --nf-line: light-dark(#e3e6eb, #424a56);
+    --nf-avatar: light-dark(#e8edf2, #3b4654);
+    --nf-button: light-dark(#4b647d, #a3c2df);
+    --nf-button-text: light-dark(#ffffff, #1f2c39);
+    --nf-danger: light-dark(#b35b62, #e8999f);
+    --nf-danger-hover: light-dark(#f8eeee, #49373e);
+    --nf-green: light-dark(#5b7f70, #a3c8b4);
+    --nf-shadow: light-dark(#2c3c5014, #00000040);
+    --nf-row: 38px;
+    --nf-radius: 14px;
+    color: var(--nf-text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+  #nf-sidebar-states * { box-sizing: border-box; }
+  #nf-sidebar-states [hidden] { display: none !important; }
+  #nf-sidebar-states .nf-board-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-bottom: 24px; font-weight: 500; }
+  #nf-sidebar-states .nf-board-heading > span:first-child { color: var(--nf-secondary); }
+  #nf-sidebar-states .nf-board-version { margin-left: auto; color: var(--nf-secondary); font-size: 12px; font-weight: 400; }
+  #nf-sidebar-states .nf-board { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 30px 24px; padding: 0; }
+  #nf-sidebar-states .nf-specimen { min-width: 0; }
+  #nf-sidebar-states .nf-specimen > h3 { color: var(--nf-secondary); font-size: 12px; font-weight: 500; line-height: 20px; margin: 0 0 12px; }
+  #nf-sidebar-states .nf-stage { display: flex; align-items: flex-end; justify-content: center; min-height: 488px; }
+  #nf-sidebar-states .nf-sidebar { position: relative; display: flex; flex-direction: column; width: 260px; max-width: 100%; min-height: 488px; background: var(--nf-sidebar); border-radius: 18px; box-shadow: inset 0 0 0 1px color-mix(in srgb,var(--nf-line) 60%,transparent); }
+  #nf-sidebar-states button, #nf-sidebar-states input { font-family: inherit; font-size: 14px; font-weight: 400; line-height: 1.45; color: var(--nf-text); margin: 0; }
+  #nf-sidebar-states button { appearance: none; border: 0; background: transparent; padding: 0; transition: background-color 160ms ease, color 160ms ease, transform 160ms ease; }
+  #nf-sidebar-states svg { width: 17px; height: 17px; stroke-width: 1.6px; flex-shrink: 0; }
+  #nf-sidebar-states .nf-directory-header { display: flex; gap: 4px; align-items: center; justify-content: space-between; height: 64px; padding: 0 14px; }
+  #nf-sidebar-states .nf-directory-title { display: flex; align-items: center; gap: 7px; white-space: nowrap; font-weight: 500; }
+  #nf-sidebar-states .nf-directory-title > svg { color: var(--nf-icons); }
+  #nf-sidebar-states .nf-count { font-size: 11px; color: var(--nf-secondary); font-weight: 400; margin-left: 1px; }
+  #nf-sidebar-states .nf-header-actions { display: flex; gap: 1px; }
+  #nf-sidebar-states .nf-icon-button { width: 30px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: var(--nf-icons); flex-shrink: 0; }
+  #nf-sidebar-states .nf-icon-button:hover, #nf-sidebar-states .nf-icon-button.is-open { color: var(--nf-text); background: var(--nf-hover); }
+  #nf-sidebar-states .nf-icon-button:active, #nf-sidebar-states .nf-more:active { transform: scale(.95); }
+  #nf-sidebar-states .nf-tree { padding: 4px 10px; }
+  #nf-sidebar-states .nf-tree-row { display: flex; min-width: 0; align-items: center; min-height: var(--nf-row); padding-left: 20px; margin: 2px 0; border-radius: 9px; }
+  #nf-sidebar-states .nf-tree-row.nf-folder-row { padding-left: 0; }
+  #nf-sidebar-states .nf-tree-row.nf-child { margin-left: 16px; }
+  #nf-sidebar-states .nf-note, #nf-sidebar-states .nf-folder { min-width: 0; display: flex; gap: 9px; align-items: center; flex: 1; text-align: left; min-height: var(--nf-row); }
+  #nf-sidebar-states .nf-folder { gap: 8px; }
+  #nf-sidebar-states .nf-note > span, #nf-sidebar-states .nf-folder > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #nf-sidebar-states .nf-folder > span { font-weight: 500; }
+  #nf-sidebar-states .nf-note > svg, #nf-sidebar-states .nf-folder > svg { color: var(--nf-icons); }
+  #nf-sidebar-states .nf-chevron { width: 12px; height: 12px; }
+  #nf-sidebar-states .nf-tree-row:hover, #nf-sidebar-states .nf-tree-row.is-hovered { background: var(--nf-hover); }
+  #nf-sidebar-states .nf-tree-row.is-selected { background: var(--nf-selected); }
+  #nf-sidebar-states .nf-tree-row.is-selected .nf-note { color: var(--nf-selected-text); font-weight: 500; }
+  #nf-sidebar-states .nf-tree-row.is-selected .nf-note > svg { color: var(--nf-selected-text); }
+  #nf-sidebar-states .nf-more { width: 26px; min-height: 30px; display: grid; place-items: center; border-radius: 7px; color: var(--nf-icons); margin: 0 4px; opacity: 0; flex-shrink: 0; }
+  #nf-sidebar-states .nf-tree-row:hover .nf-more, #nf-sidebar-states .nf-tree-row:focus-within .nf-more, #nf-sidebar-states .is-selected .nf-more, #nf-sidebar-states .is-hovered .nf-more { opacity: 1; }
+  #nf-sidebar-states .nf-more:hover, #nf-sidebar-states .nf-more.is-open { background: color-mix(in srgb,var(--nf-panel) 65%,var(--nf-hover)); color: var(--nf-text); opacity: 1; }
+  #nf-sidebar-states .nf-popover { position: absolute; z-index: 5; padding: 6px; background: var(--nf-panel); color: var(--nf-text); border-radius: var(--nf-radius); box-shadow: 0 12px 28px var(--nf-shadow),0 2px 6px var(--nf-shadow),inset 0 0 0 1px color-mix(in srgb,var(--nf-line) 60%,transparent); animation: nf-menu-in 170ms cubic-bezier(.2,.7,.25,1); }
+  #nf-sidebar-states .nf-new-menu { top: 57px; right: 13px; width: 192px; }
+  #nf-sidebar-states .nf-file-menu { top: 235px; right: 13px; width: 192px; }
+  #nf-sidebar-states .nf-menu-row { display: flex; align-items: center; gap: 10px; padding: 0 10px; width: 100%; min-height: var(--nf-row); border-radius: 8px; text-align: left; }
+  #nf-sidebar-states .nf-menu-row > svg { color: var(--nf-icons); }
+  #nf-sidebar-states .nf-menu-row:hover { background: var(--nf-hover); }
+  #nf-sidebar-states .nf-menu-divider { height: 1px; background: var(--nf-line); margin: 5px 8px; }
+  #nf-sidebar-states .nf-danger, #nf-sidebar-states .nf-danger > svg { color: var(--nf-danger); }
+  #nf-sidebar-states .nf-danger:hover { background: var(--nf-danger-hover); }
+  #nf-sidebar-states .nf-footer { margin-top: auto; height: 62px; padding: 9px 10px; display: flex; align-items: center; gap: 3px; border-top: 1px solid var(--nf-line); }
+  #nf-sidebar-states .nf-footer .nf-icon-button { width: 32px; height: 34px; }
+  #nf-sidebar-states .nf-avatar { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; color: var(--nf-selected-text); background: var(--nf-avatar); flex-shrink: 0; }
+  #nf-sidebar-states .nf-avatar > svg { width: 16px; height: 16px; }
+  #nf-sidebar-states .nf-account-trigger { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; height: 40px; padding: 0 6px; border-radius: 9px; text-align: left; }
+  #nf-sidebar-states .nf-account-trigger > span:nth-child(2) { font-size: 13px; font-weight: 500; flex: 1; }
+  #nf-sidebar-states .nf-account-trigger:hover, #nf-sidebar-states .nf-account-trigger.is-open { background: var(--nf-hover); }
+  #nf-sidebar-states .nf-footer-chevron { width: 12px; height: 12px; color: var(--nf-icons); }
+  #nf-sidebar-states .nf-trash { position: relative; }
+  #nf-sidebar-states .nf-trash-dot { position: absolute; right: 7px; top: 6px; width: 4px; height: 4px; border-radius: 50%; background: var(--nf-selected-text); }
+  #nf-sidebar-states .nf-account-menu { bottom: 72px; left: 10px; right: 10px; }
+  #nf-sidebar-states .nf-account-heading { display: flex; align-items: center; gap: 9px; min-height: 49px; padding: 4px 10px 10px; margin-bottom: 5px; font-weight: 500; border-bottom: 1px solid var(--nf-line); }
+  #nf-sidebar-states .nf-meta { margin-left: auto; font-size: 11px; color: var(--nf-secondary); white-space: nowrap; }
+  #nf-sidebar-states .nf-verified { color: var(--nf-green); }
+  #nf-sidebar-states .nf-email-body, #nf-sidebar-states .nf-devices-body { margin: 4px 10px 10px; }
+  #nf-sidebar-states .nf-field-label { display: block; font-size: 12px; color: var(--nf-secondary); }
+  #nf-sidebar-states .nf-input { display: block; width: 100%; min-width: 0; height: 38px; margin-top: 6px; padding: 0 10px; border: 1px solid var(--nf-line); border-radius: 8px; background: var(--nf-sidebar); color: var(--nf-text); }
+  #nf-sidebar-states .nf-input::placeholder { color: var(--nf-secondary); }
+  #nf-sidebar-states .nf-code-area { margin-top: 12px; }
+  #nf-sidebar-states .nf-code-input { letter-spacing: .08em; }
+  #nf-sidebar-states .nf-form-message { display: block; font-size: 11px; color: var(--nf-green); margin-top: 7px; }
+  #nf-sidebar-states .nf-primary-button { display: flex; align-items: center; justify-content: center; min-height: 38px; width: 100%; margin-top: 12px; padding: 6px 10px; border-radius: 9px; background: var(--nf-button); color: var(--nf-button-text); font-size: 13px; font-weight: 500; }
+  #nf-sidebar-states .nf-primary-button:hover { filter: brightness(.95); }
+  #nf-sidebar-states .nf-device-heading { display: flex; justify-content: space-between; align-items: center; margin: 7px 0 2px; color: var(--nf-secondary); font-size: 12px; }
+  #nf-sidebar-states .nf-text-button { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 5px 2px; font-size: 11px; color: var(--nf-secondary); }
+  #nf-sidebar-states .nf-text-button > svg { width: 12px; height: 12px; }
+  #nf-sidebar-states .nf-text-button:hover { color: var(--nf-text); }
+  #nf-sidebar-states .nf-device-row { display: flex; align-items: center; gap: 7px; padding: 10px 0; }
+  #nf-sidebar-states .nf-device-row + .nf-device-row { border-top: 1px solid var(--nf-line); }
+  #nf-sidebar-states .nf-device-row > svg { width: 16px; height: 16px; color: var(--nf-icons); }
+  #nf-sidebar-states .nf-device-copy { display: flex; flex-direction: column; min-width: 0; flex: 1; font-size: 12px; gap: 4px; }
+  #nf-sidebar-states .nf-device-meta { color: var(--nf-secondary); font-size: 11px; }
+  #nf-sidebar-states .nf-device-row .nf-danger { color: var(--nf-danger); }
+  #nf-sidebar-states .nf-board-status { font-size: 11px; color: var(--nf-secondary); margin-top: 22px; }
+  @keyframes nf-menu-in { from { opacity: 0; transform: translateY(4px) scale(.99); } to { opacity: 1; transform: none; } }
+  @media (max-width: 1159px) { #nf-sidebar-states .nf-board { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+  @media (max-width: 599px) { #nf-sidebar-states { padding: 12px; } #nf-sidebar-states .nf-board { grid-template-columns: minmax(0,1fr); gap: 26px; } #nf-sidebar-states .nf-board-version { width: 100%; margin-left: 0; } }
+  @media (pointer: coarse) { #nf-sidebar-states .nf-icon-button { width: 32px; height: 44px; } #nf-sidebar-states .nf-header-actions { gap: 0; } #nf-sidebar-states .nf-directory-header { padding: 0 10px; } #nf-sidebar-states .nf-menu-row, #nf-sidebar-states .nf-note, #nf-sidebar-states .nf-folder { min-height: 44px; } #nf-sidebar-states .nf-input { font-size: 16px; height: 44px; } #nf-sidebar-states .nf-more { width: 32px; min-height: 44px; opacity: 1; margin: 0; } #nf-sidebar-states .nf-footer, #nf-sidebar-states .nf-account-trigger { min-height: 44px; } #nf-sidebar-states .nf-sidebar, #nf-sidebar-states .nf-stage { min-height: 540px; } #nf-sidebar-states .nf-text-button { min-height: 44px; } }
+  @media (prefers-reduced-motion: reduce) { #nf-sidebar-states button { transition: none; } #nf-sidebar-states .nf-popover { animation: none; } }
+</style>
+<script>
+(() => {
+  const root = document.getElementById('nf-sidebar-states');
+  const design = 'NoteFlow 侧栏统一状态提案';
+  const template = root.querySelector('#nf-sidebar-template');
+  const status = root.querySelector('.nf-board-status');
+  const scenes = [...root.querySelectorAll('.nf-specimen')];
+  const options = { row: 38, radius: 14 };
+  let revision = 0;
+  function applyOptions() {
+    root.style.setProperty('--nf-row', options.row + 'px');
+    root.style.setProperty('--nf-radius', options.radius + 'px');
+    fitScenes();
+  }
+  function fitScenes() {
+    scenes.forEach(scene => {
+      const sidebar = scene.querySelector('.nf-sidebar');
+      if (!sidebar) return;
+      const base = window.matchMedia('(pointer: coarse)').matches ? 540 : 488;
+      const account = sidebar.querySelector('.nf-account-menu');
+      const height = !account.hidden ? Math.max(base, account.offsetHeight + 92) : base;
+      sidebar.style.minHeight = height + 'px';
+      scene.querySelector('.nf-stage').style.minHeight = height + 'px';
+    });
+  }
+  function save(lastAction) {
+    const snapshot = { design, revision: ++revision, row: options.row, radius: options.radius, lastAction };
+    if (window.openai?.setWidgetState) window.openai.setWidgetState({ modelContent: snapshot, privateContent: null }).catch(() => {});
+  }
+  function restore(widget) {
+    const saved = widget?.modelContent || widget;
+    if (saved?.design !== design || !Number.isFinite(saved.revision) || saved.revision < revision) return;
+    revision = saved.revision;
+    if (Number.isFinite(saved.row) && saved.row >= 36 && saved.row <= 42) options.row = saved.row;
+    if (Number.isFinite(saved.radius) && saved.radius >= 10 && saved.radius <= 18) options.radius = saved.radius;
+    applyOptions();
+  }
+  const panels = {};
+  function togglePanel(sidebar, name, open) {
+    const mapping = { new: '.nf-new-menu', file: '.nf-file-menu', account: '.nf-account-menu', email: '.nf-email-body', devices: '.nf-devices-body' };
+    const panel = sidebar.querySelector(mapping[name]);
+    panel.hidden = !open;
+    sidebar.querySelectorAll('[data-trigger="' + name + '"]').forEach(button => {
+      const active = name !== 'file' || button.closest('.nf-tree-row')?.dataset.note === 'Redis';
+      button.classList.toggle('is-open', open && active);
+      button.setAttribute('aria-expanded', String(open && active));
+    });
+    if (name === 'account' && !open) {
+      togglePanel(sidebar, 'email', false);
+      togglePanel(sidebar, 'devices', false);
+    }
+  }
+  scenes.forEach(scene => {
+    const name = scene.dataset.scene;
+    scene.querySelector('.nf-stage').append(template.content.cloneNode(true));
+    const sidebar = scene.querySelector('.nf-sidebar');
+    panels[name] = sidebar;
+    if (name !== 'default') {
+      const row = sidebar.querySelector('[data-note="Redis"]');
+      row.classList.add('is-selected');
+      row.querySelector('.nf-note').setAttribute('aria-current', 'page');
+    }
+    if (name === 'selected') sidebar.querySelector('[data-note="Python 的面试常见问题"]').classList.add('is-hovered');
+    if (name === 'new') togglePanel(sidebar, 'new', true);
+    if (name === 'file') togglePanel(sidebar, 'file', true);
+    if (['account', 'email', 'code', 'devices'].includes(name)) {
+      sidebar.classList.add('nf-account-scene');
+      togglePanel(sidebar, 'account', true);
+    }
+    if (['email', 'code'].includes(name)) togglePanel(sidebar, 'email', true);
+    if (name === 'code') {
+      sidebar.querySelector('.nf-code-area').hidden = false;
+      sidebar.querySelector('.nf-email-body .nf-input').value = 'name@example.com';
+      sidebar.querySelector('[data-trigger="send"]').textContent = '确认并绑定';
+    }
+    if (name === 'devices') {
+      togglePanel(sidebar, 'devices', true);
+      sidebar.querySelector('.nf-account-devices .nf-meta').textContent = '2 个';
+    }
+  });
+  root.addEventListener('click', event => {
+    const button = event.target.closest('button');
+    if (!button) return;
+    const sidebar = button.closest('.nf-sidebar');
+    if (!sidebar) return;
+    if (button.dataset.demo) {
+      status.textContent = '仅视觉预览：' + button.dataset.demo + ' · 未执行真实操作';
+      save(button.dataset.demo);
+    } else if (button.classList.contains('nf-note')) {
+      sidebar.querySelectorAll('[data-note]').forEach(row => {
+        row.classList.remove('is-selected', 'is-hovered');
+        row.querySelector('.nf-note').removeAttribute('aria-current');
+      });
+      button.closest('[data-note]').classList.add('is-selected');
+      button.setAttribute('aria-current', 'page');
+      save('选择 ' + button.textContent.trim());
+    } else if (button.classList.contains('nf-folder')) {
+      const open = button.getAttribute('aria-expanded') !== 'true';
+      button.setAttribute('aria-expanded', String(open));
+      sidebar.querySelector('.nf-folder-children').hidden = !open;
+      save(open ? '展开文件夹' : '收起文件夹');
+    } else if (button.dataset.trigger === 'send') {
+      const area = sidebar.querySelector('.nf-code-area');
+      if (area.hidden) {
+        area.hidden = false;
+        button.textContent = '确认并绑定';
+        status.textContent = '验证码状态预览 · 未发送邮件';
+      } else status.textContent = '绑定反馈预览 · 未修改账号';
+      save('邮箱验证码状态');
+    } else if (button.dataset.trigger) {
+      const name = button.dataset.trigger;
+      const mapping = { new: '.nf-new-menu', file: '.nf-file-menu', account: '.nf-account-menu', email: '.nf-email-body', devices: '.nf-devices-body' };
+      const open = sidebar.querySelector(mapping[name]).hidden;
+      if (['new','file','account'].includes(name)) ['new','file','account'].filter(item => item !== name).forEach(item => togglePanel(sidebar,item,false));
+      togglePanel(sidebar, name, open);
+      if (name === 'file' && open) {
+        const panel = sidebar.querySelector('.nf-file-menu');
+        const row = button.closest('.nf-tree-row');
+        panel.style.top = Math.min(row.offsetTop + row.offsetHeight + 3, sidebar.clientHeight - panel.offsetHeight - 8) + 'px';
+        sidebar.querySelectorAll('[data-trigger="file"]').forEach(control => {
+          const active = control === button;
+          control.classList.toggle('is-open', active);
+          control.setAttribute('aria-expanded', String(active));
+        });
+      }
+      save((open ? '展开 ' : '收起 ') + name);
+    }
+    fitScenes();
+  });
+  root.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || event.isComposing) return;
+    const sidebar = event.target.closest('.nf-sidebar');
+    if (!sidebar) return;
+    const accountWasOpen = !sidebar.querySelector('.nf-account-menu').hidden;
+    ['new','file','account'].forEach(name => togglePanel(sidebar,name,false));
+    if (accountWasOpen) sidebar.querySelector('[data-trigger="account"]').focus();
+    fitScenes();
+  });
+  root.querySelectorAll('.nf-code-input').forEach(input => input.addEventListener('input', () => { input.value = input.value.replace(/\D/g,'').slice(0,6); }));
+  restore(window.openai?.widgetState);
+  applyOptions();
+  window.addEventListener('openai:set_globals', event => restore(event.detail?.globals?.widgetState));
+  window.addEventListener('resize', fitScenes);
+  if (window.lucide) window.lucide.createIcons({ attrs: { width: 17, height: 17, 'stroke-width': 1.6 } });
+  if (globalThis.Tweak) {
+    const tweak = new Tweak({ container: root, onChange: () => { applyOptions(); save('调整视觉参数'); } });
+    tweak.addSlider(options, 'row', { label: '控件行高', min: 36, max: 42, unit: 'px', reference: '--nf-row' });
+    tweak.addSlider(options, 'radius', { label: '菜单圆角', min: 10, max: 18, unit: 'px', reference: '--nf-radius' });
+  }
+})();
+</script>
