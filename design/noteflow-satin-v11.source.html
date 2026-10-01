@@ -1,0 +1,721 @@
+<style>
+  #noteflow-satin-v11 {
+    --nf-page: light-dark(#ffffff, #191c20);
+    --nf-nav: light-dark(#f6f7f5, #202429);
+    --nf-assistant: light-dark(#f3f6f8, #22282e);
+    --nf-input: light-dark(#ffffff, #2b323a);
+    --nf-ink: light-dark(#27333b, #e3e9ee);
+    --nf-body: light-dark(#44515b, #c1cbd4);
+    --nf-secondary: light-dark(#727e87, #9daab5);
+    --nf-icon: light-dark(#85919a, #9eaab5);
+    --nf-line: light-dark(#e8edee, #333c44);
+    --nf-hover: light-dark(#ecefed, #2d343a);
+    --nf-accent: light-dark(#4d83a5, #9abeda);
+    --nf-accent-ink: light-dark(#356781, #b7d7ed);
+    --nf-selected: light-dark(#e6eff4, #2c414f);
+    --nf-selection: light-dark(#eaf2f7, #293f4e);
+    --nf-button: light-dark(#5186a7, #90b9d4);
+    --nf-button-ink: light-dark(#ffffff, #172a36);
+    --nf-shadow: light-dark(#24435412, #00000032);
+    --nf-code: light-dark(#f6f7f8, #232930);
+    --nf-selection-outline: light-dark(#bdd4e2, #526f82);
+    --nf-ai-size: 434px;
+    --nf-reading-size: 16px;
+    --nf-row-size: 42px;
+    --nf-motion: cubic-bezier(.22, 1, .36, 1);
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr) var(--nf-ai-size);
+    min-height: 968px;
+    width: 100%;
+    position: relative;
+    isolation: isolate;
+    background: var(--nf-page);
+    color: var(--nf-ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.5;
+    text-align: left;
+    -webkit-font-smoothing: antialiased;
+  }
+  #noteflow-satin-v11 *, #noteflow-satin-v11 *::before, #noteflow-satin-v11 *::after { box-sizing: border-box; }
+  #noteflow-satin-v11 [hidden] { display: none !important; }
+  #noteflow-satin-v11 button, #noteflow-satin-v11 input, #noteflow-satin-v11 textarea { font: inherit; }
+  #noteflow-satin-v11 button { color: inherit; border: 0; background: none; padding: 0; }
+  #noteflow-satin-v11 button:disabled { opacity: .4; cursor: not-allowed; }
+  #noteflow-satin-v11 button, #noteflow-satin-v11 .nf-panel {
+    transition: background .2s var(--nf-motion), color .2s var(--nf-motion), box-shadow .2s var(--nf-motion), transform .25s var(--nf-motion);
+  }
+  #noteflow-satin-v11 svg { width: 18px; height: 18px; stroke-width: 1.65; flex-shrink: 0; }
+  #noteflow-satin-v11 .nf-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 9px; color: var(--nf-icon); flex-shrink: 0; }
+  #noteflow-satin-v11 .nf-icon-button:hover { background: var(--nf-hover); color: var(--nf-ink); }
+  #noteflow-satin-v11 .nf-nav { display: flex; flex-direction: column; padding: 31px 18px 17px; background: var(--nf-nav); min-width: 0; position: relative; }
+  #noteflow-satin-v11 .nf-nav-heading { display: flex; align-items: start; justify-content: space-between; padding: 0 9px; }
+  #noteflow-satin-v11 .nf-nav-heading h2 { font-size: 21px; font-weight: 600; line-height: 1.3; margin: 0 0 6px; letter-spacing: -.4px; }
+  #noteflow-satin-v11 .nf-note-count { display: block; font-size: 12px; color: var(--nf-secondary); }
+  #noteflow-satin-v11 .nf-nav-search { margin: 24px 5px 25px; display: flex; align-items: center; gap: 7px; }
+  #noteflow-satin-v11 .nf-search-launcher { height: 37px; display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; color: var(--nf-secondary); border: 1px solid var(--nf-line); border-radius: 10px; padding: 0 10px; background: var(--nf-page); text-align: left; font-size: 12px; }
+  #noteflow-satin-v11 .nf-search-launcher:hover { border-color: var(--nf-selection-outline); }
+  #noteflow-satin-v11 .nf-search-launcher svg { width: 15px; height: 15px; }
+  #noteflow-satin-v11 .nf-search-launcher span { flex: 1; white-space: nowrap; }
+  #noteflow-satin-v11 kbd { font: inherit; font-size: 11px; color: var(--nf-icon); }
+  #noteflow-satin-v11 .nf-create-button { height: 36px; width: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--nf-button); color: var(--nf-button-ink); flex-shrink: 0; }
+  #noteflow-satin-v11 .nf-create-button:hover, #noteflow-satin-v11 .nf-send:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 5px 12px var(--nf-shadow); }
+  #noteflow-satin-v11 .nf-folder { width: 100%; display: flex; align-items: center; gap: 8px; height: 37px; padding: 0 9px; color: var(--nf-body); font-size: 13px; font-weight: 500; border-radius: 8px; text-align: left; }
+  #noteflow-satin-v11 .nf-folder:hover { background: var(--nf-hover); }
+  #noteflow-satin-v11 .nf-folder > svg:first-child { width: 13px; height: 13px; color: var(--nf-icon); transition: transform .2s var(--nf-motion); }
+  #noteflow-satin-v11 .nf-folder[aria-expanded="false"] > svg:first-child { transform: rotate(-90deg); }
+  #noteflow-satin-v11 .nf-folder > svg:nth-child(2) { width: 17px; height: 17px; color: var(--nf-icon); }
+  #noteflow-satin-v11 .nf-tree-children { position: relative; margin: 5px 0 0 9px; padding-left: 17px; }
+  #noteflow-satin-v11 .nf-tree-children::before { content: ""; position: absolute; width: 1px; left: 7px; top: 4px; bottom: 13px; background: var(--nf-line); }
+  #noteflow-satin-v11 .nf-note-row { position: relative; min-height: var(--nf-row-size); display: flex; align-items: center; margin: 3px 0; border-radius: 10px; }
+  #noteflow-satin-v11 .nf-note-row:hover { background: var(--nf-hover); }
+  #noteflow-satin-v11 .nf-note-link { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 10px 11px; font-size: 13px; color: var(--nf-secondary); text-align: left; line-height: 1.6; }
+  #noteflow-satin-v11 .nf-note-link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #noteflow-satin-v11 .nf-note-link svg { display: none; width: 15px; height: 15px; }
+  #noteflow-satin-v11 .nf-note-row.is-active { background: var(--nf-selected); }
+  #noteflow-satin-v11 .nf-note-row.is-active::before { content: ""; position: absolute; left: 0; top: 13px; bottom: 13px; width: 3px; border-radius: 3px; background: var(--nf-accent); }
+  #noteflow-satin-v11 .nf-note-row.is-active .nf-note-link { color: var(--nf-accent-ink); font-weight: 500; }
+  #noteflow-satin-v11 .nf-note-row.is-active .nf-note-link svg { display: block; color: var(--nf-accent); }
+  #noteflow-satin-v11 .nf-row-more { width: 25px; height: 29px; margin-right: 4px; display: none; }
+  #noteflow-satin-v11 .nf-note-row.is-active .nf-row-more, #noteflow-satin-v11 .nf-note-row:hover .nf-row-more, #noteflow-satin-v11 .nf-note-row:focus-within .nf-row-more { display: inline-flex; }
+  #noteflow-satin-v11 .nf-row-more svg { width: 15px; height: 15px; }
+  #noteflow-satin-v11 .nf-nav-footer { margin-top: auto; padding: 15px 2px 0; border-top: 1px solid var(--nf-line); display: flex; align-items: center; gap: 5px; }
+  #noteflow-satin-v11 .nf-account { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding: 5px 3px; font-size: 12px; text-align: left; border-radius: 8px; }
+  #noteflow-satin-v11 .nf-account:hover { background: var(--nf-hover); }
+  #noteflow-satin-v11 .nf-avatar { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 50%; background: var(--nf-selected); color: var(--nf-accent); flex-shrink: 0; }
+  #noteflow-satin-v11 .nf-avatar svg { width: 17px; height: 17px; }
+  #noteflow-satin-v11 .nf-account > svg { width: 13px; height: 13px; margin-left: auto; color: var(--nf-icon); }
+  #noteflow-satin-v11 .nf-workspace { min-width: 0; position: relative; padding: 67px clamp(32px, 5.1vw, 82px) 56px; }
+  #noteflow-satin-v11 .nf-document { max-width: 706px; margin: 0 auto; }
+  #noteflow-satin-v11 .nf-title-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+  #noteflow-satin-v11 .nf-title-input { min-width: 0; width: 100%; padding: 0; background: transparent; border: 0; color: var(--nf-ink); font-size: 44px; font-weight: 650; letter-spacing: -1.9px; line-height: 1.2; }
+  #noteflow-satin-v11 .nf-document-more { align-self: center; color: var(--nf-secondary); }
+  #noteflow-satin-v11 .nf-metadata { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; color: var(--nf-secondary); font-size: 11px; margin: 16px 0 35px; letter-spacing: .1px; }
+  #noteflow-satin-v11 .nf-metadata span + span::before { content: "·"; padding-right: 16px; color: var(--nf-icon); }
+  #noteflow-satin-v11 .nf-document-content { color: var(--nf-body); font-size: var(--nf-reading-size); line-height: 1.9; letter-spacing: .02px; }
+  #noteflow-satin-v11 .nf-document-content p { margin: 0 0 20px; }
+  #noteflow-satin-v11 .nf-document-content h2 { font-size: 21px; line-height: 1.5; font-weight: 600; letter-spacing: -.35px; color: var(--nf-ink); margin: 31px 0 16px; }
+  #noteflow-satin-v11 .nf-section-number { margin-right: 11px; color: var(--nf-icon); font-size: 15px; font-weight: 400; }
+  #noteflow-satin-v11 .nf-document-content strong { color: var(--nf-ink); font-weight: 550; }
+  #noteflow-satin-v11 .nf-selected-passage { position: relative; margin: 21px -13px 22px; padding: 13px; border-radius: 10px; background: var(--nf-selection); }
+  #noteflow-satin-v11 .nf-selected-passage p { margin: 0; }
+  #noteflow-satin-v11 .nf-selection-tools { width: max-content; max-width: 100%; margin: 0 0 -7px -8px; position: relative; z-index: 1; display: flex; align-items: center; flex-wrap: wrap; gap: 2px; padding: 6px; border: 1px solid var(--nf-line); background: var(--nf-input); border-radius: 12px; box-shadow: 0 6px 23px var(--nf-shadow); }
+  #noteflow-satin-v11 .nf-selection-tools .nf-icon-button { width: 26px; height: 27px; border-radius: 6px; color: var(--nf-body); }
+  #noteflow-satin-v11 .nf-selection-tools svg { width: 14px; height: 14px; stroke-width: 1.7; }
+  #noteflow-satin-v11 .nf-add-context { display: flex; align-items: center; gap: 5px; padding: 5px 8px; white-space: nowrap; font-size: 11px; color: var(--nf-accent-ink); border-radius: 7px; }
+  #noteflow-satin-v11 .nf-add-context:hover { background: var(--nf-selected); }
+  #noteflow-satin-v11 .nf-tool-divider { width: 1px; height: 15px; margin: 0 4px; background: var(--nf-line); }
+  #noteflow-satin-v11 .nf-selection-tools button.is-on { background: var(--nf-selected); color: var(--nf-accent-ink); }
+  #noteflow-satin-v11 .nf-table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.65; margin-top: 5px; }
+  #noteflow-satin-v11 .nf-table th { color: var(--nf-secondary); font-weight: 400; text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--nf-line); background: var(--nf-code); }
+  #noteflow-satin-v11 .nf-table th:first-child { border-top-left-radius: 8px; }
+  #noteflow-satin-v11 .nf-table th:last-child { border-top-right-radius: 8px; }
+  #noteflow-satin-v11 .nf-table td { padding: 12px; border-bottom: 1px solid var(--nf-line); vertical-align: top; }
+  #noteflow-satin-v11 .nf-table td:first-child { width: 32%; color: var(--nf-ink); font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; }
+  #noteflow-satin-v11 .nf-table tr:last-child td { border-bottom: 0; }
+  #noteflow-satin-v11 .nf-code-block { background: var(--nf-code); border-radius: 11px; padding: 16px 19px; margin: 18px 0 0; color: var(--nf-body); font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+  #noteflow-satin-v11 .nf-code-command { color: var(--nf-accent-ink); }
+  #noteflow-satin-v11 .nf-heading-rail { position: absolute; right: 16px; top: 264px; display: grid; gap: 9px; }
+  #noteflow-satin-v11 .nf-heading-rail button { width: 23px; height: 18px; display: grid; align-content: center; border-radius: 4px; }
+  #noteflow-satin-v11 .nf-heading-rail button::after { content: ""; display: block; margin-left: auto; width: 12px; height: 2px; background: var(--nf-line); border-radius: 2px; transition: width .2s var(--nf-motion); }
+  #noteflow-satin-v11 .nf-heading-rail button.is-current::after { width: 20px; background: var(--nf-accent); }
+  #noteflow-satin-v11 .nf-heading-rail button:hover::after { width: 20px; background: var(--nf-icon); }
+  #noteflow-satin-v11 .nf-ai-wrap { padding: 16px 16px 16px 0; min-width: 0; }
+  #noteflow-satin-v11 .nf-panel { height: 100%; display: flex; flex-direction: column; background: var(--nf-assistant); border-radius: 21px; padding: 0 22px 20px; min-width: 0; }
+  #noteflow-satin-v11 .nf-ai-header { display: flex; align-items: center; gap: 7px; padding: 23px 0 21px; }
+  #noteflow-satin-v11 .nf-ai-mark { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 10px; color: var(--nf-accent); background: var(--nf-selected); flex-shrink: 0; }
+  #noteflow-satin-v11 .nf-ai-mark svg { width: 16px; height: 16px; }
+  #noteflow-satin-v11 .nf-session-launcher { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; text-align: left; padding: 4px; font-size: 13px; font-weight: 500; }
+  #noteflow-satin-v11 .nf-session-launcher span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  #noteflow-satin-v11 .nf-session-launcher svg { width: 12px; height: 12px; color: var(--nf-icon); }
+  #noteflow-satin-v11 .nf-ai-header .nf-icon-button { width: 27px; height: 30px; border-radius: 8px; }
+  #noteflow-satin-v11 .nf-ai-header .nf-icon-button svg { width: 16px; height: 16px; }
+  #noteflow-satin-v11 .nf-chat { flex: 1; min-width: 0; }
+  #noteflow-satin-v11 .nf-user-message { max-width: 94%; margin-left: auto; padding: 14px 17px; background: var(--nf-selected); border-radius: 16px 16px 5px 16px; color: var(--nf-ink); font-size: 13px; line-height: 1.85; }
+  #noteflow-satin-v11 .nf-user-message p { margin: 0; }
+  #noteflow-satin-v11 .nf-attached-selection { display: flex; align-items: center; gap: 5px; margin-top: 10px; color: var(--nf-accent-ink); font-size: 11px; }
+  #noteflow-satin-v11 .nf-attached-selection svg { width: 12px; height: 12px; }
+  #noteflow-satin-v11 .nf-assistant-answer { padding: 25px 3px 0; color: var(--nf-body); font-size: 14px; line-height: 1.85; }
+  #noteflow-satin-v11 .nf-assistant-answer > p { margin: 0 0 16px; }
+  #noteflow-satin-v11 .nf-answer-title { color: var(--nf-ink); font-weight: 500; }
+  #noteflow-satin-v11 .nf-answer-list { display: grid; gap: 16px; margin: 21px 0; padding: 0; list-style: none; }
+  #noteflow-satin-v11 .nf-answer-list li { display: grid; grid-template-columns: 19px minmax(0, 1fr); gap: 8px; }
+  #noteflow-satin-v11 .nf-answer-list .nf-answer-number { color: var(--nf-icon); font-size: 12px; padding-top: 3px; }
+  #noteflow-satin-v11 .nf-answer-list strong { display: block; font-weight: 500; color: var(--nf-ink); }
+  #noteflow-satin-v11 .nf-answer-list p { margin: 2px 0 0; font-size: 13px; color: var(--nf-secondary); }
+  #noteflow-satin-v11 .nf-ai-references { margin-top: 23px; padding-top: 17px; border-top: 1px solid var(--nf-line); }
+  #noteflow-satin-v11 .nf-reference-summary { display: flex; align-items: center; gap: 5px; color: var(--nf-secondary); font-size: 11px; margin-bottom: 10px; }
+  #noteflow-satin-v11 .nf-reference-summary svg { width: 12px; height: 12px; }
+  #noteflow-satin-v11 .nf-reference-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0; font-size: 12px; }
+  #noteflow-satin-v11 .nf-reference-row > span { display: flex; align-items: center; gap: 6px; }
+  #noteflow-satin-v11 .nf-reference-row svg { width: 13px; height: 13px; color: var(--nf-icon); }
+  #noteflow-satin-v11 .nf-reference-row button { font-size: 11px; color: var(--nf-accent-ink); background: var(--nf-input); border-radius: 6px; padding: 3px 7px; text-align: left; }
+  #noteflow-satin-v11 .nf-reference-row button:hover { background: var(--nf-selected); }
+  #noteflow-satin-v11 .nf-extend-answer { display: inline-flex; align-items: center; gap: 6px; color: var(--nf-accent-ink); margin-top: 17px; font-size: 12px; padding: 4px 0; }
+  #noteflow-satin-v11 .nf-extend-answer svg { width: 13px; height: 13px; }
+  #noteflow-satin-v11 .nf-extend-answer:hover { color: var(--nf-ink); }
+  #noteflow-satin-v11 .nf-composer { margin-top: 28px; background: var(--nf-input); border-radius: 16px; padding: 14px; box-shadow: 0 5px 18px var(--nf-shadow); border: 1px solid var(--nf-line); }
+  #noteflow-satin-v11 .nf-contexts { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  #noteflow-satin-v11 .nf-context-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 4px 4px 7px; border-radius: 7px; background: var(--nf-assistant); color: var(--nf-secondary); font-size: 11px; }
+  #noteflow-satin-v11 .nf-context-chip svg { width: 12px; height: 12px; }
+  #noteflow-satin-v11 .nf-context-chip button { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 4px; color: var(--nf-icon); }
+  #noteflow-satin-v11 .nf-context-chip button:hover { background: var(--nf-hover); color: var(--nf-ink); }
+  #noteflow-satin-v11 .nf-prompt-input { width: 100%; resize: none; height: 56px; padding: 2px 1px; border: 0; color: var(--nf-body); background: transparent; font-size: 13px; line-height: 1.8; }
+  #noteflow-satin-v11 .nf-prompt-input::placeholder { color: var(--nf-secondary); }
+  #noteflow-satin-v11 .nf-composer-actions { display: flex; justify-content: space-between; align-items: center; padding-top: 9px; }
+  #noteflow-satin-v11 .nf-mode-button { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--nf-secondary); padding: 4px 1px; }
+  #noteflow-satin-v11 .nf-mode-button svg { width: 12px; height: 12px; }
+  #noteflow-satin-v11 .nf-send { display: grid; place-items: center; width: 31px; height: 31px; background: var(--nf-button); color: var(--nf-button-ink); border-radius: 10px; }
+  #noteflow-satin-v11 .nf-send svg { width: 16px; height: 16px; stroke-width: 1.9; }
+  #noteflow-satin-v11 .nf-ai-launcher { position: absolute; right: 25px; bottom: 25px; background: var(--nf-button); color: var(--nf-button-ink); width: 45px; height: 45px; border-radius: 15px; box-shadow: 0 8px 23px var(--nf-shadow); display: grid; place-items: center; }
+  #noteflow-satin-v11 .nf-mobile-nav { display: none; }
+  #noteflow-satin-v11 .nf-menu { z-index: 20; position: absolute; min-width: 178px; padding: 6px; border: 1px solid var(--nf-line); border-radius: 13px; background: var(--nf-input); box-shadow: 0 10px 36px var(--nf-shadow); }
+  #noteflow-satin-v11 .nf-menu button { width: 100%; display: flex; align-items: center; gap: 9px; border-radius: 7px; padding: 9px 10px; color: var(--nf-body); font-size: 12px; text-align: left; }
+  #noteflow-satin-v11 .nf-menu button:hover { background: var(--nf-hover); }
+  #noteflow-satin-v11 .nf-menu button svg { width: 15px; height: 15px; }
+  #noteflow-satin-v11 .nf-menu-caption { padding: 7px 10px; color: var(--nf-secondary); font-size: 11px; }
+  #noteflow-satin-v11 .nf-create-menu { left: 53px; top: 159px; }
+  #noteflow-satin-v11 .nf-item-menu { left: 69px; top: 346px; }
+  #noteflow-satin-v11 .nf-display-menu { right: calc(var(--nf-ai-size) + 34px); top: 115px; }
+  #noteflow-satin-v11 .nf-mode-menu { right: 230px; bottom: 77px; min-width: 145px; }
+  #noteflow-satin-v11 .nf-history-menu { right: 72px; top: 74px; width: 302px; }
+  #noteflow-satin-v11 .nf-history-search { width: calc(100% - 16px); margin: 6px 8px 10px; padding: 8px; border: 1px solid var(--nf-line); background: var(--nf-assistant); border-radius: 7px; color: var(--nf-body); font-size: 12px; }
+  #noteflow-satin-v11 .nf-overlay { position: absolute; inset: 0; z-index: 30; background: light-dark(#263e4b20, #00000080); display: flex; align-items: flex-start; justify-content: center; padding: 140px 20px 30px; }
+  #noteflow-satin-v11 .nf-search-dialog { width: min(540px, 100%); border-radius: 18px; background: var(--nf-input); box-shadow: 0 20px 80px var(--nf-shadow); overflow: hidden; }
+  #noteflow-satin-v11 .nf-search-dialog-top { display: flex; gap: 10px; align-items: center; padding: 20px; border-bottom: 1px solid var(--nf-line); }
+  #noteflow-satin-v11 .nf-search-dialog-top > svg { color: var(--nf-icon); }
+  #noteflow-satin-v11 .nf-search-dialog-top input { min-width: 0; flex: 1; border: 0; padding: 0; background: transparent; color: var(--nf-ink); font-size: 16px; }
+  #noteflow-satin-v11 .nf-search-results { padding: 11px; }
+  #noteflow-satin-v11 .nf-search-result { display: flex; align-items: center; gap: 12px; padding: 12px; width: 100%; text-align: left; border-radius: 10px; }
+  #noteflow-satin-v11 .nf-search-result:hover { background: var(--nf-selected); }
+  #noteflow-satin-v11 .nf-search-result svg { color: var(--nf-icon); }
+  #noteflow-satin-v11 .nf-search-result small { display: block; font-size: 11px; color: var(--nf-secondary); margin-top: 4px; }
+  #noteflow-satin-v11 .nf-local-status { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 40; border: 1px solid var(--nf-line); border-radius: 10px; background: var(--nf-input); box-shadow: 0 5px 20px var(--nf-shadow); padding: 10px 15px; max-width: calc(100% - 30px); color: var(--nf-body); font-size: 12px; }
+  #noteflow-satin-v11.nf-ai-closed { grid-template-columns: 250px minmax(0, 1fr); }
+  #noteflow-satin-v11.nf-ai-closed .nf-workspace { padding-left: clamp(36px, 8vw, 140px); padding-right: clamp(36px, 8vw, 140px); }
+  #noteflow-satin-v11.nf-ai-closed .nf-display-menu { right: 35px; }
+  #noteflow-satin-v11.nf-nav-closed { grid-template-columns: 62px minmax(0, 1fr) var(--nf-ai-size); }
+  #noteflow-satin-v11.nf-nav-closed.nf-ai-closed { grid-template-columns: 62px minmax(0, 1fr); }
+  #noteflow-satin-v11.nf-nav-closed .nf-nav { padding-left: 15px; padding-right: 15px; }
+  #noteflow-satin-v11.nf-nav-closed .nf-nav-heading { padding: 0; justify-content: center; }
+  #noteflow-satin-v11.nf-nav-closed .nf-nav-heading > div,
+  #noteflow-satin-v11.nf-nav-closed .nf-nav-search,
+  #noteflow-satin-v11.nf-nav-closed .nf-tree,
+  #noteflow-satin-v11.nf-nav-closed .nf-nav-footer { display: none; }
+  @media (max-width: 1250px) {
+    #noteflow-satin-v11 { grid-template-columns: 224px minmax(0, 1fr) min(32vw, var(--nf-ai-size)); }
+    #noteflow-satin-v11 .nf-nav { padding-left: 13px; padding-right: 13px; }
+    #noteflow-satin-v11 .nf-workspace { padding: 62px 30px 45px; }
+    #noteflow-satin-v11 .nf-title-input { font-size: 38px; }
+    #noteflow-satin-v11 .nf-panel { padding-left: 17px; padding-right: 17px; }
+    #noteflow-satin-v11 .nf-document-content { font-size: 14px; }
+    #noteflow-satin-v11 .nf-ai-header { gap: 4px; }
+    #noteflow-satin-v11 .nf-ai-mark { width: 25px; height: 25px; border-radius: 8px; }
+    #noteflow-satin-v11 .nf-session-launcher { font-size: 12px; }
+    #noteflow-satin-v11 .nf-heading-rail { right: 7px; }
+    #noteflow-satin-v11 .nf-assistant-answer { font-size: 13px; }
+    #noteflow-satin-v11 .nf-ai-header .nf-icon-button { width: 24px; }
+    #noteflow-satin-v11.nf-ai-closed { grid-template-columns: 224px minmax(0, 1fr); }
+    #noteflow-satin-v11.nf-nav-closed { grid-template-columns: 62px minmax(0, 1fr) min(32vw, var(--nf-ai-size)); }
+    #noteflow-satin-v11 .nf-display-menu { right: 34%; }
+  }
+  @media (max-width: 960px) {
+    #noteflow-satin-v11 { grid-template-columns: 210px minmax(0, 1fr); min-height: 1020px; }
+    #noteflow-satin-v11 .nf-ai-wrap { position: absolute; right: 0; top: 0; bottom: 0; width: min(390px, 85%); padding: 10px; z-index: 10; }
+    #noteflow-satin-v11 .nf-panel { box-shadow: -10px 0 35px var(--nf-shadow); }
+    #noteflow-satin-v11.nf-nav-closed { grid-template-columns: 62px minmax(0, 1fr); }
+    #noteflow-satin-v11.nf-ai-closed { grid-template-columns: 210px minmax(0, 1fr); }
+    #noteflow-satin-v11 .nf-display-menu { right: 25px; }
+  }
+  @media (max-width: 650px) {
+    #noteflow-satin-v11, #noteflow-satin-v11.nf-ai-closed, #noteflow-satin-v11.nf-nav-closed, #noteflow-satin-v11.nf-nav-closed.nf-ai-closed { display: block; min-height: 1120px; }
+    #noteflow-satin-v11 .nf-nav { position: absolute; left: 0; top: 0; bottom: 0; width: 260px; z-index: 15; box-shadow: 12px 0 35px var(--nf-shadow); }
+    #noteflow-satin-v11.nf-nav-closed .nf-nav { display: none; }
+    #noteflow-satin-v11 .nf-mobile-nav { display: inline-flex; margin-bottom: 26px; width: 36px; height: 36px; }
+    #noteflow-satin-v11 .nf-workspace, #noteflow-satin-v11.nf-ai-closed .nf-workspace { padding: 20px 23px 76px; }
+    #noteflow-satin-v11 .nf-title-input { font-size: 38px; }
+    #noteflow-satin-v11 .nf-metadata { gap: 7px; font-size: 11px; margin: 15px 0 25px; }
+    #noteflow-satin-v11 .nf-metadata span + span::before { padding-right: 7px; }
+    #noteflow-satin-v11 .nf-document-content { font-size: 14px; }
+    #noteflow-satin-v11 .nf-document-content h2 { font-size: 19px; }
+    #noteflow-satin-v11 .nf-heading-rail { right: 5px; top: 277px; }
+    #noteflow-satin-v11 .nf-selection-tools { margin-left: 0; gap: 1px; }
+    #noteflow-satin-v11 .nf-table { font-size: 12px; }
+    #noteflow-satin-v11 .nf-table th, #noteflow-satin-v11 .nf-table td { padding: 10px 7px; }
+    #noteflow-satin-v11 .nf-table td:first-child { font-size: 11px; }
+    #noteflow-satin-v11 .nf-history-menu { right: 20px; width: min(290px, calc(100% - 40px)); }
+    #noteflow-satin-v11 .nf-mode-menu { right: 145px; }
+    #noteflow-satin-v11 .nf-item-menu { left: 58px; }
+    #noteflow-satin-v11 .nf-overlay { padding-top: 95px; }
+    #noteflow-satin-v11 .nf-ai-wrap { width: 100%; }
+  }
+  @media (pointer: coarse) {
+    #noteflow-satin-v11 .nf-icon-button, #noteflow-satin-v11 .nf-selection-tools .nf-icon-button { min-width: 40px; min-height: 40px; }
+    #noteflow-satin-v11 .nf-search-launcher, #noteflow-satin-v11 .nf-create-button, #noteflow-satin-v11 .nf-note-row { min-height: 44px; }
+    #noteflow-satin-v11 .nf-prompt-input, #noteflow-satin-v11 .nf-history-search { font-size: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #noteflow-satin-v11 *, #noteflow-satin-v11 *::before, #noteflow-satin-v11 *::after { transition: none !important; scroll-behavior: auto !important; }
+  }
+
+  /* V11: one restrained native-inspired system; existing functionality unchanged. */
+  #noteflow-satin-v11 {
+    --nf-page: light-dark(#fdfdfd, #1c1d20);
+    --nf-nav: light-dark(#f3f3f5, #25262b);
+    --nf-nav-top: light-dark(#f8f8fa, #292b30);
+    --nf-assistant: light-dark(#f7f8fa, #25272d);
+    --nf-input: light-dark(#ffffff, #30323a);
+    --nf-ink: light-dark(#292a30, #ededef);
+    --nf-body: light-dark(#4b4d55, #c9c9cf);
+    --nf-secondary: light-dark(#777982, #a3a4ae);
+    --nf-icon: light-dark(#80838c, #b1b3bf);
+    --nf-line: light-dark(#e4e5e9, #3a3c44);
+    --nf-hover: light-dark(#e9eaee, #363841);
+    --nf-accent: light-dark(#397be7, #92baff);
+    --nf-accent-ink: light-dark(#2866c7, #b1ceff);
+    --nf-selected: light-dark(#e3ebf8, #303f59);
+    --nf-selection: light-dark(#e7effc, #33425c);
+    --nf-button: light-dark(#3879e8, #9abcfa);
+    --nf-button-ink: light-dark(#ffffff, #1b2d4b);
+    --nf-shadow: light-dark(#1c274c0d, #00000038);
+    --nf-shadow-deep: light-dark(#21294316, #00000055);
+    --nf-shine: light-dark(#ffffff, #454854);
+    --nf-code: light-dark(#f4f5f7, #292c32);
+    --nf-selection-outline: light-dark(#c3d5f1, #4b6388);
+    --nf-danger: light-dark(#b25b60, #df939a);
+    --nf-ai-size: 416px;
+    --nf-reading-size: 16px;
+    --nf-row-size: 43px;
+    grid-template-columns: 260px minmax(0, 1fr) var(--nf-ai-size);
+    min-height: 950px;
+  }
+  #noteflow-satin-v11 .nf-nav {
+    padding: 32px 17px 20px;
+    background: linear-gradient(150deg, var(--nf-nav-top), var(--nf-nav));
+    box-shadow: inset -1px 0 var(--nf-line);
+  }
+  #noteflow-satin-v11 .nf-nav-heading { padding: 0 10px; align-items: center; }
+  #noteflow-satin-v11 .nf-nav-heading h2 { font-size: 19px; font-weight: 600; letter-spacing: -.4px; margin-bottom: 5px; }
+  #noteflow-satin-v11 .nf-note-count { font-size: 12px; }
+  #noteflow-satin-v11 .nf-nav-search { margin: 22px 5px 27px; gap: 8px; }
+  #noteflow-satin-v11 .nf-search-launcher { border-color: var(--nf-line); height: 36px; border-radius: 9px; box-shadow: 0 1px 2px var(--nf-shadow); }
+  #noteflow-satin-v11 .nf-create-button {
+    width: 35px; height: 35px; border-radius: 10px;
+    background: linear-gradient(var(--nf-input), var(--nf-nav-top));
+    color: var(--nf-body); border: 1px solid var(--nf-line); box-shadow: 0 2px 5px var(--nf-shadow);
+  }
+  #noteflow-satin-v11 .nf-create-button svg { width: 17px; height: 17px; }
+  #noteflow-satin-v11 button:active:not(:disabled) { transform: scale(.97); }
+  #noteflow-satin-v11 .nf-note-link { font-size: 13px; color: var(--nf-body); padding: 10px 12px; }
+  #noteflow-satin-v11 .nf-note-row { border-radius: 9px; margin: 2px 0; }
+  #noteflow-satin-v11 .nf-note-row.is-active { background: var(--nf-selected); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--nf-shine) 65%, transparent); }
+  #noteflow-satin-v11 .nf-note-row.is-active::before { display: none; }
+  #noteflow-satin-v11 .nf-note-row.is-active .nf-note-link { color: var(--nf-ink); }
+  #noteflow-satin-v11 .nf-note-row.is-active .nf-note-link svg { color: var(--nf-accent); }
+  #noteflow-satin-v11 .nf-row-more { width: 24px; }
+  #noteflow-satin-v11 .nf-nav-footer { padding-top: 12px; gap: 2px; margin-left: 4px; margin-right: 4px; }
+  #noteflow-satin-v11 .nf-account { font-size: 13px; font-weight: 500; gap: 7px; padding: 6px 3px; border-radius: 10px; }
+  #noteflow-satin-v11 .nf-account > span:nth-child(2) { white-space: nowrap; }
+  #noteflow-satin-v11 .nf-account[aria-expanded="true"] { background: var(--nf-hover); }
+  #noteflow-satin-v11 .nf-avatar { width: 28px; height: 28px; background: var(--nf-selected); color: var(--nf-accent-ink); }
+  #noteflow-satin-v11 .nf-avatar svg { width: 16px; height: 16px; }
+  #noteflow-satin-v11 .nf-account > svg { width: 11px; height: 11px; transition: transform .2s var(--nf-motion); }
+  #noteflow-satin-v11 .nf-account[aria-expanded="true"] > svg { transform: rotate(180deg); }
+  #noteflow-satin-v11 .nf-nav-footer > .nf-icon-button { width: 30px; height: 36px; }
+  #noteflow-satin-v11 .nf-workspace { padding: 72px clamp(36px, 5.5vw, 88px) 55px; }
+  #noteflow-satin-v11 .nf-document { max-width: 660px; }
+  #noteflow-satin-v11 .nf-title-input { font-size: 43px; font-weight: 600; letter-spacing: -1.7px; }
+  #noteflow-satin-v11 .nf-metadata { margin-top: 14px; margin-bottom: 36px; font-size: 12px; gap: 13px; }
+  #noteflow-satin-v11 .nf-metadata span + span::before { padding-right: 13px; }
+  #noteflow-satin-v11 .nf-document-content { line-height: 1.9; letter-spacing: .08px; }
+  #noteflow-satin-v11 .nf-document-content h2 { font-size: 20px; font-weight: 600; letter-spacing: -.45px; margin: 32px 0 18px; }
+  #noteflow-satin-v11 .nf-section-number { font-size: 14px; margin-right: 10px; }
+  #noteflow-satin-v11 .nf-document-content strong { font-weight: 500; }
+  #noteflow-satin-v11 .nf-selection-tools {
+    padding: 5px; gap: 1px; border-radius: 11px; margin: 0 0 13px -7px;
+    background: var(--nf-input); border: 1px solid var(--nf-line);
+    box-shadow: 0 5px 15px var(--nf-shadow-deep), 0 1px 2px var(--nf-shadow);
+  }
+  #noteflow-satin-v11 .nf-selection-tools .nf-icon-button { width: 25px; height: 26px; border-radius: 6px; }
+  #noteflow-satin-v11 .nf-add-context { font-size: 11px; padding: 5px 7px; color: var(--nf-accent-ink); }
+  #noteflow-satin-v11 .nf-selected-passage { margin: 0 0 26px; padding: 0; border-radius: 0; background: transparent; }
+  #noteflow-satin-v11 .nf-selected-passage p {
+    display: inline; background: var(--nf-selection); padding: 3px 1px;
+    box-decoration-break: clone; -webkit-box-decoration-break: clone;
+  }
+  #noteflow-satin-v11 .nf-table { font-size: 13px; margin-top: 5px; }
+  #noteflow-satin-v11 .nf-table th { background: transparent; padding: 8px 12px 12px; color: var(--nf-secondary); }
+  #noteflow-satin-v11 .nf-table td { padding: 12px; }
+  #noteflow-satin-v11 .nf-code-block { border-radius: 10px; font-size: 12px; padding: 14px 18px; border: 1px solid color-mix(in srgb, var(--nf-line) 55%, transparent); }
+  #noteflow-satin-v11 .nf-heading-rail { right: 18px; top: 265px; }
+  #noteflow-satin-v11 .nf-ai-wrap { padding: 13px 13px 13px 0; }
+  #noteflow-satin-v11 .nf-panel {
+    background: linear-gradient(155deg, var(--nf-input), var(--nf-assistant) 43%);
+    border: 1px solid var(--nf-line); border-radius: 20px;
+    padding: 0 23px 18px; box-shadow: 0 2px 12px var(--nf-shadow);
+  }
+  #noteflow-satin-v11 .nf-ai-header { padding: 21px 0 25px; gap: 6px; }
+  #noteflow-satin-v11 .nf-ai-mark { width: 28px; height: 28px; border-radius: 9px; background: var(--nf-selected); }
+  #noteflow-satin-v11 .nf-ai-mark svg { width: 15px; height: 15px; }
+  #noteflow-satin-v11 .nf-session-launcher { font-size: 13px; font-weight: 500; }
+  #noteflow-satin-v11 .nf-user-message {
+    padding: 13px 15px; background: var(--nf-hover); font-size: 13px;
+    border-radius: 15px 15px 5px 15px; line-height: 1.85;
+  }
+  #noteflow-satin-v11 .nf-attached-selection { color: var(--nf-secondary); }
+  #noteflow-satin-v11 .nf-assistant-answer { padding: 27px 2px 0; line-height: 1.9; font-size: 14px; }
+  #noteflow-satin-v11 .nf-answer-list { gap: 19px; margin: 21px 0 24px; }
+  #noteflow-satin-v11 .nf-answer-list .nf-answer-number { color: var(--nf-secondary); }
+  #noteflow-satin-v11 .nf-answer-list p { margin-top: 4px; color: var(--nf-body); }
+  #noteflow-satin-v11 .nf-ai-references { margin-top: 24px; padding-top: 16px; }
+  #noteflow-satin-v11 .nf-reference-row button { background: transparent; border-radius: 5px; padding: 4px 0; }
+  #noteflow-satin-v11 .nf-reference-row button:hover { background: var(--nf-selected); }
+  #noteflow-satin-v11 .nf-extend-answer { color: var(--nf-secondary); margin-top: 18px; }
+  #noteflow-satin-v11 .nf-composer {
+    border-radius: 17px; padding: 13px; margin-top: 26px;
+    box-shadow: 0 3px 12px var(--nf-shadow), inset 0 1px var(--nf-shine);
+    border-color: var(--nf-line);
+  }
+  #noteflow-satin-v11 .nf-context-chip { background: var(--nf-assistant); border-radius: 6px; color: var(--nf-body); }
+  #noteflow-satin-v11 .nf-prompt-input { font-size: 13px; }
+  #noteflow-satin-v11 .nf-send { width: 30px; height: 30px; border-radius: 50%; box-shadow: 0 2px 5px var(--nf-shadow-deep); }
+  #noteflow-satin-v11 .nf-ai-launcher { border-radius: 50%; }
+  #noteflow-satin-v11 .nf-menu {
+    border-radius: 14px; padding: 6px; background: var(--nf-input);
+    box-shadow: 0 12px 35px var(--nf-shadow-deep), 0 1px 4px var(--nf-shadow);
+    animation: nf-satin-menu .18s var(--nf-motion);
+  }
+  #noteflow-satin-v11 .nf-menu button { font-size: 13px; min-height: 36px; border-radius: 8px; padding: 8px 11px; }
+  #noteflow-satin-v11 .nf-account-menu { left: 22px; bottom: 77px; width: 215px; min-width: 0; transform-origin: 30px bottom; }
+  #noteflow-satin-v11 .nf-menu-rule { height: 1px; background: var(--nf-line); margin: 5px 8px; }
+  #noteflow-satin-v11 .nf-logout { color: var(--nf-danger); }
+  #noteflow-satin-v11 .nf-create-menu { top: 151px; left: 54px; }
+  #noteflow-satin-v11 .nf-item-menu { top: 349px; }
+  #noteflow-satin-v11 .nf-display-menu { top: 114px; }
+  #noteflow-satin-v11.nf-ai-closed { grid-template-columns: 260px minmax(0, 1fr); }
+  #noteflow-satin-v11.nf-nav-closed { grid-template-columns: 62px minmax(0, 1fr) var(--nf-ai-size); }
+  #noteflow-satin-v11.nf-nav-closed.nf-ai-closed { grid-template-columns: 62px minmax(0, 1fr); }
+  @keyframes nf-satin-menu { from { opacity: .2; translate: 0 4px; } to { opacity: 1; translate: 0 0; } }
+  @media (max-width: 1250px) {
+    #noteflow-satin-v11 { grid-template-columns: 220px minmax(0, 1fr) min(32vw, var(--nf-ai-size)); }
+    #noteflow-satin-v11 .nf-workspace { padding: 62px 31px 45px; }
+    #noteflow-satin-v11 .nf-nav { padding-left: 12px; padding-right: 12px; }
+    #noteflow-satin-v11 .nf-title-input { font-size: 38px; }
+    #noteflow-satin-v11 .nf-document-content { font-size: var(--nf-reading-size); }
+    #noteflow-satin-v11 .nf-panel { padding-left: 16px; padding-right: 16px; }
+    #noteflow-satin-v11 .nf-ai-header { gap: 4px; }
+    #noteflow-satin-v11 .nf-session-launcher { font-size: 12px; }
+    #noteflow-satin-v11 .nf-account-menu { left: 15px; width: 190px; }
+    #noteflow-satin-v11.nf-ai-closed { grid-template-columns: 220px minmax(0, 1fr); }
+    #noteflow-satin-v11.nf-nav-closed { grid-template-columns: 62px minmax(0, 1fr) min(32vw, var(--nf-ai-size)); }
+  }
+  @media (max-width: 960px) {
+    #noteflow-satin-v11, #noteflow-satin-v11.nf-ai-closed { grid-template-columns: 210px minmax(0, 1fr); }
+    #noteflow-satin-v11.nf-nav-closed { grid-template-columns: 62px minmax(0, 1fr); }
+    #noteflow-satin-v11 .nf-ai-wrap { width: min(410px, 90%); padding: 10px; }
+  }
+  @media (max-width: 650px) {
+    #noteflow-satin-v11, #noteflow-satin-v11.nf-ai-closed, #noteflow-satin-v11.nf-nav-closed, #noteflow-satin-v11.nf-nav-closed.nf-ai-closed { display: block; min-height: 1120px; }
+    #noteflow-satin-v11 .nf-nav { width: min(260px, 100%); }
+    #noteflow-satin-v11 .nf-workspace, #noteflow-satin-v11.nf-ai-closed .nf-workspace { padding: 20px 23px 76px; }
+    #noteflow-satin-v11 .nf-ai-wrap { width: 100%; }
+    #noteflow-satin-v11 .nf-title-input { font-size: 36px; }
+    #noteflow-satin-v11 .nf-metadata { gap: 7px; font-size: 11px; }
+    #noteflow-satin-v11 .nf-metadata span + span::before { padding-right: 7px; }
+    #noteflow-satin-v11 .nf-document-content { font-size: 15px; }
+    #noteflow-satin-v11 .nf-selection-tools { margin-left: 0; }
+    #noteflow-satin-v11 .nf-account-menu { left: 18px; width: 218px; }
+  }
+  @media (pointer: coarse) {
+    #noteflow-satin-v11 .nf-icon-button, #noteflow-satin-v11 .nf-selection-tools .nf-icon-button, #noteflow-satin-v11 .nf-send { min-width: 44px; min-height: 44px; }
+    #noteflow-satin-v11 .nf-menu button, #noteflow-satin-v11 .nf-account { min-height: 44px; }
+    #noteflow-satin-v11 .nf-prompt-input, #noteflow-satin-v11 .nf-history-search { font-size: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #noteflow-satin-v11 *, #noteflow-satin-v11 *::before, #noteflow-satin-v11 *::after { animation: none !important; }
+  }
+
+</style>
+<div id="noteflow-satin-v11" aria-label="NoteFlow 柔白原生工作台设计">
+  <aside class="nf-nav" aria-label="笔记目录">
+    <div class="nf-nav-heading">
+      <div><h2>目录</h2><span class="nf-note-count">5 篇笔记</span></div>
+      <button class="nf-icon-button cursor-interaction" type="button" data-action="toggle-nav" aria-label="收起目录" data-tooltip="收起目录"><i data-lucide="panel-left-close" aria-hidden="true"></i></button>
+    </div>
+    <div class="nf-nav-search">
+      <button class="nf-search-launcher cursor-interaction" type="button" data-action="search"><i data-lucide="search" aria-hidden="true"></i><span>搜索笔记</span><kbd>⌘ K</kbd></button>
+      <button class="nf-create-button cursor-interaction" type="button" data-menu="create" aria-label="新建笔记或文件夹" aria-expanded="false" data-tooltip="新建"><i data-lucide="plus" aria-hidden="true"></i></button>
+    </div>
+    <nav class="nf-tree" aria-label="全栈开发笔记">
+      <button class="nf-folder cursor-interaction" type="button" data-action="toggle-folder" aria-expanded="true" aria-controls="nf-folder-children"><i data-lucide="chevron-down" aria-hidden="true"></i><i data-lucide="folder-open" aria-hidden="true"></i><span>全栈开发</span></button>
+      <div class="nf-tree-children" id="nf-folder-children">
+        <div class="nf-note-row"><button type="button" class="nf-note-link cursor-interaction" data-note="Go 语言" data-tooltip="Go 语言"><i data-lucide="file-text" aria-hidden="true"></i><span>Go 语言</span></button><button type="button" class="nf-icon-button nf-row-more cursor-interaction" data-menu="item" aria-label="Go 语言的更多操作"><i data-lucide="ellipsis" aria-hidden="true"></i></button></div>
+        <div class="nf-note-row"><button type="button" class="nf-note-link cursor-interaction" data-note="AI应用开发学习笔记" data-tooltip="AI应用开发学习笔记"><i data-lucide="file-text" aria-hidden="true"></i><span>AI应用开发学习笔记</span></button><button type="button" class="nf-icon-button nf-row-more cursor-interaction" data-menu="item" aria-label="AI应用开发学习笔记的更多操作"><i data-lucide="ellipsis" aria-hidden="true"></i></button></div>
+        <div class="nf-note-row is-active"><button type="button" class="nf-note-link cursor-interaction" data-note="Redis" aria-current="page"><i data-lucide="file-text" aria-hidden="true"></i><span>Redis</span></button><button type="button" class="nf-icon-button nf-row-more cursor-interaction" data-menu="item" aria-label="Redis 的更多操作"><i data-lucide="ellipsis" aria-hidden="true"></i></button></div>
+        <div class="nf-note-row"><button type="button" class="nf-note-link cursor-interaction" data-note="Python 的面试常问问题" data-tooltip="Python 的面试常问问题"><i data-lucide="file-text" aria-hidden="true"></i><span>Python 的面试常问问题</span></button><button type="button" class="nf-icon-button nf-row-more cursor-interaction" data-menu="item" aria-label="Python 笔记的更多操作"><i data-lucide="ellipsis" aria-hidden="true"></i></button></div>
+        <div class="nf-note-row"><button type="button" class="nf-note-link cursor-interaction" data-note="Git 入门学习笔记" data-tooltip="Git 入门学习笔记"><i data-lucide="file-text" aria-hidden="true"></i><span>Git 入门学习笔记</span></button><button type="button" class="nf-icon-button nf-row-more cursor-interaction" data-menu="item" aria-label="Git 笔记的更多操作"><i data-lucide="ellipsis" aria-hidden="true"></i></button></div>
+      </div>
+    </nav>
+    <div class="nf-nav-footer">
+      <button type="button" class="nf-account cursor-interaction" data-menu="account" aria-expanded="false" aria-label="我的账号菜单"><span class="nf-avatar"><i data-lucide="user-round" aria-hidden="true"></i></span><span>我的账号</span><i data-lucide="chevron-up" aria-hidden="true"></i></button>
+      <button type="button" class="nf-icon-button cursor-interaction" data-action="trash" aria-label="回收站" data-tooltip="回收站"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+      <button type="button" class="nf-icon-button cursor-interaction" data-action="settings" aria-label="设置" data-tooltip="设置"><i data-lucide="settings" aria-hidden="true"></i></button>
+    </div>
+  </aside>
+  <main class="nf-workspace" aria-label="笔记编辑区">
+    <button type="button" class="nf-icon-button nf-mobile-nav cursor-interaction" data-action="toggle-nav" aria-label="展开目录"><i data-lucide="panel-left" aria-hidden="true"></i></button>
+    <article class="nf-document">
+      <header>
+        <div class="nf-title-row"><input class="nf-title-input" aria-label="笔记标题" value="Redis"><button type="button" class="nf-icon-button nf-document-more cursor-interaction" data-menu="display" aria-label="正文显示设置" aria-expanded="false" data-tooltip="显示设置"><i data-lucide="ellipsis" aria-hidden="true"></i></button></div>
+        <div class="nf-metadata"><span>创建于 9 月 6 日</span><span>更新于 9 月 13 日 14:32</span></div>
+      </header>
+      <div class="nf-document-content" id="nf-doc-body">
+        <p>Redis 是一个基于内存的键值数据库。它不仅能用来做缓存，也支持计数、排行榜和消息队列等常见场景。</p>
+        <section id="nf-speed"><h2><span class="nf-section-number">1</span>为什么这么快</h2>
+          <div class="nf-selection-tools" aria-label="选中文字的格式工具栏">
+            <button type="button" class="nf-add-context cursor-interaction" data-action="add-context"><i data-lucide="message-square-plus" aria-hidden="true"></i>添加到对话</button><span class="nf-tool-divider"></span>
+            <button type="button" class="nf-icon-button cursor-interaction" data-format="bold" aria-label="加粗" data-tooltip="加粗"><i data-lucide="bold" aria-hidden="true"></i></button>
+            <button type="button" class="nf-icon-button cursor-interaction" data-format="italic" aria-label="斜体" data-tooltip="斜体"><i data-lucide="italic" aria-hidden="true"></i></button>
+            <button type="button" class="nf-icon-button cursor-interaction" data-format="underline" aria-label="下划线" data-tooltip="下划线"><i data-lucide="underline" aria-hidden="true"></i></button>
+            <button type="button" class="nf-icon-button cursor-interaction" data-format="strike" aria-label="删除线" data-tooltip="删除线"><i data-lucide="strikethrough" aria-hidden="true"></i></button>
+            <button type="button" class="nf-icon-button cursor-interaction" data-format="highlight" aria-label="高亮" data-tooltip="高亮"><i data-lucide="highlighter" aria-hidden="true"></i></button>
+            <button type="button" class="nf-icon-button cursor-interaction" data-format="code" aria-label="行内代码" data-tooltip="行内代码"><i data-lucide="code" aria-hidden="true"></i></button><span class="nf-tool-divider"></span>
+            <button type="button" class="nf-icon-button cursor-interaction" data-action="link" aria-label="链接" data-tooltip="链接"><i data-lucide="link" aria-hidden="true"></i></button>
+            <button type="button" class="nf-icon-button cursor-interaction" data-format="bullet" aria-label="无序列表" data-tooltip="无序列表"><i data-lucide="list" aria-hidden="true"></i></button>
+            <button type="button" class="nf-icon-button cursor-interaction" data-format="ordered" aria-label="有序列表" data-tooltip="有序列表"><i data-lucide="list-ordered" aria-hidden="true"></i></button>
+            <button type="button" class="nf-icon-button cursor-interaction" data-format="quote" aria-label="引用" data-tooltip="引用"><i data-lucide="quote" aria-hidden="true"></i></button>
+            <button type="button" class="nf-icon-button cursor-interaction" data-action="clear-format" aria-label="清除格式" data-tooltip="清除格式"><i data-lucide="remove-formatting" aria-hidden="true"></i></button>
+          </div>
+          <div class="nf-selected-passage"><p>它的高性能主要来自<strong>内存访问、紧凑的数据结构和高效的事件处理</strong>。理解 Redis 时，不应把“单线程”当作唯一答案，也需要区分命令执行与网络 I/O。</p></div>
+        </section>
+        <section id="nf-types"><h2><span class="nf-section-number">2</span>常用数据类型</h2>
+          <table class="nf-table" aria-label="Redis 常用数据类型与场景"><thead><tr><th>类型</th><th>适合的场景</th></tr></thead><tbody>
+            <tr><td>String</td><td>缓存、计数器、简单的键值存储</td></tr>
+            <tr><td>Hash</td><td>用户信息、商品属性等结构化数据</td></tr>
+            <tr><td>List</td><td>消息列表、按顺序处理的数据</td></tr>
+            <tr><td>Set</td><td>去重、共同关注、集合运算</td></tr>
+            <tr><td>Sorted Set</td><td>排行榜、带权重的有序集合</td></tr>
+          </tbody></table>
+        </section>
+        <section id="nf-cache"><h2><span class="nf-section-number">3</span>一个简单的缓存示例</h2>
+          <p>为缓存设置合适的过期时间，避免数据一直占用内存。</p>
+          <pre class="nf-code-block"><code><span class="nf-code-command">SET</span> user:1001:name "Alice" <span class="nf-code-command">EX</span> 3600
+<span class="nf-code-command">GET</span> user:1001:name</code></pre>
+        </section>
+      </div>
+    </article>
+    <nav class="nf-heading-rail" aria-label="章节导航">
+      <button type="button" class="is-current cursor-interaction" data-section="nf-speed" aria-label="跳转：为什么这么快" data-tooltip="为什么这么快" data-tooltip-placement="left"></button>
+      <button type="button" class="cursor-interaction" data-section="nf-types" aria-label="跳转：常用数据类型" data-tooltip="常用数据类型" data-tooltip-placement="left"></button>
+      <button type="button" class="cursor-interaction" data-section="nf-cache" aria-label="跳转：缓存示例" data-tooltip="缓存示例" data-tooltip-placement="left"></button>
+    </nav>
+  </main>
+  <aside class="nf-ai-wrap" aria-label="AI 对话">
+    <div class="nf-panel">
+      <header class="nf-ai-header">
+        <span class="nf-ai-mark"><i data-lucide="sparkles" aria-hidden="true"></i></span>
+        <button type="button" class="nf-session-launcher cursor-interaction" data-menu="history" aria-expanded="false"><span>Redis 为什么快</span><i data-lucide="chevron-down" aria-hidden="true"></i></button>
+        <button type="button" class="nf-icon-button cursor-interaction" data-action="new-chat" aria-label="新建对话" data-tooltip="新建对话"><i data-lucide="plus" aria-hidden="true"></i></button>
+        <button type="button" class="nf-icon-button cursor-interaction" data-action="toggle-ai" aria-label="收起 AI 面板" data-tooltip="收起 AI 面板"><i data-lucide="panel-right-close" aria-hidden="true"></i></button>
+      </header>
+      <div class="nf-chat">
+        <div class="nf-user-message"><p>能结合这段笔记，解释一下 Redis 的单线程和多线程 I/O 吗？</p><span class="nf-attached-selection"><i data-lucide="quote" aria-hidden="true"></i>已引用 · Redis</span></div>
+        <div class="nf-assistant-answer">
+          <p class="nf-answer-title">可以把它们理解为两个不同的层次。</p>
+          <p>“处理命令”和“收发网络数据”并不是同一件事，所以两种说法并不矛盾。</p>
+          <ol class="nf-answer-list">
+            <li><span class="nf-answer-number">01</span><div><strong>命令执行：主要串行处理</strong><p>常规命令主要在主线程执行，让数据结构的操作保持简单、可预测。</p></div></li>
+            <li><span class="nf-answer-number">02</span><div><strong>网络 I/O：可以并行分担</strong><p>多线程 I/O 可分担网络数据的读写，不意味着所有命令都并行执行。</p></div></li>
+            <li><span class="nf-answer-number">03</span><div><strong>性能：来自整条处理链路</strong><p>内存访问、数据结构、网络负载与命令复杂度，都影响实际响应速度。</p></div></li>
+          </ol>
+          <div class="nf-ai-references">
+            <div class="nf-reference-summary"><i data-lucide="book-open" aria-hidden="true"></i><span>参考 · 1 篇笔记 · 2 处原文</span></div>
+            <div class="nf-reference-row"><span><i data-lucide="file-text" aria-hidden="true"></i>Redis</span><button type="button" class="cursor-interaction" data-section="nf-speed">为什么这么快</button></div>
+            <div class="nf-reference-row"><span></span><button type="button" class="cursor-interaction" data-section="nf-types">常用数据类型</button></div>
+          </div>
+          <button type="button" class="nf-extend-answer cursor-interaction" data-action="extend"><i data-lucide="text-cursor-input" aria-hidden="true"></i>补充理解</button>
+        </div>
+      </div>
+      <form class="nf-composer" aria-label="发送 AI 消息">
+        <div class="nf-contexts">
+          <span class="nf-context-chip" data-context="note"><i data-lucide="file-text" aria-hidden="true"></i><span>Redis</span><button type="button" class="cursor-interaction" data-remove="note" aria-label="移除当前笔记上下文"><i data-lucide="x" aria-hidden="true"></i></button></span>
+          <span class="nf-context-chip" data-context="selection"><i data-lucide="quote" aria-hidden="true"></i><span>已选文字</span><button type="button" class="cursor-interaction" data-remove="selection" aria-label="移除选中文字上下文"><i data-lucide="x" aria-hidden="true"></i></button></span>
+        </div>
+        <textarea class="nf-prompt-input" aria-label="AI 消息" placeholder="使用 AI 处理各种任务…">用一个生活中的例子再解释一下。</textarea>
+        <div class="nf-composer-actions"><button type="button" class="nf-mode-button cursor-interaction" data-menu="mode" aria-expanded="false"><i data-lucide="message-circle" aria-hidden="true"></i><span>对话</span><i data-lucide="chevron-down" aria-hidden="true"></i></button><button type="submit" class="nf-send cursor-interaction" aria-label="发送消息"><i data-lucide="arrow-up" aria-hidden="true"></i></button></div>
+      </form>
+    </div>
+  </aside>
+  <button type="button" class="nf-ai-launcher cursor-interaction" data-action="toggle-ai" aria-label="打开 AI 助手" hidden><i data-lucide="sparkles" aria-hidden="true"></i></button>
+  <div class="nf-menu nf-account-menu" data-menu-panel="account" aria-label="我的账号" hidden>
+    <button type="button" class="cursor-interaction" data-prototype="登录邮箱"><i data-lucide="mail" aria-hidden="true"></i>登录邮箱</button>
+    <button type="button" class="cursor-interaction" data-prototype="已登录设备"><i data-lucide="monitor-smartphone" aria-hidden="true"></i>已登录设备</button>
+    <div class="nf-menu-rule"></div>
+    <button type="button" class="nf-logout cursor-interaction" data-prototype="退出登录"><i data-lucide="log-out" aria-hidden="true"></i>退出登录</button>
+  </div>
+  <div class="nf-menu nf-create-menu" data-menu-panel="create" aria-label="新建菜单" hidden><button type="button" class="cursor-interaction" data-prototype="新建笔记"><i data-lucide="file-plus-2" aria-hidden="true"></i>新建笔记</button><button type="button" class="cursor-interaction" data-prototype="新建文件夹"><i data-lucide="folder-plus" aria-hidden="true"></i>新建文件夹</button></div>
+  <div class="nf-menu nf-item-menu" data-menu-panel="item" aria-label="笔记更多操作" hidden><button type="button" class="cursor-interaction" data-prototype="重命名"><i data-lucide="pencil" aria-hidden="true"></i>重命名</button><button type="button" class="cursor-interaction" data-prototype="移动笔记"><i data-lucide="folder-input" aria-hidden="true"></i>移动</button><button type="button" class="cursor-interaction" data-prototype="导出笔记"><i data-lucide="download" aria-hidden="true"></i>导出</button><button type="button" class="cursor-interaction" data-prototype="置顶笔记"><i data-lucide="pin" aria-hidden="true"></i>置顶</button><button type="button" class="cursor-interaction" data-prototype="收藏笔记"><i data-lucide="star" aria-hidden="true"></i>收藏</button><button type="button" class="cursor-interaction" data-prototype="删除笔记"><i data-lucide="trash-2" aria-hidden="true"></i>删除</button></div>
+  <div class="nf-menu nf-display-menu" data-menu-panel="display" aria-label="正文显示设置" hidden><div class="nf-menu-caption">正文显示</div><button type="button" class="cursor-interaction" data-action="toggle-numbers" aria-pressed="true"><i data-lucide="list-ordered" aria-hidden="true"></i><span>隐藏章节编号</span></button></div>
+  <div class="nf-menu nf-history-menu" data-menu-panel="history" aria-label="对话历史" hidden><input class="nf-history-search" aria-label="搜索对话历史" placeholder="搜索对话…"><button type="button" class="cursor-interaction" data-session="Redis 为什么快"><i data-lucide="message-circle" aria-hidden="true"></i>Redis 为什么快</button><button type="button" class="cursor-interaction" data-session="缓存的过期策略"><i data-lucide="message-circle" aria-hidden="true"></i>缓存的过期策略</button><button type="button" class="cursor-interaction" data-action="new-chat"><i data-lucide="plus" aria-hidden="true"></i>新建对话</button></div>
+  <div class="nf-menu nf-mode-menu" data-menu-panel="mode" aria-label="AI 模式" hidden><button type="button" class="cursor-interaction" data-mode="对话"><i data-lucide="message-circle" aria-hidden="true"></i>对话</button><button type="button" class="cursor-interaction" data-mode="全库搜索"><i data-lucide="search" aria-hidden="true"></i>全库搜索</button></div>
+  <div class="nf-overlay" data-overlay="search" hidden><section class="nf-search-dialog" role="dialog" aria-modal="true" aria-label="搜索笔记"><div class="nf-search-dialog-top"><i data-lucide="search" aria-hidden="true"></i><input placeholder="搜索笔记…" aria-label="搜索内容"><button type="button" class="nf-icon-button cursor-interaction" data-action="close-search" aria-label="关闭搜索"><i data-lucide="x" aria-hidden="true"></i></button></div><div class="nf-search-results"><button type="button" class="nf-search-result cursor-interaction" data-note="Go 语言"><i data-lucide="file-text" aria-hidden="true"></i><span>Go 语言<small>全栈开发</small></span></button><button type="button" class="nf-search-result cursor-interaction" data-note="AI应用开发学习笔记"><i data-lucide="file-text" aria-hidden="true"></i><span>AI应用开发学习笔记<small>全栈开发</small></span></button><button type="button" class="nf-search-result cursor-interaction" data-note="Redis"><i data-lucide="file-text" aria-hidden="true"></i><span>Redis<small>全栈开发</small></span></button><button type="button" class="nf-search-result cursor-interaction" data-note="Python 的面试常问问题"><i data-lucide="file-text" aria-hidden="true"></i><span>Python 的面试常问问题<small>全栈开发</small></span></button><button type="button" class="nf-search-result cursor-interaction" data-note="Git 入门学习笔记"><i data-lucide="file-text" aria-hidden="true"></i><span>Git 入门学习笔记<small>全栈开发</small></span></button><div class="nf-menu-caption nf-no-results" hidden>没有匹配的笔记</div></div></section></div>
+  <div class="nf-local-status" role="status" aria-live="polite" hidden></div>
+</div>
+<script>
+(() => {
+  const root = document.getElementById('noteflow-satin-v11');
+  const q = (selector) => root.querySelector(selector);
+  const all = (selector) => Array.from(root.querySelectorAll(selector));
+  const prompt = q('.nf-prompt-input');
+  const title = q('.nf-title-input');
+  const state = { aiOpen: window.innerWidth > 960, navOpen: window.innerWidth > 650, numbers: true, mode: '对话', note: 'Redis', selection: true };
+  let stateRevision = 0;
+  let statusTimer;
+  function closeMenus() {
+    all('[data-menu-panel]').forEach(el => { el.hidden = true; });
+    all('[data-menu]').forEach(el => el.setAttribute('aria-expanded', 'false'));
+  }
+  function render() {
+    root.classList.toggle('nf-ai-closed', !state.aiOpen);
+    root.classList.toggle('nf-nav-closed', !state.navOpen);
+    q('.nf-ai-wrap').hidden = !state.aiOpen;
+    q('.nf-ai-launcher').hidden = state.aiOpen;
+    const navToggle = q('.nf-nav-heading [data-action="toggle-nav"]');
+    navToggle.setAttribute('aria-label', state.navOpen ? '收起目录' : '展开目录');
+    q('.nf-mode-button span').textContent = state.mode;
+    prompt.placeholder = state.mode === '全库搜索' ? '向整个知识库提问…' : '使用 AI 处理各种任务…';
+    q('[data-context="selection"]').hidden = !state.selection;
+    all('.nf-section-number').forEach(el => { el.hidden = !state.numbers; });
+    const numbersButton = q('[data-action="toggle-numbers"]');
+    numbersButton.setAttribute('aria-pressed', String(state.numbers));
+    numbersButton.querySelector('span').textContent = state.numbers ? '隐藏章节编号' : '显示章节编号';
+  }
+  function remember() {
+    stateRevision++;
+    if (window.openai && typeof window.openai.setWidgetState === 'function') {
+      window.openai.setWidgetState({ modelContent: { design: 'NoteFlow V11 柔白原生工作台', aiOpen: state.aiOpen, mode: state.mode }, privateContent: { ...state, revision: stateRevision, viewportClass: window.innerWidth > 960 ? 'desktop' : window.innerWidth > 650 ? 'tablet' : 'phone' } }).catch(() => {});
+    }
+  }
+  function restore(saved) {
+    if (!saved || !saved.privateContent || saved.modelContent?.design !== 'NoteFlow V11 柔白原生工作台') return;
+    const previous = saved.privateContent;
+    const viewportClass = window.innerWidth > 960 ? 'desktop' : window.innerWidth > 650 ? 'tablet' : 'phone';
+    if (previous.viewportClass !== viewportClass) return;
+    const incomingRevision = Number.isFinite(previous.revision) ? previous.revision : 0;
+    if (incomingRevision < stateRevision) return;
+    stateRevision = incomingRevision;
+    ['aiOpen', 'navOpen', 'numbers', 'selection'].forEach(key => { if (typeof previous[key] === 'boolean') state[key] = previous[key]; });
+    if (['对话', '全库搜索'].includes(previous.mode)) state.mode = previous.mode;
+    render();
+  }
+  function notify(message) {
+    const status = q('.nf-local-status');
+    status.textContent = message;
+    status.hidden = false;
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(() => { status.hidden = true; }, 2800);
+  }
+  function selectNote(name) {
+    state.note = name;
+    all('.nf-note-row').forEach(row => {
+      const link = row.querySelector('[data-note]');
+      const active = link.dataset.note === name;
+      row.classList.toggle('is-active', active);
+      if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
+    });
+    title.value = name;
+    q('[data-context="note"] > span').textContent = name;
+    q('[data-context="note"]').hidden = false;
+    q('[data-overlay="search"]').hidden = true;
+    if (name === 'Redis') {
+      q('#nf-doc-body').hidden = false;
+      q('.nf-heading-rail').hidden = false;
+    } else {
+      q('#nf-doc-body').hidden = true;
+      q('.nf-heading-rail').hidden = true;
+      notify('设计预览仅填充 Redis 示例正文；不会改动实际笔记。');
+    }
+    render(); remember();
+  }
+  root.addEventListener('click', (event) => {
+    const button = event.target.closest('button');
+    if (!button || !root.contains(button)) return;
+    if (button.dataset.menu) {
+      const panel = q(`[data-menu-panel="${button.dataset.menu}"]`);
+      const opening = panel.hidden;
+      closeMenus(); panel.hidden = !opening;
+      button.setAttribute('aria-expanded', String(opening));
+      return;
+    }
+    if (button.dataset.note) { selectNote(button.dataset.note); closeMenus(); return; }
+    if (button.dataset.mode) { state.mode = button.dataset.mode; render(); remember(); closeMenus(); return; }
+    if (button.dataset.session) { q('.nf-session-launcher span').textContent = button.dataset.session; closeMenus(); notify('已切换示例会话标题；对话内容仅用于排版预览。'); return; }
+    if (button.dataset.section) {
+      q('[data-overlay="search"]').hidden = true;
+      if (state.note !== 'Redis') selectNote('Redis');
+      all('.nf-heading-rail button').forEach(el => el.classList.toggle('is-current', el.dataset.section === button.dataset.section));
+      const section = q(`#${button.dataset.section}`);
+      section.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+      return;
+    }
+    if (button.dataset.remove) {
+      if (button.dataset.remove === 'selection') { state.selection = false; render(); } else q('[data-context="note"]').hidden = true;
+      remember(); return;
+    }
+    if (button.dataset.format) {
+      const format = button.dataset.format;
+      const paragraph = q('.nf-selected-passage p');
+      const active = !button.classList.contains('is-on');
+      button.classList.toggle('is-on', active); button.setAttribute('aria-pressed', String(active));
+      if (format === 'bold') paragraph.style.fontWeight = active ? '600' : '';
+      else if (format === 'italic') paragraph.style.fontStyle = active ? 'italic' : '';
+      else if (format === 'underline') paragraph.style.textDecoration = active ? 'underline' : '';
+      else if (format === 'strike') paragraph.style.textDecoration = active ? 'line-through' : '';
+      else if (format === 'quote') paragraph.style.borderLeft = active ? '2px solid var(--nf-accent)' : '';
+      else if (format === 'highlight') paragraph.style.background = active ? 'var(--nf-selected)' : '';
+      else notify('格式按钮状态预览；正式版仍使用现有 Tiptap 编辑器。');
+      return;
+    }
+    if (button.dataset.prototype) { closeMenus(); notify(`${button.dataset.prototype}：这是设计稿，不会写入真实数据。`); return; }
+    const action = button.dataset.action;
+    if (action === 'toggle-ai') { state.aiOpen = !state.aiOpen; closeMenus(); render(); remember(); }
+    else if (action === 'toggle-nav') { state.navOpen = !state.navOpen; closeMenus(); render(); remember(); }
+    else if (action === 'toggle-folder') { const children = q('#nf-folder-children'); children.hidden = !children.hidden; button.setAttribute('aria-expanded', String(!children.hidden)); }
+    else if (action === 'search') { closeMenus(); q('[data-overlay="search"]').hidden = false; q('.nf-search-dialog-top input').focus(); }
+    else if (action === 'close-search') { q('[data-overlay="search"]').hidden = true; q('.nf-search-launcher').focus(); }
+    else if (action === 'toggle-numbers') { state.numbers = !state.numbers; render(); remember(); }
+    else if (action === 'add-context') { state.selection = true; state.aiOpen = true; render(); remember(); prompt.focus(); }
+    else if (action === 'new-chat') { q('.nf-session-launcher span').textContent = '新对话'; q('.nf-chat').hidden = true; prompt.value = ''; q('.nf-send').disabled = true; closeMenus(); prompt.focus(); }
+    else if (action === 'clear-format') { q('.nf-selected-passage p').removeAttribute('style'); all('[data-format]').forEach(el => { el.classList.remove('is-on'); el.setAttribute('aria-pressed', 'false'); }); }
+    else if (action === 'extend') notify('现有“补充理解”会进入独立修改预览；本稿未模拟 AI 写入。');
+    else if (action === 'link') notify('链接入口保留；此预览不执行编辑器写入。');
+    else if (['trash', 'settings'].includes(action)) notify('保留现有功能入口；此稿不打开真实数据或改变设置。');
+  });
+  q('.nf-composer').addEventListener('submit', event => { event.preventDefault(); if (prompt.value.trim()) notify('仅预览发送动作，不调用模型或写入数据。'); });
+  prompt.addEventListener('input', () => { q('.nf-send').disabled = !prompt.value.trim(); });
+  q('.nf-search-dialog-top input').addEventListener('input', event => {
+    const needle = event.target.value.trim().toLowerCase();
+    let count = 0;
+    all('.nf-search-result').forEach(el => { el.hidden = !el.dataset.note.toLowerCase().includes(needle); if (!el.hidden) count++; });
+    q('.nf-no-results').hidden = count > 0;
+  });
+  q('.nf-history-search').addEventListener('input', event => { const needle = event.target.value.trim(); all('[data-session]').forEach(el => { el.hidden = !el.dataset.session.includes(needle); }); });
+  document.addEventListener('click', event => { if (root.contains(event.target) && !event.target.closest('[data-menu], [data-menu-panel]')) closeMenus(); });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') { closeMenus(); q('[data-overlay="search"]').hidden = true; }
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); q('[data-overlay="search"]').hidden = false; q('.nf-search-dialog-top input').focus(); }
+  });
+  window.addEventListener('openai:set_globals', event => restore(event.detail && event.detail.globals && event.detail.globals.widgetState));
+  render();
+  restore(window.openai && window.openai.widgetState);
+  if (globalThis.Tweak) {
+    const design = { readingSize: 16, aiWidth: 416, rowHeight: 43 };
+    const applyDesign = () => { root.style.setProperty('--nf-reading-size', `${design.readingSize}px`); root.style.setProperty('--nf-ai-size', `${design.aiWidth}px`); root.style.setProperty('--nf-row-size', `${design.rowHeight}px`); };
+    const tweak = new Tweak({ container: root, onChange: applyDesign });
+    tweak.addSlider(design, 'readingSize', { label: '正文字号', min: 14, max: 18, unit: 'px', reference: '--nf-reading-size' });
+    tweak.addSlider(design, 'aiWidth', { label: 'AI 面板宽度', min: 380, max: 500, unit: 'px', reference: '--nf-ai-size' });
+    tweak.addSlider(design, 'rowHeight', { label: '目录行高', min: 38, max: 48, unit: 'px', reference: '--nf-row-size' });
+  }
+})();
+</script>

@@ -1,0 +1,60 @@
+<style>
+  #noteflow-satin-account-detail {
+    --nd-surface: light-dark(#f3f3f5, #25262b);
+    --nd-popover: light-dark(#ffffff, #30323a);
+    --nd-line: light-dark(#e4e5e9, #3a3c44);
+    --nd-ink: light-dark(#292a30, #ededef);
+    --nd-icon: light-dark(#80838c, #b1b3bf);
+    --nd-accent: light-dark(#2866c7, #b1ceff);
+    --nd-selected: light-dark(#e3ebf8, #303f59);
+    --nd-hover: light-dark(#e9eaee, #363841);
+    --nd-shadow: light-dark(#21294316, #00000055);
+    --nd-danger: light-dark(#b25b60, #df939a);
+    width: min(260px, 100%); height: 258px; position: relative;
+    background: var(--nd-surface); color: var(--nd-ink);
+    font: 400 13px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #noteflow-satin-account-detail * { box-sizing: border-box; }
+  #noteflow-satin-account-detail button { font: inherit; background: transparent; color: inherit; border: 0; }
+  #noteflow-satin-account-detail svg { stroke-width: 1.65; }
+  #noteflow-satin-account-detail .nd-menu {
+    position: absolute; top: 28px; left: 22px; width: 215px;
+    border: 1px solid var(--nd-line); border-radius: 14px; padding: 6px;
+    background: var(--nd-popover); box-shadow: 0 12px 35px var(--nd-shadow);
+  }
+  #noteflow-satin-account-detail .nd-menu button {
+    display: flex; align-items: center; gap: 9px; padding: 8px 11px;
+    min-height: 36px; width: 100%; border-radius: 8px; text-align: left;
+  }
+  #noteflow-satin-account-detail .nd-rule { height: 1px; margin: 5px 8px; background: var(--nd-line); }
+  #noteflow-satin-account-detail .nd-menu button:last-child { color: var(--nd-danger); }
+  #noteflow-satin-account-detail .nd-footer {
+    position: absolute; bottom: 20px; left: 21px; right: 21px;
+    display: flex; align-items: center; gap: 2px; border-top: 1px solid var(--nd-line); padding: 12px 2px 0;
+  }
+  #noteflow-satin-account-detail .nd-account {
+    flex: 1; display: flex; align-items: center; gap: 7px;
+    padding: 6px 3px; background: var(--nd-hover); border-radius: 10px;
+    font-weight: 500; white-space: nowrap;
+  }
+  #noteflow-satin-account-detail .nd-avatar {
+    width: 28px; height: 28px; border-radius: 50%; flex: none;
+    display: grid; place-items: center; color: var(--nd-accent); background: var(--nd-selected);
+  }
+  #noteflow-satin-account-detail .nd-account > svg { color: var(--nd-icon); }
+  #noteflow-satin-account-detail .nd-tool { display: grid; place-items: center; width: 30px; height: 36px; border-radius: 9px; color: var(--nd-icon); }
+</style>
+<div id="noteflow-satin-account-detail" aria-label="NoteFlow 账号菜单展开细节">
+  <div class="nd-menu" aria-label="账号菜单">
+    <button type="button"><i data-lucide="mail" aria-hidden="true"></i>登录邮箱</button>
+    <button type="button"><i data-lucide="monitor-smartphone" aria-hidden="true"></i>已登录设备</button>
+    <div class="nd-rule"></div>
+    <button type="button"><i data-lucide="log-out" aria-hidden="true"></i>退出登录</button>
+  </div>
+  <div class="nd-footer">
+    <button type="button" class="nd-account" aria-expanded="true" aria-label="我的账号菜单"><span class="nd-avatar"><i data-lucide="user-round" aria-hidden="true"></i></span><span>我的账号</span><i data-lucide="chevron-down" aria-hidden="true"></i></button>
+    <button type="button" class="nd-tool" aria-label="回收站"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+    <button type="button" class="nd-tool" aria-label="设置"><i data-lucide="settings" aria-hidden="true"></i></button>
+  </div>
+</div>
