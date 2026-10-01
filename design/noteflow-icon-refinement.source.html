@@ -1,0 +1,179 @@
+<div id="nf-icon-refinement" aria-label="NoteFlow 小图标原版与精修对照">
+  <div class="ni-top"><span>小图标 · 局部精修</span><span class="ni-secondary">布局与颜色保持不变</span></div>
+  <div class="ni-comparison viz-dotted-background">
+    <section class="ni-sample" data-version="original" aria-label="原版侧栏"><h3>原版</h3><div class="ni-stage"></div></section>
+    <section class="ni-sample" data-version="refined" aria-label="精修侧栏"><h3>精修候选</h3><div class="ni-stage"></div></section>
+  </div>
+  <div class="ni-detail-header"><span>图标对照</span><div class="ni-view-controls" role="group" aria-label="对照图标尺寸"><button type="button" class="cursor-interaction" data-scale="1" aria-pressed="false">实际尺寸</button><button type="button" class="cursor-interaction" data-scale="2.5" aria-pressed="true">放大 2.5×</button></div></div>
+  <div class="ni-details" aria-label="七种图标对照"></div>
+  <div class="ni-status" role="status" aria-live="polite">仅视觉对照 · 不修改真实数据</div>
+  <template id="ni-sidebar-template">
+    <aside class="ni-sidebar" aria-label="目录预览">
+      <header class="ni-header"><div class="ni-title"><i data-lucide="book-open" aria-hidden="true"></i><span>目录</span><span class="ni-count">5 篇</span></div><div class="ni-actions">
+        <button type="button" class="ni-icon-button cursor-interaction" aria-label="收起目录" data-demo="收起目录"><i data-icon-role="collapse" aria-hidden="true"></i></button>
+        <button type="button" class="ni-icon-button cursor-interaction" aria-label="新建" data-toggle="new" aria-expanded="false"><i data-icon-role="plus" aria-hidden="true"></i></button>
+        <button type="button" class="ni-icon-button cursor-interaction" aria-label="搜索笔记" data-demo="搜索"><i data-icon-role="search" aria-hidden="true"></i></button>
+      </div></header>
+      <nav class="ni-tree" aria-label="笔记目录">
+        <div class="ni-row ni-folder-row"><button type="button" class="ni-folder cursor-interaction" aria-expanded="true" data-toggle="folder"><span class="ni-arrow-slot"><i data-icon-role="down" aria-hidden="true"></i></span><i data-lucide="folder-open" aria-hidden="true"></i><span>全栈开发</span></button></div>
+        <div class="ni-children">
+          <div class="ni-row ni-child"><button type="button" class="ni-note cursor-interaction"><i data-lucide="file-text" aria-hidden="true"></i><span>Go 语言</span></button></div>
+          <div class="ni-row ni-child"><button type="button" class="ni-note cursor-interaction"><i data-lucide="file-text" aria-hidden="true"></i><span>AI应用开发学习笔记</span></button></div>
+        </div>
+        <div class="ni-row is-selected"><button type="button" class="ni-note cursor-interaction"><i data-lucide="file-text" aria-hidden="true"></i><span>Redis</span></button><button type="button" class="ni-more cursor-interaction" aria-label="Redis 文件操作" data-demo="笔记操作"><i data-lucide="ellipsis" aria-hidden="true"></i></button></div>
+        <div class="ni-row"><button type="button" class="ni-note cursor-interaction"><i data-lucide="file-text" aria-hidden="true"></i><span>Python 的面试常见问题</span></button></div>
+        <div class="ni-row"><button type="button" class="ni-note cursor-interaction"><i data-lucide="file-text" aria-hidden="true"></i><span>Git 入门学习笔记</span></button></div>
+      </nav>
+      <div class="ni-new-menu ni-menu" hidden aria-label="新建菜单"><button type="button" class="ni-menu-row cursor-interaction" data-demo="新建笔记"><i data-lucide="file-plus" aria-hidden="true"></i><span>新建笔记</span></button><button type="button" class="ni-menu-row cursor-interaction" data-demo="新建文件夹"><i data-lucide="folder-plus" aria-hidden="true"></i><span>新建文件夹</span></button></div>
+      <div class="ni-account-menu ni-menu" hidden role="dialog" aria-label="账号操作预览"><div class="ni-account-heading"><span class="ni-avatar"><i data-lucide="user-round" aria-hidden="true"></i></span><span>我的账号</span></div><button type="button" class="ni-menu-row cursor-interaction" data-demo="登录邮箱"><i data-lucide="mail-check" aria-hidden="true"></i><span>登录邮箱</span><span class="ni-meta">已验证</span></button><button type="button" class="ni-menu-row cursor-interaction" data-demo="登录设备"><i data-lucide="monitor-smartphone" aria-hidden="true"></i><span>登录设备</span><span class="ni-meta">管理</span></button><div class="ni-divider"></div><button type="button" class="ni-menu-row ni-danger cursor-interaction" data-demo="退出登录"><i data-lucide="log-out" aria-hidden="true"></i><span>退出登录</span></button></div>
+      <footer class="ni-footer"><button type="button" class="ni-account cursor-interaction" aria-label="我的账号" aria-expanded="false" data-toggle="account"><span class="ni-avatar"><i data-lucide="user-round" aria-hidden="true"></i></span><span>我的账号</span><span class="ni-arrow-slot"><i data-icon-role="up" aria-hidden="true"></i></span></button><button type="button" class="ni-icon-button ni-trash cursor-interaction" aria-label="回收站（非空）" data-demo="回收站"><i data-icon-role="trash" aria-hidden="true"></i><span class="ni-dot" aria-hidden="true"></span></button><button type="button" class="ni-icon-button cursor-interaction" aria-label="设置" data-demo="设置"><i data-icon-role="settings" aria-hidden="true"></i></button></footer>
+    </aside>
+  </template>
+</div>
+<style>
+  #nf-icon-refinement { --ni-text:light-dark(#28313b,#e6e9ee); --ni-secondary:light-dark(#69747f,#a6b0bb); --ni-icons:light-dark(#7d8893,#9ba8b6); --ni-sidebar:light-dark(#f6f7f9,#22272e); --ni-panel:light-dark(#fff,#30363e); --ni-hover:light-dark(#eceef2,#3a414b); --ni-selected:light-dark(#e5ecf3,#354557); --ni-selected-text:light-dark(#345772,#c3ddf2); --ni-line:light-dark(#e3e6eb,#424a56); --ni-avatar:light-dark(#e8edf2,#3b4654); --ni-danger:light-dark(#b35b62,#e8999f); --ni-shadow:light-dark(#2c3c5014,#00000040); color:var(--ni-text); font:400 14px/1.45 -apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif; padding:20px; width:100%; box-sizing:border-box; }
+  #nf-icon-refinement { max-width:736px; margin:0 auto; }
+  #nf-icon-refinement * { box-sizing:border-box; }
+  #nf-icon-refinement [hidden] { display:none!important; }
+  #nf-icon-refinement .ni-top { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:20px; font-weight:500; }
+  #nf-icon-refinement .ni-secondary { color:var(--ni-secondary); font-size:12px; font-weight:400; }
+  #nf-icon-refinement .ni-comparison { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
+  #nf-icon-refinement .ni-sample { min-width:0; }
+  #nf-icon-refinement h3 { margin:0 0 12px; text-align:center; font-size:12px; font-weight:500; color:var(--ni-secondary); }
+  #nf-icon-refinement .ni-stage { display:flex; justify-content:center; }
+  #nf-icon-refinement .ni-sidebar { display:flex; flex-direction:column; width:260px; max-width:100%; height:488px; position:relative; background:var(--ni-sidebar); border-radius:18px; box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ni-line) 60%,transparent); }
+  #nf-icon-refinement button { font:inherit; color:inherit; appearance:none; border:0; background:transparent; padding:0; margin:0; transition:background-color 160ms ease,color 160ms ease,transform 160ms ease; }
+  #nf-icon-refinement svg.lucide { width:var(--ni-icon-size,17px)!important; height:var(--ni-icon-size,17px)!important; max-width:none; stroke-width:1.6; flex-shrink:0; color:var(--ni-icons); }
+  #nf-icon-refinement .ni-header { display:flex; gap:4px; align-items:center; justify-content:space-between; height:64px; flex-shrink:0; padding:0 14px; }
+  #nf-icon-refinement .ni-title { display:flex; align-items:center; gap:7px; white-space:nowrap; font-weight:500; }
+  #nf-icon-refinement .ni-count { font-size:11px; color:var(--ni-secondary); font-weight:400; margin-left:1px; }
+  #nf-icon-refinement .ni-actions { display:flex; gap:1px; }
+  #nf-icon-refinement .ni-icon-button { width:30px; height:32px; border-radius:8px; display:grid; place-items:center; color:var(--ni-icons); flex-shrink:0; }
+  #nf-icon-refinement .ni-icon-button:hover,#nf-icon-refinement .ni-icon-button.is-open { background:var(--ni-hover); color:var(--ni-text); }
+  #nf-icon-refinement .ni-icon-button:active { transform:scale(.95); }
+  #nf-icon-refinement .ni-tree { padding:4px 10px; }
+  #nf-icon-refinement .ni-row { display:flex; min-width:0; align-items:center; min-height:38px; padding-left:20px; margin:2px 0; border-radius:9px; }
+  #nf-icon-refinement .ni-folder-row { padding-left:0; }
+  #nf-icon-refinement .ni-child { margin-left:16px; }
+  #nf-icon-refinement .ni-note,#nf-icon-refinement .ni-folder { min-width:0; display:flex; gap:9px; align-items:center; flex:1; text-align:left; min-height:38px; }
+  #nf-icon-refinement .ni-folder { gap:8px; }
+  #nf-icon-refinement .ni-folder>span:last-child { font-weight:500; }
+  #nf-icon-refinement .ni-note>span,#nf-icon-refinement .ni-folder>span:last-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #nf-icon-refinement .ni-arrow-slot { width:12px; flex-shrink:0; display:grid; place-items:center; }
+  #nf-icon-refinement .ni-row:hover { background:var(--ni-hover); }
+  #nf-icon-refinement .ni-row.is-selected { background:var(--ni-selected); }
+  #nf-icon-refinement .is-selected .ni-note { color:var(--ni-selected-text); font-weight:500; }
+  #nf-icon-refinement .is-selected .ni-note>svg { color:var(--ni-selected-text); }
+  #nf-icon-refinement .ni-more { width:26px; min-height:30px; display:grid; place-items:center; border-radius:7px; margin:0 4px; flex-shrink:0; }
+  #nf-icon-refinement .ni-footer { margin-top:auto; height:62px; padding:9px 10px; display:flex; align-items:center; gap:3px; border-top:1px solid var(--ni-line); }
+  #nf-icon-refinement .ni-footer .ni-icon-button { width:32px; height:34px; }
+  #nf-icon-refinement .ni-avatar { width:28px; height:28px; display:grid; place-items:center; border-radius:50%; background:var(--ni-avatar); flex-shrink:0; }
+  #nf-icon-refinement .ni-avatar>svg { --ni-icon-size:16px; color:var(--ni-selected-text); }
+  #nf-icon-refinement .ni-account { display:flex; align-items:center; gap:8px; min-width:0; flex:1; height:40px; padding:0 6px; border-radius:9px; text-align:left; }
+  #nf-icon-refinement .ni-account>span:nth-child(2) { font-size:13px; font-weight:500; flex:1; }
+  #nf-icon-refinement .ni-account:hover,#nf-icon-refinement .ni-account.is-open { background:var(--ni-hover); }
+  #nf-icon-refinement .ni-trash { position:relative; }
+  #nf-icon-refinement .ni-dot { position:absolute; right:7px; top:6px; width:4px; height:4px; border-radius:50%; background:var(--ni-selected-text); }
+  #nf-icon-refinement .ni-menu { position:absolute; z-index:5; padding:6px; background:var(--ni-panel); border-radius:14px; box-shadow:0 12px 28px var(--ni-shadow),0 2px 6px var(--ni-shadow),inset 0 0 0 1px color-mix(in srgb,var(--ni-line) 60%,transparent); }
+  #nf-icon-refinement .ni-new-menu { top:57px; right:13px; width:192px; }
+  #nf-icon-refinement .ni-account-menu { bottom:72px; left:10px; right:10px; }
+  #nf-icon-refinement .ni-menu-row { display:flex; align-items:center; gap:10px; padding:0 10px; width:100%; min-height:38px; border-radius:8px; text-align:left; }
+  #nf-icon-refinement .ni-menu-row:hover { background:var(--ni-hover); }
+  #nf-icon-refinement .ni-account-heading { display:flex; align-items:center; gap:9px; min-height:49px; padding:4px 10px 10px; margin-bottom:5px; font-weight:500; border-bottom:1px solid var(--ni-line); }
+  #nf-icon-refinement .ni-meta { margin-left:auto; font-size:11px; color:var(--ni-secondary); }
+  #nf-icon-refinement .ni-divider { height:1px; background:var(--ni-line); margin:5px 8px; }
+  #nf-icon-refinement .ni-danger,#nf-icon-refinement .ni-danger>svg { color:var(--ni-danger); }
+  #nf-icon-refinement .ni-detail-header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin:28px 0 18px; font-weight:500; }
+  #nf-icon-refinement .ni-view-controls { display:flex; gap:4px; }
+  #nf-icon-refinement .ni-view-controls button { font-size:12px; min-height:32px; padding:6px 10px; border-radius:8px; color:var(--ni-secondary); }
+  #nf-icon-refinement .ni-view-controls button[aria-pressed="true"] { background:var(--ni-hover); color:var(--ni-text); }
+  #nf-icon-refinement .ni-details { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:12px; }
+  #nf-icon-refinement .ni-detail { min-width:0; text-align:center; }
+  #nf-icon-refinement .ni-detail-name { font-size:12px; color:var(--ni-secondary); margin-bottom:10px; }
+  #nf-icon-refinement .ni-detail-icon { height:56px; display:grid; place-items:center; }
+  #nf-icon-refinement .ni-detail-label { font-size:11px; color:var(--ni-secondary); margin:3px 0 10px; }
+  #nf-icon-refinement .ni-status { font-size:11px; color:var(--ni-secondary); margin-top:20px; }
+  @media(max-width:599px) { #nf-icon-refinement { padding:12px; } #nf-icon-refinement .ni-comparison { grid-template-columns:1fr; gap:24px; } #nf-icon-refinement .ni-details { grid-template-columns:repeat(4,minmax(0,1fr)); gap:20px 8px; } }
+  @media(pointer:coarse) { #nf-icon-refinement .ni-icon-button,#nf-icon-refinement .ni-footer .ni-icon-button { width:44px; height:44px; } #nf-icon-refinement .ni-view-controls button { min-height:44px; } #nf-icon-refinement .ni-note,#nf-icon-refinement .ni-folder,#nf-icon-refinement .ni-account,#nf-icon-refinement .ni-menu-row { min-height:44px; } }
+  @media(prefers-reduced-motion:reduce) { #nf-icon-refinement button { transition:none; } }
+</style>
+<script>
+(() => {
+  const root = document.getElementById('nf-icon-refinement');
+  const design = 'NoteFlow 小图标局部精修';
+  const saved = window.openai?.widgetState?.modelContent ?? window.openai?.widgetState;
+  const compatible = saved?.design === design;
+  const validWeight = value => typeof value==='number' && Number.isFinite(value) && value>=-0.1 && value<=0.1;
+  const state = { revision:compatible && Number.isSafeInteger(saved.revision) && saved.revision>=0 ? saved.revision : 0, scale:compatible && saved.scale===1 ? 1 : 2.5, weightOffset:compatible && validWeight(saved.weightOffset) ? saved.weightOffset : 0, lastAction:'查看图标对照' };
+  const definitions = [
+    { role:'collapse', label:'收起', original:['chevrons-left',17,1.6], refined:['panel-left-close',18,1.55] },
+    { role:'plus', label:'新建', original:['plus',17,1.6], refined:['plus',19,1.8] },
+    { role:'search', label:'搜索', original:['search',17,1.6], refined:['search',17,1.8] },
+    { role:'down', label:'目录箭头', original:['chevron-down',12,1.6], refined:['chevron-down',14,1.9] },
+    { role:'up', label:'账号箭头', original:['chevron-up',12,1.6], refined:['chevron-up',14,1.9] },
+    { role:'trash', label:'回收站', original:['trash-2',17,1.6], refined:['trash',18,1.65] },
+    { role:'settings', label:'设置', original:['settings-2',17,1.6], refined:['settings',18,1.55] }
+  ];
+  const template = root.querySelector('#ni-sidebar-template');
+  root.querySelectorAll('.ni-sample').forEach(sample => sample.querySelector('.ni-stage').append(template.content.cloneNode(true)));
+  definitions.forEach(def => {
+    const cell = document.createElement('div'); cell.className='ni-detail';
+    const name = document.createElement('div'); name.className='ni-detail-name'; name.textContent=def.label; cell.append(name);
+    ['original','refined'].forEach(version => {
+      const mount=document.createElement('div'); mount.className='ni-detail-icon'; mount.dataset.version=version;
+      const icon=document.createElement('i'); icon.dataset.iconRole=def.role; icon.setAttribute('aria-hidden','true'); mount.append(icon); cell.append(mount);
+      const label=document.createElement('div'); label.className='ni-detail-label'; label.textContent=version==='original'?'原版':'精修'; cell.append(label);
+    }); root.querySelector('.ni-details').append(cell);
+  });
+  root.querySelectorAll('[data-icon-role]').forEach(icon => {
+    const def=definitions.find(item=>item.role===icon.dataset.iconRole);
+    const version=icon.closest('[data-version]').dataset.version;
+    icon.dataset.lucide=def[version][0];
+  });
+  function calibrate() {
+    root.querySelectorAll('svg[data-icon-role]').forEach(icon => {
+      const def=definitions.find(item=>item.role===icon.dataset.iconRole);
+      const version=icon.closest('[data-version]').dataset.version;
+      const multiplier=icon.closest('.ni-details')?state.scale:1;
+      icon.style.setProperty('--ni-icon-size',def[version][1]*multiplier+'px');
+      icon.style.strokeWidth=def[version][2]+(version==='refined'?state.weightOffset:0);
+    });
+    root.querySelectorAll('[data-scale]').forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.scale)===state.scale)));
+  }
+  if(globalThis.lucide) lucide.createIcons();
+  calibrate();
+  new MutationObserver(calibrate).observe(root,{childList:true,subtree:true});
+  function save(action) {
+    state.revision++; state.lastAction=action; root.querySelector('.ni-status').textContent='仅视觉对照 · '+action;
+    window.openai?.setWidgetState?.({modelContent:{design,...state},privateContent:null})?.catch(()=>{});
+  }
+  function closeMenus(sidebar, restore=false) {
+    sidebar.querySelectorAll('.ni-menu').forEach(menu=>menu.hidden=true);
+    sidebar.querySelectorAll('[data-toggle="account"],[data-toggle="new"]').forEach(button=>{
+      if(restore && button.getAttribute('aria-expanded')==='true') button.focus();
+      button.setAttribute('aria-expanded','false');button.classList.remove('is-open');
+    });
+  }
+  root.addEventListener('click',event=>{
+    const button=event.target.closest('button'); if(!button)return;
+    if(button.dataset.scale){state.scale=Number(button.dataset.scale);calibrate();save(state.scale===1?'实际尺寸':'放大 2.5×');return;}
+    const sidebar=button.closest('.ni-sidebar'); if(!sidebar)return;
+    const version=button.closest('[data-version]').dataset.version==='refined'?'精修':'原版';
+    if(button.dataset.toggle==='folder'){
+      const children=sidebar.querySelector('.ni-children');children.hidden=!children.hidden;button.setAttribute('aria-expanded',String(!children.hidden));
+      sidebar.querySelector('[data-icon-role="down"]').style.transform=children.hidden?'rotate(-90deg)':'';save(version+' · 切换目录展开');return;
+    }
+    if(button.dataset.toggle){
+      const target=sidebar.querySelector(button.dataset.toggle==='new'?'.ni-new-menu':'.ni-account-menu');const opening=target.hidden;
+      closeMenus(sidebar);target.hidden=!opening;button.setAttribute('aria-expanded',String(opening));button.classList.toggle('is-open',opening);
+      if(opening)target.querySelector('button').focus();save(version+' · '+(opening?'展开':'收起')+(button.dataset.toggle==='new'?'新建菜单':'账号菜单'));return;
+    }
+    if(button.classList.contains('ni-note')){sidebar.querySelectorAll('.ni-row').forEach(row=>row.classList.remove('is-selected'));button.closest('.ni-row').classList.add('is-selected');save(version+' · 选中 '+button.textContent.trim());return;}
+    if(button.dataset.demo)save(version+' · '+button.dataset.demo+'（仅预览）');
+  });
+  root.addEventListener('keydown',event=>{if(event.key==='Escape'&&!event.isComposing){const sidebar=event.target.closest('.ni-sidebar');if(sidebar){closeMenus(sidebar,true);save('关闭预览菜单');}}});
+  document.addEventListener('pointerdown',event=>root.querySelectorAll('.ni-sidebar').forEach(sidebar=>{if(!sidebar.contains(event.target))closeMenus(sidebar);}));
+  window.addEventListener('openai:set_globals',event=>{const value=event.detail?.globals?.widgetState;const next=value?.modelContent??value;if(next?.design===design&&Number.isSafeInteger(next.revision)&&next.revision>state.revision&&(next.scale===1||next.scale===2.5)&&validWeight(next.weightOffset)){Object.assign(state,next);calibrate();}});
+  if(globalThis.Tweak){const tweak=new Tweak({container:root,onChange:()=>{calibrate();save('微调精修笔画');}});tweak.addSlider(state,'weightOffset',{label:'精修笔画微调',min:-0.1,max:0.1,step:0.05});}
+})();
+</script>
