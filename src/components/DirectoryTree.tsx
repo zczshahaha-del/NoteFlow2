@@ -17,7 +17,6 @@ import {
   FolderInput,
   Trash2,
   Download,
-  RotateCcw,
   Star,
   Check,
 } from "lucide-react";
@@ -27,6 +26,7 @@ import type { ChatSource, FileNode } from "../types";
 import AccountMenu, { type AccountMenuProps } from "./AppNav";
 import LibrarySearchDialog from "./LibrarySearchDialog";
 import SidebarToggleIcon from "./SidebarToggleIcon";
+import OverlayDialog from "./OverlayDialog";
 
 function countFiles(nodes: FileNode[]): number {
   return nodes.reduce((total, node) => {
@@ -427,6 +427,7 @@ function TreeNode({
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-rose-500 hover:bg-rose-50"
                 onClick={(event) => {
                   event.stopPropagation();
+                  event.currentTarget.closest("[data-file-menu-root]")?.querySelector<HTMLButtonElement>('button[aria-label="文件操作"]')?.focus({ preventScroll: true });
                   onDelete(node);
                 }}
               >
@@ -510,7 +511,6 @@ export default function DirectoryTree({
     toggleNodePinned,
     toggleNodeFavorite,
     deletedNotes,
-    restoreDeletedNote,
   } = useWorkspaceSlice();
   const { focusChatSource } = useEditorSlice();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -525,10 +525,9 @@ export default function DirectoryTree({
   const [folderPickerQuery, setFolderPickerQuery] = useState("");
   const [movingNode, setMovingNode] = useState<FileNode | null>(null);
   const [moveTargetId, setMoveTargetId] = useState<string | null>(null);
-  const [trashOpen, setTrashOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTargetState | null>(null);
   const newMenuRef = useRef<HTMLDivElement>(null);
-  const deleteConfirmRef = useRef<HTMLDivElement>(null);
+  const lastDeleteNodeRef = useRef<FileNode | null>(null);
   const expanded = pinned;
 
   const filteredTree = useMemo(
@@ -590,17 +589,6 @@ export default function DirectoryTree({
   }, [menuNodeId]);
 
   useEffect(() => {
-    if (!trashOpen) return;
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setTrashOpen(false);
-    }
-
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, [trashOpen]);
-
-  useEffect(() => {
     if (!newFolderOpen && !movingNode) return;
 
     function handleEscape(event: KeyboardEvent) {
@@ -619,6 +607,7 @@ export default function DirectoryTree({
 
     function handleSearchShortcut(event: KeyboardEvent) {
       if (!(event.metaKey || event.ctrlKey) || event.key.toLocaleLowerCase() !== "k") return;
+      if (document.querySelector('.nf-overlay[data-open="true"]')) return;
       event.preventDefault();
       setNewMenuOpen(false);
       setSearchOpen(true);
@@ -629,35 +618,12 @@ export default function DirectoryTree({
   }, [searchShortcutEnabled]);
 
   useEffect(() => {
-    if (!deleteTarget) return;
-
-    function handlePointerDown(event: MouseEvent) {
-      if (deleteConfirmRef.current?.contains(event.target as Node)) return;
-      setDeleteTarget(null);
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setDeleteTarget(null);
-      }
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [deleteTarget]);
-
-  useEffect(() => {
     if (expanded) return;
     setNewMenuOpen(false);
     setMenuNodeId(null);
     setRenamingId(null);
     setNewFolderOpen(false);
     setMovingNode(null);
-    setTrashOpen(false);
     setDeleteTarget(null);
     setSearchOpen(false);
     setNewTooltipOpen(false);
@@ -788,12 +754,13 @@ export default function DirectoryTree({
     setDeleteTarget(null);
   }, []);
 
-  const deleteTargetNode = deleteTarget?.node ?? null;
+  if (deleteTarget) lastDeleteNodeRef.current = deleteTarget.node;
+  const deleteTargetNode = deleteTarget?.node ?? lastDeleteNodeRef.current;
   const deleteTargetLabel = deleteTargetNode?.type === "folder" ? "文件夹" : "笔记";
   const deleteTargetDetail =
     deleteTargetNode?.type === "folder"
       ? "文件夹内的所有子文件和内容也会一起删除。"
-      : "这篇笔记的正文内容也会一起删除。";
+      : "笔记将移至回收站，可随时恢复。";
 
   const handleTogglePin = useCallback(
     (node: FileNode) => {
@@ -995,7 +962,7 @@ export default function DirectoryTree({
         onSelect={handleSearchSelect}
       />
 
-      <div className={`border-t border-jelly-border bg-white/65 ${expanded ? "px-3 py-2" : "flex justify-center px-2 py-2"}`}>
+      <div className={`border-t border-jelly-border ${expanded ? "px-3 py-2" : "flex justify-center px-2 py-2"}`}>
         <AccountMenu
           compact={!expanded}
           themeMode={themeMode}
@@ -1006,97 +973,8 @@ export default function DirectoryTree({
           onEmailChanged={onEmailChanged}
           onSignOut={onSignOut}
           trashCount={deletedNotes.length}
-          onOpenTrash={() => setTrashOpen(true)}
         />
       </div>
-
-      {trashOpen && (
-        <div
-          className="fixed inset-0 z-[85] flex items-center justify-center bg-black/15 p-4 backdrop-blur-[1px]"
-          role="presentation"
-        >
-          <button
-            type="button"
-            className="absolute inset-0 cursor-default"
-            onClick={() => setTrashOpen(false)}
-            aria-label="关闭回收站"
-          />
-          <section
-            className="panel-surface relative z-10 flex max-h-[min(680px,calc(100vh-32px))] w-[min(560px,calc(100vw-32px))] flex-col overflow-hidden shadow-[0_24px_70px_rgba(22,34,45,0.18)]"
-            role="dialog"
-            aria-modal="true"
-            aria-label="回收站"
-          >
-            <div className="flex shrink-0 items-center justify-between gap-4 border-b border-jelly-border px-5 py-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-jelly-blue-pale text-jelly-blue-deep">
-                  <Trash2 size={18} strokeWidth={1.8} />
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-[16px] font-semibold text-jelly-text">回收站</h2>
-                  <p className="mt-0.5 text-[12px] text-jelly-text-muted">
-                    {deletedNotes.length > 0
-                      ? `${deletedNotes.length} 篇已删除笔记`
-                      : "没有已删除的笔记"}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-jelly-text-muted transition-colors hover:bg-jelly-blue-pale hover:text-jelly-text"
-                onClick={() => setTrashOpen(false)}
-                aria-label="关闭回收站"
-              >
-                <X size={16} strokeWidth={1.9} />
-              </button>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-y-auto p-4">
-              {deletedNotes.length === 0 ? (
-                <div className="flex min-h-44 flex-col items-center justify-center px-6 text-center">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-jelly-blue-pale text-jelly-blue-deep">
-                    <Trash2 size={20} strokeWidth={1.6} />
-                  </div>
-                  <p className="mt-3 text-[14px] font-medium text-jelly-text">回收站是空的</p>
-                  <p className="mt-1 text-[12px] text-jelly-text-muted">
-                    删除的笔记会集中显示在这里
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {deletedNotes.map((note) => (
-                    <div
-                      key={note.id}
-                      className="flex min-w-0 items-center gap-3 rounded-lg border border-jelly-border bg-white px-3.5 py-3"
-                    >
-                      <FileText
-                        size={17}
-                        strokeWidth={1.7}
-                        className="shrink-0 text-jelly-text-muted"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-medium text-jelly-text">
-                          {note.title}
-                        </p>
-                        <p className="mt-0.5 text-[11px] text-jelly-text-muted">已移至回收站</p>
-                      </div>
-                      <button
-                        type="button"
-                        className="ui-button ui-button-secondary h-8 shrink-0 gap-1.5 px-3 text-[12px]"
-                        onClick={() => restoreDeletedNote(note.id)}
-                        aria-label={`恢复 ${note.title}`}
-                      >
-                        <RotateCcw size={13} strokeWidth={1.8} />
-                        恢复
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-        </div>
-      )}
 
       {newFolderOpen && expanded && (
         <div className="fixed inset-0 z-[90] grid place-items-center bg-[#26343d]/20 p-4 backdrop-blur-[2px]">
@@ -1311,57 +1189,17 @@ export default function DirectoryTree({
         </div>
       )}
 
-      {deleteTarget && deleteTargetNode && expanded && (
-        <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/10 p-4 backdrop-blur-[1px]"
-        >
-          <div
-            ref={deleteConfirmRef}
-            className="panel-surface w-[min(420px,calc(100vw-32px))] border-jelly-red/20 p-5 shadow-[0_24px_70px_rgba(22,34,45,0.18)]"
-            role="alertdialog"
-            aria-modal="true"
-            aria-label={`删除${deleteTargetLabel}`}
-          >
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-jelly-red-bg text-jelly-red">
-                <Trash2 size={18} strokeWidth={1.9} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[15px] font-semibold leading-6 text-jelly-text">
-                  删除{deleteTargetLabel}「{deleteTargetNode.name.replace(/\.md$/, "")}」？
-                </p>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-jelly-text-muted">
-                  {deleteTargetDetail}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-jelly-text-muted hover:bg-jelly-blue-pale hover:text-jelly-text"
-                onClick={cancelDeleteTarget}
-                aria-label="关闭删除确认"
-              >
-                <X size={15} strokeWidth={1.9} />
-              </button>
-            </div>
-            <div className="mt-5 flex justify-end gap-2.5">
-              <button
-                type="button"
-                className="ui-button ui-button-secondary h-9 px-4"
-                onClick={cancelDeleteTarget}
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                className="ui-button ui-button-danger h-9 px-4"
-                onClick={confirmDeleteTarget}
-              >
-                删除
-              </button>
-            </div>
-          </div>
+      <OverlayDialog open={Boolean(deleteTarget && expanded)} onClose={cancelDeleteTarget} themeMode={themeMode}
+        role="alertdialog" label={"删除" + deleteTargetLabel} className="nf-confirm-dialog">
+        <h2>删除{deleteTargetLabel}「{deleteTargetNode?.name.replace(/\.md$/, "")}」？</h2>
+        <button type="button" className="nf-icon-button nf-confirm-close" onClick={cancelDeleteTarget} aria-label="关闭删除确认"><X size={17} strokeWidth={1.6} /></button>
+        <p className="nf-confirm-detail">{deleteTargetDetail}</p>
+        <div className="nf-confirm-actions">
+          <button type="button" className="nf-button" onClick={cancelDeleteTarget} data-dialog-initial-focus>取消</button>
+          <button type="button" className="nf-button nf-danger" onClick={confirmDeleteTarget}>{deleteTargetNode?.type === "folder" ? "删除文件夹" : "移至回收站"}</button>
         </div>
-      )}
+      </OverlayDialog>
+
     </aside>
   );
 }

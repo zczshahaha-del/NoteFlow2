@@ -1,9 +1,15 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   Check,
   ChevronRight,
-  ChevronUp,
+  ChevronDown,
+  ChevronLeft,
+  ArrowUpRight,
+  Database,
+  FileText,
+  RotateCcw,
+  Sparkles,
+  SunMoon,
   FileArchive,
   FileJson,
   LogOut,
@@ -44,6 +50,7 @@ import {
   type AuthSession,
   type UserSessionRecord,
 } from "../services/auth";
+import OverlayDialog, { useSurfacePresence } from "./OverlayDialog";
 
 export type AppView = "knowledge";
 type ThemeMode = "light" | "dark";
@@ -58,7 +65,6 @@ export interface AccountMenuProps {
   onSignOut: () => void | Promise<void>;
   compact?: boolean;
   trashCount?: number;
-  onOpenTrash?: () => void;
 }
 
 function memoryTypeLabel(type: string): string {
@@ -137,11 +143,11 @@ export default function AccountMenu({
   onSignOut,
   compact = false,
   trashCount = 0,
-  onOpenTrash,
 }: AccountMenuProps) {
   const [accountOpen, setAccountOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<"general" | "memory" | "data">("general");
+  const [settingsTab, setSettingsTab] = useState<"account" | "appearance" | "memory" | "data" | "trash">("account");
+  const accountPresent = useSurfacePresence(accountOpen);
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [memoryEnabledState, setMemoryEnabledState] = useState(isMemoryEnabled);
   const [memorySettingLoading, setMemorySettingLoading] = useState(false);
@@ -167,14 +173,16 @@ export default function AccountMenu({
   const accountPanelRef = useRef<HTMLDivElement>(null);
   const accountPanelId = useId();
   const importInputRef = useRef<HTMLInputElement>(null);
-  const displayName = userName?.trim() || userEmail.split("@")[0] || "NoteFlow";
-  const emailLocalPart = userEmail.split("@")[0]?.trim().toLowerCase() || "";
-  const hasDistinctDisplayName = Boolean(
-    userName?.trim() && userName.trim().toLowerCase() !== emailLocalPart
-  );
-  const accountPrimary = hasDistinctDisplayName ? displayName : "我的账号";
-  const { treeData, fileContents, addNode, setSelectedFileId } = useWorkspaceSlice();
+  const accountPrimary = (userName?.trim() && !userName.includes("@") ? userName.trim() : userEmail.split("@")[0]) || "NoteFlow";
+  const avatarText = Array.from(accountPrimary)[0].toLocaleUpperCase();
+  const avatar = /\p{L}/u.test(avatarText) ? avatarText : <UserRound size={17} strokeWidth={1.6} aria-hidden="true" />;
+  const settingsScrollRef = useRef<HTMLDivElement>(null);
+  const { treeData, fileContents, addNode, setSelectedFileId, deletedNotes, restoreDeletedNote } = useWorkspaceSlice();
   const isDark = themeMode === "dark";
+
+  useEffect(() => {
+    if (settingsScrollRef.current) settingsScrollRef.current.scrollTop = 0;
+  }, [settingsTab, settingsOpen]);
 
   useEffect(() => {
     if (!accountOpen) return;
@@ -205,15 +213,6 @@ export default function AccountMenu({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [accountOpen]);
-
-  useEffect(() => {
-    if (!settingsOpen) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSettingsOpen(false);
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [settingsOpen]);
 
   useEffect(() => {
     if (!emailOpen) setEmailDraft(userEmail);
@@ -304,8 +303,8 @@ export default function AccountMenu({
   };
 
   useEffect(() => {
-    if (accountOpen && sessionsOpen) void reloadSessions();
-  }, [accountOpen, sessionsOpen]);
+    if (settingsOpen && settingsTab === "account" && sessionsOpen) void reloadSessions();
+  }, [settingsOpen, settingsTab, sessionsOpen]);
 
   const handleRevokeSession = async (session: UserSessionRecord) => {
     setSessionError("");
@@ -430,358 +429,137 @@ export default function AccountMenu({
 
   const activeMemoryCount = memories.filter((memory) => memory.status === "active").length;
   const pendingMemoryCount = memories.filter((memory) => memory.status === "pending").length;
-  const utilityButtonClass = "h-9 w-9 justify-center rounded-lg";
-  const accountButtonClass = compact
-    ? "h-9 w-9 justify-center rounded-lg"
-    : "mr-2 h-11 flex-1 gap-2 rounded-lg px-1.5 text-left";
+  const openSettings = (tab: typeof settingsTab) => {
+    // Capture a stable return target before the menu disappears.
+    accountButtonRef.current?.focus({ preventScroll: true });
+    setAccountOpen(false);
+    setSettingsTab(tab);
+    setSettingsOpen(true);
+  };
+  const settingsLabel = { account: "账号与安全", appearance: "外观", memory: "AI 与记忆", data: "数据管理", trash: "回收站" }[settingsTab];
 
   return (
-    <div ref={accountRef} data-compact={compact} className={`account-menu-root relative shrink-0 overflow-visible ${compact ? "" : "w-full"}`}>
-      <div className={`flex items-center gap-1 ${compact ? "flex-col" : ""}`}>
-      {onOpenTrash && (
-        <button
-          type="button"
-          onClick={() => {
-            setAccountOpen(false);
-            setSettingsOpen(false);
-            onOpenTrash();
-          }}
-          className={`group order-2 flex ${utilityButtonClass} relative items-center border border-transparent text-jelly-text-soft transition-colors hover:bg-jelly-surface hover:text-jelly-text`}
-          aria-label="回收站"
-          title="回收站"
-        >
-          <Trash size={18} strokeWidth={1.65} className="shrink-0" aria-hidden="true" />
-          {trashCount > 0 && (
-            <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-jelly-blue" />
-          )}
-        </button>
-      )}
-
-      <button
-        type="button"
-        onClick={() => {
-          setAccountOpen(false);
-          setSettingsOpen(true);
-        }}
-        className={`group order-3 flex ${utilityButtonClass} items-center border border-transparent text-jelly-text-soft transition-colors hover:bg-jelly-surface hover:text-jelly-text`}
-        aria-label="设置"
-        title="设置"
-      >
-        <Settings size={18} strokeWidth={1.55} className="shrink-0" aria-hidden="true" />
+    <div ref={accountRef} data-compact={compact} data-theme={themeMode} className="nf-settings-system account-menu-root relative shrink-0 overflow-visible w-full">
+      <button ref={accountButtonRef} type="button" className="nf-account-trigger"
+        onClick={() => setAccountOpen((open) => !open)}
+        aria-label={accountPrimary + "的账号菜单"} aria-expanded={accountOpen}
+        aria-controls={accountPresent ? accountPanelId : undefined} aria-haspopup="dialog" title={accountPrimary}>
+        <span className="nf-avatar" aria-hidden="true">{avatar}</span>
+        {!compact && <span className="nf-username">{accountPrimary}</span>}
       </button>
 
-      <button
-        ref={accountButtonRef}
-        type="button"
-        onClick={() => {
-          setSettingsOpen(false);
-          setAccountOpen((open) => !open);
-        }}
-        className={`account-menu-trigger group order-1 flex ${accountButtonClass} min-w-0 items-center border border-transparent font-semibold transition-colors duration-150 ${
-          accountOpen
-            ? "bg-jelly-surface text-jelly-text"
-            : "bg-transparent text-jelly-text-soft hover:bg-jelly-surface hover:text-jelly-text"
-        }`}
-        aria-label="我的账号"
-        aria-expanded={accountOpen}
-        aria-controls={accountOpen ? accountPanelId : undefined}
-        aria-haspopup="dialog"
-        title={compact ? "我的账号" : undefined}
-      >
-        {compact ? (
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-jelly-blue text-white">
-            <UserRound size={16} strokeWidth={1.9} />
-          </span>
-        ) : (
-          <>
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-jelly-blue text-white">
-              <UserRound size={16} strokeWidth={1.9} />
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-[12.5px] font-semibold tracking-[-0.01em] text-jelly-text">{accountPrimary}</span>
-            </span>
-            <ChevronUp size={14} className="account-menu-chevron shrink-0 text-jelly-text-muted" strokeWidth={1.9} aria-hidden="true" />
-          </>
-        )}
-      </button>
-      </div>
-
-      {accountOpen && (
-        <div ref={accountPanelRef} id={accountPanelId} role="dialog" aria-label="账号操作" className="account-popover">
-          <div className="flex min-w-0 items-center gap-2.5 border-b border-jelly-border px-2.5 pb-3 pt-2">
-            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-jelly-blue-pale text-jelly-blue-deep">
-              <UserRound size={16} strokeWidth={1.7} />
-            </div>
-            <p className="truncate text-[13px] font-semibold text-jelly-text">{accountPrimary}</p>
-          </div>
-
-          <div className="py-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                setEmailOpen((open) => !open);
-                setEmailError("");
-                setEmailMessage("");
-              }}
-              className="account-menu-action"
-              aria-expanded={emailOpen}
-            >
-              <span className="flex items-center gap-2.5">
-                <MailCheck size={17} strokeWidth={1.7} />
-                登录邮箱
-              </span>
-              <span className={`text-[11px] font-medium ${userEmailVerified ? "text-jelly-green" : "text-jelly-amber"}`}>
-                {userEmailVerified ? "已验证" : "待验证"}
-              </span>
-            </button>
-
-            {emailOpen && (
-              <div className="mb-1 mt-1 rounded-lg border border-jelly-border bg-jelly-surface p-2.5">
-                <input
-                  type="email"
-                  aria-label="登录邮箱地址"
-                  value={emailDraft}
-                  onChange={(event) => {
-                    setEmailDraft(event.target.value);
-                    setEmailCodeSent(false);
-                    setEmailCode("");
-                  }}
-                  className="ui-input h-9 w-full px-2.5 text-[12px] outline-none"
-                  placeholder="name@example.com"
-                />
-                {emailCodeSent && (
-                  <input
-                    value={emailCode}
-                    aria-label="邮箱验证码"
-                    onChange={(event) => setEmailCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    maxLength={6}
-                    className="ui-input mt-2 h-9 w-full px-2.5 text-[12px] tracking-[0.18em] outline-none"
-                    placeholder="输入 6 位验证码"
-                  />
-                )}
-                {emailError && <p className="mt-2 text-[11px] leading-5 text-jelly-red">{emailError}</p>}
-                {emailMessage && <p className="mt-2 text-[11px] leading-5 text-jelly-green">{emailMessage}</p>}
-                <button
-                  type="button"
-                  disabled={emailLoading || !emailDraft.trim() || Boolean(emailCodeSent && emailCode.length !== 6)}
-                  onClick={() => void (emailCodeSent ? handleConfirmEmail() : handleRequestEmailCode())}
-                  className="ui-button ui-button-primary mt-2 h-8 w-full px-3 text-[12px]"
-                >
-                  {emailLoading ? "处理中…" : emailCodeSent ? "确认并绑定" : "发送验证码"}
-                </button>
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setSessionsOpen((open) => !open)}
-              className="account-menu-action"
-              aria-expanded={sessionsOpen}
-            >
-              <span className="flex items-center gap-2.5">
-                <MonitorSmartphone size={17} strokeWidth={1.7} />
-                登录设备
-              </span>
-              <span className="text-[11px] font-medium text-jelly-text-muted">
-                {sessions.length ? `${sessions.length} 个` : "管理"}
-              </span>
-            </button>
-
-            {sessionsOpen && (
-              <div className="mt-1.5 rounded-lg border border-jelly-border bg-jelly-surface p-2">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="text-[12px] font-medium text-jelly-text-muted">有效会话</span>
-                  <button type="button" onClick={() => void reloadSessions()} className="rounded-md px-2 py-1 text-[12px] text-jelly-text-muted hover:bg-jelly-blue-pale">刷新</button>
-                </div>
-                {sessionError && <p className="mb-2 rounded-md bg-jelly-red-bg px-2 py-1.5 text-[12px] text-jelly-red">{sessionError}</p>}
-                {sessionLoading ? (
-                  <p className="px-2 py-3 text-center text-[12px] text-jelly-text-muted">正在加载设备…</p>
-                ) : sessions.length === 0 ? (
-                  <p className="px-2 py-3 text-center text-[12px] text-jelly-text-muted">暂无可管理的会话</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {sessions.map((session) => (
-                      <div key={session.id} className="flex items-center gap-2 rounded-md border border-jelly-border bg-jelly-card px-2 py-2">
-                        <MonitorSmartphone size={14} className="shrink-0 text-jelly-text-muted" strokeWidth={1.8} />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[12px] font-medium text-jelly-text">{sessionDeviceLabel(session.userAgent)}{session.current ? " · 当前设备" : ""}</p>
-                          <p className="mt-0.5 truncate text-[11px] text-jelly-text-muted">{session.ipAddress || "未知地址"} · {new Date(session.lastSeenAt).toLocaleString()}</p>
-                        </div>
-                        <button type="button" onClick={() => void handleRevokeSession(session)} className="shrink-0 rounded-md px-2 py-1 text-[11px] text-jelly-red hover:bg-jelly-red-bg">退出</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="border-t border-jelly-border pt-1.5">
-            <button type="button" onClick={() => void onSignOut()} className="account-menu-action account-menu-signout">
-              <LogOut size={17} strokeWidth={1.7} />
-              退出登录
-            </button>
-          </div>
+      {accountPresent && (
+        <div ref={accountPanelRef} id={accountPanelId} role="dialog" aria-label="账号操作"
+          className="nf-account-popover" data-open={accountOpen} inert={!accountOpen} aria-hidden={!accountOpen || undefined}>
+          <div className="nf-account-heading"><span className="nf-avatar" aria-hidden="true">{avatar}</span><span className="nf-username" title={accountPrimary}>{accountPrimary}</span></div>
+          <button type="button" className="nf-menu-item" onClick={() => openSettings("account")}><Settings size={17} strokeWidth={1.6} />设置</button>
+          <button type="button" className="nf-menu-item" onClick={() => openSettings("trash")}><Trash size={17} strokeWidth={1.6} />回收站{trashCount > 0 && <span className="nf-row-end ml-auto">{trashCount}</span>}</button>
+          <div className="nf-divider" />
+          <button type="button" className="nf-menu-item" onClick={() => { setAccountOpen(false); void onSignOut(); }}><LogOut size={17} strokeWidth={1.6} />退出登录</button>
         </div>
       )}
 
-      {settingsOpen && createPortal(
-        <div
-          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/15 p-4 backdrop-blur-[1px]"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setSettingsOpen(false);
-          }}
-        >
-          <div className="panel-surface flex max-h-[calc(100vh-32px)] w-[min(620px,calc(100vw-32px))] flex-col overflow-hidden rounded-2xl" role="dialog" aria-modal="true" aria-label="设置">
-            <header className="flex h-14 shrink-0 items-center justify-between px-5">
-              <h2 className="text-[15px] font-semibold text-jelly-text">设置</h2>
-              <button type="button" onClick={() => setSettingsOpen(false)} className="grid h-8 w-8 place-items-center rounded-lg text-jelly-text-muted hover:bg-jelly-surface hover:text-jelly-text" aria-label="关闭设置">
-                <X size={17} strokeWidth={1.8} />
-              </button>
-            </header>
-
-            <nav className="flex shrink-0 gap-1 border-b border-jelly-border px-5">
-              {([
-                ["general", "通用"],
-                ["memory", "AI 与记忆"],
-                ["data", "数据管理"],
-              ] as const).map(([tab, label]) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setSettingsTab(tab)}
-                  className={`relative h-10 px-3 text-[13px] transition-colors ${
-                    settingsTab === tab ? "font-medium text-jelly-blue-deep after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:bg-jelly-blue" : "text-jelly-text-muted hover:text-jelly-text"
-                  }`}
-                >
-                  {label}
+      <OverlayDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} label="设置" themeMode={themeMode} className="nf-settings-dialog">
+        <aside className="nf-settings-navigation">
+          <p className="nf-brand">设置</p>
+          <nav aria-label="设置分类">
+            {([
+              ["account", "账号与安全", UserRound], ["appearance", "外观", SunMoon],
+              ["memory", "AI 与记忆", Sparkles], ["data", "数据管理", Database],
+            ] as const).map(([tab, label, Icon]) => (
+              <button key={tab} type="button" className="nf-nav" aria-current={(settingsTab === "trash" ? "data" : settingsTab) === tab ? "page" : undefined}
+                onClick={() => setSettingsTab(tab)}><Icon size={17} strokeWidth={1.6} />{label}</button>
+            ))}
+          </nav>
+        </aside>
+        <div className="nf-settings-content">
+          <header className="nf-content-heading"><h2>{settingsLabel}</h2><button type="button" className="nf-icon-button" data-dialog-initial-focus aria-label="关闭设置" onClick={() => setSettingsOpen(false)}><X size={17} strokeWidth={1.6} /></button></header>
+          <div ref={settingsScrollRef} className="nf-settings-scroll">
+            <section key={settingsTab} className="nf-settings-page" aria-label={settingsLabel + "内容"}>
+              {settingsTab === "account" && <>
+                <div className="nf-identity"><span className="nf-avatar" aria-hidden="true">{avatar}</span><span className="nf-username" title={accountPrimary}>{accountPrimary}</span></div>
+                <button type="button" className="nf-row" aria-expanded={emailOpen} onClick={() => { setEmailOpen((open) => !open); setEmailError(""); setEmailMessage(""); }}>
+                  <span className="nf-row-main"><MailCheck size={17} strokeWidth={1.6} />登录邮箱</span><span className="nf-row-end">{userEmailVerified ? "已验证" : "待验证"}<ChevronDown size={14} strokeWidth={1.6} /></span>
                 </button>
-              ))}
-            </nav>
-
-            <section className="min-h-0 flex-1 overflow-y-auto bg-white">
-              <div className="p-5">
-                {settingsTab === "general" && (
-                  <div className="rounded-xl border border-jelly-border">
-                    <div className="flex items-center justify-between gap-6 px-4 py-4">
-                      <p className="text-[13px] font-medium text-jelly-text">显示模式</p>
-                      <div className="flex rounded-lg bg-jelly-surface p-1">
-                        <button type="button" onClick={() => onThemeModeChange("light")} className={`h-8 rounded-md px-3 text-[12px] ${!isDark ? "bg-white font-medium text-jelly-text shadow-sm" : "text-jelly-text-muted"}`}>浅色</button>
-                        <button type="button" onClick={() => onThemeModeChange("dark")} className={`h-8 rounded-md px-3 text-[12px] ${isDark ? "bg-white font-medium text-jelly-text shadow-sm" : "text-jelly-text-muted"}`}>深色</button>
-                      </div>
+                {emailOpen && <div className="nf-detail">
+                  <label htmlFor={accountPanelId + "-email"}>登录邮箱地址</label>
+                  <input id={accountPanelId + "-email"} type="email" aria-label="登录邮箱地址" value={emailDraft} onChange={(event) => { setEmailDraft(event.target.value); setEmailCodeSent(false); setEmailCode(""); }} className="nf-input" placeholder="name@example.com" />
+                  {emailCodeSent && <><label htmlFor={accountPanelId + "-code"}>邮箱验证码</label><input id={accountPanelId + "-code"} aria-label="邮箱验证码" value={emailCode} onChange={(event) => setEmailCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" maxLength={6} className="nf-input" placeholder="输入 6 位验证码" /></>}
+                  {emailError && <p className="nf-notice nf-error" role="alert">{emailError}</p>}
+                  {emailMessage && <p className="nf-notice" role="status">{emailMessage}</p>}
+                  <button type="button" className="nf-button nf-primary" disabled={emailLoading || !emailDraft.trim() || Boolean(emailCodeSent && emailCode.length !== 6)} onClick={() => void (emailCodeSent ? handleConfirmEmail() : handleRequestEmailCode())}>{emailLoading ? "处理中…" : emailCodeSent ? "确认并绑定" : "发送验证码"}</button>
+                </div>}
+                <button type="button" className="nf-row" aria-expanded={sessionsOpen} onClick={() => setSessionsOpen((open) => !open)}>
+                  <span className="nf-row-main"><MonitorSmartphone size={17} strokeWidth={1.6} />登录设备</span><span className="nf-row-end">{sessions.length ? sessions.length + " 个" : "管理"}<ChevronDown size={14} strokeWidth={1.6} /></span>
+                </button>
+                {sessionsOpen && <div className="nf-detail">
+                  <div className="nf-list-heading"><span>有效会话</span><button type="button" className="nf-button" onClick={() => void reloadSessions()}>刷新</button></div>
+                  {sessionError && <p className="nf-notice nf-error" role="alert">{sessionError}</p>}
+                  {sessionLoading ? <p className="nf-notice" role="status">正在加载设备…</p> : sessions.length === 0 ? <p className="nf-notice">暂无可管理的会话</p> : sessions.map((session) => (
+                    <div key={session.id} className="nf-record nf-device">
+                      <MonitorSmartphone size={17} strokeWidth={1.6} /><div className="nf-record-main"><p className="nf-record-title">{sessionDeviceLabel(session.userAgent)}{session.current ? " · 当前设备" : ""}</p><p className="nf-record-meta">{session.ipAddress || "未知地址"} · {new Date(session.lastSeenAt).toLocaleString()}</p></div>
+                      <button type="button" className="nf-button nf-danger" onClick={() => void handleRevokeSession(session)}>退出</button>
                     </div>
-                  </div>
-                )}
+                  ))}
+                </div>}
+              </>}
 
-                {settingsTab === "data" && (
-                  <div className="space-y-3">
-                    <button type="button" onClick={handleExportKnowledgeBase} className="flex h-13 w-full items-center gap-3 rounded-xl border border-jelly-border px-4 text-left hover:border-jelly-blue/40 hover:bg-jelly-blue-pale/40">
-                      <span className="grid h-8 w-8 place-items-center rounded-lg bg-jelly-blue-pale text-jelly-blue-deep"><FileArchive size={16} /></span>
-                      <span className="text-[13px] font-medium text-jelly-text">导出笔记备份</span>
-                    </button>
-                    <button type="button" onClick={handleExportKnowledgeJson} className="flex h-13 w-full items-center gap-3 rounded-xl border border-jelly-border px-4 text-left hover:border-jelly-blue/40 hover:bg-jelly-blue-pale/40">
-                      <span className="grid h-8 w-8 place-items-center rounded-lg bg-jelly-surface text-jelly-text-soft"><FileJson size={16} /></span>
-                      <span className="text-[13px] font-medium text-jelly-text">导出完整数据</span>
-                    </button>
-                    <button type="button" onClick={() => importInputRef.current?.click()} className="flex h-13 w-full items-center gap-3 rounded-xl border border-jelly-border px-4 text-left hover:border-jelly-blue/40 hover:bg-jelly-blue-pale/40">
-                      <span className="grid h-8 w-8 place-items-center rounded-lg bg-jelly-surface text-jelly-text-soft"><Upload size={16} /></span>
-                      <span className="text-[13px] font-medium text-jelly-text">导入笔记文件</span>
-                    </button>
-                    <input ref={importInputRef} type="file" accept=".md,.markdown,.zip,.json,text/markdown,application/zip,application/json" multiple className="hidden" onChange={(event) => void handleImportKnowledge(event.target.files)} />
-                    {importStatus && <p className="px-1 text-[12px] text-jelly-text-muted">{importStatus}</p>}
-                  </div>
-                )}
+              {settingsTab === "appearance" && <div className="nf-row">
+                <span className="nf-row-main"><SunMoon size={17} strokeWidth={1.6} />显示模式</span>
+                <div className="nf-segment"><button type="button" aria-pressed={!isDark} onClick={() => onThemeModeChange("light")}>浅色</button><button type="button" aria-pressed={isDark} onClick={() => onThemeModeChange("dark")}>深色</button></div>
+              </div>}
 
-                {settingsTab === "memory" && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-6 rounded-xl border border-jelly-border px-4 py-4">
-                      <p className="text-[13px] font-medium text-jelly-text">长期记忆</p>
-                      <button
-                        type="button"
-                        onClick={() => void handleMemoryEnabledChange()}
-                        disabled={memorySettingLoading}
-                        aria-pressed={memoryEnabledState}
-                        aria-label="长期记忆"
-                        className={`relative h-6 w-11 rounded-full transition-colors ${memoryEnabledState ? "bg-jelly-blue" : "bg-jelly-border"}`}
-                      >
-                        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${memoryEnabledState ? "translate-x-5" : "translate-x-0.5"}`} />
-                      </button>
-                    </div>
+              {settingsTab === "data" && <>
+                <button type="button" className="nf-row" onClick={handleExportKnowledgeBase}><span className="nf-row-main"><FileArchive size={17} strokeWidth={1.6} />导出笔记备份</span><ArrowUpRight size={16} strokeWidth={1.6} /></button>
+                <button type="button" className="nf-row" onClick={handleExportKnowledgeJson}><span className="nf-row-main"><FileJson size={17} strokeWidth={1.6} />导出完整数据</span><ArrowUpRight size={16} strokeWidth={1.6} /></button>
+                <button type="button" className="nf-row" onClick={() => importInputRef.current?.click()}><span className="nf-row-main"><Upload size={17} strokeWidth={1.6} />导入笔记文件</span><ArrowUpRight size={16} strokeWidth={1.6} /></button>
+                <input ref={importInputRef} type="file" accept=".md,.markdown,.zip,.json,text/markdown,application/zip,application/json" multiple hidden onChange={(event) => void handleImportKnowledge(event.target.files)} />
+                {importStatus && <p className="nf-notice" role="status">{importStatus}</p>}
+                <button type="button" className="nf-row" onClick={() => setSettingsTab("trash")}><span className="nf-row-main"><Trash size={17} strokeWidth={1.6} />回收站</span><ChevronRight size={16} strokeWidth={1.6} /></button>
+              </>}
 
-                    <button type="button" onClick={() => setMemoryOpen((open) => !open)} className="flex w-full items-center justify-between rounded-xl border border-jelly-border px-4 py-4 text-left hover:bg-jelly-surface/60">
-                      <span className="text-[13px] font-medium text-jelly-text">记忆管理</span>
-                      <span className="flex items-center gap-2 text-[12px] text-jelly-text-muted">
-                        {pendingMemoryCount ? `${activeMemoryCount} 条 · ${pendingMemoryCount} 待确认` : `${activeMemoryCount} 条`}
-                        <ChevronRight size={14} className={`transition-transform ${memoryOpen ? "rotate-90" : ""}`} />
-                      </span>
-                    </button>
+              {settingsTab === "trash" && <>
+                <button type="button" className="nf-back" onClick={() => setSettingsTab("data")}><ChevronLeft size={14} strokeWidth={1.6} />数据管理</button>
+                {deletedNotes.length === 0 ? <div className="nf-empty"><Trash size={24} strokeWidth={1.6} /><span>回收站是空的</span></div> : <>
+                  <p className="nf-notice">{deletedNotes.length} 篇已删除笔记</p>
+                  {deletedNotes.map((note) => <div key={note.id} className="nf-record nf-trash-record">
+                    <FileText size={17} strokeWidth={1.6} /><div className="nf-record-main"><p className="nf-record-title">{note.title}</p><p className="nf-record-meta">已移至回收站</p></div>
+                    <button type="button" className="nf-button" aria-label={"恢复 " + note.title} onClick={() => restoreDeletedNote(note.id)}><RotateCcw size={14} strokeWidth={1.6} className="inline mr-1" />恢复</button>
+                  </div>)}
+                </>}
+              </>}
 
-                    {memoryError && <div className="rounded-lg bg-jelly-red-bg px-3 py-2 text-[12px] text-jelly-red">{memoryError}</div>}
-                    {memoryOpen && (
-                      <div className="rounded-xl border border-jelly-border p-3">
-                        <div className="mb-3 flex items-center justify-between">
-                          <span className="text-[12px] font-medium text-jelly-text-muted">记忆列表</span>
-                          <button type="button" onClick={() => void reloadMemories()} className="rounded-md px-2 py-1 text-[12px] text-jelly-text-muted hover:bg-jelly-surface">刷新</button>
-                        </div>
-                        {memoryLoading ? (
-                          <p className="py-6 text-center text-[12px] text-jelly-text-muted">正在加载记忆…</p>
-                        ) : memories.filter((memory) => memory.status !== "deleted").length === 0 ? (
-                          <p className="py-6 text-center text-[12px] text-jelly-text-muted">暂无长期记忆</p>
-                        ) : (
-                          <div className="space-y-3">
-                            {groupMemories(memories).map(([label, items]) => (
-                              <div key={label}>
-                                <p className="mb-1.5 px-1 text-[11px] font-semibold text-jelly-text-muted">{label}</p>
-                                <div className="space-y-2">
-                                  {items.map((memory) => {
-                                    const isEditing = editingMemoryId === memory.id;
-                                    const archived = memory.status === "archived";
-                                    const pending = memory.status === "pending";
-                                    return (
-                                      <div key={memory.id} className={`rounded-lg border px-3 py-2.5 ${pending ? "border-jelly-blue/35 bg-jelly-blue-pale" : archived ? "border-jelly-border bg-jelly-surface/60 opacity-70" : "border-jelly-border"}`}>
-                                        <div className="mb-2 flex items-center justify-between gap-2">
-                                          <span className="text-[11px] text-jelly-text-muted">{memoryLayerLabel(memory.layer)} · 重要度 {memory.importance}</span>
-                                          <span className="text-[11px] text-jelly-text-muted">{pending ? "待确认" : archived ? "已停用" : "启用中"}</span>
-                                        </div>
-                                        {isEditing ? (
-                                          <textarea value={editingContent} onChange={(event) => setEditingContent(event.target.value)} className="min-h-16 w-full resize-none rounded-md border border-jelly-border px-2 py-1.5 text-[12px] text-jelly-text outline-none" />
-                                        ) : (
-                                          <p className="text-[12px] leading-relaxed text-jelly-text-soft">{memory.content}</p>
-                                        )}
-                                        <div className="mt-2 flex justify-end gap-1">
-                                          {isEditing ? (
-                                            <>
-                                              <button type="button" onClick={() => void saveEditMemory(memory)} className="grid h-7 w-7 place-items-center rounded-md text-jelly-green hover:bg-jelly-green-bg" aria-label="保存记忆"><Check size={14} /></button>
-                                              <button type="button" onClick={() => { setEditingMemoryId(null); setEditingContent(""); }} className="grid h-7 w-7 place-items-center rounded-md text-jelly-text-muted hover:bg-jelly-surface" aria-label="取消编辑"><X size={14} /></button>
-                                            </>
-                                          ) : (
-                                            <>
-                                              <button type="button" onClick={() => void toggleMemoryStatus(memory)} className="h-7 rounded-md px-2 text-[12px] text-jelly-text-muted hover:bg-jelly-blue-pale">{pending ? "确认" : archived ? "启用" : "停用"}</button>
-                                              <button type="button" onClick={() => startEditMemory(memory)} className="grid h-7 w-7 place-items-center rounded-md text-jelly-text-muted hover:bg-jelly-surface" aria-label="编辑记忆"><Pencil size={14} /></button>
-                                              <button type="button" onClick={() => void removeMemory(memory)} className="grid h-7 w-7 place-items-center rounded-md text-jelly-red hover:bg-jelly-red-bg" aria-label="删除记忆"><Trash2 size={14} /></button>
-                                            </>
-                                          )}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              {settingsTab === "memory" && <>
+                <div className="nf-row"><span className="nf-row-main"><Sparkles size={17} strokeWidth={1.6} />长期记忆</span><button type="button" className="nf-switch" onClick={() => void handleMemoryEnabledChange()} disabled={memorySettingLoading} aria-pressed={memoryEnabledState} aria-label="长期记忆"><span /></button></div>
+                <button type="button" className="nf-row" aria-expanded={memoryOpen} onClick={() => setMemoryOpen((open) => !open)}><span>记忆管理</span><span className="nf-row-end">{pendingMemoryCount ? activeMemoryCount + " 条 · " + pendingMemoryCount + " 待确认" : activeMemoryCount + " 条"}<ChevronDown size={14} strokeWidth={1.6} /></span></button>
+                {memoryError && <p className="nf-notice nf-error" role="alert">{memoryError}</p>}
+                {memoryOpen && <div className="nf-detail">
+                  <div className="nf-list-heading"><span>记忆列表</span><button type="button" className="nf-button" onClick={() => void reloadMemories()}>刷新</button></div>
+                  {memoryLoading ? <p className="nf-notice" role="status">正在加载记忆…</p> : memories.filter((memory) => memory.status !== "deleted").length === 0 ? <p className="nf-notice">暂无长期记忆</p> : groupMemories(memories).map(([label, items]) => <div key={label}>
+                    <p className="nf-notice">{label}</p>
+                    {items.map((memory) => {
+                      const isEditing = editingMemoryId === memory.id;
+                      const archived = memory.status === "archived", pending = memory.status === "pending";
+                      return <div key={memory.id} className="nf-record">
+                        <div className="nf-record-meta"><span>{memoryLayerLabel(memory.layer)} · 重要度 {memory.importance}</span><span>{pending ? "待确认" : archived ? "已停用" : "启用中"}</span></div>
+                        {isEditing ? <textarea value={editingContent} aria-label="记忆内容" onChange={(event) => setEditingContent(event.target.value)} className="nf-input" /> : <p className="nf-record-title">{memory.content}</p>}
+                        <div className="nf-record-actions">{isEditing ? <>
+                          <button type="button" className="nf-icon-button" onClick={() => void saveEditMemory(memory)} aria-label="保存记忆"><Check size={16} strokeWidth={1.6} /></button>
+                          <button type="button" className="nf-icon-button" onClick={() => { setEditingMemoryId(null); setEditingContent(""); }} aria-label="取消编辑"><X size={16} strokeWidth={1.6} /></button>
+                        </> : <>
+                          <button type="button" className="nf-button" onClick={() => void toggleMemoryStatus(memory)}>{pending ? "确认" : archived ? "启用" : "停用"}</button>
+                          <button type="button" className="nf-icon-button" onClick={() => startEditMemory(memory)} aria-label="编辑记忆"><Pencil size={16} strokeWidth={1.6} /></button>
+                          <button type="button" className="nf-icon-button" onClick={() => void removeMemory(memory)} aria-label="删除记忆"><Trash2 size={16} strokeWidth={1.6} /></button>
+                        </>}</div>
+                      </div>;
+                    })}
+                  </div>)}
+                </div>}
+              </>}
             </section>
           </div>
-        </div>,
-        document.body
-      )}
+        </div>
+      </OverlayDialog>
     </div>
   );
 }

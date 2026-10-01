@@ -444,104 +444,223 @@ try {
   await act(async () => collapsedDirectoryRoot.unmount());
   collapsedDirectoryContainer.remove();
 
-  // Account disclosure keeps real actions, closes predictably, and never steals IME Escape.
-  let signOutCalls = 0;
-  let trashCalls = 0;
+  // One footer entry and one modal workspace preserve the real service contracts.
+  let signOutCalls = 0, changedSession = null, restoredId = null;
+  const accountStore = useAppStore.getState();
+  const apiCalls = [];
+  let failSessions = false, failMemorySetting = false;
+  const sessionFixture = (id, current) => ({ id, current, userAgent: "Chrome/130 Mac OS X", ipAddress: null, createdAt: "2026-01-01T00:00:00Z", lastSeenAt: "2026-01-01T00:00:00Z", expiresAt: "2027-01-01T00:00:00Z" });
+  const memoryFixture = { id: "memory-ui-test", memoryType: "preference", content: "偏好简洁排版", layer: "semantic", importance: 3, status: "pending" };
+  const accountFetch = async (input, options = {}) => {
+    const path = new URL(String(input), "http://127.0.0.1").pathname;
+    const method = options.method ?? "GET";
+    const payload = options.body ? JSON.parse(options.body) : null;
+    apiCalls.push({ path, method, payload });
+    let data = {}, status = 200;
+    if (path === "/api/settings") {
+      if (method === "PUT" && failMemorySetting) { status = 500; data = { detail: "保存设置失败" }; }
+      else data = { settings: { memoryEnabled: payload?.memoryEnabled ?? true, preferences: {} } };
+    } else if (path === "/api/auth/sessions") {
+      if (failSessions) { status = 500; data = { detail: "设备加载失败" }; }
+      else data = [sessionFixture("other-device", false), sessionFixture("current-device", true)];
+    } else if (path.startsWith("/api/auth/sessions/")) data = { currentSessionRevoked: path.endsWith("/current-device") };
+    else if (path.endsWith("/email-change/request")) data = { message: "验证码已发送", developmentCode: "123456" };
+    else if (path.endsWith("/email-change/confirm")) data = { user: { id: "test-user", email: "test@example.com", displayName: "test", emailVerified: true } };
+    else if (path === "/api/memories") data = { memories: [memoryFixture] };
+    else if (path === "/api/memories/memory-ui-test") data = { memory: { ...memoryFixture, ...payload, status: method === "DELETE" ? "deleted" : payload?.status ?? "active" } };
+    return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
+  };
+  globalThis.fetch = window.fetch = accountFetch;
+  const importCalls = [], selectCalls = [];
+  useAppStore.setState({ deletedNotes: [{ id: "trash-test", title: "待恢复笔记", deletedAt: null }], restoreDeletedNote(id) { restoredId = id; }, addNode(parent, node) { importCalls.push({ parent, node }); }, setSelectedFileId(id) { selectCalls.push(id); } });
   const accountContainer = document.createElement("div");
   document.body.appendChild(accountContainer);
   const accountRoot = createRoot(accountContainer);
-  const accountProps = {
-    themeMode: "light",
-    onThemeModeChange() {},
-    userEmail: "test@example.com",
-    userName: "test",
-    userEmailVerified: true,
-    trashCount: 2,
-    onOpenTrash() { trashCalls += 1; },
-    onSignOut() { signOutCalls += 1; },
-  };
+  const accountProps = { themeMode: "light", onThemeModeChange(mode) { themeCalls.push(mode); }, userEmail: "test@example.com", userName: "test", userEmailVerified: true, trashCount: 1, onEmailChanged(session) { changedSession = session; }, onSignOut() { signOutCalls += 1; } };
+  const themeCalls = [];
+  const clickAccount = async (button) => { assert.ok(button); await act(async () => button.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }))); };
+  const activeSettings = () => document.querySelector('.nf-overlay[data-open="true"] [role="dialog"][aria-label="设置"]');
+  const accountPanel = () => accountContainer.querySelector('.nf-account-popover[data-open="true"]');
+  const action = (scope, label) => Array.from(scope?.querySelectorAll("button") ?? []).find(b => b.textContent.trim() === label);
+  const settingAction = label => action(activeSettings(), label);
+  const waitExit = async () => { await act(async () => new Promise(resolve => setTimeout(resolve, 210))); };
   await act(async () => accountRoot.render(React.createElement(AccountMenu, accountProps)));
-  const accountTrigger = accountContainer.querySelector('button[aria-label="我的账号"]');
-  assert.ok(accountTrigger.classList.contains("mr-2"));
-  assert.equal(accountTrigger.querySelector("span.block.truncate").parentElement.classList.contains("flex-1"), false);
-  assert.ok(accountTrigger.querySelector(".account-menu-chevron"));
-  assertIcon(accountTrigger, "lucide-chevron-up", 14, 1.9);
-  assertIcon(accountContainer.querySelector('button[aria-label="回收站"]'), "lucide-trash", 18, 1.65);
-  assertIcon(accountContainer.querySelector('button[aria-label="设置"]'), "lucide-settings", 18, 1.55);
-  const accountPanel = () => accountContainer.querySelector('[role="dialog"][aria-label="账号操作"]');
-  const accountAction = (label) => Array.from(accountPanel()?.querySelectorAll("button") ?? [])
-    .find((button) => button.textContent?.includes(label));
-  const clickAccount = async (button) => {
-    assert.ok(button);
-    await act(async () => button.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true })));
-  };
-  assert.equal(accountTrigger.getAttribute("aria-expanded"), "false");
-  assert.equal(accountPanel(), null);
-  assert.doesNotMatch(accountContainer.textContent, /test@example.com/);
+  const accountTrigger = accountContainer.querySelector('button[aria-label="test的账号菜单"]');
+  assert.ok(accountTrigger);
+  assert.equal(accountContainer.querySelectorAll("button").length, 1);
+  assert.equal(accountTrigger.querySelector(".nf-username").textContent, "test");
+  assert.equal(accountTrigger.querySelector(".nf-avatar").textContent, "T");
+  assert.equal(accountTrigger.querySelector("svg"), null);
+  assert.doesNotMatch(accountContainer.textContent, /test@example.com|我的账号/);
   await clickAccount(accountTrigger);
-  assert.equal(accountTrigger.getAttribute("aria-expanded"), "true");
+  assert.equal(document.activeElement, action(accountPanel(), "设置"));
   assert.equal(accountTrigger.getAttribute("aria-controls"), accountPanel().id);
-  assert.equal(accountPanel().className, "account-popover");
-  assert.equal(document.activeElement, accountAction("登录邮箱"));
-  assert.ok(accountAction("登录设备"));
-  assert.ok(accountAction("退出登录"));
+  assert.equal(accountPanel().querySelectorAll("button").length, 3);
+  assert.doesNotMatch(accountPanel().textContent, /登录邮箱|登录设备|test@example.com/);
   await act(async () => document.body.dispatchEvent(new dom.window.FocusEvent("focusin", { bubbles: true })));
   assert.ok(accountPanel());
-  await clickAccount(accountAction("登录邮箱"));
-  assert.ok(accountPanel().querySelector('input[aria-label="登录邮箱地址"]'));
-  assert.equal(accountPanel().querySelector('input[type="email"]').value, "test@example.com");
-  assert.ok(accountAction("发送验证码"));
-  await clickAccount(accountAction("登录设备"));
-  assert.match(accountPanel().textContent, /有效会话/);
-  await act(async () => document.dispatchEvent(new dom.window.KeyboardEvent("keydown", {
-    key: "Escape", isComposing: true, bubbles: true,
-  })));
+  await act(async () => document.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", isComposing: true, bubbles: true })));
   assert.ok(accountPanel());
-  await act(async () => document.dispatchEvent(new dom.window.KeyboardEvent("keydown", {
-    key: "Escape", bubbles: true,
-  })));
+  await act(async () => document.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
   assert.equal(accountPanel(), null);
   assert.equal(document.activeElement, accountTrigger);
+  assert.ok(accountContainer.querySelector('.nf-account-popover[data-open="false"]'));
+  assert.equal(accountContainer.querySelector(".nf-account-popover").hasAttribute("inert"), true);
+  await waitExit();
+  assert.equal(accountContainer.querySelector(".nf-account-popover"), null);
   await clickAccount(accountTrigger);
   await act(async () => document.body.dispatchEvent(new dom.window.MouseEvent("pointerdown", { bubbles: true })));
   assert.equal(accountPanel(), null);
+  await waitExit();
   await clickAccount(accountTrigger);
-  const outsideButton = document.createElement("button");
-  document.body.appendChild(outsideButton);
+  const outsideButton = document.createElement("button"); document.body.appendChild(outsideButton);
   await act(async () => outsideButton.focus());
   assert.equal(accountPanel(), null);
-  outsideButton.remove();
-  await clickAccount(accountTrigger);
-  await clickAccount(accountAction("退出登录"));
-  assert.equal(signOutCalls, 1);
-  await clickAccount(accountContainer.querySelector('button[aria-label="回收站"]'));
-  assert.equal(trashCalls, 1);
-  assert.equal(accountPanel(), null);
-  await clickAccount(accountTrigger);
-  await clickAccount(accountContainer.querySelector('button[aria-label="设置"]'));
-  assert.equal(accountPanel(), null);
-  assert.ok(document.querySelector('[role="dialog"][aria-label="设置"]'));
-  await act(async () => accountRoot.unmount());
-  accountContainer.remove();
+  outsideButton.remove(); await waitExit();
 
-  const compactAccountContainer = document.createElement("div");
-  document.body.appendChild(compactAccountContainer);
+  await clickAccount(accountTrigger);
+  await clickAccount(action(accountPanel(), "设置"));
+  assert.ok(activeSettings());
+  assert.equal(accountPanel(), null);
+  assert.equal(accountContainer.inert, true);
+  assert.equal(document.activeElement.getAttribute("aria-label"), "关闭设置");
+  const firstNav = settingAction("账号与安全");
+  await act(async () => firstNav.focus());
+  await act(async () => document.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true })));
+  assert.ok(document.activeElement === Array.from(activeSettings().querySelectorAll("button")).at(-1));
+  await clickAccount(Array.from(activeSettings().querySelectorAll("button")).find(b => b.textContent.includes("登录邮箱")));
+  assert.equal(activeSettings().querySelector('input[type="email"]').value, "test@example.com");
+  await clickAccount(settingAction("发送验证码"));
+  assert.equal(activeSettings().querySelector('input[aria-label="邮箱验证码"]').value, "123456");
+  await clickAccount(settingAction("确认并绑定"));
+  assert.equal(changedSession.user.email, "test@example.com");
+  assert.ok(apiCalls.some(call => call.path.endsWith("/email-change/confirm") && call.payload.code === "123456"));
+  assert.equal(activeSettings().querySelector('input[type="email"]'), null);
+  await clickAccount(Array.from(activeSettings().querySelectorAll("button")).find(b => b.textContent.includes("登录设备")));
+  assert.match(activeSettings().textContent, /有效会话|当前设备/);
+  const sessionExits = () => Array.from(activeSettings().querySelectorAll(".nf-device button"));
+  await clickAccount(sessionExits()[0]);
+  assert.equal(sessionExits().length, 1);
+  await clickAccount(sessionExits()[0]);
+  assert.equal(signOutCalls, 1);
+  failSessions = true;
+  await clickAccount(settingAction("刷新"));
+  assert.match(activeSettings().querySelector('[role="alert"]').textContent, /设备加载失败/);
+  failSessions = false;
+
+  await clickAccount(settingAction("外观")); await clickAccount(settingAction("深色"));
+  assert.deepEqual(themeCalls, ["dark"]);
+  await clickAccount(settingAction("AI 与记忆"));
+  failMemorySetting = true;
+  await clickAccount(activeSettings().querySelector('button[aria-label="长期记忆"]'));
+  assert.equal(activeSettings().querySelector('button[aria-label="长期记忆"]').getAttribute("aria-pressed"), "true");
+  assert.match(activeSettings().textContent, /保存设置失败/);
+  failMemorySetting = false;
+  await clickAccount(activeSettings().querySelector('button[aria-label="长期记忆"]'));
+  assert.equal(activeSettings().querySelector('button[aria-label="长期记忆"]').getAttribute("aria-pressed"), "false");
+  await clickAccount(Array.from(activeSettings().querySelectorAll("button")).find(b => b.textContent.includes("记忆管理")));
+  assert.match(activeSettings().textContent, /偏好简洁排版/);
+  await clickAccount(settingAction("确认"));
+  assert.ok(apiCalls.some(call => call.payload?.reason === "profile_memory_approve"));
+  await clickAccount(activeSettings().querySelector('button[aria-label="编辑记忆"]'));
+  assert.ok(activeSettings().querySelector('textarea[aria-label="记忆内容"]'));
+  await clickAccount(activeSettings().querySelector('button[aria-label="保存记忆"]'));
+  assert.ok(apiCalls.some(call => call.payload?.reason === "profile_memory_edit"));
+  await clickAccount(activeSettings().querySelector('button[aria-label="删除记忆"]'));
+  assert.doesNotMatch(activeSettings().textContent, /偏好简洁排版/);
+  await clickAccount(settingAction("数据管理"));
+  assert.ok(settingAction("导出笔记备份")); assert.ok(settingAction("导出完整数据"));
+  const downloads = [];
+  const originalCreateUrl = URL.createObjectURL, originalRevokeUrl = URL.revokeObjectURL;
+  const originalLinkClick = dom.window.HTMLAnchorElement.prototype.click;
+  URL.createObjectURL = blob => { downloads.push({ type: blob.type, size: blob.size }); return "blob:test-export"; };
+  URL.revokeObjectURL = () => {};
+  dom.window.HTMLAnchorElement.prototype.click = function () { downloads[downloads.length - 1].name = this.download; };
+  await clickAccount(settingAction("导出笔记备份"));
+  await clickAccount(settingAction("导出完整数据"));
+  assert.match(downloads[0].name, /\.zip$/); assert.ok(downloads[0].size > 0);
+  assert.match(downloads[1].name, /\.json$/); assert.ok(downloads[1].size > 0);
+  URL.createObjectURL = originalCreateUrl; URL.revokeObjectURL = originalRevokeUrl;
+  dom.window.HTMLAnchorElement.prototype.click = originalLinkClick;
+  const importInput = activeSettings().querySelector('input[type="file"]');
+  assert.ok(importInput.multiple && importInput.accept.includes(".zip"));
+  Object.defineProperty(importInput, "files", { configurable: true, value: [{ name: "导入验证.md", text: async () => "# 导入验证\n\n测试正文" }] });
+  await act(async () => importInput.dispatchEvent(new dom.window.Event("change", { bubbles: true })));
+  assert.equal(importCalls.length, 1);
+  assert.equal(selectCalls[0], importCalls[0].node.id);
+  assert.match(activeSettings().textContent, /已导入 1 篇笔记/);
+  await clickAccount(settingAction("回收站"));
+  assert.match(activeSettings().textContent, /待恢复笔记/);
+  await clickAccount(activeSettings().querySelector('button[aria-label="恢复 待恢复笔记"]'));
+  assert.equal(restoredId, "trash-test");
+  await clickAccount(settingAction("数据管理"));
+  assert.ok(settingAction("导入笔记文件"));
+  await act(async () => document.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", isComposing: true, bubbles: true })));
+  assert.ok(activeSettings());
+  await act(async () => document.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  assert.equal(activeSettings(), null);
+  assert.equal(document.activeElement, accountTrigger);
+  assert.equal(accountContainer.inert, undefined);
+  await waitExit();
+  assert.equal(document.querySelector(".nf-overlay"), null);
+  await clickAccount(accountTrigger);
+  await clickAccount(Array.from(accountPanel().querySelectorAll("button")).find(b => b.textContent.startsWith("回收站")));
+  assert.equal(activeSettings().querySelector("h2").textContent, "回收站");
+  await clickAccount(activeSettings().querySelector('button[aria-label="关闭设置"]'));
+  await waitExit();
+  await clickAccount(accountTrigger);
+  await clickAccount(action(accountPanel(), "退出登录"));
+  assert.equal(signOutCalls, 2);
+  await act(async () => accountRoot.unmount()); accountContainer.remove();
+
+  const compactAccountContainer = document.createElement("div"); document.body.appendChild(compactAccountContainer);
   const compactAccountRoot = createRoot(compactAccountContainer);
-  await act(async () => compactAccountRoot.render(React.createElement(AccountMenu, {
-    ...accountProps, compact: true, themeMode: "dark", userName: "测试用户",
-  })));
-  const compactTrigger = compactAccountContainer.querySelector('button[aria-label="我的账号"]');
-  assert.equal(compactTrigger.classList.contains("mr-2"), false);
-  assert.equal(compactTrigger.querySelector(".account-menu-chevron"), null);
-  assertIcon(compactAccountContainer.querySelector('button[aria-label="回收站"]'), "lucide-trash", 18, 1.65);
-  assertIcon(compactAccountContainer.querySelector('button[aria-label="设置"]'), "lucide-settings", 18, 1.55);
+  await act(async () => compactAccountRoot.render(React.createElement(AccountMenu, { ...accountProps, compact: true, themeMode: "dark", userName: "测试用户" })));
+  const compactTrigger = compactAccountContainer.querySelector('button[aria-label="测试用户的账号菜单"]');
+  assert.equal(compactAccountContainer.querySelectorAll("button").length, 1);
+  assert.equal(compactTrigger.querySelector(".nf-username"), null);
   await clickAccount(compactTrigger);
-  assert.ok(compactAccountContainer.querySelector('.account-menu-root[data-compact="true"] .account-popover'));
   assert.match(compactAccountContainer.textContent, /测试用户/);
-  await clickAccount(compactTrigger);
-  assert.equal(compactTrigger.getAttribute("aria-expanded"), "false");
-  await act(async () => compactAccountRoot.unmount());
-  compactAccountContainer.remove();
+  assert.equal(compactAccountContainer.querySelector(".nf-settings-system").dataset.theme, "dark");
+  await act(async () => compactAccountRoot.unmount()); compactAccountContainer.remove();
+  const fallbackContainer = document.createElement("div"); document.body.appendChild(fallbackContainer);
+  const fallbackRoot = createRoot(fallbackContainer);
+  await act(async () => fallbackRoot.render(React.createElement(AccountMenu, { ...accountProps, userName: "12345@example.com", userEmail: "12345@example.com" })));
+  assert.ok(fallbackContainer.querySelector('.nf-avatar svg.lucide-user-round'));
+  assert.doesNotMatch(fallbackContainer.textContent, /@example.com/);
+  await act(async () => fallbackRoot.unmount()); fallbackContainer.remove();
+  globalThis.fetch = window.fetch = testFetch;
+  useAppStore.setState(accountStore, true);
+
+  // Delete confirmations stay note-scoped; never mutate a real workspace in these tests.
+  const deleteCalls = [];
+  const deleteFolder = { id: "delete-folder", name: "待删文件夹", type: "folder", children: [] };
+  useAppStore.setState({ treeData: [note, deleteFolder], fileContents: { [note.id]: note.content }, deleteNode(id) { deleteCalls.push(id); } });
+  const deleteContainer = document.createElement("div"); document.body.appendChild(deleteContainer);
+  const deleteRoot = createRoot(deleteContainer);
+  await act(async () => deleteRoot.render(React.createElement(DirectoryTree, { ...accountProps, pinned: true, onPinnedChange() {} })));
+  const confirmDialog = () => document.querySelector('.nf-overlay[data-open="true"] [role="alertdialog"]');
+  const deleteMore = label => deleteContainer.querySelector('button[aria-label="' + label + '"]').closest('.directory-node-row').querySelector('button[aria-label="文件操作"]');
+  const noteMore = deleteMore("组件测试笔记");
+  await clickAccount(noteMore);
+  await clickAccount(action(noteMore.closest('[data-file-menu-root]'), "删除"));
+  assert.match(confirmDialog().textContent, /笔记将移至回收站，可随时恢复/);
+  assert.equal(document.activeElement.textContent, "取消");
+  await clickAccount(action(confirmDialog(), "取消"));
+  assert.deepEqual(deleteCalls, []); assert.ok(document.activeElement === noteMore);
+  await waitExit();
+  await clickAccount(noteMore); await clickAccount(action(noteMore.closest('[data-file-menu-root]'), "删除"));
+  await clickAccount(action(confirmDialog(), "移至回收站"));
+  assert.deepEqual(deleteCalls, [note.id]); await waitExit();
+  const folderMore = deleteMore("待删文件夹");
+  await clickAccount(folderMore); await clickAccount(action(folderMore.closest('[data-file-menu-root]'), "删除"));
+  assert.match(confirmDialog().textContent, /所有子文件和内容也会一起删除/);
+  assert.doesNotMatch(confirmDialog().textContent, /可随时恢复/);
+  assert.ok(action(confirmDialog(), "删除文件夹"));
+  await act(async () => document.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  assert.deepEqual(deleteCalls, [note.id]); assert.ok(document.activeElement === folderMore);
+  await waitExit(); await act(async () => deleteRoot.unmount()); deleteContainer.remove();
+  useAppStore.setState(accountStore, true);
 
   const searchCalls = [];
   let searchCloseCalls = 0;
@@ -662,7 +781,7 @@ try {
       "LibrarySearchDialog",
       "AccountMenu",
     ],
-    accountMenuCoverage: ["open-close", "email-form", "devices", "escape-focus", "IME", "outside-pointer", "focus-leave", "sign-out", "trash", "settings", "compact"],
+    accountMenuCoverage: ["single-entry", "username", "numeric-avatar-fallback", "enter-exit", "email-confirm", "devices-revoke", "device-error", "memory-CRUD", "memory-button-rollback-only", "ZIP-JSON-export", "import", "trash-restore", "modal-focus-trap", "escape-focus", "IME", "outside-pointer", "focus-leave", "sign-out", "compact", "note-folder-delete-confirm"],
     directoryRowCoverage: ["whole-row-selection", "full-name", "selected-more", "nested-indent", "pin-favorite-glyphs", "folder-disclosure", "file-open-callback", "independent-menu", "rename-cancel"],
   }));
 } finally {

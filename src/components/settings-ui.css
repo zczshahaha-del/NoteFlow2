@@ -1,0 +1,152 @@
+/* This system is limited to the approved account, settings and delete surfaces. */
+.nf-settings-system {
+  --nf-surface: #fcfcfd;
+  --nf-soft: #f4f5f7;
+  --nf-text: #30353c;
+  --nf-muted: #747a84;
+  --nf-line: #e8eaee;
+  --nf-selected: #e9ebef;
+  --nf-shadow: rgba(33, 39, 48, .10);
+  --nf-danger: #a94540;
+  --nf-danger-soft: #faeeee;
+  color: var(--nf-text);
+  font: 400 14px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+}
+.nf-settings-system[data-theme="dark"] {
+  --nf-surface: #22272e;
+  --nf-soft: #2b313a;
+  --nf-text: #e9edf2;
+  --nf-muted: #a7b0bc;
+  --nf-line: #3a424d;
+  --nf-selected: #3a434f;
+  --nf-shadow: rgba(0, 0, 0, .25);
+  --nf-danger: #ee9690;
+  --nf-danger-soft: #452d32;
+  color-scheme: dark;
+}
+.nf-settings-system button, .nf-settings-system input, .nf-settings-system textarea {
+  font: inherit;
+}
+.nf-settings-system button {
+  cursor: pointer;
+  color: inherit;
+  transition: background-color 150ms ease, color 150ms ease, transform 120ms ease;
+}
+.nf-settings-system button:active:not(:disabled) { transform: translateY(1px); }
+.nf-settings-system button:disabled { opacity: .55; cursor: not-allowed; }
+.nf-settings-system :where(button, input, textarea):focus-visible { outline: 2px solid var(--nf-muted) !important; outline-offset: 3px; }
+.nf-settings-system svg { flex-shrink: 0; color: var(--nf-muted); }
+.nf-settings-system .nf-avatar {
+  display: grid; place-items: center; flex-shrink: 0;
+  width: 34px; height: 34px; border-radius: 50%;
+  background: #c37870; color: #fff; font-size: 14px; font-weight: 400;
+}
+.nf-settings-system .nf-avatar svg { color: inherit; }
+.nf-settings-system .nf-username { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.nf-settings-system .nf-account-trigger {
+  display: flex; align-items: center; gap: 10px; max-width: 100%; min-height: 44px;
+  padding: 5px 8px; border: 0; border-radius: 11px; background: transparent; text-align: left;
+}
+.nf-settings-system .nf-account-trigger:hover, .nf-settings-system .nf-account-trigger[aria-expanded="true"] { background: var(--nf-soft); }
+.nf-settings-system[data-compact="true"] .nf-account-trigger { width: 44px; padding: 5px; }
+.nf-settings-system .nf-account-popover {
+  position: absolute; z-index: 50; bottom: calc(100% + 10px); left: 0;
+  width: max(100%, 248px); max-width: min(340px, calc(100vw - 32px));
+  max-height: calc(100dvh - 96px); overflow: auto; overscroll-behavior: contain;
+  padding: 10px; border: 1px solid var(--nf-line); border-radius: 20px;
+  background: var(--nf-surface); box-shadow: 0 7px 22px var(--nf-shadow);
+}
+.nf-settings-system .nf-account-popover[data-open="true"] { animation: nf-rise-in 180ms ease both; }
+.nf-settings-system .nf-account-popover[data-open="false"] { pointer-events: none; animation: nf-rise-out 180ms ease both; }
+.nf-settings-system .nf-account-heading { display: flex; align-items: center; gap: 10px; padding: 4px 5px 12px; margin: 0 5px 5px; border-bottom: 1px solid var(--nf-line); }
+.nf-settings-system .nf-menu-item { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 40px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; text-align: left; }
+.nf-settings-system .nf-menu-item:hover { background: var(--nf-soft); }
+.nf-settings-system .nf-divider { border-top: 1px solid var(--nf-line); margin: 5px 10px; }
+.nf-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(28, 34, 42, .18); backdrop-filter: blur(2px); }
+.nf-overlay[data-open="true"] { animation: nf-fade-in 180ms ease both; }
+.nf-overlay[data-open="false"] { pointer-events: none; animation: nf-fade-out 180ms ease both; }
+.nf-settings-system .nf-dialog { position: relative; width: min(696px, 100%); max-height: calc(100dvh - 32px); overflow: hidden; border: 1px solid var(--nf-line); border-radius: 20px; background: var(--nf-surface); box-shadow: 0 12px 44px var(--nf-shadow); }
+.nf-overlay[data-open="true"] .nf-dialog { animation: nf-rise-in 180ms ease both; }
+.nf-overlay[data-open="false"] .nf-dialog { animation: nf-rise-out 180ms ease both; }
+.nf-settings-system .nf-settings-dialog { display: grid; grid-template-columns: 168px minmax(0, 1fr); height: min(400px, calc(100dvh - 32px)); }
+.nf-settings-system .nf-settings-navigation { padding: 25px 12px; background: var(--nf-soft); border-right: 1px solid var(--nf-line); overflow-y: auto; }
+.nf-settings-system .nf-brand { padding: 0 12px; margin: 0 0 26px; font-size: 17px; font-weight: 500; }
+.nf-settings-system .nf-nav { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; padding: 0 12px; margin: 3px 0; border: 0; border-radius: 9px; color: var(--nf-muted); background: transparent; font-size: 13px; text-align: left; }
+.nf-settings-system .nf-nav:hover, .nf-settings-system .nf-nav[aria-current="page"] { background: var(--nf-selected); }
+.nf-settings-system .nf-nav[aria-current="page"] { color: var(--nf-text); font-weight: 500; }
+.nf-settings-system .nf-settings-content { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.nf-settings-system .nf-content-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; padding: 24px 28px 16px; }
+.nf-settings-system h2 { margin: 0; font-family: inherit; font-size: 19px; font-weight: 500; line-height: 1.4; }
+.nf-settings-system .nf-icon-button { display: grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0; padding: 0; border: 0; border-radius: 8px; background: transparent; }
+.nf-settings-system .nf-icon-button:hover { background: var(--nf-soft); }
+.nf-settings-system .nf-settings-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 28px 28px; }
+.nf-settings-system .nf-settings-page { animation: nf-content-in 180ms ease both; }
+.nf-settings-system .nf-identity { display: flex; align-items: center; gap: 12px; padding: 8px 0 28px; }
+.nf-settings-system .nf-identity .nf-avatar { width: 42px; height: 42px; font-size: 17px; }
+.nf-settings-system .nf-identity .nf-username { font-size: 16px; }
+.nf-settings-system .nf-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 64px; padding: 12px 0; border: 0; border-bottom: 1px solid var(--nf-line); background: transparent; text-align: left; }
+.nf-settings-system button.nf-row:hover { background: var(--nf-soft); }
+.nf-settings-system .nf-row-main { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.nf-settings-system .nf-row-end { display: flex; align-items: center; gap: 9px; color: var(--nf-muted); font-size: 12px; flex-shrink: 0; }
+.nf-settings-system .nf-row-end svg { transition: transform 180ms ease; }
+.nf-settings-system [aria-expanded="true"] .nf-row-end svg { transform: rotate(180deg); }
+.nf-settings-system .nf-detail { padding: 18px 0; border-bottom: 1px solid var(--nf-line); }
+.nf-settings-system .nf-detail label { display: block; font-size: 12px; color: var(--nf-muted); margin-bottom: 8px; }
+.nf-settings-system .nf-input { display: block; width: 100%; min-width: 0; margin-bottom: 12px; padding: 10px 12px; border: 1px solid var(--nf-line); border-radius: 9px; color: var(--nf-text); background: var(--nf-surface); }
+.nf-settings-system textarea.nf-input { min-height: 90px; resize: vertical; }
+.nf-settings-system .nf-button { min-height: 36px; padding: 8px 13px; border: 0; border-radius: 9px; background: var(--nf-soft); font-size: 13px; }
+.nf-settings-system .nf-button:hover { background: var(--nf-selected); }
+.nf-settings-system .nf-primary { background: var(--nf-text); color: var(--nf-surface); }
+.nf-settings-system .nf-primary:hover { background: var(--nf-text); }
+.nf-settings-system .nf-danger { color: var(--nf-danger); background: var(--nf-danger-soft); }
+.nf-settings-system .nf-danger:hover { background: var(--nf-danger-soft); }
+.nf-settings-system .nf-notice { margin: 10px 0; color: var(--nf-muted); font-size: 12px; overflow-wrap: anywhere; }
+.nf-settings-system .nf-error { color: var(--nf-danger); }
+.nf-settings-system .nf-segment { display: flex; flex-shrink: 0; padding: 3px; border-radius: 9px; background: var(--nf-soft); }
+.nf-settings-system .nf-segment button { padding: 5px 10px; border: 0; border-radius: 6px; background: transparent; font-size: 12px; }
+.nf-settings-system .nf-segment button[aria-pressed="true"] { background: var(--nf-surface); box-shadow: 0 1px 4px var(--nf-shadow); }
+.nf-settings-system .nf-switch { position: relative; flex-shrink: 0; width: 44px; height: 32px; border: 0; background: transparent; }
+.nf-settings-system .nf-switch::before { content: ""; position: absolute; width: 40px; height: 24px; left: 2px; top: calc(50% - 12px); border-radius: 16px; background: var(--nf-selected); transition: background-color 180ms ease; }
+.nf-settings-system .nf-switch[aria-pressed="true"]::before { background: var(--nf-text); }
+.nf-settings-system .nf-switch span { position: absolute; left: 5px; top: calc(50% - 9px); width: 18px; height: 18px; border-radius: 50%; background: var(--nf-surface); transition: transform 180ms ease; }
+.nf-settings-system .nf-switch[aria-pressed="true"] span { transform: translateX(16px); }
+.nf-settings-system .nf-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-size: 12px; color: var(--nf-muted); }
+.nf-settings-system .nf-record { padding: 14px 0; border-bottom: 1px solid var(--nf-line); min-width: 0; overflow-wrap: anywhere; }
+.nf-settings-system .nf-device, .nf-settings-system .nf-trash-record { display: flex; align-items: center; gap: 12px; }
+.nf-settings-system .nf-record-main { min-width: 0; flex: 1; }
+.nf-settings-system .nf-record-title { margin: 0; font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+.nf-settings-system .nf-record-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; color: var(--nf-muted); font-size: 12px; margin: 4px 0; }
+.nf-settings-system .nf-record p { overflow-wrap: anywhere; }
+.nf-settings-system .nf-record-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-top: 10px; }
+.nf-settings-system .nf-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 200px; color: var(--nf-muted); font-size: 13px; text-align: center; }
+.nf-settings-system .nf-back { display: flex; align-items: center; gap: 4px; padding: 4px 0; border: 0; background: transparent; color: var(--nf-muted); font-size: 12px; }
+.nf-settings-system .nf-confirm-dialog { width: min(400px, 100%); padding: 24px; }
+.nf-settings-system .nf-confirm-dialog h2 { padding-right: 28px; font-size: 16px; overflow-wrap: anywhere; }
+.nf-settings-system .nf-confirm-close { position: absolute; right: 16px; top: 16px; }
+.nf-settings-system .nf-confirm-detail { margin: 12px 0 24px; font-size: 13px; line-height: 1.6; color: var(--nf-muted); }
+.nf-settings-system .nf-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+@keyframes nf-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes nf-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes nf-rise-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes nf-rise-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(6px); } }
+@keyframes nf-content-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 620px) {
+  .nf-settings-system .nf-settings-dialog { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); height: min(640px, calc(100dvh - 24px)); }
+  .nf-settings-system .nf-settings-navigation { padding: 14px; border-right: 0; border-bottom: 1px solid var(--nf-line); }
+  .nf-settings-system .nf-brand { padding: 0; margin-bottom: 10px; font-size: 15px; }
+  .nf-settings-system .nf-settings-navigation nav { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+  .nf-settings-system .nf-nav { padding: 8px; gap: 7px; }
+  .nf-overlay { padding: 12px; }
+  .nf-settings-system .nf-dialog { max-height: calc(100dvh - 24px); }
+  .nf-settings-system .nf-content-heading { padding: 18px 16px 12px; }
+  .nf-settings-system .nf-settings-scroll { padding: 4px 16px 22px; }
+  .nf-settings-system .nf-row, .nf-settings-system .nf-row-main { gap: 8px; }
+}
+@media (pointer: coarse) {
+  .nf-settings-system .nf-icon-button { width: 44px; height: 44px; }
+  .nf-settings-system .nf-button, .nf-settings-system .nf-segment button, .nf-settings-system .nf-nav, .nf-settings-system .nf-menu-item, .nf-settings-system .nf-back, .nf-settings-system .nf-switch { min-height: 44px; }
+  .nf-settings-system .nf-input { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nf-settings-system *, .nf-settings-system *::before { animation: none !important; transition: none !important; }
+}
