@@ -35,6 +35,7 @@ import type { AgentToolTrace, ChatMessage, ChatSource } from "../types";
 import { resolveAgentCheckpoint, type AgentTaskSnapshot } from "../services/agent";
 import { getNoteDraft } from "../services/drafts";
 import ChatGenerationStatus from "./ChatGenerationStatus";
+import SoftMenu from "./SoftMenu";
 import "./ai-conversation.css";
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
@@ -984,88 +985,86 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
           )}
         </div>
 
-        {historyOpen && (
-          <div className="absolute left-0 top-11 w-[min(340px,calc(100vw-32px))] overflow-hidden rounded-2xl border border-[#dfe7ec] bg-white p-2 shadow-[0_18px_50px_rgba(35,52,65,0.16)]" role="menu">
-            <div className="flex items-center gap-2 rounded-xl bg-[#f6f8fa] px-3">
-              <Search size={15} className="shrink-0 text-jelly-text-muted" />
-              <input
-                value={historyQuery}
-                onChange={(event) => setHistoryQuery(event.target.value)}
-                placeholder="搜索历史对话"
-                className="h-9 min-w-0 flex-1 border-0 bg-transparent text-[13px] text-jelly-text outline-none placeholder:text-[#9aa5ad]"
-                autoFocus
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => void handleNewChat()}
-              className="mt-1.5 flex h-9 w-full items-center gap-2 rounded-xl px-3 text-[13px] font-medium text-jelly-blue-deep transition-colors hover:bg-[#eef6fa]"
-            >
-              <Plus size={15} />
-              新建对话
-            </button>
-            <div className="mt-1 max-h-[360px] overflow-y-auto overscroll-contain pr-0.5">
-              {chatSessionsLoading && filteredChatSessions.length === 0 ? (
-                <div className="flex h-20 items-center justify-center text-[12px] text-jelly-text-muted">
-                  <Loader2 size={15} className="mr-2 animate-spin" />读取中
-                </div>
-              ) : filteredChatSessions.length === 0 ? (
-                <p className="px-3 py-8 text-center text-[12px] text-jelly-text-muted">没有找到对话</p>
-              ) : filteredChatSessions.map((session, index) => {
-                const group = chatSessionGroup(session.lastMessageAt ?? session.updatedAt);
-                const previous = index > 0
-                  ? chatSessionGroup(filteredChatSessions[index - 1].lastMessageAt ?? filteredChatSessions[index - 1].updatedAt)
-                  : null;
-                const editing = editingSessionId === session.id;
-                return (
-                  <Fragment key={session.id}>
-                    {group !== previous && (
-                      <p className="px-3 pb-1 pt-3 text-[10px] font-semibold tracking-wide text-[#94a0a9]">{group}</p>
-                    )}
-                    <div className={`group flex min-h-10 items-center rounded-xl px-2 transition-colors ${session.id === agentSessionId ? "bg-[#edf6fa]" : "hover:bg-[#f6f8fa]"}`}>
-                      {editing ? (
-                        <>
-                          <input
-                            value={editingSessionTitle}
-                            onChange={(event) => setEditingSessionTitle(event.target.value)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") void handleRenameChat(session.id);
-                              if (event.key === "Escape") setEditingSessionId(null);
-                            }}
-                            className="h-8 min-w-0 flex-1 rounded-lg border border-[#ccdbe4] bg-white px-2 text-[13px] outline-none"
-                            autoFocus
-                          />
-                          <button type="button" onClick={() => void handleRenameChat(session.id)} className="grid h-7 w-7 place-items-center text-jelly-blue-deep" aria-label="保存名称"><Check size={14} /></button>
-                          <button type="button" onClick={() => setEditingSessionId(null)} className="grid h-7 w-7 place-items-center text-jelly-text-muted" aria-label="取消重命名"><X size={14} /></button>
-                        </>
-                      ) : (
-                        <>
-                          <button type="button" onClick={() => void handleSwitchChat(session.id)} className="min-w-0 flex-1 truncate px-1 py-2 text-left text-[13px] text-jelly-text" title={session.title}>
-                            {session.title}
-                          </button>
-                          {session.id === agentSessionId && <Check size={13} className="mr-1 shrink-0 text-jelly-blue-deep" />}
-                          <button
-                            type="button"
-                            onClick={() => { setEditingSessionId(session.id); setEditingSessionTitle(session.title); }}
-                            className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-jelly-text-muted opacity-0 transition-opacity hover:bg-white hover:text-jelly-blue-deep group-hover:opacity-100"
-                            aria-label={`重命名${session.title}`}
-                          ><Pencil size={13} /></button>
-                          <button
-                            type="button"
-                            onClick={() => setDeletingSessionId(session.id)}
-                            className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-jelly-text-muted opacity-0 transition-opacity hover:bg-[#fff2f0] hover:text-jelly-red group-hover:opacity-100"
-                            aria-label={`删除${session.title}`}
-                          ><Trash2 size={13} /></button>
-                        </>
-                      )}
-                    </div>
-                  </Fragment>
-                );
-              })}
-            </div>
-            {sessionActionError && <p className="px-3 pb-1 pt-2 text-[11px] text-jelly-red">{sessionActionError}</p>}
+        <SoftMenu open={historyOpen} onClose={() => { setHistoryOpen(false); setEditingSessionId(null); }} className="nf-history-menu absolute left-0 top-11 w-[min(340px,calc(100vw-32px))]" role="menu">
+          <div className="nf-history-search flex items-center gap-2 px-3">
+            <Search size={15} className="shrink-0 text-jelly-text-muted" />
+            <input
+              value={historyQuery}
+              onChange={(event) => setHistoryQuery(event.target.value)}
+              placeholder="搜索历史对话"
+              className="h-9 min-w-0 flex-1 border-0 bg-transparent text-[13px] text-jelly-text outline-none placeholder:text-[#9aa5ad]"
+              autoFocus
+            />
           </div>
-        )}
+          <button
+            type="button"
+            onClick={() => void handleNewChat()}
+            className="nf-soft-menu-item mt-1.5"
+          >
+            <Plus size={17} strokeWidth={1.65} />
+            新建对话
+          </button>
+          <div className="mt-1 max-h-[360px] overflow-y-auto overscroll-contain pr-0.5">
+            {chatSessionsLoading && filteredChatSessions.length === 0 ? (
+              <div className="flex h-20 items-center justify-center text-[12px] text-jelly-text-muted">
+                <Loader2 size={15} className="mr-2 animate-spin" />读取中
+              </div>
+            ) : filteredChatSessions.length === 0 ? (
+              <p className="px-3 py-8 text-center text-[12px] text-jelly-text-muted">没有找到对话</p>
+            ) : filteredChatSessions.map((session, index) => {
+              const group = chatSessionGroup(session.lastMessageAt ?? session.updatedAt);
+              const previous = index > 0
+                ? chatSessionGroup(filteredChatSessions[index - 1].lastMessageAt ?? filteredChatSessions[index - 1].updatedAt)
+                : null;
+              const editing = editingSessionId === session.id;
+              return (
+                <Fragment key={session.id}>
+                  {group !== previous && (
+                    <p className="nf-history-group px-3 pb-1 pt-3">{group}</p>
+                  )}
+                  <div className="nf-history-row flex items-center px-2 transition-colors" data-selected={session.id === agentSessionId}>
+                    {editing ? (
+                      <>
+                        <input
+                          value={editingSessionTitle}
+                          onChange={(event) => setEditingSessionTitle(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") void handleRenameChat(session.id);
+                            if (event.key === "Escape") setEditingSessionId(null);
+                          }}
+                          className="nf-history-rename h-8 min-w-0 flex-1 rounded-lg border px-2 outline-none"
+                          autoFocus
+                        />
+                        <button type="button" onClick={() => void handleRenameChat(session.id)} className="nf-history-action" data-editing="true" aria-label="保存名称"><Check size={15} strokeWidth={1.65} /></button>
+                        <button type="button" onClick={() => setEditingSessionId(null)} className="nf-history-action" data-editing="true" aria-label="取消重命名"><X size={15} strokeWidth={1.65} /></button>
+                      </>
+                    ) : (
+                      <>
+                        <button type="button" onClick={() => void handleSwitchChat(session.id)} className="nf-history-name min-w-0 flex-1 truncate px-1 py-2 text-left" title={session.title}>
+                          {session.title}
+                        </button>
+                        {session.id === agentSessionId && <Check size={13} className="nf-history-check mr-1 shrink-0" />}
+                        <button
+                          type="button"
+                          onClick={() => { setEditingSessionId(session.id); setEditingSessionTitle(session.title); }}
+                          className="nf-history-action"
+                          aria-label={`重命名${session.title}`}
+                        ><Pencil size={15} strokeWidth={1.65} /></button>
+                        <button
+                          type="button"
+                          onClick={() => setDeletingSessionId(session.id)}
+                          className="nf-history-action nf-soft-menu-danger"
+                          aria-label={`删除${session.title}`}
+                        ><Trash2 size={15} strokeWidth={1.65} /></button>
+                      </>
+                    )}
+                  </div>
+                </Fragment>
+              );
+            })}
+          </div>
+          {sessionActionError && <p className="nf-history-error px-3 pb-1 pt-2 text-[11px]">{sessionActionError}</p>}
+        </SoftMenu>
       </div>
 
       {false && agentTaskDetailOpen && (

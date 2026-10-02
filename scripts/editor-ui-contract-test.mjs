@@ -17,6 +17,27 @@ const settingsStyles = readFileSync(new URL("../src/components/settings-ui.css",
 const overlayDialog = readFileSync(new URL("../src/components/OverlayDialog.tsx", import.meta.url), "utf8");
 const sidebarToggleIcon = readFileSync(new URL("../src/components/SidebarToggleIcon.tsx", import.meta.url), "utf8");
 const styles = readFileSync(new URL("../src/index.css", import.meta.url), "utf8");
+const menuStyles = readFileSync(new URL("../src/components/menu-ui.css", import.meta.url), "utf8");
+const softMenu = readFileSync(new URL("../src/components/SoftMenu.tsx", import.meta.url), "utf8");
+
+assert.match(directoryTree, /<SoftMenu open=\{menuOpen\}/);
+assert.match(directoryTree, /<SoftMenu open=\{newMenuOpen\}/);
+assert.match(editor, /<SoftMenu open=\{documentMenuOpen\}/);
+assert.match(aiPanel, /<SoftMenu open=\{historyOpen\}/);
+assert.match(menuStyles, /font: 400 14px\/1\.5/);
+assert.match(menuStyles, /border: 0;\s*border-radius: 14px;/);
+assert.match(menuStyles, /min-height: 38px;/);
+assert.match(menuStyles, /gap: 11px;/);
+assert.match(menuStyles, /stroke-width: 1\.65;/);
+assert.match(menuStyles, /\.theme-dark \.nf-soft-menu/);
+assert.match(menuStyles, /--nf-menu-surface: #252b33;/);
+assert.match(menuStyles, /\.nf-history-row:focus-within \.nf-history-action/);
+assert.match(menuStyles, /@media \(pointer: coarse\)[\s\S]*?min-height: 44px;[\s\S]*?width: 44px; height: 44px; opacity: 1;/);
+assert.match(menuStyles, /@media \(prefers-reduced-motion: reduce\)/);
+assert.match(menuStyles, /:where\(button, input\):focus-visible/);
+assert.match(softMenu, /inert=\{!open\}/);
+assert.match(softMenu, /event.nativeEvent.isComposing/);
+assert.match(softMenu, /setTimeout\(\(\) => setPresent\(false\), 130\)/);
 
 for (const forbidden of [
   "查看 Markdown",

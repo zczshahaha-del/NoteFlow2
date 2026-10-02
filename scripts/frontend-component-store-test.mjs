@@ -76,10 +76,45 @@ try {
     LibrarySearchDialog,
     AccountMenu,
     AIPanel,
+    SoftMenu,
   } = await vite.ssrLoadModule("/src/testing/frontendHarness.ts");
 
   const initialState = useAppStore.getInitialState();
   useAppStore.setState(initialState, true);
+
+  // Production menu lifecycle with synthetic contents, no browser/session or API access.
+  const softContainer = document.createElement("div"); document.body.appendChild(softContainer);
+  const softRoot = createRoot(softContainer);
+  let softOpen = true;
+  let softActionCalls = 0;
+  const renderSoft = () => softRoot.render(React.createElement("div", null,
+    React.createElement("button", { "aria-expanded": softOpen }, "菜单入口"),
+    React.createElement(SoftMenu, { open: softOpen, onClose() { softOpen = false; renderSoft(); } },
+      React.createElement("button", { onClick() { softActionCalls++; } }, "原有操作"))));
+  await act(async () => renderSoft());
+  softContainer.querySelector('.nf-soft-menu button').focus();
+  await act(async () => softContainer.querySelector('.nf-soft-menu button').dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true, isComposing: true })));
+  assert.equal(softOpen, true);
+  await act(async () => softContainer.querySelector('.nf-soft-menu button').dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  assert.equal(softOpen, false);
+  assert.equal(document.activeElement, softContainer.querySelector('button[aria-expanded]'));
+  assert.equal(softContainer.querySelector('.nf-soft-menu').getAttribute('aria-hidden'), "true");
+  assert.equal(softContainer.querySelector('.nf-soft-menu').hasAttribute('inert'), true);
+  await act(async () => softContainer.querySelector('.nf-soft-menu button').click());
+  assert.equal(softActionCalls, 0, "closed visual contents cannot execute actions");
+  await act(async () => { softOpen = true; renderSoft(); });
+  await act(async () => new Promise(resolve => window.setTimeout(resolve, 160)));
+  assert.equal(softContainer.querySelector('.nf-soft-menu').dataset.open, "true", "reopen cancels stale exit timer");
+  await act(async () => { softOpen = false; renderSoft(); });
+  await act(async () => new Promise(resolve => window.setTimeout(resolve, 160)));
+  assert.equal(softContainer.querySelector('.nf-soft-menu'), null);
+  const savedMatchMedia = window.matchMedia;
+  window.matchMedia = () => ({ matches: true });
+  await act(async () => { softOpen = true; renderSoft(); });
+  await act(async () => { softOpen = false; renderSoft(); });
+  assert.equal(softContainer.querySelector('.nf-soft-menu'), null, "reduced motion closes immediately");
+  window.matchMedia = savedMatchMedia;
+  await act(async () => softRoot.unmount()); softContainer.remove();
 
   const note = {
     id: "note-test-1",
@@ -286,6 +321,48 @@ try {
   assert.equal(sentMessages[2][1].contextScope, "selection");
   assert.equal(sentMessages[2][1].selectedText, attachedSelection.text);
   assert.equal(conversationContainer.querySelector('button[aria-label="移除选中文字引用"]'), null);
+
+  const historyCalls = [];
+  await act(async () => useAppStore.setState({
+    agentSessionId: "history-current",
+    chatSessions: [
+      { id: "history-current", title: "当前对话", updatedAt: new Date().toISOString() },
+      { id: "history-other", title: "历史对话", updatedAt: new Date().toISOString() },
+    ],
+    async renameChatSession(id, title) { historyCalls.push(["rename", id, title]); },
+    async switchChatSession(id) { historyCalls.push(["switch", id]); },
+    async deleteChatSession(id) { historyCalls.push(["delete", id]); },
+  }));
+  const historyTrigger = conversationContainer.querySelector('button[aria-haspopup="menu"]');
+  await act(async () => historyTrigger.click());
+  const historyMenu = conversationContainer.querySelector('.nf-history-menu');
+  assert.ok(historyMenu);
+  assert.equal(historyMenu.querySelectorAll('.nf-history-row').length, 2);
+  const renameHistory = historyMenu.querySelector('button[aria-label="重命名历史对话"]');
+  renameHistory.focus();
+  assert.equal(document.activeElement === renameHistory, true);
+  assert.equal(renameHistory.classList.contains('nf-history-action'), true);
+  assert.equal(renameHistory.closest('.nf-history-row').querySelectorAll('.nf-history-action').length, 2, "actions stay inline");
+  await act(async () => renameHistory.click());
+  const renameHistoryInput = historyMenu.querySelector('.nf-history-rename');
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, "value").set.call(renameHistoryInput, "修改后的对话");
+    renameHistoryInput.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+  });
+  await act(async () => historyMenu.querySelector('button[aria-label="保存名称"]').click());
+  assert.deepEqual(historyCalls, [["rename", "history-other", "修改后的对话"]]);
+  await act(async () => historyMenu.querySelector('button[aria-label="删除历史对话"]').click());
+  assert.equal(historyCalls.length, 1, "deletion still requires confirmation");
+  const historyDeleteDialog = conversationContainer.querySelector('[role="dialog"][aria-label="删除对话"]');
+  assert.ok(historyDeleteDialog);
+  await act(async () => Array.from(historyDeleteDialog.querySelectorAll('button')).find(button => button.textContent === "取消").click());
+  await act(async () => historyMenu.querySelector('.nf-history-name').dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  assert.equal(historyTrigger.getAttribute('aria-expanded'), "false");
+  assert.equal(document.activeElement === historyTrigger, true);
+  assert.equal(historyMenu.hasAttribute('inert'), true);
+  await act(async () => historyTrigger.click());
+  await act(async () => Array.from(conversationContainer.querySelectorAll('.nf-history-name')).find(button => button.textContent === "历史对话").click());
+  assert.deepEqual(historyCalls.at(-1), ["switch", "history-other"]);
   await act(async () => conversationRoot.unmount()); conversationContainer.remove();
   useAppStore.setState(beforeConversation, true);
 
@@ -401,6 +478,7 @@ try {
   await act(async () => {
     newButton.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
   });
+  assert.deepEqual(Array.from(directoryContainer.querySelector('.nf-new-menu[data-open="true"]').querySelectorAll('button')).map(button => button.textContent.trim()), ["新建笔记", "新建文件夹"]);
   await act(async () => {
     searchButton.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
   });
@@ -431,6 +509,7 @@ try {
   await act(async () => {
     fileMenu.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
   });
+  assert.deepEqual(Array.from(directoryContainer.querySelector('.nf-action-menu[data-open="true"]').querySelectorAll('button')).map(button => button.textContent.trim()), ["重命名", "移动到", "导出", "置顶", "取消收藏", "删除"]);
   let moveButton = Array.from(directoryContainer.querySelectorAll("button"))
     .find((button) => button.textContent?.trim() === "移动到");
   assert.ok(moveButton);
@@ -438,7 +517,7 @@ try {
     document.body.dispatchEvent(new dom.window.MouseEvent("mousedown", { bubbles: true }));
   });
   moveButton = Array.from(directoryContainer.querySelectorAll("button"))
-    .find((button) => button.textContent?.trim() === "移动到");
+    .find((button) => button.textContent?.trim() === "移动到" && !button.closest('[inert]'));
   assert.equal(moveButton, undefined);
   await act(async () => {
     fileMenu.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
@@ -475,6 +554,12 @@ try {
   assert.ok(selectedRow.querySelector('svg[aria-label="已置顶"]'));
   assert.ok(selectedRow.querySelector('svg[aria-label="已收藏"]'));
   const folderArrow = rowContainer.querySelector('button[aria-label="收起全栈开发"]');
+  const rowFolderMore = folderArrow.closest('.directory-node-row').querySelector('button[aria-label="文件操作"]');
+  await act(async () => rowFolderMore.click());
+  const folderMenu = rowContainer.querySelector('.nf-action-menu[data-open="true"]');
+  assert.deepEqual(Array.from(folderMenu.querySelectorAll('button')).map(button => button.textContent.trim()), ["重命名", "移动到", "置顶", "删除"]);
+  await act(async () => folderMenu.querySelector('button').dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  assert.equal(document.activeElement === rowFolderMore, true);
   await act(async () => folderArrow.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true })));
   assert.equal(rowContainer.querySelector('[aria-current="page"]'), null);
   assert.equal(useAppStore.getState().selectedFileId, nestedNote.id);
@@ -489,7 +574,7 @@ try {
   await act(async () => rowMenu.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true })));
   assert.equal(rowMenu.closest('.directory-node-row').dataset.menuOpen, "true");
   assert.equal(fileOpenCalls, 1);
-  const rename = Array.from(rowContainer.querySelectorAll('button'))
+  const rename = Array.from(rowContainer.querySelector('.nf-action-menu[data-open="true"]').querySelectorAll('button'))
     .find(button => button.textContent?.trim() === "重命名");
   await act(async () => rename.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true })));
   const renameInput = rowContainer.querySelector('.directory-node-open input');
@@ -900,8 +985,9 @@ try {
   console.log(JSON.stringify({
     ok: true,
     storeAssertions: 10,
-    componentAssertions: 39,
+    componentAssertionGroups: 41,
     components: [
+      "SoftMenu",
       "LoginPage",
       "NoteMetadataControls",
       "EditPreviewWorkspace",
@@ -913,6 +999,7 @@ try {
     accountMenuCoverage: ["single-entry", "username", "no-native-tooltip", "username-click", "long-username", "unframed-footer-menu", "numeric-avatar-fallback", "enter-exit", "email-confirm", "devices-revoke", "device-error", "memory-CRUD", "memory-button-rollback-only", "ZIP-JSON-export", "import", "trash-restore", "modal-focus-trap", "escape-focus", "IME", "outside-pointer", "focus-leave", "sign-out", "compact", "note-folder-delete-confirm"],
     directoryRowCoverage: ["whole-row-selection", "full-name", "selected-more", "nested-indent", "pin-favorite-glyphs", "folder-disclosure", "file-open-callback", "independent-menu", "rename-cancel"],
     conversationCoverage: ["empty-wait", "whitespace-wait", "streaming-markdown", "hide-status-on-first-text", "no-status-during-transport-cleanup", "single-status", "completion", "stop-callback", "error-clears-status", "fallback-wait", "empty-send-disabled", "Enter-Shift-IME", "send-context", "library-mode", "remove-note-reference", "citation-open", "selection-expand", "selection-send"],
+    softMenuCoverage: ["exit-inert", "unmount-after-exit", "quick-reopen", "reduced-motion", "Escape-focus", "IME-Escape", "file-action-order", "history-inline-actions", "history-rename-callback", "history-delete-confirmation", "history-switch-callback"],
   }));
 } finally {
   await vite.close();

@@ -27,6 +27,7 @@ import AccountMenu, { type AccountMenuProps } from "./AppNav";
 import LibrarySearchDialog from "./LibrarySearchDialog";
 import SidebarToggleIcon from "./SidebarToggleIcon";
 import OverlayDialog from "./OverlayDialog";
+import SoftMenu from "./SoftMenu";
 
 function countFiles(nodes: FileNode[]): number {
   return nodes.reduce((total, node) => {
@@ -367,75 +368,73 @@ function TreeNode({
             <MoreHorizontal size={15} strokeWidth={1.8} />
           </button>
 
-          {menuOpen && (
-            <div className="absolute right-0 top-full z-50 mt-1 w-36 rounded-md border border-jelly-border bg-white py-1 shadow-[0_14px_34px_rgba(22,34,45,0.14)]">
+          <SoftMenu open={menuOpen} onClose={() => onMenuChange(null)} className="nf-action-menu absolute right-0 top-full z-50 mt-1" aria-label="笔记操作">
+            <button
+              className="nf-soft-menu-item"
+              onClick={(event) => {
+                event.stopPropagation();
+                onStartRename(node);
+              }}
+            >
+              <Pencil size={17} strokeWidth={1.65} />
+              重命名
+            </button>
+            <button
+              className="nf-soft-menu-item"
+              onClick={(event) => {
+                event.stopPropagation();
+                onStartMove(node);
+              }}
+            >
+              <FolderInput size={17} strokeWidth={1.65} />
+              移动到
+            </button>
+            {!isFolder && (
               <button
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-jelly-text-soft hover:bg-jelly-blue-pale hover:text-jelly-text"
+                className="nf-soft-menu-item"
                 onClick={(event) => {
                   event.stopPropagation();
-                  onStartRename(node);
+                  onExport(node);
                 }}
               >
-                <Pencil size={14} strokeWidth={1.8} />
-                重命名
+                <Download size={17} strokeWidth={1.65} />
+                导出
               </button>
+            )}
+            <button
+              className="nf-soft-menu-item"
+              onClick={(event) => {
+                event.stopPropagation();
+                onTogglePin(node);
+              }}
+            >
+              <PinIcon size={17} strokeWidth={1.65} />
+              {node.pinned ? "取消置顶" : "置顶"}
+            </button>
+            {!isFolder && (
               <button
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-jelly-text-soft hover:bg-jelly-blue-pale hover:text-jelly-text"
+                className="nf-soft-menu-item"
                 onClick={(event) => {
                   event.stopPropagation();
-                  onStartMove(node);
+                  onToggleFavorite(node);
                 }}
               >
-                <FolderInput size={14} strokeWidth={1.8} />
-                移动到
+                <Star size={17} fill={node.favorite ? "currentColor" : "none"} strokeWidth={1.65} />
+                {node.favorite ? "取消收藏" : "收藏"}
               </button>
-              {!isFolder && (
-                <button
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-jelly-text-soft hover:bg-jelly-blue-pale hover:text-jelly-text"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onExport(node);
-                  }}
-                >
-                  <Download size={14} strokeWidth={1.8} />
-                  导出
-                </button>
-              )}
-              <button
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-jelly-text-soft hover:bg-jelly-blue-pale hover:text-jelly-text"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onTogglePin(node);
-                }}
-              >
-                <PinIcon size={14} strokeWidth={1.8} />
-                {node.pinned ? "取消置顶" : "置顶"}
-              </button>
-              {!isFolder && (
-                <button
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-jelly-text-soft hover:bg-jelly-amber-bg hover:text-jelly-amber"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onToggleFavorite(node);
-                  }}
-                >
-                  <Star size={14} fill={node.favorite ? "currentColor" : "none"} strokeWidth={1.8} />
-                  {node.favorite ? "取消收藏" : "收藏"}
-                </button>
-              )}
-              <button
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-rose-500 hover:bg-rose-50"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  event.currentTarget.closest("[data-file-menu-root]")?.querySelector<HTMLButtonElement>('button[aria-label="文件操作"]')?.focus({ preventScroll: true });
-                  onDelete(node);
-                }}
-              >
-                <Trash2 size={14} strokeWidth={1.8} />
-                删除
-              </button>
-            </div>
-          )}
+            )}
+            <button
+              className="nf-soft-menu-item nf-soft-menu-danger"
+              onClick={(event) => {
+                event.stopPropagation();
+                event.currentTarget.closest("[data-file-menu-root]")?.querySelector<HTMLButtonElement>('button[aria-label="文件操作"]')?.focus({ preventScroll: true });
+                onDelete(node);
+              }}
+            >
+              <Trash2 size={17} strokeWidth={1.65} />
+              删除
+            </button>
+          </SoftMenu>
         </div>
       </div>
 
@@ -854,24 +853,22 @@ export default function DirectoryTree({
                   >
                     新建
                   </span>
-                  {newMenuOpen && (
-                    <div className="absolute right-0 top-full z-50 mt-1 w-40 rounded-md border border-jelly-border bg-white py-1 shadow-lg">
-                      <button
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-jelly-text-soft transition-colors hover:bg-jelly-blue-pale hover:text-jelly-text"
-                        onClick={handleNewFile}
-                      >
-                        <FilePlus size={15} strokeWidth={1.8} />
-                        新建笔记
-                      </button>
-                      <button
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-jelly-text-soft transition-colors hover:bg-jelly-blue-pale hover:text-jelly-text"
-                        onClick={handleNewFolder}
-                      >
-                        <FolderPlus size={15} strokeWidth={1.8} />
-                        新建文件夹
-                      </button>
-                    </div>
-                  )}
+                  <SoftMenu open={newMenuOpen} onClose={() => setNewMenuOpen(false)} className="nf-action-menu nf-new-menu absolute right-0 top-full z-50 mt-1" aria-label="新建选项">
+                    <button
+                      className="nf-soft-menu-item"
+                      onClick={handleNewFile}
+                    >
+                      <FilePlus size={17} strokeWidth={1.65} />
+                      新建笔记
+                    </button>
+                    <button
+                      className="nf-soft-menu-item"
+                      onClick={handleNewFolder}
+                    >
+                      <FolderPlus size={17} strokeWidth={1.65} />
+                      新建文件夹
+                    </button>
+                  </SoftMenu>
                 </div>
                 <div className="group/collapse-directory relative ml-1">
                   <button

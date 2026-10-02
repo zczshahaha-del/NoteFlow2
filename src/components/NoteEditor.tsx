@@ -30,6 +30,7 @@ import {
   X,
 } from "lucide-react";
 import { useEditorSlice } from "../store/selectors";
+import SoftMenu from "./SoftMenu";
 import { findFileById } from "../workspaceTree";
 import { createNoteFlowTiptapExtensions } from "../editor/tiptapExtensions";
 import { findTiptapTextRange } from "../utils/tiptapSelection";
@@ -632,52 +633,46 @@ export default function NoteEditor() {
                     >
                       <MoreHorizontal size={17} />
                     </button>
-                    {documentMenuOpen && (
-                      <div
-                        className="document-view-menu absolute right-0 top-full z-40 mt-1.5 w-[210px] rounded-xl border border-jelly-border bg-white p-1.5 shadow-[0_16px_40px_rgba(15,23,42,0.12)]"
-                        role="menu"
-                        aria-label="文档显示设置"
+                    <SoftMenu open={documentMenuOpen} onClose={() => setDocumentMenuOpen(false)}
+                      className="document-view-menu nf-action-menu absolute right-0 top-full z-40 mt-1.5"
+                      role="menu"
+                      aria-label="文档显示设置"
+                    >
+                      <button
+                        type="button"
+                        className="nf-soft-menu-item"
+                        role="menuitemcheckbox"
+                        aria-checked={showHeadingNumbers}
+                        onClick={() => {
+                          const nextValue = !showHeadingNumbers;
+                          setShowHeadingNumbers(nextValue);
+                          try {
+                            window.localStorage.setItem(
+                              HEADING_NUMBERING_STORAGE_KEY,
+                              String(nextValue)
+                            );
+                          } catch {
+                            // The preference remains active for this session.
+                          }
+                          setDocumentMenuOpen(false);
+                        }}
                       >
-                        <button
-                          type="button"
-                          className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[#f4f6f7]"
-                          role="menuitemcheckbox"
-                          aria-checked={showHeadingNumbers}
-                          onClick={() => {
-                            const nextValue = !showHeadingNumbers;
-                            setShowHeadingNumbers(nextValue);
-                            try {
-                              window.localStorage.setItem(
-                                HEADING_NUMBERING_STORAGE_KEY,
-                                String(nextValue)
-                              );
-                            } catch {
-                              // The preference remains active for this session.
-                            }
-                            setDocumentMenuOpen(false);
-                          }}
+                        <span
+                          className="nf-menu-checkbox"
+                          aria-hidden="true"
                         >
-                          <span
-                            className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[11px] ${
-                              showHeadingNumbers
-                                ? "border-jelly-blue bg-jelly-blue text-white"
-                                : "border-jelly-border bg-white"
-                            }`}
-                            aria-hidden="true"
-                          >
-                            {showHeadingNumbers ? "✓" : ""}
+                          {showHeadingNumbers ? "✓" : ""}
+                        </span>
+                        <span>
+                          <span className="nf-menu-label">
+                            显示章节编号
                           </span>
-                          <span>
-                            <span className="block text-[13px] font-medium text-jelly-text">
-                              显示章节编号
-                            </span>
-                            <span className="mt-0.5 block text-[11px] leading-4 text-jelly-text-muted">
-                              自动编号一级和二级标题
-                            </span>
+                          <span className="nf-menu-description">
+                            自动编号一级和二级标题
                           </span>
-                        </button>
-                      </div>
-                    )}
+                        </span>
+                      </button>
+                    </SoftMenu>
                   </div>
                 </div>
                 <div
