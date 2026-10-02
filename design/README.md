@@ -17,6 +17,8 @@
 - [正式应用 320px 截图](noteflow-unified-settings-mobile-implemented.jpg)
 - [实施范围、验证与遗留问题](noteflow-unified-settings-implemented-notes.md)
 
+2026-10-02 后续只修整账号行：取消原生用户名提示、整行反馈与菜单左右对齐，移除账号区域重复框线；见 [本轮修整与验证边界](noteflow-account-row-refinement-notes.md)。上方账号截图保留为修整前历史证据，本轮没有新浏览器截图，实际视觉与最终审美待验收。
+
 - [完整局部图片](noteflow-unified-settings.jpg)
 - [可点击预览](noteflow-unified-settings.preview.html)
 - [源稿](noteflow-unified-settings.source.html)

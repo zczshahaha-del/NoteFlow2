@@ -44,24 +44,29 @@
 .nf-settings-system .nf-avatar svg { color: inherit; }
 .nf-settings-system .nf-username { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .nf-settings-system .nf-account-trigger {
-  display: flex; align-items: center; gap: 10px; max-width: 100%; min-height: 44px;
+  display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; max-width: 100%; min-height: 44px;
+  box-sizing: border-box;
   padding: 5px 8px; border: 0; border-radius: 11px; background: transparent; text-align: left;
 }
 .nf-settings-system .nf-account-trigger:hover, .nf-settings-system .nf-account-trigger[aria-expanded="true"] { background: var(--nf-soft); }
+.nf-settings-system .nf-account-trigger .nf-username { flex: 1; min-width: 0; }
+.nf-settings-system[data-compact="true"] { width: 44px; }
 .nf-settings-system[data-compact="true"] .nf-account-trigger { width: 44px; padding: 5px; }
 .nf-settings-system .nf-account-popover {
-  position: absolute; z-index: 50; bottom: calc(100% + 10px); left: 0;
-  width: max(100%, 248px); max-width: min(340px, calc(100vw - 32px));
+  position: absolute; z-index: 50; bottom: calc(100% + 10px); left: 0; right: 0;
+  box-sizing: border-box; width: 100%; max-width: 100%;
   max-height: calc(100dvh - 96px); overflow: auto; overscroll-behavior: contain;
-  padding: 10px; border: 1px solid var(--nf-line); border-radius: 20px;
+  padding: 10px; border: 0; border-radius: 20px;
   background: var(--nf-surface); box-shadow: 0 7px 22px var(--nf-shadow);
 }
+.nf-settings-system[data-compact="true"] .nf-account-popover { right: auto; width: 248px; max-width: calc(100vw - 32px); }
 .nf-settings-system .nf-account-popover[data-open="true"] { animation: nf-rise-in 180ms ease both; }
 .nf-settings-system .nf-account-popover[data-open="false"] { pointer-events: none; animation: nf-rise-out 180ms ease both; }
-.nf-settings-system .nf-account-heading { display: flex; align-items: center; gap: 10px; padding: 4px 5px 12px; margin: 0 5px 5px; border-bottom: 1px solid var(--nf-line); }
+.nf-settings-system .nf-account-heading { display: flex; align-items: center; gap: 10px; padding: 4px 8px 12px; margin-bottom: 5px; }
+.nf-settings-system .nf-account-heading .nf-username, .nf-settings-system .nf-identity .nf-username { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 .nf-settings-system .nf-menu-item { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 40px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; text-align: left; }
 .nf-settings-system .nf-menu-item:hover { background: var(--nf-soft); }
-.nf-settings-system .nf-divider { border-top: 1px solid var(--nf-line); margin: 5px 10px; }
+.nf-settings-system .nf-account-signout { margin-top: 8px; }
 .nf-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(28, 34, 42, .18); backdrop-filter: blur(2px); }
 .nf-overlay[data-open="true"] { animation: nf-fade-in 180ms ease both; }
 .nf-overlay[data-open="false"] { pointer-events: none; animation: nf-fade-out 180ms ease both; }

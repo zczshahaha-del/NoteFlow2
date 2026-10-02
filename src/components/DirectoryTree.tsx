@@ -962,7 +962,7 @@ export default function DirectoryTree({
         onSelect={handleSearchSelect}
       />
 
-      <div className={`border-t border-jelly-border ${expanded ? "px-3 py-2" : "flex justify-center px-2 py-2"}`}>
+      <div data-account-footer className={expanded ? "px-3 py-2" : "flex justify-center py-2"}>
         <AccountMenu
           compact={!expanded}
           themeMode={themeMode}

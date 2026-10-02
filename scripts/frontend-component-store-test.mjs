@@ -253,6 +253,9 @@ try {
     .querySelector(".file-node-menu-button").classList.contains("opacity-100"));
   assert.match(directoryContainer.textContent ?? "", /目录1 篇/);
   assert.doesNotMatch(directoryContainer.textContent ?? "", /\d+\s*个文件夹/);
+  const accountFooter = directoryContainer.querySelector('[data-account-footer]');
+  assert.ok(accountFooter);
+  assert.doesNotMatch(accountFooter.className, /border/);
   const searchButton = directoryContainer.querySelector('button[aria-label="搜索全部笔记"]');
   const collapseButton = directoryContainer.querySelector('button[aria-label="收起目录"]');
   assert.ok(searchButton);
@@ -491,11 +494,15 @@ try {
   assert.equal(accountTrigger.querySelector(".nf-username").textContent, "test");
   assert.equal(accountTrigger.querySelector(".nf-avatar").textContent, "T");
   assert.equal(accountTrigger.querySelector("svg"), null);
+  assert.equal(accountContainer.querySelector('[title]'), null);
   assert.doesNotMatch(accountContainer.textContent, /test@example.com|我的账号/);
-  await clickAccount(accountTrigger);
+  await clickAccount(accountTrigger.querySelector(".nf-username"));
   assert.equal(document.activeElement, action(accountPanel(), "设置"));
   assert.equal(accountTrigger.getAttribute("aria-controls"), accountPanel().id);
   assert.equal(accountPanel().querySelectorAll("button").length, 3);
+  assert.equal(accountPanel().querySelector('[title]'), null);
+  assert.equal(accountPanel().querySelector('.nf-divider'), null);
+  assert.ok(action(accountPanel(), "退出登录").classList.contains("nf-account-signout"));
   assert.doesNotMatch(accountPanel().textContent, /登录邮箱|登录设备|test@example.com/);
   await act(async () => document.body.dispatchEvent(new dom.window.FocusEvent("focusin", { bubbles: true })));
   assert.ok(accountPanel());
@@ -524,6 +531,7 @@ try {
   assert.equal(accountPanel(), null);
   assert.equal(accountContainer.inert, true);
   assert.equal(document.activeElement.getAttribute("aria-label"), "关闭设置");
+  assert.equal(activeSettings().querySelector('.nf-identity [title]'), null);
   const firstNav = settingAction("账号与安全");
   await act(async () => firstNav.focus());
   await act(async () => document.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true })));
@@ -619,8 +627,10 @@ try {
   const compactTrigger = compactAccountContainer.querySelector('button[aria-label="测试用户的账号菜单"]');
   assert.equal(compactAccountContainer.querySelectorAll("button").length, 1);
   assert.equal(compactTrigger.querySelector(".nf-username"), null);
+  assert.equal(compactTrigger.hasAttribute("title"), false);
   await clickAccount(compactTrigger);
   assert.match(compactAccountContainer.textContent, /测试用户/);
+  assert.equal(compactAccountContainer.querySelector('[title]'), null);
   assert.equal(compactAccountContainer.querySelector(".nf-settings-system").dataset.theme, "dark");
   await act(async () => compactAccountRoot.unmount()); compactAccountContainer.remove();
   const fallbackContainer = document.createElement("div"); document.body.appendChild(fallbackContainer);
@@ -628,6 +638,14 @@ try {
   await act(async () => fallbackRoot.render(React.createElement(AccountMenu, { ...accountProps, userName: "12345@example.com", userEmail: "12345@example.com" })));
   assert.ok(fallbackContainer.querySelector('.nf-avatar svg.lucide-user-round'));
   assert.doesNotMatch(fallbackContainer.textContent, /@example.com/);
+  const longName = "一个很长的真实用户名需要在弹出菜单中完整呈现而不是依赖悬停小框";
+  await act(async () => fallbackRoot.render(React.createElement(AccountMenu, { ...accountProps, userName: longName })));
+  const longNameTrigger = fallbackContainer.querySelector('.nf-account-trigger');
+  assert.equal(longNameTrigger.getAttribute("aria-label"), longName + "的账号菜单");
+  assert.equal(longNameTrigger.querySelector('.nf-username').textContent, longName);
+  await clickAccount(longNameTrigger);
+  assert.equal(fallbackContainer.querySelector('.nf-account-heading .nf-username').textContent, longName);
+  assert.equal(fallbackContainer.querySelector('[title]'), null);
   await act(async () => fallbackRoot.unmount()); fallbackContainer.remove();
   globalThis.fetch = window.fetch = testFetch;
   useAppStore.setState(accountStore, true);
@@ -781,7 +799,7 @@ try {
       "LibrarySearchDialog",
       "AccountMenu",
     ],
-    accountMenuCoverage: ["single-entry", "username", "numeric-avatar-fallback", "enter-exit", "email-confirm", "devices-revoke", "device-error", "memory-CRUD", "memory-button-rollback-only", "ZIP-JSON-export", "import", "trash-restore", "modal-focus-trap", "escape-focus", "IME", "outside-pointer", "focus-leave", "sign-out", "compact", "note-folder-delete-confirm"],
+    accountMenuCoverage: ["single-entry", "username", "no-native-tooltip", "username-click", "long-username", "unframed-footer-menu", "numeric-avatar-fallback", "enter-exit", "email-confirm", "devices-revoke", "device-error", "memory-CRUD", "memory-button-rollback-only", "ZIP-JSON-export", "import", "trash-restore", "modal-focus-trap", "escape-focus", "IME", "outside-pointer", "focus-leave", "sign-out", "compact", "note-folder-delete-confirm"],
     directoryRowCoverage: ["whole-row-selection", "full-name", "selected-more", "nested-indent", "pin-favorite-glyphs", "folder-disclosure", "file-open-callback", "independent-menu", "rename-cancel"],
   }));
 } finally {

@@ -443,7 +443,7 @@ export default function AccountMenu({
       <button ref={accountButtonRef} type="button" className="nf-account-trigger"
         onClick={() => setAccountOpen((open) => !open)}
         aria-label={accountPrimary + "的账号菜单"} aria-expanded={accountOpen}
-        aria-controls={accountPresent ? accountPanelId : undefined} aria-haspopup="dialog" title={accountPrimary}>
+        aria-controls={accountPresent ? accountPanelId : undefined} aria-haspopup="dialog">
         <span className="nf-avatar" aria-hidden="true">{avatar}</span>
         {!compact && <span className="nf-username">{accountPrimary}</span>}
       </button>
@@ -451,11 +451,10 @@ export default function AccountMenu({
       {accountPresent && (
         <div ref={accountPanelRef} id={accountPanelId} role="dialog" aria-label="账号操作"
           className="nf-account-popover" data-open={accountOpen} inert={!accountOpen} aria-hidden={!accountOpen || undefined}>
-          <div className="nf-account-heading"><span className="nf-avatar" aria-hidden="true">{avatar}</span><span className="nf-username" title={accountPrimary}>{accountPrimary}</span></div>
+          <div className="nf-account-heading"><span className="nf-avatar" aria-hidden="true">{avatar}</span><span className="nf-username">{accountPrimary}</span></div>
           <button type="button" className="nf-menu-item" onClick={() => openSettings("account")}><Settings size={17} strokeWidth={1.6} />设置</button>
           <button type="button" className="nf-menu-item" onClick={() => openSettings("trash")}><Trash size={17} strokeWidth={1.6} />回收站{trashCount > 0 && <span className="nf-row-end ml-auto">{trashCount}</span>}</button>
-          <div className="nf-divider" />
-          <button type="button" className="nf-menu-item" onClick={() => { setAccountOpen(false); void onSignOut(); }}><LogOut size={17} strokeWidth={1.6} />退出登录</button>
+          <button type="button" className="nf-menu-item nf-account-signout" onClick={() => { setAccountOpen(false); void onSignOut(); }}><LogOut size={17} strokeWidth={1.6} />退出登录</button>
         </div>
       )}
 
@@ -477,7 +476,7 @@ export default function AccountMenu({
           <div ref={settingsScrollRef} className="nf-settings-scroll">
             <section key={settingsTab} className="nf-settings-page" aria-label={settingsLabel + "内容"}>
               {settingsTab === "account" && <>
-                <div className="nf-identity"><span className="nf-avatar" aria-hidden="true">{avatar}</span><span className="nf-username" title={accountPrimary}>{accountPrimary}</span></div>
+                <div className="nf-identity"><span className="nf-avatar" aria-hidden="true">{avatar}</span><span className="nf-username">{accountPrimary}</span></div>
                 <button type="button" className="nf-row" aria-expanded={emailOpen} onClick={() => { setEmailOpen((open) => !open); setEmailError(""); setEmailMessage(""); }}>
                   <span className="nf-row-main"><MailCheck size={17} strokeWidth={1.6} />登录邮箱</span><span className="nf-row-end">{userEmailVerified ? "已验证" : "待验证"}<ChevronDown size={14} strokeWidth={1.6} /></span>
                 </button>
