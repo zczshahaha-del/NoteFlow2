@@ -61,17 +61,26 @@ try {
     const revision=view.locator('.nds-revision textarea');
     assert.equal(await revision.evaluate(n=>getComputedStyle(n).resize),'none');
     const close=view.locator('[data-action="close"]');
-    const closeStyle=await close.evaluate(n=>{const s=getComputedStyle(n),r=n.getBoundingClientRect(),i=n.querySelector('svg');return {radius:s.borderRadius,border:s.borderWidth,background:s.backgroundColor,icon:getComputedStyle(i).width,stroke:getComputedStyle(i).strokeWidth,width:r.width,height:r.height};});
-    assert.equal(closeStyle.radius,'50%');assert.equal(closeStyle.border,'0px');assert.equal(closeStyle.icon,'14px');assert.equal(closeStyle.stroke,'1.8px');if(mobile)assert.ok(closeStyle.width>=44 && closeStyle.height>=44);
-    if(!mobile){await close.hover();await page.waitForTimeout(180);assert.notEqual(await close.evaluate(n=>getComputedStyle(n).backgroundColor),closeStyle.background);await page.mouse.move(0,0);}
+    const closeMetrics=n=>{const s=getComputedStyle(n),r=n.getBoundingClientRect(),i=n.querySelector('svg');return {radius:s.borderRadius,border:s.borderWidth,background:s.backgroundColor,icon:getComputedStyle(i).width,stroke:getComputedStyle(i).strokeWidth,width:r.width,height:r.height,transform:s.transform};};
+    const assertClose=style=>{assert.equal(style.radius,'10px');assert.equal(style.border,'0px');assert.equal(style.background,'rgba(0, 0, 0, 0)');assert.equal(style.icon,'18px');assert.equal(style.stroke,'1.8px');assert.equal(style.transform,'none');assert.equal(style.width,mobile?44:34);assert.equal(style.height,mobile?44:34);};
+    const closeStyle=await close.evaluate(closeMetrics);assertClose(closeStyle);
+    if(!mobile){
+      await close.hover();await page.waitForTimeout(180);assert.notEqual(await close.evaluate(n=>getComputedStyle(n).backgroundColor),closeStyle.background);
+      await page.mouse.down();assert.equal(await close.evaluate(n=>getComputedStyle(n).transform),'none');await page.mouse.up();await page.mouse.move(0,0);
+      // Enter keyboard modality through the preceding native toolbar control.
+      await view.locator('[data-action="more"]').focus();await page.keyboard.press('Tab');
+      assert.equal(await close.evaluate(n=>n===document.activeElement && n.matches(':focus-visible')),true);
+    }
     await revision.fill('第一行\n第二行\n第三行\n第四行\n第五行\n第六行');
     const grown=await revision.evaluate(n=>({height:n.getBoundingClientRect().height,overflow:getComputedStyle(n).overflowY,scroll:n.scrollHeight}));assert.ok(grown.height>52 && grown.height<=104);assert.ok(grown.scroll>grown.height && grown.overflow==='auto');assert.equal((await measure()).clipped,false);
     await revision.fill('');assert.equal(await revision.evaluate(n=>n.getBoundingClientRect().height),52);assert.ok(await view.locator('[data-action="revise"]').isDisabled());
     await view.locator('[data-action="requirements"]').click();
     const bounds=await view.locator('[data-panel="requirements"]').evaluate(n=>{const r=n.getBoundingClientRect(),v=n.closest('[data-view]').getBoundingClientRect();return r.left>=v.left && r.right<=v.right && r.bottom<=v.bottom;});assert.ok(bounds);
+    assertClose(await view.locator('.nds-icon-button[data-action="dismiss-panel"]').evaluate(closeMetrics));
     await view.locator('[data-action="dismiss-panel"]').click();assert.equal(await view.locator('[data-action="requirements"]').evaluate(n=>n===document.activeElement),true);
     await view.locator('[data-action="save"]').click();
     await page.waitForTimeout(220); // Measure the settled surface, after its 180ms entry.
+    assertClose(await view.locator('.nds-icon-button[data-action="dismiss-panel"]').evaluate(closeMetrics));
     const modal=await view.locator('[data-panel="save"]').evaluate(n=>{const r=n.getBoundingClientRect(),v=n.closest('[data-view]').getBoundingClientRect(),s=getComputedStyle(n),p=getComputedStyle(n.parentElement);return {offsetX:Math.abs((r.left+r.right-v.left-v.right)/2),offsetY:Math.abs((r.top+r.bottom-v.top-v.bottom)/2),inside:r.left>=v.left && r.right<=v.right && r.top>=v.top && r.bottom<=v.bottom,panel:{x:r.x,width:r.width},window:{x:v.x,width:v.width},css:{width:s.width,max:s.maxWidth,grid:p.gridTemplateColumns,display:p.display,padding:p.padding}};});assert.ok(modal.inside && modal.offsetX<1 && modal.offsetY<1,JSON.stringify(modal));
     await view.locator('input').press('Escape');assert.equal(await view.locator('.nds-modal-layer').count(),0);
     await view.locator('[data-chapter="2"]').click();assert.equal(await view.locator('[data-action="generate-section"]').count(),1);await view.locator('[data-chapter="1"]').click();
@@ -91,6 +100,7 @@ try {
     await view.locator('[data-action="requirements"]').click();assert.equal(await view.locator('[data-panel]').evaluate(n=>getComputedStyle(n).animationDuration),'0s');
     await context.close();reports.push({mobile,initial,closeStyle,revisionAutoGrowth:grown,requirementsWithinWindow:true,saveCentered:modal,keyboardFocus:true,dark:true,reducedMotion:true});
   }
-  assert.deepEqual(errors,[]);assert.ok(unexpectedRequests.every(url=>url==='https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js'),'only the optional wrapper positioning asset may be attempted and blocked');
+  const optionalWrapperAssets=new Set(['https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js','https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js']);
+  assert.deepEqual(errors,[]);assert.ok(unexpectedRequests.every(url=>optionalWrapperAssets.has(url)),`only pinned optional wrapper positioning assets may be attempted and blocked: ${JSON.stringify(unexpectedRequests)}`);
   console.log(JSON.stringify({ok:true,designOnly:true,domStateAndPrivacy:true,networkBlocked:true,blockedOptionalAssets:unexpectedRequests,reports,errors},null,2));
 } finally {await browser.close();}
