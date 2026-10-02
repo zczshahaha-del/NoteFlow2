@@ -1,0 +1,230 @@
+<div id="nf-search-study" aria-label="NoteFlow 搜索弹窗 · 柔和留白">
+  <div class="nsp-stage viz-dotted-background">
+    <section class="nsp-example" data-example="initial" aria-label="初始搜索状态">
+      <div class="nsp-caption"><span>初始搜索</span><span>柔和留白</span></div>
+      <div class="nsp-mount"></div>
+    </section>
+    <section class="nsp-example" data-example="results" aria-label="搜索结果状态">
+      <div class="nsp-caption"><span>搜索结果</span><span>示例内容</span></div>
+      <div class="nsp-mount"></div>
+    </section>
+    <section class="nsp-example" data-example="empty" aria-label="无搜索结果状态">
+      <div class="nsp-caption"><span>无结果</span><span>保留原搜索范围</span></div>
+      <div class="nsp-mount"></div>
+    </section>
+  </div>
+  <span class="nsp-announcement" role="status" aria-live="polite"></span>
+</div>
+<style>
+  #nf-search-study {
+    --nsp-text:light-dark(#30353c,#e9edf2);
+    --nsp-muted:light-dark(#727b86,#a7b0bc);
+    --nsp-icon:light-dark(#7e8791,#a8b1be);
+    --nsp-surface:light-dark(#fcfcfd,#252b33);
+    --nsp-soft:light-dark(#f4f5f7,#2d3540);
+    --nsp-selected:light-dark(#eceff2,#363f4a);
+    --nsp-shadow:light-dark(rgba(36,44,55,.10),rgba(0,0,0,.30));
+    --nsp-highlight:light-dark(#eee5d7,#544735);
+    --nsp-danger:light-dark(#b34c49,#ee9e97);
+    --nsp-radius:18px;
+    --nsp-row-padding:12px;
+    width:100%;max-width:736px;margin:auto;
+    color:var(--nsp-text);
+    font:400 14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;
+  }
+  #nf-search-study * { box-sizing:border-box; }
+  #nf-search-study .nsp-stage { padding:24px; }
+  #nf-search-study .nsp-example { width:100%;max-width:610px;margin:0 auto 32px;min-width:0; }
+  #nf-search-study .nsp-example:last-child { margin-bottom:0; }
+  #nf-search-study .nsp-caption { display:flex;justify-content:space-between;gap:12px;color:var(--nsp-muted);font-size:12px;margin:0 4px 12px; }
+  #nf-search-study .nsp-dialog { width:100%;min-width:0;background:var(--nsp-surface);border:0;border-radius:var(--nsp-radius);padding:8px;box-shadow:0 10px 28px var(--nsp-shadow),0 1px 3px var(--nsp-shadow); }
+  #nf-search-study .nsp-dialog[hidden] { display:none; }
+  #nf-search-study .nsp-dialog[data-open="false"] { pointer-events:none;animation:nsp-out 130ms ease both; }
+  #nf-search-study .nsp-dialog[data-enter="true"] { animation:nsp-in 180ms ease both; }
+  #nf-search-study .nsp-button { border:0;background:transparent;color:inherit;font:inherit;padding:0;margin:0; }
+  #nf-search-study .nsp-field { display:flex;align-items:center;gap:11px;min-height:56px;padding:8px 12px;border-radius:11px;transition:background-color 160ms ease; }
+  #nf-search-study .nsp-field:focus-within { background:var(--nsp-soft); }
+  #nf-search-study .nsp-input { appearance:none;flex:1;min-width:0;width:100%;padding:4px 0;border:0;border-radius:5px;background:transparent;color:var(--nsp-text);font:400 16px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif; }
+  #nf-search-study .nsp-input::placeholder { color:var(--nsp-muted); }
+  #nf-search-study .nsp-close { display:grid;place-items:center;width:32px;height:32px;flex:none;border-radius:8px;color:var(--nsp-muted); }
+  #nf-search-study .nsp-clear { flex:none;padding:5px 7px;border-radius:7px;color:var(--nsp-muted);font-size:12px; }
+  #nf-search-study .nsp-clear[hidden] { display:none; }
+  #nf-search-study .nsp-button:hover { background:var(--nsp-selected); }
+  #nf-search-study .nsp-controls { display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 12px 12px;flex-wrap:wrap; }
+  #nf-search-study .nsp-scopes { display:flex;align-items:center;gap:3px; }
+  #nf-search-study .nsp-scope { padding:6px 11px;border-radius:8px;font-size:12px;color:var(--nsp-muted);min-height:32px; }
+  #nf-search-study .nsp-scope[aria-pressed="true"] { background:var(--nsp-selected);color:var(--nsp-text);font-weight:500; }
+  #nf-search-study .nsp-summary { font-size:12px;color:var(--nsp-muted);overflow-wrap:anywhere;min-width:0; }
+  #nf-search-study .nsp-viewport { min-width:0;overflow:hidden;height:48px;transition:height 210ms cubic-bezier(.2,.8,.2,1); }
+  #nf-search-study .nsp-body { padding:0 4px; }
+  #nf-search-study .nsp-hint { margin:0;padding:10px 12px 14px;font-size:12px;color:var(--nsp-muted); }
+  #nf-search-study .nsp-empty { display:flex;flex-direction:column;justify-content:center;gap:6px;min-height:136px;padding:18px 16px;text-align:center; }
+  #nf-search-study .nsp-empty p { margin:0;overflow-wrap:anywhere; }
+  #nf-search-study .nsp-empty-title { font-weight:500; }
+  #nf-search-study .nsp-empty-detail { color:var(--nsp-muted);font-size:12px; }
+  #nf-search-study .nsp-wait { display:flex;align-items:center;gap:8px;min-height:68px;padding:16px;color:var(--nsp-muted);font-size:12px; }
+  #nf-search-study .nsp-dot { width:5px;height:5px;background:currentColor;border-radius:50%;flex:none;animation:nsp-breathe 1500ms ease-in-out infinite; }
+  #nf-search-study .nsp-result { display:flex;gap:12px;width:100%;padding:var(--nsp-row-padding);border-radius:11px;text-align:left;transition:background-color 150ms ease; }
+  #nf-search-study .nsp-result[aria-selected="true"] { background:var(--nsp-selected); }
+  #nf-search-study .nsp-file { color:var(--nsp-icon);padding-top:2px;flex:none; }
+  #nf-search-study .nsp-copy { flex:1;min-width:0;display:block; }
+  #nf-search-study .nsp-row-heading { display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap; }
+  #nf-search-study .nsp-title { font-weight:500;overflow-wrap:anywhere; }
+  #nf-search-study .nsp-labels { color:var(--nsp-muted);font-size:11px;font-weight:400; }
+  #nf-search-study .nsp-location { display:block;margin-top:5px;color:var(--nsp-muted);font-size:11px;overflow-wrap:anywhere; }
+  #nf-search-study .nsp-snippet { display:block;margin-top:8px;font-size:13px;line-height:1.6;overflow-wrap:anywhere; }
+  #nf-search-study .nsp-more { display:block;margin-top:7px;color:var(--nsp-muted);font-size:11px; }
+  #nf-search-study mark { border-radius:3px;padding:0 2px;background:var(--nsp-highlight);color:inherit; }
+  #nf-search-study .nsp-footer { display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 12px 5px;color:var(--nsp-muted);font-size:11px; }
+  #nf-search-study .nsp-reopen { display:block;margin:16px auto;padding:8px 12px;border-radius:9px;color:var(--nsp-muted); }
+  #nf-search-study .nsp-reopen[hidden] { display:none; }
+  #nf-search-study .nsp-announcement { position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%); }
+  #nf-search-study .nsp-dialog svg.lucide { width:17px!important;height:17px!important;max-width:none;flex:none;stroke-width:1.65;color:var(--nsp-icon); }
+  #nf-search-study .nsp-close svg.lucide { width:15px!important;height:15px!important; }
+  @keyframes nsp-in { from { opacity:0;transform:translateY(-5px) scale(.99); } to { opacity:1;transform:none; } }
+  @keyframes nsp-out { to { opacity:0;transform:translateY(-3px) scale(.99); } }
+  @keyframes nsp-breathe { 50% { opacity:.4; } }
+  @media (max-width:480px) {
+    #nf-search-study .nsp-stage { padding:16px 12px; }
+    #nf-search-study .nsp-caption { gap:8px; }
+    #nf-search-study .nsp-field { gap:8px;padding:8px;flex-wrap:wrap; }
+    #nf-search-study .nsp-input { width:0;flex:1 1 0; }
+    #nf-search-study .nsp-controls { padding:2px 8px 10px; }
+    #nf-search-study .nsp-result { gap:9px; }
+    #nf-search-study .nsp-footer { padding:10px 8px 5px; }
+  }
+  @media (pointer:coarse) {
+    #nf-search-study .nsp-close { width:44px;height:44px; }
+    #nf-search-study .nsp-clear,#nf-search-study .nsp-scope,#nf-search-study .nsp-reopen { min-height:44px; }
+    #nf-search-study .nsp-input { min-height:44px;font-size:16px; }
+    #nf-search-study .nsp-result { min-height:44px; }
+  }
+  @media (prefers-reduced-motion:reduce) { #nf-search-study * { animation:none!important;transition:none!important; } }
+</style>
+<script>
+(() => {
+  const root = document.getElementById('nf-search-study');
+  const identity = 'NoteFlow search soft 20261002';
+  const design = { radius:18, rowPadding:12, revision:0 };
+  const examples = new Map();
+  const scopes = [['all','全部'],['title','标题'],['content','正文']];
+  const sampleNotes = [
+    { id:'redis-example',title:'Redis',path:'知识库 / 缓存基础',date:'2026-10-01',snippet:'Redis 将数据保存在内存中，常用于缓存、会话存储和计数。',contentMatches:2 },
+    { id:'python-example',title:'Python 的面试常见问题',path:'知识库 / 缓存与数据库',date:'2026-09-30',snippet:'如何用 Redis 缓存热点数据？需要同时考虑过期策略与数据一致性。',contentMatches:1 }
+  ];
+  const icon = name => `<i data-lucide="${name}" aria-hidden="true"></i>`;
+  const escapeText = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const announce = message => { root.querySelector('.nsp-announcement').textContent = message; };
+  const reduced = () => window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  function highlight(text, query) {
+    if (!query) return escapeText(text);
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    return String(text).split(new RegExp(`(${escaped})`,'gi')).map(part => part.toLocaleLowerCase()===query.toLocaleLowerCase()?`<mark>${escapeText(part)}</mark>`:escapeText(part)).join('');
+  }
+  function filtered(model) {
+    const query = model.query.trim().toLocaleLowerCase();
+    if (!query) return [];
+    return sampleNotes.map(note=>{
+      const titleHit=note.title.toLocaleLowerCase().includes(query),contentHit=note.snippet.toLocaleLowerCase().includes(query);
+      const matches=(model.scope!=='content' && titleHit?1:0)+(model.scope!=='title' && contentHit?note.contentMatches:0);
+      const labels=[model.scope!=='content' && titleHit?'标题':'',model.scope!=='title' && contentHit?'正文':''].filter(Boolean).join(' · ');
+      return {...note,matches,labels};
+    }).filter(note=>note.matches>0);
+  }
+  function resize(model) {
+    model.viewport.style.height = model.body.getBoundingClientRect().height+'px';
+  }
+  function paint(model) {
+    const rows=filtered(model), query=model.query.trim();
+    const hasResults=Boolean(query && model.phase==='settled' && rows.length);
+    model.active = rows.length?Math.min(Math.max(model.active,0),rows.length-1):-1;
+    model.input.setAttribute('aria-expanded',String(hasResults));
+    if(hasResults) model.input.setAttribute('aria-activedescendant',`${model.key}-result-${model.active}`);
+    else model.input.removeAttribute('aria-activedescendant');
+    model.clear.hidden=!model.query || model.composing;
+    model.surface.querySelectorAll('[data-scope]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.scope===model.scope)));
+    model.summary.textContent = hasResults?`${rows.length} 篇笔记 · ${rows.reduce((n,row)=>n+row.matches,0)} 处命中`:query && model.phase==='settled' && !model.composing?'0 篇笔记 · 0 处命中':'';
+    if(!query) model.body.innerHTML='<p class="nsp-hint">输入笔记标题、章节名或正文关键词。</p>';
+    else if(model.composing || model.phase==='pending' || model.phase==='loading') model.body.innerHTML=`<div class="nsp-wait" role="status" aria-live="polite">${model.phase==='loading'?'<span class="nsp-dot" aria-hidden="true"></span>':''}${model.composing?'继续完成输入':model.phase==='loading'?'正在搜索…':'等待输入完成…'}</div>`;
+    else if(!rows.length) model.body.innerHTML=`<div class="nsp-empty"><p class="nsp-empty-title">没有找到“${escapeText(query)}”</p><p class="nsp-empty-detail">可以缩短关键词，或切换到“全部”查看标题和正文。</p></div>`;
+    else model.body.innerHTML=rows.map((row,index)=>`<button type="button" class="nsp-button nsp-result cursor-interaction" role="option" aria-selected="${index===model.active}" id="${model.key}-result-${index}" data-result="${index}"><span class="nsp-file">${icon('file-text')}</span><span class="nsp-copy"><span class="nsp-row-heading"><span class="nsp-title">${highlight(row.title,query)}</span><span class="nsp-labels">${row.labels}</span></span><span class="nsp-location">${escapeText(row.path)} · 更新于 ${row.date}</span><span class="nsp-snippet">${highlight(model.scope==='title'?'笔记标题中包含这个关键词':row.snippet,query)}</span>${row.matches>1 && model.scope!=='title'?`<span class="nsp-more">另有 ${row.matches-1} 处命中</span>`:''}</span></button>`).join('');
+    if(globalThis.lucide) lucide.createIcons({attrs:{width:17,height:17}});
+    resize(model);
+  }
+  function applyDesign() {
+    root.style.setProperty('--nsp-radius',design.radius+'px');
+    root.style.setProperty('--nsp-row-padding',design.rowPadding+'px');
+    examples.forEach(resize);
+  }
+  function persist(action) {
+    design.revision++;
+    window.openai?.setWidgetState?.({modelContent:{design:identity,style:'柔和留白',lastAction:action},privateContent:{searchDesign:{...design,design:identity}}})?.catch(()=>{});
+  }
+  function restore(snapshot) {
+    if(snapshot?.design!==identity || !Number.isInteger(snapshot.revision) || snapshot.revision<design.revision) return;
+    if(Number.isFinite(snapshot.radius)) design.radius=Math.max(14,Math.min(22,snapshot.radius));
+    if(Number.isFinite(snapshot.rowPadding)) design.rowPadding=Math.max(10,Math.min(16,snapshot.rowPadding));
+    design.revision=snapshot.revision;applyDesign();
+  }
+  function schedule(model) {
+    clearTimeout(model.timer);clearTimeout(model.finish);
+    if(model.composing || !model.query.trim()) { model.phase='settled';paint(model);return; }
+    model.phase='pending';paint(model);
+    model.timer=setTimeout(()=>{
+      model.phase='loading';paint(model);
+      model.finish=setTimeout(()=>{model.phase='settled';model.active=0;paint(model);},500);
+    },340);
+  }
+  function select(model,index) {
+    const row=filtered(model)[index];if(!row || model.phase!=='settled')return;
+    model.active=index;paint(model);announce('仅设计预览：选中 '+row.title+'。正式页面将跳转到对应原文。');persist('预览选择结果');
+  }
+  function close(model) {
+    if(model.surface.dataset.open==='false')return;
+    clearTimeout(model.timer);clearTimeout(model.finish);
+    model.surface.dataset.open='false';model.surface.inert=true;model.surface.setAttribute('aria-hidden','true');
+    model.reopen.hidden=false;model.reopen.focus();
+    model.exit=setTimeout(()=>{model.surface.hidden=true;},reduced()?0:130);
+  }
+  root.querySelectorAll('[data-example]').forEach(section=>{
+    const key=section.dataset.example;
+    const query=key==='results'?'Redis':key==='empty'?'量子计算':'';
+    const mount=section.querySelector('.nsp-mount');
+    mount.innerHTML=`<div class="nsp-dialog" role="dialog" aria-label="搜索全部笔记 · ${section.getAttribute('aria-label')}" data-open="true"><div class="nsp-field">${icon('search')}<input class="nsp-input" aria-label="搜索全部笔记" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${key}-results" placeholder="搜索标题、章节和正文" value="${query}"><button type="button" class="nsp-button nsp-clear cursor-interaction"${query?'':' hidden'}>清空</button><button type="button" class="nsp-button nsp-close cursor-interaction" aria-label="关闭搜索">${icon('x')}</button></div><div class="nsp-controls"><div class="nsp-scopes" role="group" aria-label="搜索范围">${scopes.map(([value,label])=>`<button type="button" class="nsp-button nsp-scope cursor-interaction" data-scope="${value}" aria-pressed="${value==='all'}">${label}</button>`).join('')}</div><span class="nsp-summary" aria-live="polite"></span></div><div class="nsp-viewport"><div class="nsp-body" id="${key}-results" role="listbox" aria-label="搜索结果"></div></div><div class="nsp-footer"><span>↑ ↓ 选择 · Enter 打开</span><span>Esc 关闭</span></div></div><button type="button" class="nsp-button nsp-reopen cursor-interaction" hidden>重新打开预览</button>`;
+    const model={key,query,scope:'all',phase:'settled',active:0,composing:false,surface:mount.querySelector('.nsp-dialog'),input:mount.querySelector('input'),clear:mount.querySelector('.nsp-clear'),summary:mount.querySelector('.nsp-summary'),viewport:mount.querySelector('.nsp-viewport'),body:mount.querySelector('.nsp-body'),reopen:mount.querySelector('.nsp-reopen')};
+    examples.set(key,model);
+    model.input.addEventListener('input',()=>{model.query=model.input.value;schedule(model);});
+    model.input.addEventListener('compositionstart',()=>{model.composing=true;schedule(model);});
+    model.input.addEventListener('compositionend',()=>{model.composing=false;model.query=model.input.value;schedule(model);});
+    model.clear.addEventListener('click',()=>{model.query='';model.input.value='';model.composing=false;schedule(model);model.input.focus();});
+    model.surface.querySelector('.nsp-close').addEventListener('click',()=>close(model));
+    model.reopen.addEventListener('click',()=>{clearTimeout(model.exit);model.surface.hidden=false;model.surface.inert=false;model.surface.removeAttribute('aria-hidden');model.surface.dataset.open='true';model.surface.dataset.enter='true';model.reopen.hidden=true;model.phase='settled';paint(model);model.input.focus();});
+    model.surface.addEventListener('click',event=>{
+      const scope=event.target.closest('[data-scope]');
+      if(scope){model.scope=scope.dataset.scope;schedule(model);persist('预览切换搜索范围');}
+      const row=event.target.closest('[data-result]');if(row)select(model,Number(row.dataset.result));
+    });
+    model.surface.addEventListener('keydown',event=>{
+      if(event.isComposing || event.keyCode===229 || model.composing)return;
+      if(event.key==='Escape'){event.preventDefault();close(model);return;}
+      if(event.target!==model.input || model.phase!=='settled')return;
+      const rows=filtered(model);
+      if((event.key==='ArrowDown'||event.key==='ArrowUp') && rows.length){event.preventDefault();model.active=Math.max(0,Math.min(rows.length-1,model.active+(event.key==='ArrowDown'?1:-1)));paint(model);}
+      if(event.key==='Enter' && rows.length){event.preventDefault();select(model,model.active);}
+    });
+    model.body.addEventListener('pointerover',event=>{
+      const row=event.target.closest('[data-result]');if(!row || model.phase!=='settled')return;
+      model.active=Number(row.dataset.result);
+      model.body.querySelectorAll('[data-result]').forEach(button=>button.setAttribute('aria-selected',String(Number(button.dataset.result)===model.active)));
+      model.input.setAttribute('aria-activedescendant',row.id);
+    });
+    paint(model);
+  });
+  const saved=window.openai?.widgetState;
+  restore(saved?.privateContent?.searchDesign ?? saved?.searchDesign);
+  window.addEventListener('openai:set_globals',event=>{const saved=event.detail?.globals?.widgetState;restore(saved?.privateContent?.searchDesign ?? saved?.searchDesign);});
+  const resizeObserver=new ResizeObserver(()=>examples.forEach(resize));resizeObserver.observe(root);
+  if(globalThis.Tweak){const tweak=new Tweak({container:root,onChange:()=>{applyDesign();persist('调整搜索留白');}});tweak.addSlider(design,'radius',{label:'弹窗圆角',min:14,max:22,unit:'px'});tweak.addSlider(design,'rowPadding',{label:'结果留白',min:10,max:16,unit:'px'});}
+  applyDesign();
+})();
+</script>
