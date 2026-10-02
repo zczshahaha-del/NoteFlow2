@@ -1,0 +1,190 @@
+<div id="nf-menu-study" aria-label="NoteFlow 菜单统一设计对照">
+  <div class="viz-carousel viz-dotted-background" aria-label="菜单视觉方案" data-previous-label="上一稿" data-next-label="下一稿">
+    <section data-variant="柔和留白" aria-label="柔和留白菜单方案">
+      <div class="nms-board" data-design="soft"></div>
+    </section>
+    <section data-variant="紧凑轻盈" aria-label="紧凑轻盈菜单方案" hidden>
+      <div class="nms-board nms-compact" data-design="compact"></div>
+    </section>
+  </div>
+  <span class="nms-announcement" role="status" aria-live="polite"></span>
+</div>
+<style>
+  #nf-menu-study {
+    --nms-text:light-dark(#30353c,#e9edf2);
+    --nms-muted:light-dark(#727b86,#a7b0bc);
+    --nms-icon:light-dark(#7e8791,#a8b1be);
+    --nms-surface:light-dark(#fcfcfd,#252b33);
+    --nms-context:light-dark(#f1f3f5,#20262d);
+    --nms-hover:light-dark(#eceff2,#363f4a);
+    --nms-line:light-dark(#e2e7eb,#414b58);
+    --nms-shadow:light-dark(rgba(36,44,55,.10),rgba(0,0,0,.32));
+    --nms-danger:light-dark(#b34c49,#ee9e97);
+    --nms-danger-hover:light-dark(#f9eeec,#482e30);
+    --nms-old-hover:light-dark(#edf5f8,#304453);
+    --nms-old-accent:light-dark(#315f7d,#9bc8e1);
+    --nms-avatar:light-dark(#c37870,#bd7771);
+    --nms-avatar-text:light-dark(#ffffff,#ffffff);
+    max-width:736px; width:100%; margin:auto; color:var(--nms-text);
+    font:400 14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;
+  }
+  #nf-menu-study * { box-sizing:border-box; }
+  #nf-menu-study .nms-board { padding:24px; }
+  #nf-menu-study .nms-board-header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:22px; }
+  #nf-menu-study .nms-brand { font-size:15px; font-weight:500; letter-spacing:-.2px; }
+  #nf-menu-study .nms-meta { color:var(--nms-muted); font-size:12px; }
+  #nf-menu-study .nms-compare { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+  #nf-menu-study .nms-column { min-width:0; }
+  #nf-menu-study .nms-label { margin:0 0 13px; color:var(--nms-muted); font-size:12px; font-weight:400; }
+  #nf-menu-study .nms-scene { min-width:0; padding:18px; border-radius:18px; background:var(--nms-context); }
+  #nf-menu-study .nms-file-scene { min-height:326px; }
+  #nf-menu-study .nms-anchor { display:flex; align-items:center; gap:9px; width:100%; min-width:0; min-height:36px; margin-bottom:12px; }
+  #nf-menu-study .nms-anchor-name { min-width:0; flex:1; font-weight:500; }
+  #nf-menu-study .nms-button { appearance:none; color:inherit; font:inherit; border:0; background:transparent; margin:0; padding:0; text-align:left; }
+  #nf-menu-study .nms-toggle { display:grid; place-items:center; width:32px; height:32px; flex:none; border-radius:8px; transition:background-color 140ms ease,transform 100ms ease; }
+  #nf-menu-study .nms-toggle:hover,#nf-menu-study .nms-toggle[aria-expanded="true"] { background:var(--nms-hover); }
+  #nf-menu-study .nms-toggle:active { transform:scale(.96); }
+  #nf-menu-study .nms-menu { width:100%; background:var(--nms-surface); padding:6px; border-radius:14px; box-shadow:0 10px 26px var(--nms-shadow),0 1px 3px var(--nms-shadow); }
+  #nf-menu-study .nms-menu[hidden] { display:none; }
+  #nf-menu-study .nms-menu[data-enter="true"] { animation:nms-enter 170ms ease both; }
+  #nf-menu-study .nms-menu[data-exit="true"] { animation:nms-exit 130ms ease both; pointer-events:none; }
+  #nf-menu-study .nms-item { display:flex; align-items:center; gap:11px; min-height:38px; width:100%; padding:8px 11px; border-radius:9px; transition:background-color 140ms ease,transform 100ms ease,color 140ms ease; }
+  #nf-menu-study .nms-item:hover { background:var(--nms-hover); }
+  #nf-menu-study .nms-item:active { transform:translateY(1px); }
+  #nf-menu-study .nms-item[data-selected="true"] { background:var(--nms-hover); }
+  #nf-menu-study .nms-item[data-danger="true"] { color:var(--nms-danger); }
+  #nf-menu-study .nms-item[data-danger="true"]:hover { background:var(--nms-danger-hover); }
+  #nf-menu-study .nms-item[data-danger="true"] svg { color:inherit; }
+  #nf-menu-study .nms-tail { margin-left:auto; display:flex; align-items:center; color:var(--nms-muted); }
+  #nf-menu-study .nms-old { width:144px; max-width:100%; padding:4px 0; border:1px solid var(--nms-line); border-radius:6px; box-shadow:0 14px 34px var(--nms-shadow); }
+  #nf-menu-study .nms-old .nms-item { min-height:34px; padding:7px 12px; gap:8px; border-radius:0; font-size:13px; color:var(--nms-muted); }
+  #nf-menu-study .nms-old .nms-item:hover,#nf-menu-study .nms-old .nms-item[data-selected="true"] { background:var(--nms-old-hover); color:var(--nms-old-accent); }
+  #nf-menu-study .nms-old .nms-item[data-danger="true"] { color:var(--nms-danger); }
+  #nf-menu-study .nms-old .nms-item svg { --nms-size:14px; stroke-width:1.8; }
+  #nf-menu-study .nms-small-grid { display:grid; grid-template-columns:1fr 1fr; gap:22px 24px; margin-top:24px; }
+  #nf-menu-study .nms-small-scene { min-height:170px; }
+  #nf-menu-study .nms-lower-scene { min-height:228px; }
+  #nf-menu-study .nms-history-heading { padding:9px 11px 7px; color:var(--nms-muted); font-size:12px; }
+  #nf-menu-study .nms-history-row { display:flex; align-items:center; min-height:42px; gap:6px; padding:4px 8px; border-radius:9px; background:var(--nms-hover); }
+  #nf-menu-study .nms-history-name { min-width:0; flex:1; padding:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #nf-menu-study .nms-history-action { display:grid; place-items:center; width:30px; height:32px; flex:none; border-radius:7px; }
+  #nf-menu-study .nms-history-action:hover { background:var(--nms-surface); }
+  #nf-menu-study .nms-history-action[data-danger="true"]:hover { color:var(--nms-danger); background:var(--nms-danger-hover); }
+  #nf-menu-study .nms-history-action[data-danger="true"]:hover svg { color:inherit; }
+  #nf-menu-study .nms-account-heading { display:flex; align-items:center; gap:10px; padding:8px 10px 12px; font-weight:500; }
+  #nf-menu-study .nms-avatar { display:grid; place-items:center; width:30px; height:30px; border-radius:50%; background:var(--nms-avatar); color:var(--nms-avatar-text); flex:none; }
+  #nf-menu-study .nms-avatar svg { color:inherit; --nms-size:17px; }
+  #nf-menu-study .nms-check-option { align-items:flex-start; }
+  #nf-menu-study .nms-check-copy { flex:1; min-width:0; }
+  #nf-menu-study .nms-check-copy small { display:block; margin-top:3px; font-size:11px; color:var(--nms-muted); }
+  #nf-menu-study .nms-item input[type="checkbox"] { margin:3px 0 0; width:15px; height:15px; flex:none; accent-color:var(--nms-text); }
+  #nf-menu-study .nms-compact .nms-menu:not(.nms-old) { padding:4px; border-radius:11px; box-shadow:0 5px 16px var(--nms-shadow),0 1px 2px var(--nms-shadow); }
+  #nf-menu-study .nms-compact .nms-menu:not(.nms-old) .nms-item { min-height:34px; padding:6px 10px; gap:9px; border-radius:7px; }
+  #nf-menu-study .nms-announcement { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+  #nf-menu-study .nms-board svg.lucide { width:var(--nms-size,17px)!important; height:var(--nms-size,17px)!important; max-width:none; flex:none; stroke-width:1.65; color:var(--nms-icon); }
+  #nf-menu-study .nms-board .nms-avatar svg.lucide { color:inherit; }
+  #nf-menu-study .nms-board svg[data-lucide="chevron-down"] { --nms-size:14px; stroke-width:1.9; }
+  @keyframes nms-enter { from { opacity:0; transform:translateY(-5px) scale(.985); } to { opacity:1; transform:none; } }
+  @keyframes nms-exit { to { opacity:0; transform:translateY(-3px) scale(.99); } }
+  @media (max-width:560px) {
+    #nf-menu-study .nms-board { padding:16px; }
+    #nf-menu-study .nms-compare,#nf-menu-study .nms-small-grid { grid-template-columns:1fr; gap:20px; }
+    #nf-menu-study .nms-board-header { align-items:flex-start; flex-direction:column; gap:3px; }
+  }
+  @media (pointer:coarse) { #nf-menu-study .nms-item,#nf-menu-study .nms-old .nms-item,#nf-menu-study .nms-compact .nms-menu:not(.nms-old) .nms-item { min-height:44px!important; } #nf-menu-study .nms-toggle,#nf-menu-study .nms-history-action { width:44px; height:44px; } }
+  @media (prefers-reduced-motion:reduce) { #nf-menu-study .nms-board * { animation:none!important; transition:none!important; } }
+</style>
+<script>
+(() => {
+  const root = document.getElementById('nf-menu-study');
+  const identity = 'NoteFlow menus 20261002';
+  const state = { pinned:false, favorite:false, numbering:true, radius:14, rowHeight:38, revision:0 };
+  const icon = name => `<i data-lucide="${name}" aria-hidden="true"></i>`;
+  const item = (name,label,action,danger=false) => `<button type="button" class="nms-button nms-item cursor-interaction" data-action="${action}"${danger?' data-danger="true"':''}>${icon(name)}<span data-item-label>${label}</span>${action==='pin'||action==='favorite'?'<span class="nms-tail" data-state-mark></span>':''}</button>`;
+  const fileItems = () => item('pencil','重命名','rename')+item('folder-input','移动到','move')+item('download','导出','export')+item('pin','置顶','pin')+item('star','收藏','favorite')+item('trash-2','删除','delete',true);
+  const anchor = (id,label,name='more-horizontal') => `<div class="nms-anchor">${label==='Redis'?icon('file-text'):''}<span class="nms-anchor-name">${label}</span><button class="nms-button nms-toggle cursor-interaction" type="button" aria-label="展开${label}菜单" aria-expanded="true" aria-controls="${id}" data-toggle="${id}">${icon(name)}</button></div>`;
+  const menu = (id,items,classes='') => `<div class="nms-menu ${classes}" id="${id}" role="group" aria-label="菜单操作">${items}</div>`;
+  root.querySelectorAll('[data-design]').forEach(board => {
+    const key = board.dataset.design;
+    board.innerHTML = `<header class="nms-board-header"><span class="nms-brand">NoteFlow · 菜单统一</span><span class="nms-meta">现有功能 · 局部设计稿</span></header>
+      <div class="nms-compare">
+        <section class="nms-column"><h3 class="nms-label">笔记操作 · 当前风格参考（重绘）</h3><div class="nms-scene nms-file-scene">${anchor(key+'-old','Redis')}${menu(key+'-old',fileItems(),'nms-old')}</div></section>
+        <section class="nms-column"><h3 class="nms-label">笔记操作 · ${key==='soft'?'柔和留白':'紧凑轻盈'}</h3><div class="nms-scene nms-file-scene">${anchor(key+'-file','Redis')}${menu(key+'-file',fileItems())}</div></section>
+      </div>
+      <div class="nms-small-grid">
+        <section class="nms-column"><h3 class="nms-label">新建菜单</h3><div class="nms-scene nms-small-scene">${anchor(key+'-new','新建','plus')}${menu(key+'-new',item('file-plus','新建笔记','new-note')+item('folder-plus','新建文件夹','new-folder'))}</div></section>
+        <section class="nms-column"><h3 class="nms-label">文档显示设置</h3><div class="nms-scene nms-small-scene">${anchor(key+'-display','显示设置')}${menu(key+'-display',`<label class="nms-item nms-check-option cursor-interaction"><input type="checkbox" data-numbering checked><span class="nms-check-copy">显示章节编号<small>自动编号一级和二级标题</small></span></label>`)}</div></section>
+        <section class="nms-column"><h3 class="nms-label">会话历史 · 行内操作保留</h3><div class="nms-scene nms-lower-scene">${menu(key+'-chat',`<div class="nms-history-heading">对话列表 · 操作可见状态</div><div class="nms-history-row"><button type="button" class="nms-button nms-history-name cursor-interaction" data-action="chat-open">学习笔记</button><button type="button" class="nms-button nms-history-action cursor-interaction" data-action="chat-rename" aria-label="重命名学习笔记">${icon('pencil')}</button><button type="button" class="nms-button nms-history-action cursor-interaction" data-action="chat-delete" data-danger="true" aria-label="删除学习笔记">${icon('trash-2')}</button></div>`)}</div></section>
+        <section class="nms-column"><h3 class="nms-label">账号菜单 · 保留已有内容</h3><div class="nms-scene nms-lower-scene">${menu(key+'-account',`<div class="nms-account-heading"><span class="nms-avatar">${icon('user-round')}</span><span>用户名</span></div>`+item('settings','设置','settings')+item('trash','回收站','trash')+item('log-out','退出登录','signout'))}</div></section>
+      </div>`;
+  });
+  const announce = message => { root.querySelector('.nms-announcement').textContent = message; };
+  function applyState() {
+    root.querySelectorAll('[data-action="pin"]').forEach(button => {
+      button.querySelector('[data-item-label]').textContent = state.pinned?'取消置顶':'置顶';
+      button.querySelector('[data-state-mark]').textContent = state.pinned?'✓':'';
+      button.setAttribute('aria-pressed',String(state.pinned));
+    });
+    root.querySelectorAll('[data-action="favorite"]').forEach(button => {
+      button.querySelector('[data-item-label]').textContent = state.favorite?'取消收藏':'收藏';
+      button.querySelector('[data-state-mark]').textContent = state.favorite?'✓':'';
+      button.setAttribute('aria-pressed',String(state.favorite));
+    });
+    root.querySelectorAll('[data-numbering]').forEach(input => { input.checked = state.numbering; });
+    root.querySelectorAll('[data-design="soft"] .nms-menu:not(.nms-old)').forEach(panel => { panel.style.borderRadius=state.radius+'px'; });
+    root.querySelectorAll('[data-design="soft"] .nms-menu:not(.nms-old) .nms-item').forEach(button => { button.style.minHeight=state.rowHeight+'px'; });
+  }
+  function restore(snapshot) {
+    if (snapshot?.design!==identity || !Number.isInteger(snapshot.revision) || snapshot.revision<state.revision) return;
+    ['pinned','favorite','numbering'].forEach(key => { if(typeof snapshot[key]==='boolean') state[key]=snapshot[key]; });
+    state.revision=snapshot.revision;
+    applyState();
+  }
+  const saved=window.openai?.widgetState;
+  restore(saved?.privateContent?.menuState ?? saved?.menuState);
+  const persist = () => {
+    state.revision++;
+    window.openai?.setWidgetState?.({modelContent:{design:identity,pinned:state.pinned,favorite:state.favorite,numbering:state.numbering},privateContent:{menuState:{design:identity,...state}}})?.catch(()=>{});
+  };
+  window.addEventListener('openai:set_globals',event=> {
+    const saved=event.detail?.globals?.widgetState;
+    restore(saved?.privateContent?.menuState ?? saved?.menuState);
+  });
+  root.addEventListener('click',event => {
+    const toggle=event.target.closest('[data-toggle]');
+    if(toggle) {
+      const panel=document.getElementById(toggle.dataset.toggle);
+      if(!panel || panel.dataset.exit==='true') return;
+      if(panel.hidden) { panel.hidden=false; panel.dataset.enter='true'; toggle.setAttribute('aria-expanded','true'); }
+      else { panel.dataset.exit='true'; toggle.setAttribute('aria-expanded','false'); setTimeout(()=>{panel.hidden=true;delete panel.dataset.exit;delete panel.dataset.enter;},140); }
+      return;
+    }
+    const action=event.target.closest('[data-action]');
+    if(!action) return;
+    if(action.dataset.action==='pin') state.pinned=!state.pinned;
+    else if(action.dataset.action==='favorite') state.favorite=!state.favorite;
+    else { announce('仅设计预览：'+action.textContent.trim()+'，不操作真实数据。'); return; }
+    applyState(); persist(); announce('仅预览：'+action.querySelector('[data-item-label]').textContent);
+  });
+  root.addEventListener('change',event=> {
+    if(!event.target.matches('[data-numbering]')) return;
+    state.numbering=event.target.checked; applyState(); persist();
+    announce('仅预览：章节编号'+(state.numbering?'开启':'关闭'));
+  });
+  root.addEventListener('keydown',event=> {
+    if(event.key!=='Escape' || event.isComposing || event.keyCode===229) return;
+    const board=event.target.closest('[data-design]');
+    const panel=event.target.closest('.nms-menu');
+    if(!board || !panel || panel.hidden) return;
+    const toggle=board.querySelector(`[data-toggle="${panel.id}"]`);
+    if(toggle) { event.preventDefault(); toggle.focus(); toggle.click(); }
+  });
+  applyState();
+  if(globalThis.lucide) lucide.createIcons();
+  if(globalThis.Tweak) {
+    const tweak=new Tweak({container:root.querySelector('[data-design="soft"]'),onChange:applyState});
+    tweak.addSlider(state,'radius',{label:'菜单圆角',min:10,max:18,unit:'px'});
+    tweak.addSlider(state,'rowHeight',{label:'菜单行高',min:36,max:42,unit:'px'});
+  }
+})();
+</script>
