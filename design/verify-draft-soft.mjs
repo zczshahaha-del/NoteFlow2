@@ -58,6 +58,15 @@ try {
       return {contentWidth:innerWidth,scrollWidth:document.documentElement.scrollWidth,windowWidth:r.width,height:r.height,border:getComputedStyle(view).borderWidth,radius:getComputedStyle(view).borderRadius,background:getComputedStyle(view).backgroundColor,minButton:Math.min(...visible.map(n=>n.getBoundingClientRect().height)),clipped:visible.some(n=>{const b=n.getBoundingClientRect();return b.left<r.left-1 || b.right>r.right+1}),icon:getComputedStyle(view.querySelector('.nds-action svg')).width,revisionFont:getComputedStyle(view.querySelector('.nds-revision textarea')).fontSize};
     });
     const initial=await measure();assert.equal(initial.contentWidth,mobile?320:736);assert.equal(initial.scrollWidth,initial.contentWidth);assert.equal(initial.border,'0px');assert.equal(initial.icon,'17px');assert.equal(initial.clipped,false);if(mobile){assert.ok(initial.minButton>=44);assert.equal(initial.revisionFont,'16px');}
+    const revision=view.locator('.nds-revision textarea');
+    assert.equal(await revision.evaluate(n=>getComputedStyle(n).resize),'none');
+    const close=view.locator('[data-action="close"]');
+    const closeStyle=await close.evaluate(n=>{const s=getComputedStyle(n),r=n.getBoundingClientRect(),i=n.querySelector('svg');return {radius:s.borderRadius,border:s.borderWidth,background:s.backgroundColor,icon:getComputedStyle(i).width,stroke:getComputedStyle(i).strokeWidth,width:r.width,height:r.height};});
+    assert.equal(closeStyle.radius,'50%');assert.equal(closeStyle.border,'0px');assert.equal(closeStyle.icon,'14px');assert.equal(closeStyle.stroke,'1.8px');if(mobile)assert.ok(closeStyle.width>=44 && closeStyle.height>=44);
+    if(!mobile){await close.hover();await page.waitForTimeout(180);assert.notEqual(await close.evaluate(n=>getComputedStyle(n).backgroundColor),closeStyle.background);await page.mouse.move(0,0);}
+    await revision.fill('第一行\n第二行\n第三行\n第四行\n第五行\n第六行');
+    const grown=await revision.evaluate(n=>({height:n.getBoundingClientRect().height,overflow:getComputedStyle(n).overflowY,scroll:n.scrollHeight}));assert.ok(grown.height>52 && grown.height<=104);assert.ok(grown.scroll>grown.height && grown.overflow==='auto');assert.equal((await measure()).clipped,false);
+    await revision.fill('');assert.equal(await revision.evaluate(n=>n.getBoundingClientRect().height),52);assert.ok(await view.locator('[data-action="revise"]').isDisabled());
     await view.locator('[data-action="requirements"]').click();
     const bounds=await view.locator('[data-panel="requirements"]').evaluate(n=>{const r=n.getBoundingClientRect(),v=n.closest('[data-view]').getBoundingClientRect();return r.left>=v.left && r.right<=v.right && r.bottom<=v.bottom;});assert.ok(bounds);
     await view.locator('[data-action="dismiss-panel"]').click();assert.equal(await view.locator('[data-action="requirements"]').evaluate(n=>n===document.activeElement),true);
@@ -80,7 +89,7 @@ try {
     if(!mobile)await frame.locator('#nf-draft-study').screenshot({path:fileURLToPath(new URL('./noteflow-draft-soft-dark.png',import.meta.url))});
     await page.emulateMedia({reducedMotion:'reduce'});
     await view.locator('[data-action="requirements"]').click();assert.equal(await view.locator('[data-panel]').evaluate(n=>getComputedStyle(n).animationDuration),'0s');
-    await context.close();reports.push({mobile,initial,requirementsWithinWindow:true,saveCentered:modal,keyboardFocus:true,dark:true,reducedMotion:true});
+    await context.close();reports.push({mobile,initial,closeStyle,revisionAutoGrowth:grown,requirementsWithinWindow:true,saveCentered:modal,keyboardFocus:true,dark:true,reducedMotion:true});
   }
   assert.deepEqual(errors,[]);assert.ok(unexpectedRequests.every(url=>url==='https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js'),'only the optional wrapper positioning asset may be attempted and blocked');
   console.log(JSON.stringify({ok:true,designOnly:true,domStateAndPrivacy:true,networkBlocked:true,blockedOptionalAssets:unexpectedRequests,reports,errors},null,2));

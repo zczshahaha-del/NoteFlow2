@@ -1626,6 +1626,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   #nf-draft-study .nds-revision button { flex:none; }
   #nf-draft-study button:disabled { opacity:.45; }
   #nf-draft-study .nds-soft .nds-revision { border:0; }
+  #nf-draft-study .nds-soft .nds-revision textarea { resize:none;overflow-y:hidden; }
   #nf-draft-study .nds-edit-field { min-height:215px;resize:vertical; }
   #nf-draft-study .nds-popover { position:absolute;right:16px;top:100%;z-index:5;width:340px;max-width:calc(100% - 32px);padding:16px;border:1px solid var(--nds-border);border-radius:16px;background:var(--nds-surface);box-shadow:0 12px 30px var(--nds-shadow); }
   #nf-draft-study .nds-popover[data-panel=&quot;more&quot;] { width:170px; }
@@ -1643,6 +1644,14 @@ html&gt;body{padding:0}&lt;/style&gt;
   #nf-draft-study .nds-window svg.lucide { width:14px!important;height:14px!important;max-width:none;stroke-width:1.8;flex:none;color:inherit; }
   #nf-draft-study .nds-soft svg.lucide { width:17px!important;height:17px!important;stroke-width:1.65; }
   #nf-draft-study .nds-soft .nds-icon-button svg.lucide { width:16px!important;height:16px!important; }
+  #nf-draft-study .nds-soft .nds-icon-button[data-action=&quot;close&quot;],
+  #nf-draft-study .nds-soft .nds-icon-button[data-action=&quot;dismiss-panel&quot;] { width:34px;min-height:34px;border-radius:50%;background:var(--nds-soft);color:var(--nds-muted);transition:background-color 140ms ease,color 140ms ease,transform 140ms ease; }
+  #nf-draft-study .nds-soft .nds-icon-button[data-action=&quot;close&quot;]:hover,
+  #nf-draft-study .nds-soft .nds-icon-button[data-action=&quot;dismiss-panel&quot;]:hover { background:var(--nds-selected);color:var(--nds-text); }
+  #nf-draft-study .nds-soft .nds-icon-button[data-action=&quot;close&quot;]:active,
+  #nf-draft-study .nds-soft .nds-icon-button[data-action=&quot;dismiss-panel&quot;]:active { transform:scale(.96); }
+  #nf-draft-study .nds-soft .nds-icon-button[data-action=&quot;close&quot;] svg.lucide,
+  #nf-draft-study .nds-soft .nds-icon-button[data-action=&quot;dismiss-panel&quot;] svg.lucide { width:14px!important;height:14px!important;stroke-width:1.8; }
   @keyframes nds-pop-in { from { opacity:0;transform:translateY(-4px); } to { opacity:1;transform:none; } }
   @media(max-width:600px) {
     #nf-draft-study .nds-stage { padding:16px 12px 28px;min-height:1120px; }
@@ -1659,7 +1668,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   }
   @media(pointer:coarse) {
     #nf-draft-study .nds-window .nds-action,#nf-draft-study .nds-window .nds-icon-button { min-height:44px; }
-    #nf-draft-study .nds-window .nds-icon-button { width:44px; }
+    #nf-draft-study .nds-window .nds-icon-button[data-action] { width:44px;min-height:44px; }
     #nf-draft-study .nds-window .nds-chapter { min-height:44px; }
     #nf-draft-study .nds-window textarea,#nf-draft-study .nds-window input,#nf-draft-study .nds-window select { font-size:16px; }
   }
@@ -1668,7 +1677,7 @@ html&gt;body{padding:0}&lt;/style&gt;
 &lt;script&gt;
 (() =&gt; {
   const root=document.getElementById(&#x27;nf-draft-study&#x27;);
-  const identity=&#x27;NoteFlow draft soft 20261003&#x27;;
+  const identity=&#x27;NoteFlow draft soft details 20261003&#x27;;
   const state={selected:1,editing:false,confirmed:false,radius:20,rowHeight:44,revision:0};
   const chapters=[{title:&#x27;认识 Redis&#x27;,complete:true},{title:&#x27;数据类型与常用命令&#x27;,complete:true},{title:&#x27;过期策略与持久化&#x27;,complete:false}];
   const editedContent=new Map();
@@ -1677,6 +1686,13 @@ html&gt;body{padding:0}&lt;/style&gt;
   const icon=name=&gt;`&lt;i data-lucide=&quot;${name}&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;`;
   const button=(label,name,action,extra=&#x27;&#x27;)=&gt;`&lt;button type=&quot;button&quot; class=&quot;nds-action cursor-interaction ${extra}&quot; data-action=&quot;${action}&quot;&gt;${icon(name)}${label}&lt;/button&gt;`;
   const announce=message=&gt;{root.querySelector(&#x27;.nds-announcement&#x27;).textContent=message;};
+  function fitRevision(field) {
+    if(!field.closest(&#x27;.nds-soft&#x27;) || !field.getBoundingClientRect().width)return;
+    field.style.height=&#x27;52px&#x27;;
+    const height=Math.min(104,Math.max(52,field.scrollHeight));
+    field.style.height=height+&#x27;px&#x27;;
+    field.style.overflowY=field.scrollHeight&gt;height?&#x27;auto&#x27;:&#x27;hidden&#x27;;
+  }
   function persist(action) {
     state.revision++;
     window.openai?.setWidgetState?.({modelContent:{design:identity,style:&#x27;柔和留白&#x27;,lastAction:action},privateContent:{draftDesign:{design:identity,revision:state.revision,selected:state.selected,confirmed:state.confirmed,radius:state.radius,rowHeight:state.rowHeight}}})?.catch(()=&gt;{});
@@ -1694,7 +1710,9 @@ html&gt;body{padding:0}&lt;/style&gt;
     view.querySelector(&#x27;[data-action=&quot;requirements&quot;]&#x27;).setAttribute(&#x27;aria-expanded&#x27;,&#x27;false&#x27;);
     view.querySelector(&#x27;[data-action=&quot;requirements&quot;]&#x27;).setAttribute(&#x27;aria-controls&#x27;,`nds-requirements-${index}`);
     view.querySelector(&#x27;[data-action=&quot;save&quot;]&#x27;).setAttribute(&#x27;aria-haspopup&#x27;,&#x27;dialog&#x27;);
-    view.querySelector(&#x27;.nds-revision textarea&#x27;).addEventListener(&#x27;input&#x27;,event=&gt;{view.querySelector(&#x27;[data-action=&quot;revise&quot;]&#x27;).disabled=!event.target.value.trim();});
+    const revisionField=view.querySelector(&#x27;.nds-revision textarea&#x27;);
+    revisionField.addEventListener(&#x27;input&#x27;,event=&gt;{view.querySelector(&#x27;[data-action=&quot;revise&quot;]&#x27;).disabled=!event.target.value.trim();fitRevision(revisionField);});
+    if(view.classList.contains(&#x27;nds-soft&#x27;) &amp;&amp; globalThis.ResizeObserver){let width=0;new ResizeObserver(entries=&gt;{const next=entries[0].contentRect.width;if(next&gt;0 &amp;&amp; next!==width){width=next;fitRevision(revisionField);}}).observe(view);}
   });
   function render() {
     root.style.setProperty(&#x27;--nds-radius&#x27;,state.radius+&#x27;px&#x27;);root.style.setProperty(&#x27;--nds-row-height&#x27;,state.rowHeight+&#x27;px&#x27;);
@@ -1715,6 +1733,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       view.querySelector(&#x27;[data-action=&quot;confirm&quot;]&#x27;).hidden=state.selected===0 || (state.selected===1 &amp;&amp; state.confirmed);
       view.querySelector(&#x27;.nds-revision&#x27;).hidden=!chapter.complete || state.editing;
       view.querySelector(&#x27;[data-action=&quot;revise&quot;]&#x27;).disabled=!view.querySelector(&#x27;.nds-revision textarea&#x27;).value.trim();
+      fitRevision(view.querySelector(&#x27;.nds-revision textarea&#x27;));
     });
     if(globalThis.lucide)lucide.createIcons({attrs:{width:17,height:17}});
   }

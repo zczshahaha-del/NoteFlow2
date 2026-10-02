@@ -87,6 +87,7 @@
   #nf-draft-study .nds-revision button { flex:none; }
   #nf-draft-study button:disabled { opacity:.45; }
   #nf-draft-study .nds-soft .nds-revision { border:0; }
+  #nf-draft-study .nds-soft .nds-revision textarea { resize:none;overflow-y:hidden; }
   #nf-draft-study .nds-edit-field { min-height:215px;resize:vertical; }
   #nf-draft-study .nds-popover { position:absolute;right:16px;top:100%;z-index:5;width:340px;max-width:calc(100% - 32px);padding:16px;border:1px solid var(--nds-border);border-radius:16px;background:var(--nds-surface);box-shadow:0 12px 30px var(--nds-shadow); }
   #nf-draft-study .nds-popover[data-panel="more"] { width:170px; }
@@ -104,6 +105,14 @@
   #nf-draft-study .nds-window svg.lucide { width:14px!important;height:14px!important;max-width:none;stroke-width:1.8;flex:none;color:inherit; }
   #nf-draft-study .nds-soft svg.lucide { width:17px!important;height:17px!important;stroke-width:1.65; }
   #nf-draft-study .nds-soft .nds-icon-button svg.lucide { width:16px!important;height:16px!important; }
+  #nf-draft-study .nds-soft .nds-icon-button[data-action="close"],
+  #nf-draft-study .nds-soft .nds-icon-button[data-action="dismiss-panel"] { width:34px;min-height:34px;border-radius:50%;background:var(--nds-soft);color:var(--nds-muted);transition:background-color 140ms ease,color 140ms ease,transform 140ms ease; }
+  #nf-draft-study .nds-soft .nds-icon-button[data-action="close"]:hover,
+  #nf-draft-study .nds-soft .nds-icon-button[data-action="dismiss-panel"]:hover { background:var(--nds-selected);color:var(--nds-text); }
+  #nf-draft-study .nds-soft .nds-icon-button[data-action="close"]:active,
+  #nf-draft-study .nds-soft .nds-icon-button[data-action="dismiss-panel"]:active { transform:scale(.96); }
+  #nf-draft-study .nds-soft .nds-icon-button[data-action="close"] svg.lucide,
+  #nf-draft-study .nds-soft .nds-icon-button[data-action="dismiss-panel"] svg.lucide { width:14px!important;height:14px!important;stroke-width:1.8; }
   @keyframes nds-pop-in { from { opacity:0;transform:translateY(-4px); } to { opacity:1;transform:none; } }
   @media(max-width:600px) {
     #nf-draft-study .nds-stage { padding:16px 12px 28px;min-height:1120px; }
@@ -120,7 +129,7 @@
   }
   @media(pointer:coarse) {
     #nf-draft-study .nds-window .nds-action,#nf-draft-study .nds-window .nds-icon-button { min-height:44px; }
-    #nf-draft-study .nds-window .nds-icon-button { width:44px; }
+    #nf-draft-study .nds-window .nds-icon-button[data-action] { width:44px;min-height:44px; }
     #nf-draft-study .nds-window .nds-chapter { min-height:44px; }
     #nf-draft-study .nds-window textarea,#nf-draft-study .nds-window input,#nf-draft-study .nds-window select { font-size:16px; }
   }
@@ -129,7 +138,7 @@
 <script>
 (() => {
   const root=document.getElementById('nf-draft-study');
-  const identity='NoteFlow draft soft 20261003';
+  const identity='NoteFlow draft soft details 20261003';
   const state={selected:1,editing:false,confirmed:false,radius:20,rowHeight:44,revision:0};
   const chapters=[{title:'认识 Redis',complete:true},{title:'数据类型与常用命令',complete:true},{title:'过期策略与持久化',complete:false}];
   const editedContent=new Map();
@@ -138,6 +147,13 @@
   const icon=name=>`<i data-lucide="${name}" aria-hidden="true"></i>`;
   const button=(label,name,action,extra='')=>`<button type="button" class="nds-action cursor-interaction ${extra}" data-action="${action}">${icon(name)}${label}</button>`;
   const announce=message=>{root.querySelector('.nds-announcement').textContent=message;};
+  function fitRevision(field) {
+    if(!field.closest('.nds-soft') || !field.getBoundingClientRect().width)return;
+    field.style.height='52px';
+    const height=Math.min(104,Math.max(52,field.scrollHeight));
+    field.style.height=height+'px';
+    field.style.overflowY=field.scrollHeight>height?'auto':'hidden';
+  }
   function persist(action) {
     state.revision++;
     window.openai?.setWidgetState?.({modelContent:{design:identity,style:'柔和留白',lastAction:action},privateContent:{draftDesign:{design:identity,revision:state.revision,selected:state.selected,confirmed:state.confirmed,radius:state.radius,rowHeight:state.rowHeight}}})?.catch(()=>{});
@@ -155,7 +171,9 @@
     view.querySelector('[data-action="requirements"]').setAttribute('aria-expanded','false');
     view.querySelector('[data-action="requirements"]').setAttribute('aria-controls',`nds-requirements-${index}`);
     view.querySelector('[data-action="save"]').setAttribute('aria-haspopup','dialog');
-    view.querySelector('.nds-revision textarea').addEventListener('input',event=>{view.querySelector('[data-action="revise"]').disabled=!event.target.value.trim();});
+    const revisionField=view.querySelector('.nds-revision textarea');
+    revisionField.addEventListener('input',event=>{view.querySelector('[data-action="revise"]').disabled=!event.target.value.trim();fitRevision(revisionField);});
+    if(view.classList.contains('nds-soft') && globalThis.ResizeObserver){let width=0;new ResizeObserver(entries=>{const next=entries[0].contentRect.width;if(next>0 && next!==width){width=next;fitRevision(revisionField);}}).observe(view);}
   });
   function render() {
     root.style.setProperty('--nds-radius',state.radius+'px');root.style.setProperty('--nds-row-height',state.rowHeight+'px');
@@ -176,6 +194,7 @@
       view.querySelector('[data-action="confirm"]').hidden=state.selected===0 || (state.selected===1 && state.confirmed);
       view.querySelector('.nds-revision').hidden=!chapter.complete || state.editing;
       view.querySelector('[data-action="revise"]').disabled=!view.querySelector('.nds-revision textarea').value.trim();
+      fitRevision(view.querySelector('.nds-revision textarea'));
     });
     if(globalThis.lucide)lucide.createIcons({attrs:{width:17,height:17}});
   }
