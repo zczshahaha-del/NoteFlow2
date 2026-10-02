@@ -226,7 +226,7 @@ def _write_inventory(cfg) -> None:
 
 | 能力 | 当前本机配置 | 代码/容器默认 |
 |---|---|---|
-| Chat completion | `{cfg.DEEPSEEK_BASE_URL}` / `{cfg.DEEPSEEK_MODEL}` | DeepSeek / `deepseek-chat` |
+| Chat completion | `{cfg.DEEPSEEK_BASE_URL}` / `{cfg.DEEPSEEK_MODEL}` | DeepSeek / `deepseek-flash` |
 | Embedding | `{cfg.EMBEDDING_PROVIDER}` / `{cfg.EMBEDDING_MODEL}` | DashScope `text-embedding-v4` |
 | Embedding dimensions | `{cfg.EMBEDDING_DIMENSIONS}` | `1024` |
 | Embedding batch | `{cfg.EMBEDDING_BATCH_SIZE}` | `10` |

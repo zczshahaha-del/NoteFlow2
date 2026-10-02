@@ -80,7 +80,7 @@ class Config:
     FRONTEND_BASE_URL: str = _env("FRONTEND_BASE_URL", "http://127.0.0.1:5173").rstrip("/")
     DEEPSEEK_API_KEY: str = _env("DEEPSEEK_API_KEY", "")
     DEEPSEEK_BASE_URL: str = _env("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/")
-    DEEPSEEK_MODEL: str = _env("DEEPSEEK_MODEL", "deepseek-chat")
+    DEEPSEEK_MODEL: str = _env("DEEPSEEK_MODEL", "deepseek-flash")
     LLM_INPUT_USD_PER_MILLION_TOKENS: float = max(0.0, _env_float("LLM_INPUT_USD_PER_MILLION_TOKENS", 0.0))
     LLM_OUTPUT_USD_PER_MILLION_TOKENS: float = max(0.0, _env_float("LLM_OUTPUT_USD_PER_MILLION_TOKENS", 0.0))
     REDIS_ADDR: str = _env("REDIS_ADDR", "127.0.0.1:6379")

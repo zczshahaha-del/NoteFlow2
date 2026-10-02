@@ -227,15 +227,17 @@ IA-04 / IA-05、UI-02 / UI-17 仍部分解决；真实写入 E2E、深色视觉�
 
 现象：长期记忆保存失败后按钮恢复，但本地缓存和 localStorage 仍可能是失败的新值。根因：既有 src/services/memories.ts:setMemoryEnabled 在 PUT 前调用 setMemoryEnabledLocal，失败直接抛错；AppNav catch 只恢复 React 状态。源码核对确认缺少缓存回滚；组件 mock 失败只证明按钮恢复，不能当作缓存一致性证据。本轮保留原业务逻辑，不扩改服务；未向真实服务注入故障。下一步独立补 HTTP / 网络 / JSON 失败的服务缓存回滚和持久化回归，再验证真实失败流。状态：🔴 未解决，随统一设置提交记录。
 
-### AI-07：新模型选择与退役的默认模型配置（未解决）
+### AI-07：新模型选择与退役的默认模型配置（部分解决）
 
 现象：用户希望因 DeepSeek 新模型发布而更换 API Key，提供官方首次调用页面截图；只读检查确认，本地按配置加载器得到的模型已是 deepseek-v4-pro，使用官方地址且密钥已配置（仅检查布尔值，不读取输出密钥）。但 server/app/config.py 默认值、server/.env.example 与根 .env.example 仍写 deepseek-chat。
 
 根因：模型名称与凭据轮换未区分，仓库模板未跟进提供商的模型生命周期。[官方现行模型说明](https://api-docs.deepseek.com/quick_start/pricing/)列出 deepseek-flash 对应 DeepSeek-V4.1-Flash，deepseek-v4-pro 对应 DeepSeek-V4-Pro-0813；[官方退役公告](https://api-docs.deepseek.com/news/news260424/)标注 deepseek-chat / deepseek-reasoner 在 2026-07-24 后不可用。默认值过期是源码确认的问题；不能据此宣称当前配置为 Pro 的服务已故障。
 
-处理：本轮只读核对和记录，不修改本地 .env、密钥、模板或运行服务；等待用户明确切换 Flash / 保留 Pro 以及是否单独轮换密钥。下一步更新已选模型及脱敏模板，核对思考参数、非流式超时和记忆消费者，再重启并进行最小实际调用验证。官方新模型支持既有 OpenAI 格式地址，现有 ai.py 已有 thinking 请求参数，但这不等于端到端兼容性已验收；新模型默认思考开启，见[官方思考模式说明](https://api-docs.deepseek.com/zh-cn/guides/thinking_mode/)。本轮未测试密钥有效性、账户权限、实时余额或真实新模型调用，也未证明运行进程没有启动环境覆盖。
+处理：用户明确选择“4.1”后，将本机忽略的 server/.env 模型、Config 默认值、两份脱敏环境模板、server/README.md 与基线导出器的默认模型说明统一为 deepseek-flash；保留现有密钥、官方地址与环境变量优先级，不重写历史基线快照。复核 ai.py、规划 / 记忆提取、草稿 Worker 与可选 Mem0 消费者均沿用 cfg.DEEPSEEK_MODEL；普通对话 / 规划 / 记忆提取仍使用提供商默认思考，已有显式 disabled 的生成调用不变，非流式 60 秒超时和输出上限不改。新模型默认思考开启，见[官方思考模式说明](https://api-docs.deepseek.com/zh-cn/guides/thinking_mode/)。增加默认 / 空值 / 显式覆盖、模板一致性、请求模型与 JSON / thinking 参数回归测试。
 
-状态：🔴 未解决，目标模型 / 密钥轮换方式待确认；默认模板尚未修正。验证证据为官方页面、源码与仅输出模型名 / 官方地址布尔值 / 密钥存在布尔值的配置检查，未暴露凭据，不操作笔记。随 `docs: 记录 DeepSeek 模型迁移与默认配置过期`。
+验证：npm run test:backend 通过，159 项中 8 项跳过。使用现有密钥和正式请求构造器执行两次极小合成输入的真实官方 API 调用：非流式 JSON + thinking disabled 返回 HTTP 200、model=deepseek-flash、JSON 校验通过（0.34 秒）；默认思考流式返回 HTTP 200、model=deepseek-flash、正文校验通过、收到 reasoning_content、finish_reason=stop 与 [DONE]（0.56 秒）。只输出状态和布尔断言，不输出密钥、思考内容或真实笔记，也不写入用户数据。停止精确核对过的旧开发启动器后，以独立进程组重新启动既有 scripts/dev.mjs，启动环境显式指定已选模型；经 5173 代理的 /api/health 实测 deepseekModel=deepseek-flash、healthy、PostgreSQL / Redis ready，端口检查通过，首页 HTTP 200。原有 Docker 服务未改动，开发进程保留运行，日志在仓库外且限制权限。
+
+状态：🟡 部分解决。本机模型切换、密钥有效性、最小流式 / JSON 兼容和过期默认模板已完成实际验证；未测试浏览器内完整对话 / 草稿 / 规划 / 长期记忆写入 E2E、长思考的 60 秒超时边界、可选 Mem0 真实调用或远端部署。8 项跳过不算通过，健康检查的密钥存在标志不代替上述真实 API 证据；没有检查账户余额或轮换密钥。DEV-01 长期进程稳定性与 DEV-11 弃用警告仍保留。随 `fix: 切换 DeepSeek V4.1 Flash 并统一默认配置`，沿用本条，不新增同义问题。
 
 ## 7. 本地开发、预览与测试问题
 

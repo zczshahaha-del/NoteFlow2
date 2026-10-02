@@ -65,7 +65,7 @@ EMAIL_CODE_TTL_MINUTES=10
 
 DEEPSEEK_API_KEY=your_deepseek_api_key_here
 DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-chat
+DEEPSEEK_MODEL=deepseek-flash
 
 EMBEDDING_PROVIDER=dashscope
 EMBEDDING_API_KEY=your_dashscope_api_key_here
@@ -82,6 +82,12 @@ AI_RATE_LIMIT_PER_MINUTE=30
 ATTACHMENT_STORAGE_ROOT=server/data/attachments
 ATTACHMENT_MAX_BYTES=10485760
 ```
+
+### DeepSeek 模型切换
+
+当前默认使用 DeepSeek V4.1 Flash，API 模型名为 `deepseek-flash`，不是 `deepseek-v4.1`；对应关系以[官方模型说明](https://api-docs.deepseek.com/quick_start/pricing/)为准。已有实例需将自己的 `server/.env` 中 `DEEPSEEK_MODEL` 改为 `deepseek-flash` 并重启后端；更新代码不会覆盖已有环境变量。有效的原 API Key 可以继续使用，不需要因模型升级更换密钥，真实 `.env` 不应提交 Git。
+
+保留现有思考策略：普通对话未指定时使用提供商默认，笔记生成及已有明确关闭思考的调用继续传 `thinking.type=disabled`。非流式请求仍为 60 秒超时，本次不扩大输出限制，也不添加思考过程 UI。`/api/health` 的 `deepseekModel` 可检查进程加载的模型名，但 `deepseekReady` 仅表示密钥已配置，不代表真实调用成功。部署机和已有 Docker 容器需单独重启 / 重建验证，本机切换不代表远端已更新。
 
 ## 认证与安全
 
