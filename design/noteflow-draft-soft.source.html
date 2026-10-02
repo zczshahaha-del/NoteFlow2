@@ -1,0 +1,227 @@
+<div id="nf-draft-study" aria-label="NoteFlow 草稿窗口局部对照">
+  <div class="viz-carousel viz-dotted-background" aria-label="草稿窗口视觉对照" data-previous-label="上一版" data-next-label="下一版">
+    <section data-variant="当前风格参考" aria-label="当前草稿风格参考重绘">
+      <div class="nds-stage"><div class="nds-caption"><span>当前风格参考</span><span>源码风格重绘 · 示例内容</span></div><div class="nds-window nds-reference" data-view="reference" role="region" aria-label="当前风格参考草稿窗口"></div></div>
+    </section>
+    <section data-variant="柔和留白候选" aria-label="柔和留白草稿候选" hidden>
+      <div class="nds-stage"><div class="nds-caption"><span>柔和留白候选</span><span>保留原入口与操作顺序</span></div><div class="nds-window nds-soft" data-view="soft" role="region" aria-label="柔和留白候选草稿窗口"></div></div>
+    </section>
+  </div>
+  <span class="nds-announcement" role="status" aria-live="polite"></span>
+</div>
+<style>
+  #nf-draft-study {
+    --nds-text:light-dark(#30353c,#e9edf2);--nds-muted:light-dark(#69737f,#a7b0bc);
+    --nds-icon:light-dark(#7e8791,#a8b1be);--nds-surface:light-dark(#fcfcfd,#252b33);
+    --nds-soft:light-dark(#f4f5f7,#2d3540);--nds-selected:light-dark(#eceff2,#363f4a);
+    --nds-border:light-dark(#dfe5e9,#46505c);--nds-shadow:light-dark(rgba(36,44,55,.10),rgba(0,0,0,.30));
+    --nds-blue:light-dark(#315f7d,#9bc8e1);--nds-blue-fill:light-dark(#3f7898,#315f7d);
+    --nds-blue-pale:light-dark(#eef7fb,#1c303d);--nds-on-fill:light-dark(#fcfcfd,#e9edf2);
+    --nds-danger:light-dark(#ad473f,#ee9e97);--nds-success:light-dark(#307552,#78c99c);
+    --nds-success-bg:light-dark(#e8f4ed,#19372a);--nds-veil:light-dark(rgba(29,41,53,.12),rgba(0,0,0,.25));
+    --nds-radius:20px;--nds-row-height:44px;
+    width:100%;max-width:736px;margin:auto;color:var(--nds-text);
+    font:400 14px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;
+  }
+  #nf-draft-study * { box-sizing:border-box; }
+  #nf-draft-study [hidden] { display:none!important; }
+  #nf-draft-study .nds-stage { padding:20px 20px 28px;min-height:712px; }
+  #nf-draft-study .nds-caption { display:flex;justify-content:space-between;gap:12px;margin:0 4px 12px;color:var(--nds-muted);font-size:12px; }
+  #nf-draft-study .nds-window { position:relative;border-radius:22px;background:var(--nds-surface);box-shadow:0 14px 36px var(--nds-shadow);border:1px solid var(--nds-border); }
+  #nf-draft-study .nds-soft { border:0;border-radius:var(--nds-radius);box-shadow:0 10px 28px var(--nds-shadow),0 1px 3px var(--nds-shadow); }
+  #nf-draft-study .nds-reference { --nds-row-height:44px; }
+  #nf-draft-study button { margin:0;border:0;background:transparent;color:inherit;font:inherit; }
+  #nf-draft-study .nds-header { display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:16px;position:relative;border-bottom:1px solid var(--nds-border); }
+  #nf-draft-study .nds-topic { flex:1;min-width:110px;font-size:16px;font-weight:500;margin:0; }
+  #nf-draft-study .nds-tools { display:flex;align-items:center;flex-wrap:wrap;gap:6px; }
+  #nf-draft-study .nds-action { display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:7px 9px;border:1px solid var(--nds-border);border-radius:8px;font-size:12px;color:var(--nds-muted);transition:background-color 150ms ease; }
+  #nf-draft-study .nds-action:hover { background:var(--nds-blue-pale); }
+  #nf-draft-study .nds-icon-button { display:grid;place-items:center;width:34px;min-height:34px;padding:0;border-radius:8px;color:var(--nds-muted); }
+  #nf-draft-study .nds-primary { background:var(--nds-blue-fill);color:var(--nds-on-fill);border-color:transparent; }
+  #nf-draft-study .nds-primary:hover { background:var(--nds-blue-fill); }
+  #nf-draft-study .nds-soft .nds-header { border:0;padding:18px 16px; }
+  #nf-draft-study .nds-soft .nds-action { border:0;min-height:36px;padding:8px 10px;border-radius:9px; }
+  #nf-draft-study .nds-soft .nds-action:hover,#nf-draft-study .nds-soft .nds-icon-button:hover { background:var(--nds-selected); }
+  #nf-draft-study .nds-soft .nds-primary { background:var(--nds-text);color:var(--nds-surface); }
+  #nf-draft-study .nds-soft .nds-primary:hover { background:var(--nds-text); }
+  #nf-draft-study .nds-progress { height:4px;background:var(--nds-soft);overflow:hidden; }
+  #nf-draft-study .nds-progress-fill { display:block;width:67%;height:100%;background:var(--nds-blue-fill); }
+  #nf-draft-study .nds-soft .nds-progress { height:3px;margin:0 16px; }
+  #nf-draft-study .nds-soft .nds-progress-fill { background:var(--nds-icon); }
+  #nf-draft-study .nds-layout { display:grid;grid-template-columns:200px minmax(0,1fr); }
+  #nf-draft-study .nds-outline { padding:20px 10px;border-right:1px solid var(--nds-border);min-width:0; }
+  #nf-draft-study .nds-outline-heading { display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 10px 14px;font-size:13px;font-weight:500; }
+  #nf-draft-study .nds-count { font-size:11px;font-weight:400;color:var(--nds-muted);padding:3px 6px;border-radius:12px;background:var(--nds-soft); }
+  #nf-draft-study .nds-chapter { display:flex;align-items:center;gap:8px;width:100%;min-height:var(--nds-row-height);padding:10px;border-radius:11px;text-align:left;font-size:13px; }
+  #nf-draft-study .nds-chapter + .nds-chapter { margin-top:4px; }
+  #nf-draft-study .nds-chapter[aria-current="page"],#nf-draft-study .nds-chapter:hover { background:var(--nds-blue-pale);color:var(--nds-blue); }
+  #nf-draft-study .nds-number { display:grid;place-items:center;width:18px;height:18px;flex:none;border:1px solid var(--nds-border);border-radius:50%;font-size:11px;color:var(--nds-muted); }
+  #nf-draft-study .nds-number[data-complete="true"] { background:var(--nds-success);border-color:transparent;color:var(--nds-on-fill); }
+  #nf-draft-study .nds-chapter-title { min-width:0;overflow-wrap:anywhere; }
+  #nf-draft-study .nds-soft .nds-outline { border:0; }
+  #nf-draft-study .nds-soft .nds-count { padding:0;background:transparent; }
+  #nf-draft-study .nds-soft .nds-chapter[aria-current="page"],#nf-draft-study .nds-soft .nds-chapter:hover { background:var(--nds-selected);color:var(--nds-text); }
+  #nf-draft-study .nds-soft .nds-number { border:0;background:transparent; }
+  #nf-draft-study .nds-soft .nds-number[data-complete="true"] { background:var(--nds-success-bg);color:var(--nds-success); }
+  #nf-draft-study .nds-main { min-width:0; }
+  #nf-draft-study .nds-section-bar { display:flex;align-items:center;justify-content:space-between;gap:10px;padding:17px 20px;border-bottom:1px solid var(--nds-border); }
+  #nf-draft-study .nds-section-title { margin:0;font-size:14px;font-weight:500;overflow-wrap:anywhere; }
+  #nf-draft-study .nds-soft .nds-section-bar { border:0;padding-top:22px;padding-bottom:10px; }
+  #nf-draft-study .nds-reading { min-height:262px;padding:22px 24px; }
+  #nf-draft-study .nds-reading h3 { margin:0 0 13px;font-size:16px;font-weight:500; }
+  #nf-draft-study .nds-reading p { margin:0 0 14px;line-height:1.75; }
+  #nf-draft-study .nds-reading ul { margin:0;padding-left:20px;line-height:1.75; }
+  #nf-draft-study .nds-reading li+li { margin-top:7px; }
+  #nf-draft-study .nds-empty { display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:218px;text-align:center; }
+  #nf-draft-study .nds-empty p { margin:0;color:var(--nds-muted);font-size:12px; }
+  #nf-draft-study .nds-footer { padding:14px 16px 16px;border-top:1px solid var(--nds-border); }
+  #nf-draft-study .nds-footer-actions { display:flex;align-items:center;flex-wrap:wrap;gap:7px; }
+  #nf-draft-study .nds-confirm { background:var(--nds-success-bg);color:var(--nds-success); }
+  #nf-draft-study .nds-soft .nds-footer { border:0;padding-top:12px; }
+  #nf-draft-study .nds-revision { display:flex;align-items:flex-end;gap:10px;margin-top:14px;padding:11px;border:1px solid var(--nds-border);background:var(--nds-soft);border-radius:12px; }
+  #nf-draft-study .nds-revision-field { display:block;flex:1;min-width:0; }
+  #nf-draft-study .nds-field-label { display:block;margin-bottom:7px;font-size:11px;color:var(--nds-muted);font-weight:500; }
+  #nf-draft-study textarea,#nf-draft-study input,#nf-draft-study select { width:100%;min-width:0;border:1px solid var(--nds-border);border-radius:9px;padding:9px;background:var(--nds-surface);color:var(--nds-text);font:400 14px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif; }
+  #nf-draft-study .nds-revision textarea { padding:0;border:0;background:transparent;min-height:52px;resize:vertical;font-size:12px; }
+  #nf-draft-study textarea::placeholder { color:var(--nds-muted); }
+  #nf-draft-study .nds-revision button { flex:none; }
+  #nf-draft-study button:disabled { opacity:.45; }
+  #nf-draft-study .nds-soft .nds-revision { border:0; }
+  #nf-draft-study .nds-edit-field { min-height:215px;resize:vertical; }
+  #nf-draft-study .nds-popover { position:absolute;right:16px;top:100%;z-index:5;width:340px;max-width:calc(100% - 32px);padding:16px;border:1px solid var(--nds-border);border-radius:16px;background:var(--nds-surface);box-shadow:0 12px 30px var(--nds-shadow); }
+  #nf-draft-study .nds-popover[data-panel="more"] { width:170px; }
+  #nf-draft-study .nds-soft .nds-popover { border:0;animation:nds-pop-in 180ms ease both; }
+  #nf-draft-study .nds-modal-layer { position:absolute;inset:0;z-index:6;display:grid;grid-template-columns:minmax(0,1fr);place-items:center;padding:16px;background:var(--nds-veil);border-radius:inherit; }
+  #nf-draft-study .nds-modal-layer .nds-popover { position:relative;top:auto;right:auto;width:420px;max-width:100%; }
+  #nf-draft-study .nds-popover-heading { display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;font-size:14px;font-weight:500; }
+  #nf-draft-study .nds-help { color:var(--nds-muted);font-size:11px;margin:7px 0 12px; }
+  #nf-draft-study .nds-popover textarea { min-height:100px;resize:vertical; }
+  #nf-draft-study .nds-popover-actions { display:flex;justify-content:flex-end;flex-wrap:wrap;gap:7px;margin-top:12px; }
+  #nf-draft-study .nds-danger { color:var(--nds-danger); }
+  #nf-draft-study .nds-popover-label { display:block;margin-top:13px;font-size:12px; }
+  #nf-draft-study .nds-popover-label input,#nf-draft-study .nds-popover-label select { margin-top:6px; }
+  #nf-draft-study .nds-announcement { position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%); }
+  #nf-draft-study .nds-window svg.lucide { width:14px!important;height:14px!important;max-width:none;stroke-width:1.8;flex:none;color:inherit; }
+  #nf-draft-study .nds-soft svg.lucide { width:17px!important;height:17px!important;stroke-width:1.65; }
+  #nf-draft-study .nds-soft .nds-icon-button svg.lucide { width:16px!important;height:16px!important; }
+  @keyframes nds-pop-in { from { opacity:0;transform:translateY(-4px); } to { opacity:1;transform:none; } }
+  @media(max-width:600px) {
+    #nf-draft-study .nds-stage { padding:16px 12px 28px;min-height:1120px; }
+    #nf-draft-study .nds-caption { flex-wrap:wrap;gap:5px; }
+    #nf-draft-study .nds-layout { grid-template-columns:minmax(0,1fr); }
+    #nf-draft-study .nds-outline { border-right:0;border-bottom:1px solid var(--nds-border);padding:14px 10px; }
+    #nf-draft-study .nds-outline-heading { margin-bottom:7px; }
+    #nf-draft-study .nds-reading { padding:18px;min-height:285px; }
+    #nf-draft-study .nds-header { padding:14px; }
+    #nf-draft-study .nds-topic { flex-basis:100%; }
+    #nf-draft-study .nds-tools { gap:6px; }
+    #nf-draft-study .nds-revision { flex-direction:column;align-items:stretch; }
+    #nf-draft-study .nds-revision button { align-self:flex-end; }
+  }
+  @media(pointer:coarse) {
+    #nf-draft-study .nds-window .nds-action,#nf-draft-study .nds-window .nds-icon-button { min-height:44px; }
+    #nf-draft-study .nds-window .nds-icon-button { width:44px; }
+    #nf-draft-study .nds-window .nds-chapter { min-height:44px; }
+    #nf-draft-study .nds-window textarea,#nf-draft-study .nds-window input,#nf-draft-study .nds-window select { font-size:16px; }
+  }
+  @media(prefers-reduced-motion:reduce) { #nf-draft-study * { transition:none!important;animation:none!important; } }
+</style>
+<script>
+(() => {
+  const root=document.getElementById('nf-draft-study');
+  const identity='NoteFlow draft soft 20261003';
+  const state={selected:1,editing:false,confirmed:false,radius:20,rowHeight:44,revision:0};
+  const chapters=[{title:'认识 Redis',complete:true},{title:'数据类型与常用命令',complete:true},{title:'过期策略与持久化',complete:false}];
+  const editedContent=new Map();
+  let fullRequirements='';
+  const windows=[...root.querySelectorAll('[data-view]')];
+  const icon=name=>`<i data-lucide="${name}" aria-hidden="true"></i>`;
+  const button=(label,name,action,extra='')=>`<button type="button" class="nds-action cursor-interaction ${extra}" data-action="${action}">${icon(name)}${label}</button>`;
+  const announce=message=>{root.querySelector('.nds-announcement').textContent=message;};
+  function persist(action) {
+    state.revision++;
+    window.openai?.setWidgetState?.({modelContent:{design:identity,style:'柔和留白',lastAction:action},privateContent:{draftDesign:{design:identity,revision:state.revision,selected:state.selected,confirmed:state.confirmed,radius:state.radius,rowHeight:state.rowHeight}}})?.catch(()=>{});
+  }
+  function restore(saved) {
+    if(saved?.design!==identity || !Number.isInteger(saved.revision) || saved.revision<state.revision)return;
+    if(Number.isInteger(saved.selected))state.selected=Math.min(2,Math.max(0,saved.selected));
+    if(typeof saved.confirmed==='boolean')state.confirmed=saved.confirmed;
+    if(Number.isFinite(saved.radius))state.radius=Math.min(24,Math.max(16,saved.radius));
+    if(Number.isFinite(saved.rowHeight))state.rowHeight=Math.min(50,Math.max(44,saved.rowHeight));
+    state.revision=saved.revision;render();
+  }
+  windows.forEach((view,index)=>{
+    view.innerHTML=`<header class="nds-header"><h2 class="nds-topic">Redis 学习笔记</h2><div class="nds-tools">${button('目录管理','list-tree','directory')}${button('全文要求','file-text','requirements')}${button('全部生成','wand-sparkles','generate-all')}${button('保存为笔记','save','save','nds-primary')}<button type="button" class="nds-action nds-icon-button cursor-interaction" data-action="more" aria-label="更多草稿操作" aria-expanded="false">${icon('ellipsis')}</button><button type="button" class="nds-icon-button cursor-interaction" data-action="close" aria-label="关闭草稿工作台">${icon('x')}</button></div><div class="nds-popover-slot"></div></header><div class="nds-progress" role="progressbar" aria-label="示例：3 章中 2 章已有正文" aria-valuemin="0" aria-valuemax="100" aria-valuenow="67"><span class="nds-progress-fill"></span></div><div class="nds-layout"><aside class="nds-outline"><div class="nds-outline-heading"><span>大纲目录</span><span class="nds-count">3 章</span></div><nav aria-label="草稿章节目录">${chapters.map((chapter,i)=>`<button type="button" class="nds-chapter cursor-interaction" data-chapter="${i}" aria-label="${i+1}. ${chapter.title}，${chapter.complete?'已生成':'未生成'}"><span class="nds-number" data-complete="${chapter.complete}">${chapter.complete?'✓':i+1}</span><span class="nds-chapter-title">${chapter.title}</span></button>`).join('')}</nav></aside><section class="nds-main"><div class="nds-section-bar"><h3 class="nds-section-title"></h3></div><div class="nds-reading"></div><footer class="nds-footer"><div class="nds-footer-actions">${button('重新生成','refresh-cw','regenerate')}${button('编辑','pencil','edit')}${button('确认','circle-check','confirm','nds-confirm')}</div><div class="nds-revision"><label class="nds-revision-field"><span class="nds-field-label">告诉 AI 如何修改</span><textarea aria-label="章节修改要求" placeholder="例如：增加一个可运行示例，把概念解释得更适合初学者…"></textarea></label>${button('按要求修改','wand-sparkles','revise','nds-primary')}</div></footer></section></div>`;
+    view.querySelector('[data-action="requirements"]').setAttribute('aria-expanded','false');
+    view.querySelector('[data-action="requirements"]').setAttribute('aria-controls',`nds-requirements-${index}`);
+    view.querySelector('[data-action="save"]').setAttribute('aria-haspopup','dialog');
+    view.querySelector('.nds-revision textarea').addEventListener('input',event=>{view.querySelector('[data-action="revise"]').disabled=!event.target.value.trim();});
+  });
+  function render() {
+    root.style.setProperty('--nds-radius',state.radius+'px');root.style.setProperty('--nds-row-height',state.rowHeight+'px');
+    windows.forEach(view=>{
+      const chapter=chapters[state.selected];
+      view.querySelectorAll('[data-chapter]').forEach(row=>{const i=Number(row.dataset.chapter);if(i===state.selected)row.setAttribute('aria-current','page');else row.removeAttribute('aria-current');row.setAttribute('aria-label',`${i+1}. ${chapters[i].title}，${i===0 || (i===1 && state.confirmed)?'已确认':chapters[i].complete?'已生成':'未生成'}`);});
+      view.querySelector('.nds-section-title').textContent=chapter.title;
+      const reading=view.querySelector('.nds-reading');
+      if(!chapter.complete)reading.innerHTML=`<div class="nds-empty">${icon('book-open-check')}<h3>正文尚未生成</h3><p>介绍过期策略与持久化，并给出基础示例。</p>${button('生成正文','wand-sparkles','generate-section','nds-primary')}</div>`;
+      else if(state.editing)reading.innerHTML='<textarea class="nds-edit-field" aria-label="编辑章节正文">字符串适合保存短文本、计数或会话信息。\n列表适合记录按顺序排列的数据。\n集合适合去重和判断成员是否存在。</textarea>';
+      else reading.innerHTML='<h3>先理解数据，再选择类型</h3><p>Redis 不只是一个键值缓存。不同的数据类型，适合不同的访问方式。</p><ul><li>字符串：保存短文本、计数或会话信息。</li><li>列表：记录按顺序排列的数据。</li><li>集合：去重、判断成员是否存在。</li></ul>';
+      if(chapter.complete && editedContent.has(state.selected)) {
+        if(state.editing)reading.querySelector('textarea').value=editedContent.get(state.selected);
+        else {reading.textContent=editedContent.get(state.selected);reading.style.whiteSpace='pre-wrap';}
+      } else reading.style.whiteSpace='';
+      view.querySelector('.nds-footer-actions').hidden=!chapter.complete;
+      const edit=view.querySelector('[data-action="edit"]');edit.innerHTML=icon('pencil')+(state.editing?'保存修改':'编辑');
+      view.querySelector('[data-action="confirm"]').hidden=state.selected===0 || (state.selected===1 && state.confirmed);
+      view.querySelector('.nds-revision').hidden=!chapter.complete || state.editing;
+      view.querySelector('[data-action="revise"]').disabled=!view.querySelector('.nds-revision textarea').value.trim();
+    });
+    if(globalThis.lucide)lucide.createIcons({attrs:{width:17,height:17}});
+  }
+  const activePanels=new Map();
+  function closePanel(view) {
+    const active=activePanels.get(view);if(!active)return;
+    view.querySelector('.nds-popover-slot').innerHTML='';view.querySelector('.nds-modal-layer')?.remove();active.trigger.setAttribute('aria-expanded','false');active.trigger.focus();activePanels.delete(view);
+  }
+  function showPanel(view,kind,trigger) {
+    const previous=activePanels.get(view);closePanel(view);if(previous?.kind===kind)return;
+    const index=windows.indexOf(view);
+    let slot=view.querySelector('.nds-popover-slot');
+    if(kind==='save'){slot=document.createElement('div');slot.className='nds-modal-layer';view.append(slot);}
+    let content='';
+    if(kind==='requirements')content=`<div class="nds-popover-heading"><span>全文写作要求</span><button type="button" class="nds-icon-button cursor-interaction" data-action="dismiss-panel" aria-label="关闭全文要求">${icon('x')}</button></div><p class="nds-help">统一控制所有章节的语气、深度、篇幅和示例风格。</p><textarea aria-label="全文写作要求" placeholder="例如：偏实战，每章提供一个完整示例…" maxlength="4000"></textarea><p class="nds-help">章节要求与全文要求冲突时，以章节要求为准。</p><div class="nds-popover-actions">${button('重写已生成章节','refresh-cw','preview-rewrite')}${button('应用到后续章节','check','preview-apply','nds-primary')}</div>`;
+    if(kind==='save')content=`<div class="nds-popover-heading"><span>保存为笔记</span><button type="button" class="nds-icon-button cursor-interaction" data-action="dismiss-panel" aria-label="关闭保存弹窗">${icon('x')}</button></div><p class="nds-help">确认标题和保存位置后，草稿会进入正式笔记库。</p><label class="nds-popover-label">笔记标题<input value="Redis 学习笔记" maxlength="120"></label><label class="nds-popover-label">保存位置<select><option>知识库</option><option>全栈开发</option></select></label><div class="nds-popover-actions">${button('继续编辑','pencil','dismiss-panel')}${button('确认保存','save','preview-save','nds-primary')}</div>`;
+    if(kind==='more')content=button('放弃草稿','trash-2','preview-discard','nds-danger');
+    slot.innerHTML=`<div class="nds-popover" data-panel="${kind}" id="nds-${kind}-${index}" role="dialog" aria-label="${kind==='requirements'?'全文写作要求':kind==='save'?'保存为笔记':'更多草稿操作'}">${content}</div>`;
+    activePanels.set(view,{kind,trigger});trigger.setAttribute('aria-expanded','true');
+    if(kind==='requirements') {
+      const field=slot.querySelector('textarea'),apply=slot.querySelector('[data-action="preview-apply"]'),rewrite=slot.querySelector('[data-action="preview-rewrite"]');
+      field.value=fullRequirements;
+      const update=()=>{apply.disabled=field.value.trim()===fullRequirements;rewrite.disabled=!field.value.trim();};field.addEventListener('input',update);update();
+    }
+    if(kind==='save'){const input=slot.querySelector('input'),save=slot.querySelector('[data-action="preview-save"]');input.addEventListener('input',()=>{save.disabled=!input.value.trim();});}
+    if(globalThis.lucide)lucide.createIcons({attrs:{width:17,height:17}});
+    (slot.querySelector('textarea,input')??slot.querySelector('button'))?.focus();
+  }
+  root.addEventListener('click',event=>{
+    const view=event.target.closest('[data-view]');if(!view)return;
+    const row=event.target.closest('[data-chapter]');
+    if(row){state.selected=Number(row.dataset.chapter);state.editing=false;render();persist('预览切换章节');return;}
+    const trigger=event.target.closest('[data-action]');if(!trigger)return;
+    const action=trigger.dataset.action;
+    if(['requirements','save','more'].includes(action)){showPanel(view,action,trigger);persist('预览展开'+action);return;}
+    if(action==='dismiss-panel'){closePanel(view);return;}
+    if(action==='edit'){if(state.editing)editedContent.set(state.selected,view.querySelector('.nds-edit-field').value);state.editing=!state.editing;render();persist('预览切换编辑');return;}
+    if(action==='confirm'){state.confirmed=true;render();announce('仅设计预览：确认状态，不保存真实章节。');persist('预览确认状态');return;}
+    if(action==='preview-apply' || action==='preview-rewrite'){fullRequirements=view.querySelector('[data-panel="requirements"] textarea').value.trim();closePanel(view);}
+    if(action==='preview-save')closePanel(view);
+    announce('仅设计预览：'+trigger.textContent.trim()+'，不会调用模型、保存或删除真实数据。');persist('预览现有动作');
+  });
+  root.addEventListener('keydown',event=>{if(event.key!=='Escape' || event.isComposing || event.keyCode===229)return;const view=event.target.closest('[data-view]');if(activePanels.has(view)){event.preventDefault();closePanel(view);}});
+  render();
+  const saved=window.openai?.widgetState;restore(saved?.privateContent?.draftDesign??saved?.draftDesign);
+  window.addEventListener('openai:set_globals',event=>{const saved=event.detail?.globals?.widgetState;restore(saved?.privateContent?.draftDesign??saved?.draftDesign);});
+  if(globalThis.Tweak){const tweak=new Tweak({container:windows[1], onChange:()=>{render();persist('调整草稿留白');}});tweak.addSlider(state,'radius',{label:'候选圆角',min:16,max:24,unit:'px'});tweak.addSlider(state,'rowHeight',{label:'目录行高',min:44,max:50,unit:'px'});}
+})();
+</script>
