@@ -1,0 +1,195 @@
+/* Approved search-only “柔和留白”; never changes the workspace or API. */
+.nf-library-search {
+  --nf-search-text: #30353c;
+  --nf-search-muted: #727b86;
+  --nf-search-icon: #7e8791;
+  --nf-search-surface: #fcfcfd;
+  --nf-search-soft: #f4f5f7;
+  --nf-search-selected: #eceff2;
+  --nf-search-highlight: #eee5d7;
+  --nf-search-danger: #b34c49;
+  --nf-search-shadow: rgba(36, 44, 55, .10);
+  --nf-search-top: clamp(24px, 14dvh, 160px);
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--nf-search-top) 16px 16px;
+  color: var(--nf-search-text);
+  font: 400 14px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+}
+.theme-dark .nf-library-search {
+  --nf-search-text: #e9edf2;
+  --nf-search-muted: #a7b0bc;
+  --nf-search-icon: #a8b1be;
+  --nf-search-surface: #252b33;
+  --nf-search-soft: #2d3540;
+  --nf-search-selected: #363f4a;
+  --nf-search-highlight: #544735;
+  --nf-search-danger: #ee9e97;
+  --nf-search-shadow: rgba(0, 0, 0, .30);
+  color-scheme: dark;
+}
+.nf-library-search * { box-sizing: border-box; }
+.nf-library-search[data-open="false"] { pointer-events: none; }
+.nf-library-search .nf-search-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  background: rgba(23, 35, 44, .20);
+  backdrop-filter: blur(2px);
+  cursor: default;
+}
+.nf-library-search .nf-search-dialog {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 610px;
+  min-width: 0;
+  max-width: 100%;
+  max-height: calc(100dvh - var(--nf-search-top) - 16px);
+  padding: 8px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--nf-search-surface);
+  box-shadow: 0 10px 28px var(--nf-search-shadow), 0 1px 3px var(--nf-search-shadow);
+  overflow: hidden;
+}
+.nf-library-search[data-open="true"] { animation: nf-search-fade-in 180ms ease both; }
+.nf-library-search[data-open="true"] .nf-search-dialog { animation: nf-search-in 180ms ease both; }
+.nf-library-search[data-open="false"] { animation: nf-search-fade-out 130ms ease both; }
+.nf-library-search[data-open="false"] .nf-search-dialog { animation: nf-search-out 130ms ease both; }
+.nf-library-search :where(button, input) { font: inherit; }
+.nf-library-search button { border: 0; margin: 0; background: transparent; color: inherit; cursor: pointer; }
+.nf-library-search :where(button, input):focus-visible {
+  outline: 2px solid var(--nf-search-muted);
+  outline-offset: -2px;
+}
+.nf-library-search p { margin: 0; }
+.nf-library-search .nf-search-field {
+  display: flex; align-items: center; flex-shrink: 0; gap: 11px;
+  min-height: 56px; padding: 8px 12px; border-radius: 11px;
+  transition: background-color 160ms ease;
+}
+.nf-library-search .nf-search-field:focus-within { background: var(--nf-search-soft); }
+.nf-library-search .nf-search-input {
+  appearance: none; flex: 1; min-width: 0; width: 100%; padding: 4px 0;
+  border: 0; border-radius: 5px; background: transparent; color: var(--nf-search-text);
+  font: 400 16px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+}
+.nf-library-search .nf-search-input::placeholder { color: var(--nf-search-muted); }
+.nf-library-search .nf-search-input:focus-visible {
+  outline: none;
+  box-shadow: inset 0 -2px 0 var(--nf-search-muted);
+}
+.nf-library-search .nf-search-close {
+  display: grid; place-items: center; flex: none;
+  width: 32px; height: 32px; padding: 0; border-radius: 8px; color: var(--nf-search-muted);
+}
+.nf-library-search .nf-search-clear {
+  flex: none; padding: 5px 7px; border-radius: 7px;
+  color: var(--nf-search-muted); font-size: 12px;
+}
+.nf-library-search :where(.nf-search-clear, .nf-search-close, .nf-search-scope, .nf-search-retry):hover {
+  background: var(--nf-search-selected);
+}
+.nf-library-search .nf-search-controls {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  flex-shrink: 0; gap: 10px; padding: 2px 12px 12px;
+}
+.nf-library-search .nf-search-scopes { display: flex; align-items: center; gap: 3px; }
+.nf-library-search .nf-search-scope {
+  min-height: 32px; padding: 6px 11px; border-radius: 8px;
+  font-size: 12px; color: var(--nf-search-muted);
+}
+.nf-library-search .nf-search-scope[aria-pressed="true"] {
+  background: var(--nf-search-selected); color: var(--nf-search-text); font-weight: 500;
+}
+.nf-library-search .nf-search-summary { font-size: 12px; color: var(--nf-search-muted); overflow-wrap: anywhere; }
+.nf-library-search .nf-search-viewport {
+  min-width: 0; min-height: 0; flex-shrink: 1; overflow-y: auto;
+  overscroll-behavior: contain;
+  transition: height 210ms cubic-bezier(.2, .8, .2, 1);
+}
+.nf-library-search .nf-search-body { padding: 0 4px; }
+.nf-library-search .nf-search-hint { padding: 10px 12px 14px; font-size: 12px; color: var(--nf-search-muted); }
+.nf-library-search .nf-search-wait {
+  display: flex; align-items: center; gap: 8px; min-height: 68px;
+  padding: 16px; color: var(--nf-search-muted); font-size: 12px;
+}
+.nf-library-search .nf-search-dot {
+  width: 5px; height: 5px; background: currentColor; border-radius: 50%; flex: none;
+  animation: nf-search-breathe 1500ms ease-in-out infinite;
+}
+.nf-library-search .nf-search-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; min-height: 136px; padding: 18px 16px; text-align: center;
+}
+.nf-library-search .nf-search-empty p { overflow-wrap: anywhere; max-width: 100%; }
+.nf-library-search .nf-search-empty-title { font-weight: 500; }
+.nf-library-search .nf-search-empty-detail { font-size: 12px; color: var(--nf-search-muted); }
+.nf-library-search .nf-search-error { color: var(--nf-search-danger); }
+.nf-library-search .nf-search-retry {
+  display: flex; align-items: center; gap: 8px; min-height: 32px;
+  margin-top: 8px; padding: 6px 11px; border-radius: 8px; font-size: 12px;
+}
+.nf-library-search .nf-search-result {
+  display: flex; gap: 12px; width: 100%; padding: 12px;
+  border-radius: 11px; text-align: left; transition: background-color 150ms ease;
+}
+.nf-library-search .nf-search-result:hover,
+.nf-library-search .nf-search-result[aria-selected="true"] { background: var(--nf-search-selected); }
+.nf-library-search .nf-search-file { padding-top: 2px; flex: none; color: var(--nf-search-icon); }
+.nf-library-search .nf-search-copy { display: block; min-width: 0; flex: 1; }
+.nf-library-search .nf-search-row-heading { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 12px; }
+.nf-library-search .nf-search-title { font-weight: 500; overflow-wrap: anywhere; }
+.nf-library-search .nf-search-labels { font-size: 11px; color: var(--nf-search-muted); }
+.nf-library-search .nf-search-location { display: block; margin-top: 5px; font-size: 11px; color: var(--nf-search-muted); overflow-wrap: anywhere; }
+.nf-library-search .nf-search-snippet {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  margin-top: 8px; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere;
+}
+.nf-library-search .nf-search-more { display: block; margin-top: 7px; font-size: 11px; color: var(--nf-search-muted); }
+.nf-library-search .nf-search-highlight { border-radius: 3px; padding: 0 2px; background: var(--nf-search-highlight); color: inherit; }
+.nf-library-search .nf-search-footer {
+  display: flex; justify-content: space-between; flex-wrap: wrap; flex-shrink: 0;
+  gap: 12px; padding: 12px 12px 5px; font-size: 11px; color: var(--nf-search-muted);
+}
+.nf-library-search svg { flex: none; width: 17px; height: 17px; color: var(--nf-search-icon); stroke-width: 1.65; }
+.nf-library-search .nf-search-close svg { width: 15px; height: 15px; }
+@keyframes nf-search-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes nf-search-fade-out { to { opacity: 0; } }
+@keyframes nf-search-in { from { transform: translateY(-5px) scale(.99); } to { transform: none; } }
+@keyframes nf-search-out { to { transform: translateY(-3px) scale(.99); } }
+@keyframes nf-search-breathe { 50% { opacity: .4; } }
+@media (max-width: 480px) {
+  .nf-library-search { --nf-search-top: 16px; padding-inline: 12px; }
+  .nf-library-search .nf-search-field { gap: 8px; padding: 8px; }
+  .nf-library-search .nf-search-input { width: 0; flex: 1 1 0; }
+  .nf-library-search .nf-search-controls { padding: 2px 8px 10px; }
+  .nf-library-search .nf-search-result { gap: 9px; }
+  .nf-library-search .nf-search-footer { padding: 10px 8px 5px; }
+}
+@media (pointer: coarse) {
+  .nf-library-search .nf-search-close { width: 44px; height: 44px; }
+  .nf-library-search .nf-search-clear,
+  .nf-library-search .nf-search-scope,
+  .nf-library-search .nf-search-retry { min-height: 44px; }
+  .nf-library-search .nf-search-input { min-height: 44px; font-size: 16px; }
+  .nf-library-search .nf-search-result { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nf-library-search, .nf-library-search * { animation: none !important; transition: none !important; }
+}
+@media (forced-colors: active) {
+  .nf-library-search .nf-search-dialog { border: 1px solid CanvasText; }
+  .nf-library-search .nf-search-input:focus-visible { outline: 2px solid Highlight; box-shadow: none; }
+  .nf-library-search .nf-search-result[aria-selected="true"],
+  .nf-library-search .nf-search-scope[aria-pressed="true"] { outline: 1px solid Highlight; outline-offset: -1px; }
+}

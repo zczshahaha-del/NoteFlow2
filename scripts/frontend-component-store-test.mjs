@@ -63,6 +63,10 @@ const vite = await createServer({
   logLevel: "silent",
   server: { middlewareMode: true },
 });
+const traceFrontend = (phase) => {
+  if (process.env.NOTEFLOW_TEST_TRACE === "1") console.error(JSON.stringify({ phase, rssMiB: Math.round(process.memoryUsage().rss / 1024 / 1024) }));
+};
+traceFrontend("vite-ready");
 
 try {
   const {
@@ -78,12 +82,14 @@ try {
     AIPanel,
     SoftMenu,
   } = await vite.ssrLoadModule("/src/testing/frontendHarness.ts");
+  traceFrontend("harness-loaded");
 
   const initialState = useAppStore.getInitialState();
   useAppStore.setState(initialState, true);
 
   // Production menu lifecycle with synthetic contents, no browser/session or API access.
   const softContainer = document.createElement("div"); document.body.appendChild(softContainer);
+  traceFrontend("soft-menu");
   const softRoot = createRoot(softContainer);
   let softOpen = true;
   let softActionCalls = 0;
@@ -222,6 +228,7 @@ try {
   // Drive production conversation UI with synthetic messages; never call the live AI.
   const beforeConversation = useAppStore.getState();
   const conversationContainer = document.createElement("div"); document.body.appendChild(conversationContainer);
+  traceFrontend("conversation");
   const conversationRoot = createRoot(conversationContainer);
   const userMessage = { id: "ui-user", role: "user", text: "帮我解释这段笔记" };
   const assistantMessage = { id: "ui-assistant", role: "assistant", text: "" };
@@ -415,6 +422,7 @@ try {
     deletedNotes: [],
   });
   const directoryContainer = document.createElement("div");
+  traceFrontend("directory");
   document.body.appendChild(directoryContainer);
   const directoryRoot = createRoot(directoryContainer);
   let directoryPinnedChange = null;
@@ -487,7 +495,9 @@ try {
   await act(async () => document.dispatchEvent(new dom.window.KeyboardEvent("keydown", {
     key: "Escape", bubbles: true,
   })));
-  assert.equal(document.querySelector('input[aria-label="搜索全部笔记"]'), null);
+  assert.equal(document.querySelector('.nf-library-search').hasAttribute('inert'), true);
+  await act(async () => { await new Promise((resolve) => window.setTimeout(resolve, 160)); });
+  assert.equal(Boolean(document.querySelector('input[aria-label="搜索全部笔记"]')), false);
   await act(async () => {
     newButton.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
   });
@@ -541,6 +551,7 @@ try {
     expandedFolderIds: new Set([folder.id]),
   });
   const rowContainer = document.createElement("div");
+  traceFrontend("directory-rows");
   document.body.appendChild(rowContainer);
   const rowRoot = createRoot(rowContainer);
   let fileOpenCalls = 0;
@@ -672,6 +683,7 @@ try {
   const importCalls = [], selectCalls = [];
   useAppStore.setState({ deletedNotes: [{ id: "trash-test", title: "待恢复笔记", deletedAt: null }], restoreDeletedNote(id) { restoredId = id; }, addNode(parent, node) { importCalls.push({ parent, node }); }, setSelectedFileId(id) { selectCalls.push(id); } });
   const accountContainer = document.createElement("div");
+  traceFrontend("account");
   document.body.appendChild(accountContainer);
   const accountRoot = createRoot(accountContainer);
   const accountProps = { themeMode: "light", onThemeModeChange(mode) { themeCalls.push(mode); }, userEmail: "test@example.com", userName: "test", userEmailVerified: true, trashCount: 1, onEmailChanged(session) { changedSession = session; }, onSignOut() { signOutCalls += 1; } };
@@ -876,6 +888,7 @@ try {
   useAppStore.setState(accountStore, true);
 
   const searchCalls = [];
+  traceFrontend("search-regressions");
   let searchCloseCalls = 0;
   let selectedSearchSource = null;
   const searchNotesStub = async (query, options) => {
@@ -982,10 +995,149 @@ try {
   await act(async () => searchDialogRoot.unmount());
   searchDialogContainer.remove();
 
+  // Approved search surface with the production async lifecycle and synthetic
+  // results only. No service calls, note writes, or user browser/session access.
+  const searchSurfaceContainer = document.createElement("div");
+  document.body.appendChild(searchSurfaceContainer);
+  const searchTrigger = document.createElement("button");
+  searchTrigger.textContent = "搜索入口"; document.body.appendChild(searchTrigger); searchTrigger.focus();
+  const surfaceRoot = createRoot(searchSurfaceContainer);
+  const pendingSearches = [];
+  const surfaceSearchFn = (query, options) => new Promise((resolve, reject) => pendingSearches.push({ query, options, resolve, reject }));
+  let surfaceOpen = true;
+  let surfaceSelections = [];
+  let surfaceCloses = 0;
+  const renderSearchSurface = () => surfaceRoot.render(React.createElement(LibrarySearchDialog, {
+    open: surfaceOpen, treeData: [note], searchNotesFn: surfaceSearchFn,
+    onClose() { surfaceCloses++; surfaceOpen = false; renderSearchSurface(); },
+    onSelect(source) { surfaceSelections.push(source); },
+  }));
+  const searchSurface = () => document.querySelector('.nf-library-search');
+  const surfaceInput = () => searchSurface().querySelector('input');
+  const setSearchQuery = async (query) => act(async () => {
+    surfaceInput().value = query;
+    surfaceInput().dispatchEvent(new dom.window.CompositionEvent("compositionend", { bubbles: true, data: query }));
+  });
+  const debounceSearch = async () => act(async () => { await new Promise((resolve) => window.setTimeout(resolve, 380)); });
+  const surfaceClick = async (element) => act(async () => element.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true })));
+  const surfaceKey = async (element, key, options = {}) => act(async () => element.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...options })));
+  const sourceA = { noteId: note.id, noteTitle: "Redis", sectionId: "section-a", sectionTitle: "缓存基础", sourceType: "chunk_content", snippet: "Redis 缓存", retrievalChannels: ["content"] };
+  const sourceB = { ...sourceA, noteId: "search-note-b", noteTitle: "Python 的面试常见问题", sectionId: "section-b" };
+  await act(async () => renderSearchSurface());
+  await act(async () => { await new Promise((resolve) => window.setTimeout(resolve, 1)); });
+  assert.equal(document.activeElement, surfaceInput());
+  assert.equal(document.getElementById('root').inert, true);
+  assert.equal(document.body.style.overflow, 'hidden');
+  assert.equal(surfaceInput().getAttribute('aria-expanded'), 'false');
+  assert.equal(searchSurface().querySelector('.nf-search-body').textContent, '输入笔记标题、章节名或正文关键词。');
+  assert.equal(searchSurface().querySelectorAll('svg').length, 2);
+  assert.equal(searchSurface().querySelector('.nf-search-scope').textContent, '全部');
+
+  await setSearchQuery('Redis');
+  assert.equal(searchSurface().querySelectorAll('[role="status"]').length, 1);
+  assert.equal(searchSurface().querySelector('.nf-search-summary').textContent, '');
+  assert.equal(pendingSearches.length, 0);
+  await debounceSearch();
+  assert.equal(pendingSearches.length, 1);
+  assert.equal(pendingSearches[0].options.limit, 20);
+  assert.equal(pendingSearches[0].options.mode, 'literal');
+  assert.equal(searchSurface().querySelectorAll('[role="status"]').length, 1);
+  assert.equal(searchSurface().querySelector('[role="status"]').textContent, '正在搜索…');
+  await act(async () => pendingSearches[0].resolve({ results: [sourceA, { ...sourceA, sectionId: 'section-a2' }, sourceB] }));
+  assert.equal(searchSurface().querySelectorAll('[role="option"]').length, 2);
+  assert.equal(searchSurface().querySelector('.nf-search-summary').textContent, '2 篇笔记 · 3 处命中');
+  assert.equal(searchSurface().querySelectorAll('[role="status"]').length, 0);
+  assert.equal(surfaceInput().getAttribute('aria-expanded'), 'true');
+  assert.match(searchSurface().textContent, /另有 1 处命中/);
+  assert.ok(searchSurface().querySelector('mark'));
+  await surfaceKey(surfaceInput(), 'ArrowDown');
+  assert.equal(surfaceInput().getAttribute('aria-activedescendant'), 'library-search-result-1');
+  const lastSearchControl = searchSurface().querySelectorAll('button')[searchSurface().querySelectorAll('button').length - 1];
+  lastSearchControl.focus(); await surfaceKey(lastSearchControl, 'Tab');
+  assert.equal(document.activeElement, surfaceInput());
+  await surfaceKey(surfaceInput(), 'Tab', { shiftKey: true });
+  assert.equal(document.activeElement, lastSearchControl);
+  surfaceInput().focus(); await surfaceKey(surfaceInput(), 'Enter');
+  assert.equal(surfaceSelections[0], sourceB);
+  assert.equal(surfaceCloses, 1);
+  assert.equal(searchSurface().hasAttribute('inert'), true);
+  assert.equal(searchSurface().getAttribute('aria-hidden'), 'true');
+  assert.notEqual(document.getElementById('root').inert, true);
+  assert.equal(document.activeElement, searchTrigger);
+  await surfaceClick(searchSurface().querySelector('[role="option"]'));
+  assert.equal(surfaceSelections.length, 1, 'closing contents must not dispatch selection');
+  surfaceOpen = true; await act(async () => renderSearchSurface());
+  await act(async () => { await new Promise((resolve) => window.setTimeout(resolve, 160)); });
+  assert.equal(searchSurface().hasAttribute('inert'), false, 'quick reopen cancels the delayed exit');
+  await surfaceClick(searchSurface().querySelector('.nf-search-clear'));
+  assert.equal(surfaceInput().value, '');
+  assert.equal(document.activeElement, surfaceInput());
+  assert.equal(surfaceInput().hasAttribute('aria-activedescendant'), false);
+
+  const callsBeforeRace = pendingSearches.length;
+  await setSearchQuery('旧查询'); await debounceSearch();
+  const stale = pendingSearches[callsBeforeRace];
+  await setSearchQuery('新查询');
+  assert.equal(stale.options.signal.aborted, true);
+  await debounceSearch();
+  const current = pendingSearches[callsBeforeRace + 1];
+  await act(async () => stale.resolve({ results: [sourceA] }));
+  assert.equal(searchSurface().querySelectorAll('[role="option"]').length, 0);
+  await act(async () => current.resolve({ results: [] }));
+  assert.match(searchSurface().querySelector('[role="status"]').textContent, /没有找到“新查询”/);
+  assert.equal(searchSurface().querySelector('.nf-search-summary').textContent, '0 篇笔记 · 0 处命中');
+  await surfaceClick([...searchSurface().querySelectorAll('.nf-search-scope')].find((node) => node.textContent === '标题'));
+  await debounceSearch();
+  const titleSearch = pendingSearches.at(-1);
+  assert.equal(titleSearch.options.scope, 'title');
+  await act(async () => titleSearch.reject(new Error('合成网络错误')));
+  assert.match(searchSurface().querySelector('[role="alert"]').textContent, /搜索没有完成.*合成网络错误.*重新搜索/);
+  await surfaceClick(searchSurface().querySelector('.nf-search-retry'));
+  await debounceSearch();
+  assert.equal(pendingSearches.at(-1).query, '新查询');
+  assert.equal(pendingSearches.at(-1).options.scope, 'title');
+  await act(async () => pendingSearches.at(-1).resolve({ results: [sourceA] }));
+  await surfaceClick([...searchSurface().querySelectorAll('.nf-search-scope')].find((node) => node.textContent === '正文'));
+  await debounceSearch(); assert.equal(pendingSearches.at(-1).options.scope, 'content');
+  await act(async () => pendingSearches.at(-1).resolve({ results: [] }));
+  await setSearchQuery('<img src=x onerror=alert(1)>'); await debounceSearch();
+  await act(async () => pendingSearches.at(-1).resolve({ results: [] }));
+  assert.equal(searchSurface().querySelectorAll('img').length, 0);
+
+  await act(async () => surfaceInput().dispatchEvent(new dom.window.CompositionEvent('compositionstart', { bubbles: true })));
+  assert.equal(searchSurface().querySelectorAll('[role="status"]').length, 1);
+  await surfaceKey(surfaceInput(), 'Escape', { isComposing: true });
+  assert.equal(surfaceOpen, true);
+  await surfaceClick(searchSurface().querySelector('.nf-search-close'));
+  assert.equal(surfaceOpen, false);
+  surfaceOpen = true; await act(async () => renderSearchSurface());
+  assert.notEqual(searchSurface().querySelector('[role="status"]')?.textContent, '继续完成输入');
+  await surfaceKey(surfaceInput(), 'Escape');
+  assert.equal(surfaceOpen, false, 'pointer-close / quick-reopen must not keep a stale IME lock');
+  surfaceOpen = true; await act(async () => renderSearchSurface());
+  await setSearchQuery('关闭前查询'); await debounceSearch();
+  const closingRequest = pendingSearches.at(-1);
+  await surfaceKey(surfaceInput(), 'Escape');
+  assert.equal(surfaceOpen, false); assert.equal(closingRequest.options.signal.aborted, true);
+  assert.equal(searchSurface().querySelector('[role="status"]').textContent, '正在搜索…', 'exit freezes visual loading state');
+  await act(async () => closingRequest.resolve({ results: [sourceA] }));
+  await act(async () => { await new Promise((resolve) => window.setTimeout(resolve, 160)); });
+  assert.equal(searchSurface(), null);
+  assert.equal(document.body.style.overflow, '');
+  surfaceOpen = true; await act(async () => renderSearchSurface());
+  assert.equal(surfaceInput().value, '');
+  assert.equal(searchSurface().querySelector('[aria-pressed="true"]').textContent, '全部');
+  const originalMatchMedia = window.matchMedia;
+  window.matchMedia = () => ({ matches: true });
+  await surfaceClick(searchSurface().querySelector('.nf-search-close'));
+  assert.equal(searchSurface(), null, 'reduced motion closes without a delayed surface');
+  window.matchMedia = originalMatchMedia;
+  await act(async () => surfaceRoot.unmount()); searchSurfaceContainer.remove(); searchTrigger.remove();
+
   console.log(JSON.stringify({
     ok: true,
     storeAssertions: 10,
-    componentAssertionGroups: 41,
+    componentAssertionGroups: 42,
     components: [
       "SoftMenu",
       "LoginPage",
@@ -1000,6 +1152,7 @@ try {
     directoryRowCoverage: ["whole-row-selection", "full-name", "selected-more", "nested-indent", "pin-favorite-glyphs", "folder-disclosure", "file-open-callback", "independent-menu", "rename-cancel"],
     conversationCoverage: ["empty-wait", "whitespace-wait", "streaming-markdown", "hide-status-on-first-text", "no-status-during-transport-cleanup", "single-status", "completion", "stop-callback", "error-clears-status", "fallback-wait", "empty-send-disabled", "Enter-Shift-IME", "send-context", "library-mode", "remove-note-reference", "citation-open", "selection-expand", "selection-send"],
     softMenuCoverage: ["exit-inert", "unmount-after-exit", "quick-reopen", "reduced-motion", "Escape-focus", "IME-Escape", "file-action-order", "history-inline-actions", "history-rename-callback", "history-delete-confirmation", "history-switch-callback"],
+    searchSurfaceCoverage: ["compact-initial", "single-wait", "groups-count-highlight", "keyboard-select", "focus-trap-return", "background-inert", "exit-inert-click-block", "quick-reopen", "clear", "abort-stale-response", "empty", "title-content-scope", "error-retry", "escaped-input", "IME", "IME-pointer-close-reopen", "abort-close", "frozen-exit", "reopen-reset", "reduced-motion"],
   }));
 } finally {
   await vite.close();

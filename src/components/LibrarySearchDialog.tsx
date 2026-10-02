@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -8,10 +9,11 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import { FileText, Loader2, RotateCcw, Search, X } from "lucide-react";
+import { FileText, RotateCcw, Search, X } from "lucide-react";
 import { searchNotes, type NoteSearchScope } from "../services/notes";
 import type { ChatSource, FileNode } from "../types";
 import { formatDocumentTime } from "../utils/documentTime";
+import "./library-search.css";
 
 const SEARCH_DEBOUNCE_MS = 340;
 
@@ -130,7 +132,7 @@ function highlightTerms(text: string, query: string) {
     normalizedTerms.has(part.toLocaleLowerCase()) ? (
       <mark
         key={`${part}-${index}`}
-        className="rounded-sm bg-jelly-amber-bg px-0.5 text-inherit"
+        className="nf-search-highlight"
       >
         {part}
       </mark>
@@ -167,12 +169,29 @@ export default function LibrarySearchDialog({
   const [errorText, setErrorText] = useState("");
   const [retryNonce, setRetryNonce] = useState(0);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [present, setPresent] = useState(open);
+  const [contentHeight, setContentHeight] = useState<number>();
   const composingRef = useRef(false);
   const requestSequenceRef = useRef(0);
   const activeControllerRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  const visible = open || present;
+
+  useEffect(() => {
+    if (open) { setPresent(true); return; }
+    if (!present) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setPresent(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setPresent(false), 130);
+    return () => window.clearTimeout(timer);
+  }, [open, present]);
 
   const noteMetadata = useMemo(() => collectNoteMetadata(treeData), [treeData]);
   const normalizedQuery = settledValue.trim();
@@ -188,23 +207,37 @@ export default function LibrarySearchDialog({
   }, [groups]);
 
   useEffect(() => {
-    if (!open) {
+    // Freeze the closing contents; reset only after the visual exit is removed.
+    if (visible) return;
+    composingRef.current = false;
+    setCompositionActive(false);
+    setInputValue("");
+    setSettledValue("");
+    setScope("all");
+    setResults([]);
+    setResultKey("");
+    setLoading(false);
+    setSearchPending(false);
+    setErrorText("");
+    setActiveIndex(-1);
+    setContentHeight(undefined);
+  }, [visible]);
+
+  useEffect(() => {
+    if (!open) return;
+    // A pointer close can cancel IME without dispatching compositionend. On a
+    // quick reopen, discard only that unconfirmed draft, not the last query.
+    if (composingRef.current) {
       composingRef.current = false;
       setCompositionActive(false);
-      setInputValue("");
-      setSettledValue("");
-      setScope("all");
-      setResults([]);
-      setResultKey("");
-      setLoading(false);
-      setSearchPending(false);
-      setErrorText("");
-      setActiveIndex(-1);
-      return;
+      setInputValue(settledValue);
     }
-
-    previousFocusRef.current =
+    const previousFocus =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const background = Array.from(document.body.children)
+      .filter((node): node is HTMLElement => node instanceof HTMLElement && node !== overlayRef.current)
+      .map((node) => ({ node, inert: node.inert }));
+    background.forEach(({ node }) => { node.inert = true; });
     const previousBodyOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 0);
@@ -220,7 +253,7 @@ export default function LibrarySearchDialog({
           return;
         }
         event.preventDefault();
-        onClose();
+        closeRef.current();
         return;
       }
       if (event.key !== "Tab" || !dialogRef.current) return;
@@ -228,14 +261,14 @@ export default function LibrarySearchDialog({
         dialogRef.current.querySelectorAll<HTMLElement>(
           'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
         )
-      ).filter((element) => !element.hidden);
+      ).filter((element) => !element.closest('[hidden], [inert], [aria-hidden="true"]'));
       if (focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
+      if (event.shiftKey && (document.activeElement === first || !dialogRef.current.contains(document.activeElement))) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
+      } else if (!event.shiftKey && (document.activeElement === last || !dialogRef.current.contains(document.activeElement))) {
         event.preventDefault();
         first.focus();
       }
@@ -246,17 +279,33 @@ export default function LibrarySearchDialog({
       window.clearTimeout(focusTimer);
       document.removeEventListener("keydown", handleDialogKeyDown);
       document.body.style.overflow = previousBodyOverflow;
-      const previousFocus = previousFocusRef.current;
+      background.forEach(({ node, inert }) => { node.inert = inert; });
       if (previousFocus && document.contains(previousFocus)) previousFocus.focus();
     };
-  }, [onClose, open]);
+  }, [open]);
+
+  // Measure only this content, not a fixed large canvas. Flex caps long results to
+  // the viewport; the input stays anchored while the body grows downwards.
+  useLayoutEffect(() => {
+    if (!visible || !open) return;
+    const measure = () => {
+      const height = bodyRef.current?.getBoundingClientRect().height;
+      if (height) setContentHeight(height);
+    };
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    if (bodyRef.current) observer?.observe(bodyRef.current);
+    window.addEventListener("resize", measure);
+    return () => { observer?.disconnect(); window.removeEventListener("resize", measure); };
+  }, [visible, open, groups, inputValue, compositionActive, searchPending, loading, errorText]);
 
   useEffect(() => {
     const sequence = ++requestSequenceRef.current;
     activeControllerRef.current?.abort();
     activeControllerRef.current = null;
 
-    if (!open || compositionActive) {
+    if (!open) return;
+    if (compositionActive) {
       setLoading(false);
       setSearchPending(false);
       return;
@@ -404,32 +453,33 @@ export default function LibrarySearchDialog({
     inputRef.current?.focus();
   }, []);
 
-  if (!open) return null;
+  if (!visible) return null;
 
   const resultSummary =
-    normalizedQuery && !compositionActive && !loading && !searchPending && !errorText
-      ? `${groups.length} 篇笔记 · ${resultsAreCurrent ? results.length : 0} 处命中`
+    normalizedQuery && resultsAreCurrent && !compositionActive && !loading && !searchPending && !errorText
+      ? `${groups.length} 篇笔记 · ${results.length} 处命中`
       : "";
 
   return createPortal(
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 max-sm:p-0">
+    <div ref={overlayRef} className="nf-library-search" data-open={open} inert={!open} aria-hidden={!open || undefined}
+      onClickCapture={(event) => { if (!open) { event.preventDefault(); event.stopPropagation(); } }}>
       <button
         type="button"
-        className="absolute inset-0 bg-[#17232c]/28 backdrop-blur-[2px]"
+        className="nf-search-backdrop"
         onClick={onClose}
         aria-label="关闭全库搜索"
       />
       <section
         ref={dialogRef}
-        className="panel-surface relative z-10 flex h-[min(680px,calc(100dvh-32px))] w-[min(800px,calc(100vw-32px))] flex-col overflow-hidden rounded-[14px] border-jelly-border bg-white shadow-[0_28px_90px_rgba(16,30,40,0.2)] max-sm:h-[100dvh] max-sm:w-screen max-sm:rounded-none max-sm:border-0"
+        className="nf-search-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="library-search-title"
       >
         <h2 id="library-search-title" className="sr-only">搜索全部笔记</h2>
 
-        <div className="flex h-16 shrink-0 items-center gap-3 border-b border-jelly-border px-5 max-sm:px-4">
-          <Search size={21} className="shrink-0 text-jelly-blue-deep" strokeWidth={1.9} />
+        <div className="nf-search-field">
+          <Search size={17} strokeWidth={1.65} aria-hidden="true" />
           <input
             ref={inputRef}
             value={inputValue}
@@ -437,53 +487,46 @@ export default function LibrarySearchDialog({
             onCompositionStart={handleCompositionStart}
             onCompositionEnd={handleCompositionEnd}
             onKeyDown={handleInputKeyDown}
-            className="min-w-0 flex-1 bg-transparent text-[16px] text-jelly-text outline-none placeholder:text-jelly-text-muted"
+            className="nf-search-input"
             placeholder="搜索标题、章节和正文"
             aria-label="搜索全部笔记"
             role="combobox"
             aria-autocomplete="list"
-            aria-expanded="true"
-            aria-controls="library-search-results"
+            aria-expanded={groups.length > 0 && !loading && !searchPending && !compositionActive}
+            aria-controls={groups.length > 0 ? "library-search-results" : undefined}
             aria-activedescendant={
-              activeIndex >= 0 ? `library-search-result-${activeIndex}` : undefined
+              activeIndex >= 0 && groups[activeIndex] && !loading && !searchPending && !compositionActive
+                ? `library-search-result-${activeIndex}` : undefined
             }
           />
-          {compositionActive && (
-            <span className="shrink-0 text-[11px] text-jelly-text-muted">正在输入…</span>
-          )}
           {inputValue && !compositionActive && (
             <button
               type="button"
-              className="shrink-0 rounded-md px-2 py-1 text-[12px] text-jelly-text-muted transition-colors hover:bg-jelly-blue-pale hover:text-jelly-blue-deep focus-visible:bg-jelly-blue-pale focus-visible:text-jelly-blue-deep"
+              className="nf-search-clear"
               onClick={clearSearch}
             >
               清空
             </button>
           )}
-          <span className="h-6 w-px shrink-0 bg-jelly-border" aria-hidden="true" />
           <button
             type="button"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-jelly-text-muted transition-colors hover:bg-jelly-blue-pale hover:text-jelly-blue-deep focus-visible:bg-jelly-blue-pale focus-visible:text-jelly-blue-deep"
+            className="nf-search-close"
             onClick={onClose}
             aria-label="关闭搜索"
           >
-            <X size={19} strokeWidth={1.9} />
+            <X size={15} strokeWidth={1.65} aria-hidden="true" />
           </button>
         </div>
 
-        <div className="flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-jelly-border bg-jelly-surface/55 px-5 py-2.5 max-sm:px-4">
-          <div className="flex items-center rounded-lg border border-jelly-border bg-white p-0.5">
+        <div className="nf-search-controls">
+          <div className="nf-search-scopes" role="group" aria-label="搜索范围">
             {SEARCH_SCOPES.map((option) => {
               const active = option.value === scope;
               return (
                 <button
                   key={option.value}
                   type="button"
-                  className={`h-8 rounded-md px-3 text-[12px] font-medium transition-colors ${
-                    active
-                      ? "bg-jelly-blue-pale text-jelly-blue-deep"
-                      : "text-jelly-text-muted hover:text-jelly-blue-deep focus-visible:text-jelly-blue-deep"
-                  }`}
+                  className="nf-search-scope"
                   onClick={() => setScope(option.value)}
                   aria-pressed={active}
                 >
@@ -492,82 +535,51 @@ export default function LibrarySearchDialog({
               );
             })}
           </div>
-          <p className="truncate text-right text-[11px] text-jelly-text-muted" aria-live="polite">
-            {compositionActive
-              ? "确认文字后开始搜索"
-              : loading
-                ? "正在搜索…"
-                : searchPending
-                  ? "等待输入完成"
-                  : resultSummary}
+          <p className="nf-search-summary" aria-live="polite">
+            {resultSummary}
           </p>
         </div>
 
-        <div
-          id="library-search-results"
-          className="min-h-0 flex-1 overflow-y-auto"
-          role="listbox"
-          aria-label="搜索结果"
-        >
+        <div className="nf-search-viewport" style={{ height: contentHeight }}>
+          <div ref={bodyRef} className="nf-search-body">
           {!inputValue.trim() ? (
-            <div className="flex h-full min-h-72 flex-col items-center justify-center px-8 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-jelly-blue-pale text-jelly-blue-deep">
-                <Search size={21} strokeWidth={1.7} />
-              </div>
-              <p className="mt-4 text-[15px] font-semibold text-jelly-text">搜索全部笔记</p>
-              <p className="mt-1.5 max-w-sm text-[12px] leading-5 text-jelly-text-muted">
-                输入笔记标题、章节名或正文关键词。搜索只显示真实文字命中，不会混入无关的语义结果。
-              </p>
-              <p className="mt-4 text-[11px] text-jelly-text-muted">
-                使用 ↑ ↓ 选择结果，按 Enter 打开
-              </p>
-            </div>
+            <p className="nf-search-hint">
+              输入笔记标题、章节名或正文关键词。
+            </p>
           ) : compositionActive ? (
-            <div className="flex h-full min-h-72 flex-col items-center justify-center px-8 text-center">
-              <p className="text-[13px] font-medium text-jelly-text-soft">继续完成输入</p>
-              <p className="mt-1 text-[12px] text-jelly-text-muted">文字确认后才会开始防抖搜索</p>
-            </div>
+            <div className="nf-search-wait" role="status">继续完成输入</div>
           ) : searchPending ? (
-            <div className="flex h-full min-h-72 items-center justify-center text-[12px] text-jelly-text-muted">
+            <div className="nf-search-wait" role="status">
               等待输入完成…
             </div>
           ) : loading ? (
-            <div className="divide-y divide-jelly-border/70 px-5 max-sm:px-4" aria-label="正在加载搜索结果">
-              {Array.from({ length: 5 }, (_, index) => (
-                <div key={index} className="flex animate-pulse gap-3 py-4">
-                  <div className="h-9 w-9 shrink-0 rounded-lg bg-jelly-blue-pale" />
-                  <div className="min-w-0 flex-1">
-                    <div className="h-3.5 w-2/5 rounded bg-jelly-border" />
-                    <div className="mt-2 h-3 w-3/5 rounded bg-jelly-border/70" />
-                    <div className="mt-2 h-3 w-4/5 rounded bg-jelly-border/60" />
-                  </div>
-                </div>
-              ))}
+            <div className="nf-search-wait" role="status">
+              <span className="nf-search-dot" aria-hidden="true" />正在搜索…
             </div>
           ) : errorText ? (
-            <div className="flex h-full min-h-72 flex-col items-center justify-center px-8 text-center" role="alert">
-              <p className="text-[13px] font-medium text-jelly-red">搜索没有完成</p>
-              <p className="mt-1 max-w-md text-[12px] leading-5 text-jelly-text-muted">{errorText}</p>
+            <div className="nf-search-empty" role="alert">
+              <p className="nf-search-empty-title nf-search-error">搜索没有完成</p>
+              <p className="nf-search-empty-detail">{errorText}</p>
               <button
                 type="button"
-                className="mt-4 flex h-8 items-center gap-1.5 rounded-md border border-jelly-border bg-white px-3 text-[12px] font-medium text-jelly-text-soft hover:bg-jelly-blue-pale hover:text-jelly-blue-deep"
+                className="nf-search-retry"
                 onClick={() => setRetryNonce((value) => value + 1)}
               >
-                <RotateCcw size={13} strokeWidth={1.8} />
+                <RotateCcw size={17} strokeWidth={1.65} aria-hidden="true" />
                 重新搜索
               </button>
             </div>
           ) : groups.length === 0 ? (
-            <div className="flex h-full min-h-72 flex-col items-center justify-center px-8 text-center">
-              <p className="text-[14px] font-medium text-jelly-text-soft">
+            <div className="nf-search-empty" role="status">
+              <p className="nf-search-empty-title">
                 没有找到“{normalizedQuery}”
               </p>
-              <p className="mt-1.5 text-[12px] text-jelly-text-muted">
+              <p className="nf-search-empty-detail">
                 可以缩短关键词，或切换到“全部”查看标题和正文
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-jelly-border/70 px-3 py-1 max-sm:px-2">
+            <div id="library-search-results" role="listbox" aria-label="搜索结果">
               {groups.map((group, index) => {
                 const active = index === activeIndex;
                 const updatedDate = formatDocumentTime(group.updatedAt).split(" ")[0];
@@ -582,47 +594,28 @@ export default function LibrarySearchDialog({
                     type="button"
                     role="option"
                     aria-selected={active}
-                    className={`group flex w-full gap-3 rounded-lg px-3.5 py-3.5 text-left transition-colors ${
-                      active
-                        ? "bg-jelly-blue-pale/75"
-                        : "hover:bg-jelly-blue-pale/45 focus-visible:bg-jelly-blue-pale/60"
-                    }`}
+                    className="nf-search-result"
                     onClick={() => selectGroup(group)}
                     onMouseEnter={() => setActiveIndex(index)}
                   >
-                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-jelly-border bg-white text-jelly-text-muted transition-colors group-hover:text-jelly-blue-deep">
-                      <FileText size={17} strokeWidth={1.7} />
+                    <span className="nf-search-file">
+                      <FileText size={17} strokeWidth={1.65} aria-hidden="true" />
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex min-w-0 items-start justify-between gap-3">
-                        <span className="min-w-0 truncate text-[14px] font-semibold text-jelly-text">
+                    <span className="nf-search-copy">
+                      <span className="nf-search-row-heading">
+                        <span className="nf-search-title">
                           {highlightTerms(group.noteTitle, normalizedQuery)}
                         </span>
-                        <span className="flex shrink-0 items-center gap-1">
-                          {group.labels.map((label) => (
-                            <span
-                              key={label}
-                              className="rounded-full border border-jelly-blue/15 bg-white/80 px-2 py-0.5 text-[10px] font-medium text-jelly-blue-deep"
-                            >
-                              {label}
-                            </span>
-                          ))}
-                        </span>
+                        <span className="nf-search-labels">{group.labels.join(" · ")}</span>
                       </span>
-                      <span className="mt-1 flex min-w-0 items-center gap-2 text-[11px] text-jelly-text-muted">
-                        <span className="truncate">{location}</span>
-                        {updatedDate && (
-                          <>
-                            <span aria-hidden="true">·</span>
-                            <span className="shrink-0">更新于 {updatedDate}</span>
-                          </>
-                        )}
+                      <span className="nf-search-location">
+                        {location}{updatedDate && ` · 更新于 ${updatedDate}`}
                       </span>
-                      <span className="mt-1.5 line-clamp-2 block text-[12px] leading-5 text-jelly-text-soft">
+                      <span className="nf-search-snippet">
                         {highlightTerms(groupSnippet(group), normalizedQuery)}
                       </span>
                       {group.matches.length > 1 && (
-                        <span className="mt-1 block text-[10px] text-jelly-text-muted">
+                        <span className="nf-search-more">
                           另有 {group.matches.length - 1} 处命中
                         </span>
                       )}
@@ -632,7 +625,9 @@ export default function LibrarySearchDialog({
               })}
             </div>
           )}
+          </div>
         </div>
+        <div className="nf-search-footer"><span>↑ ↓ 选择 · Enter 打开</span><span>Esc 关闭</span></div>
       </section>
     </div>,
     document.body

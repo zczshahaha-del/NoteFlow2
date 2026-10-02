@@ -17,6 +17,7 @@
     "test:markdown-diff": "node --experimental-strip-types scripts/markdown-diff-test.ts",
     "test:offline-conflict": "node --experimental-strip-types scripts/offline-conflict-test.ts",
     "test:frontend": "node scripts/frontend-component-store-test.mjs",
+    "test:search-ui": "node scripts/search-surface-browser-test.mjs",
     "test:e2e-runtime": "node scripts/run-python.mjs server/tests/runtime_e2e.py",
     "test:pwa": "node scripts/pwa-installability-test.mjs",
     "test:tiptap-history": "node scripts/run-python.mjs scripts/export-note-corpus.py | node --experimental-strip-types scripts/tiptap-history-audit.ts",
