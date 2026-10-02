@@ -1,0 +1,114 @@
+.nf-draft-workspace {
+  --draft-surface: #fcfcfd;
+  --draft-soft: #f3f4f6;
+  --draft-selected: #ebedef;
+  --draft-text: #2f343c;
+  --draft-muted: #687583;
+  --draft-primary: #2f343c;
+  --draft-primary-text: #fcfcfd;
+  --draft-success: #267955;
+  --draft-success-bg: #e6f3ec;
+  --draft-danger: #ad4848;
+  --draft-danger-bg: #faeeee;
+  --draft-shadow: rgb(20 27 34 / 16%);
+  color: var(--draft-text);
+  font: 400 14px/1.55 -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+}
+.theme-dark .nf-draft-workspace {
+  --draft-surface: #252b33;
+  --draft-soft: #2c333d;
+  --draft-selected: #353e49;
+  --draft-text: #e5e9ef;
+  --draft-muted: #b1bac6;
+  --draft-primary: #e5e9ef;
+  --draft-primary-text: #252b33;
+  --draft-success: #8bd7b0;
+  --draft-success-bg: #263f35;
+  --draft-danger: #efa3a3;
+  --draft-danger-bg: #452e34;
+  --draft-shadow: rgb(0 0 0 / 30%);
+}
+.nf-draft-workspace .nf-draft-backdrop { background: rgb(20 27 34 / 24%); backdrop-filter: blur(2px); }
+.nf-draft-workspace .nf-draft-shell,
+.nf-draft-workspace .nf-draft-panel { border: 0; border-radius: 20px; background: var(--draft-surface); box-shadow: 0 18px 56px var(--draft-shadow); animation: draft-surface-in 180ms ease-out; }
+.nf-draft-workspace .nf-draft-header,
+.nf-draft-workspace .nf-draft-outline,
+.nf-draft-workspace .nf-draft-main,
+.nf-draft-workspace .nf-draft-section-bar,
+.nf-draft-workspace .nf-draft-footer { border: 0; background: var(--draft-surface); }
+.nf-draft-workspace .nf-draft-title { font-size: 18px; font-weight: 500; color: var(--draft-text); }
+.nf-draft-workspace .nf-draft-section-title { font-size: 14px; font-weight: 500; color: var(--draft-text); }
+.nf-draft-workspace .nf-draft-count { color: var(--draft-muted); background: transparent; }
+.nf-draft-workspace .nf-draft-panel h2,
+.nf-draft-workspace .nf-draft-panel p.font-semibold { color: var(--draft-text); font-weight: 500; }
+.nf-draft-workspace .nf-draft-directory-row { border: 0; border-radius: 12px; background: var(--draft-soft); }
+.nf-draft-confirmation > [role="presentation"] { z-index: 140; }
+.nf-draft-confirmation .panel-surface { border: 0; background: var(--draft-surface); color: var(--draft-text); border-radius: 20px; box-shadow: 0 18px 56px var(--draft-shadow); }
+.nf-draft-workspace .nf-draft-action {
+  min-height: 36px; height: auto; border: 0; border-radius: 10px;
+  background: transparent; box-shadow: none; color: var(--draft-muted);
+  font: 400 13px/1.55 -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+.nf-draft-workspace .nf-draft-action:hover:not(:disabled) { background: var(--draft-soft); color: var(--draft-text); filter: none; }
+.nf-draft-workspace .nf-draft-action:active:not(:disabled) { background: var(--draft-selected); }
+.nf-draft-workspace .nf-draft-action svg { width: 17px; height: 17px; stroke-width: 1.65; flex: none; }
+.nf-draft-workspace .nf-draft-icon { width: 34px; min-height: 34px; padding: 0; }
+.nf-draft-workspace .nf-draft-primary { background: var(--draft-primary); color: var(--draft-primary-text); font-weight: 500; }
+.nf-draft-workspace .nf-draft-primary:hover:not(:disabled),
+.nf-draft-workspace .nf-draft-primary:active:not(:disabled) { background: var(--draft-primary); color: var(--draft-primary-text); opacity: .9; }
+.nf-draft-workspace .nf-draft-confirm { background: var(--draft-success-bg); color: var(--draft-success); }
+.nf-draft-workspace .nf-draft-confirm:hover:not(:disabled) { background: var(--draft-success-bg); color: var(--draft-success); }
+.nf-draft-workspace .nf-draft-danger { color: var(--draft-danger); }
+.nf-draft-workspace .nf-draft-danger:hover:not(:disabled) { background: var(--draft-danger-bg); color: var(--draft-danger); }
+.nf-draft-workspace .nf-draft-close {
+  display: grid; place-items: center; flex: none; width: 34px; height: 34px;
+  padding: 0; border: 0; border-radius: 10px; background: transparent; color: var(--draft-muted);
+  transition: background-color 140ms ease, color 140ms ease;
+}
+.nf-draft-workspace .nf-draft-close svg { width: 18px; height: 18px; stroke-width: 1.8; }
+.nf-draft-workspace .nf-draft-close:hover { background: var(--draft-soft); color: var(--draft-text); }
+.nf-draft-workspace .nf-draft-close:active { background: var(--draft-selected); }
+.nf-draft-workspace .nf-draft-chapter { height: 44px; border: 0; border-radius: 12px; color: var(--draft-text); background: transparent; transition: background-color 140ms ease; }
+.nf-draft-workspace .nf-draft-chapter:hover { background: var(--draft-soft); }
+.nf-draft-workspace .nf-draft-chapter[aria-current="page"] { background: var(--draft-selected); }
+.nf-draft-workspace .nf-draft-chapter-title { font-size: 13px; font-weight: 400; }
+.nf-draft-workspace .nf-draft-chapter[aria-current] .nf-draft-chapter-title { font-weight: 500; }
+.nf-draft-workspace .nf-draft-marker { display: grid; place-items: center; width: 18px; height: 18px; flex: none; border: 0; border-radius: 50%; background: transparent; color: var(--draft-muted); font-size: 11px; }
+.nf-draft-workspace .nf-draft-marker[data-state="generated"],
+.nf-draft-workspace .nf-draft-marker[data-state="confirmed"] { background: var(--draft-success-bg); color: var(--draft-success); }
+.nf-draft-workspace .nf-draft-marker[data-state="generating"] { color: var(--draft-text); }
+.nf-draft-workspace .nf-draft-progress { margin: 0 16px; background: var(--draft-soft); height: 3px; }
+.nf-draft-workspace .nf-draft-progress-fill { background: var(--draft-muted); }
+.nf-draft-workspace .nf-draft-revision { border: 0; border-radius: 14px; background: var(--draft-soft); }
+.nf-draft-workspace .nf-draft-revision label { color: var(--draft-muted); font-size: 12px; font-weight: 500; }
+.nf-draft-workspace .nf-draft-field { border: 0; border-radius: 10px; background: var(--draft-soft); color: var(--draft-text); font: 400 14px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif; box-shadow: none; }
+.nf-draft-workspace .nf-draft-field::placeholder { color: var(--draft-muted); opacity: .8; }
+.nf-draft-workspace .nf-draft-body-editor { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.nf-draft-workspace #draft-section-instruction { background: transparent; padding: 0; min-height: 52px; max-height: 104px; resize: none; overflow-y: hidden; font-size: 13px; }
+.nf-draft-workspace .nf-draft-action:focus-visible,
+.nf-draft-workspace .nf-draft-close:focus-visible,
+.nf-draft-workspace .nf-draft-chapter:focus-visible,
+.nf-draft-workspace .nf-draft-field:focus-visible { outline: 2px solid var(--draft-muted); outline-offset: 2px; }
+@keyframes draft-surface-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (pointer: coarse) {
+  .nf-draft-workspace .nf-draft-action { min-height: 44px; }
+  .nf-draft-workspace .nf-draft-close,
+  .nf-draft-workspace .nf-draft-icon { width: 44px; height: 44px; }
+  .nf-draft-workspace .nf-draft-field,
+  .nf-draft-workspace #draft-section-instruction { font-size: 16px; }
+}
+@media (max-width: 767px) {
+  .nf-draft-workspace .nf-draft-revision { flex-wrap: wrap; }
+  .nf-draft-workspace .nf-draft-revision > div { flex-basis: 100%; }
+  .nf-draft-workspace .nf-draft-revision > button { margin-left: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nf-draft-workspace .nf-draft-shell,
+  .nf-draft-workspace .nf-draft-panel { animation: none; }
+  .nf-draft-workspace .nf-draft-action,
+  .nf-draft-workspace .nf-draft-close,
+  .nf-draft-workspace .nf-draft-chapter,
+  .nf-draft-workspace .nf-draft-progress-fill { transition: none; }
+  .nf-draft-workspace .animate-spin { animation: none; }
+}

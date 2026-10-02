@@ -256,7 +256,8 @@ assert.match(aiDraftWorkspace, /disabled=\{!outlineInstruction\.trim\(\) \|\| is
 assert.match(aiDraftWorkspace, /\{errorText && \(/);
 assert.match(aiDraftWorkspace, /outlineGenerationError\(error\)/);
 assert.doesNotMatch(aiDraftWorkspace, /\{\(statusText \|\| errorText\) && \(/);
-assert.match(aiDraftWorkspace, /draft-control-no-focus-ring/);
+assert.match(aiDraftWorkspace, /nf-draft-field/);
+assert.doesNotMatch(aiDraftWorkspace, /draft-control-no-focus-ring/);
 assert.match(aiDraftWorkspace, /bodyInstruction: instruction/);
 assert.match(aiDraftWorkspace, /source: "generation_stopped"/);
 assert.match(aiDraftWorkspace, /status: stoppedStatus/);

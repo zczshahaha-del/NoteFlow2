@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpenCheck,
   Check,
@@ -46,6 +46,7 @@ import { bindAgentCheckpoint, resolveAgentCheckpoint } from "../services/agent";
 import { isMemoryEnabled } from "../services/memories";
 import { handleRenderedCodeBlockAction, renderChatMarkdown } from "../utils/chatMarkdown";
 import { useConfirmDialog } from "./ConfirmDialog";
+import "./draft-workspace.css";
 
 const AUTO_NOTE_TYPE = "智能笔记";
 const AUTO_WRITING_TONE = "根据用户需求自动匹配";
@@ -334,7 +335,7 @@ function SelectField<TValue extends string>({
     <select
       value={value}
       onChange={(event) => onChange(event.target.value as TValue)}
-      className="draft-control-no-focus-ring h-8 w-full rounded-md border border-jelly-border bg-white px-2.5 text-[12px] text-jelly-text outline-none"
+      className="nf-draft-field h-8 w-full px-2.5"
     >
       {options.map((option) => (
         <option key={option.value || "root"} value={option.value}>
@@ -405,6 +406,7 @@ export default function AIDraftWorkspace() {
   const taskSeedRef = useRef(initialTopic);
   const bodyInstructionRef = useRef<HTMLDivElement | null>(null);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
+  const sectionInstructionRef = useRef<HTMLTextAreaElement | null>(null);
   const { confirm, confirmDialog } = useConfirmDialog();
 
   const isBusy = busyMode !== "idle";
@@ -432,6 +434,26 @@ export default function AIDraftWorkspace() {
   );
   const canGenerateSections = Boolean(draft && activeSections.length > 0);
   const canSave = Boolean(draft?.status === "assembled" && draft.assembledContent.trim());
+
+  const fitSectionInstruction = useCallback(() => {
+    const field = sectionInstructionRef.current;
+    if (!field) return;
+    field.style.height = "52px";
+    field.style.height = `${Math.min(104, Math.max(52, field.scrollHeight))}px`;
+    field.style.overflowY = field.scrollHeight > 104 ? "auto" : "hidden";
+  }, []);
+  useLayoutEffect(fitSectionInstruction, [fitSectionInstruction, sectionInstruction, sectionEditing, selectedSection?.id, Boolean(selectedSection?.content), centerMode]);
+  useEffect(() => {
+    const field = sectionInstructionRef.current;
+    if (!field || typeof ResizeObserver === "undefined") return;
+    let width = field.getBoundingClientRect().width;
+    const observer = new ResizeObserver(() => {
+      const nextWidth = field.getBoundingClientRect().width;
+      if (nextWidth !== width) { width = nextWidth; fitSectionInstruction(); }
+    });
+    observer.observe(field);
+    return () => observer.disconnect();
+  }, [fitSectionInstruction, sectionEditing, selectedSection?.id, Boolean(selectedSection?.content), centerMode]);
 
   useEffect(() => {
     if (!initialTopic || taskSeedRef.current === initialTopic) return;
@@ -493,7 +515,9 @@ export default function AIDraftWorkspace() {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      if (event.key !== "Escape" || event.isComposing || event.keyCode === 229) return;
+      // The existing confirmation owns Escape; do not dismiss its parent too.
+      if (document.querySelector(".nf-draft-confirmation [role='dialog']")) return;
       if (saveDialogOpen) {
         setSaveDialogOpen(false);
         return;
@@ -1265,23 +1289,23 @@ export default function AIDraftWorkspace() {
   const bodyInstructionChanged = bodyInstructionDraft.trim() !== (draft?.bodyInstruction ?? "").trim();
   return (
     <>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="AI 笔记草稿工作台">
+      <div className="nf-draft-workspace fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="AI 笔记草稿工作台">
         <button
           type="button"
-          className="absolute inset-0 bg-[#17202a]/30 backdrop-blur-[2px]"
+          className="nf-draft-backdrop absolute inset-0"
           onClick={dismissDraftWorkspace}
           aria-label="关闭草稿工作台"
         />
 
-        <main className="draft-modal-shell relative flex h-[min(880px,calc(100vh-32px))] w-[min(1240px,calc(100vw-32px))] min-h-0 flex-col overflow-hidden rounded-[22px] border border-white/80 bg-[#fbfcfd] shadow-[0_30px_90px_rgba(28,43,56,0.24)] sm:h-[min(880px,calc(100vh-48px))] sm:w-[min(1240px,calc(100vw-48px))]">
-          <header className="flex min-h-[64px] shrink-0 items-center gap-4 border-b border-[#e7ebef] bg-white/95 px-5 sm:px-7">
+        <main className="draft-modal-shell nf-draft-shell relative flex h-[min(880px,calc(100vh-32px))] w-[min(1240px,calc(100vw-32px))] min-h-0 flex-col overflow-hidden sm:h-[min(880px,calc(100vh-48px))] sm:w-[min(1240px,calc(100vw-48px))]">
+          <header className="nf-draft-header flex min-h-[64px] shrink-0 items-center gap-4 px-5 sm:px-7">
             <div className="min-w-0 flex-1">
-              <h1 className="truncate text-[18px] font-semibold text-jelly-text sm:text-[20px]">
+              <h1 className="nf-draft-title truncate">
                 {cleanTitle(topic)}
               </h1>
             </div>
 
-            <div className="hidden items-center gap-2 md:flex">
+            <div className="nf-draft-toolbar hidden items-center gap-2 md:flex">
               <button
                 type="button"
                 onClick={() => {
@@ -1289,7 +1313,7 @@ export default function AIDraftWorkspace() {
                   setMoreMenuOpen(false);
                 }}
                 disabled={!draft || isBusy || draft.status === "generating"}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#d9e5ec] bg-white px-3 text-[12px] font-semibold text-jelly-text-soft hover:border-jelly-blue/30 hover:bg-jelly-blue-pale disabled:opacity-45"
+                className="nf-draft-action inline-flex h-9 items-center gap-1.5 px-3 disabled:opacity-45"
               >
                 <ListTree size={14} />
                 目录管理
@@ -1302,7 +1326,7 @@ export default function AIDraftWorkspace() {
                     setBodyInstructionOpen((open) => !open);
                   }}
                   disabled={!draft || isBusy}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#d9e5ec] bg-white px-3 text-[12px] font-semibold text-jelly-text-soft hover:border-jelly-blue/30 hover:bg-jelly-blue-pale disabled:opacity-45"
+                  className="nf-draft-action inline-flex h-9 items-center gap-1.5 px-3 disabled:opacity-45"
                   aria-expanded={bodyInstructionOpen}
                   aria-haspopup="dialog"
                 >
@@ -1315,7 +1339,7 @@ export default function AIDraftWorkspace() {
 
                 {bodyInstructionOpen && draft && (
                   <div
-                    className="absolute right-0 top-11 z-40 w-[360px] rounded-2xl border border-[#dfe5e9] bg-white p-4 text-left shadow-[0_18px_50px_rgba(31,48,61,0.18)]"
+                    className="nf-draft-panel nf-draft-requirements absolute right-0 top-11 z-40 w-[360px] p-4 text-left"
                     role="dialog"
                     aria-label="全文写作要求"
                   >
@@ -1336,8 +1360,9 @@ export default function AIDraftWorkspace() {
                       value={bodyInstructionDraft}
                       onChange={(event) => setBodyInstructionDraft(event.target.value)}
                       placeholder="例如：偏实战、少讲空泛概念，每章提供一个完整示例，面向初学者…"
-                      className="draft-control-no-focus-ring mt-3 min-h-[112px] w-full resize-none rounded-xl border border-[#e1e6ea] bg-[#fafbfc] px-3 py-2.5 text-[12px] leading-relaxed text-jelly-text outline-none"
+                      className="nf-draft-field mt-3 min-h-[112px] w-full resize-none px-3 py-2.5 leading-relaxed"
                       maxLength={4000}
+                      aria-label="全文写作要求"
                     />
                     <p className="mt-1.5 text-[10px] text-jelly-text-muted">
                       {draft.status === "generating" ? "保存后从下一章开始生效。" : "章节要求与全文要求冲突时，以章节要求为准。"}
@@ -1348,7 +1373,7 @@ export default function AIDraftWorkspace() {
                           type="button"
                           onClick={() => void saveBodyInstruction(true)}
                           disabled={!bodyInstructionDraft.trim() || isBusy || draft.status === "generating"}
-                          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#dfe5e9] bg-white px-3 text-[11px] font-medium text-jelly-text-soft hover:bg-[#f5f7f8] disabled:opacity-40"
+                          className="nf-draft-action inline-flex h-8 items-center gap-1.5 px-3 disabled:opacity-40"
                         >
                           <RefreshCcw size={12} />
                           重写已生成章节
@@ -1358,7 +1383,7 @@ export default function AIDraftWorkspace() {
                         type="button"
                         onClick={() => void saveBodyInstruction(false)}
                         disabled={!bodyInstructionChanged || isBusy}
-                        className="inline-flex h-8 items-center rounded-lg bg-jelly-blue px-3 text-[11px] font-semibold text-white hover:brightness-95 disabled:opacity-40"
+                        className="nf-draft-action nf-draft-primary inline-flex h-8 items-center px-3 disabled:opacity-40"
                       >
                         应用到后续章节
                       </button>
@@ -1372,7 +1397,7 @@ export default function AIDraftWorkspace() {
                   type="button"
                   onClick={() => void stopBackgroundGeneration()}
                   disabled={isBusy}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-jelly-red/25 bg-white px-3 text-[12px] font-medium text-jelly-red hover:bg-jelly-red-bg disabled:opacity-50"
+                  className="nf-draft-action nf-draft-danger inline-flex h-9 items-center gap-1.5 px-3 disabled:opacity-50"
                 >
                   <Square size={12} fill="currentColor" />
                   停止生成
@@ -1382,7 +1407,7 @@ export default function AIDraftWorkspace() {
                   type="button"
                   onClick={() => void generateAllSections()}
                   disabled={!canGenerateSections || isBusy}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#d9e5ec] bg-white px-3 text-[12px] font-semibold text-jelly-text-soft hover:border-jelly-blue/30 hover:bg-jelly-blue-pale disabled:opacity-50"
+                  className="nf-draft-action inline-flex h-9 items-center gap-1.5 px-3 disabled:opacity-50"
                 >
                   <Wand2 size={14} />
                   全部生成
@@ -1392,7 +1417,7 @@ export default function AIDraftWorkspace() {
                 type="button"
                 onClick={openSaveDialog}
                 disabled={!canSave || isBusy}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-jelly-blue px-3.5 text-[12px] font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40"
+                className="nf-draft-action nf-draft-primary inline-flex h-9 items-center gap-1.5 px-3.5 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Save size={14} />
                 保存为笔记
@@ -1401,14 +1426,14 @@ export default function AIDraftWorkspace() {
                 <button
                   type="button"
                   onClick={() => setMoreMenuOpen((open) => !open)}
-                  className="grid h-9 w-9 place-items-center rounded-lg border border-[#d9e5ec] bg-white text-jelly-text-muted hover:bg-[#f4f6f7] hover:text-jelly-text"
+                  className="nf-draft-action nf-draft-icon grid h-9 w-9 place-items-center"
                   aria-label="更多草稿操作"
                   aria-expanded={moreMenuOpen}
                 >
                   <MoreHorizontal size={17} />
                 </button>
                 {moreMenuOpen && (
-                  <div className="absolute right-0 top-11 z-40 w-[156px] rounded-xl border border-[#dfe5e9] bg-white p-1.5 shadow-[0_14px_40px_rgba(31,48,61,0.16)]">
+                  <div className="nf-draft-panel absolute right-0 top-11 z-40 w-[156px] p-1.5">
                     <button
                       type="button"
                       onClick={() => {
@@ -1416,7 +1441,7 @@ export default function AIDraftWorkspace() {
                         void cancelDraft();
                       }}
                       disabled={isBusy}
-                      className="flex h-9 w-full items-center gap-2 rounded-lg px-2.5 text-left text-[12px] text-jelly-red hover:bg-jelly-red-bg disabled:opacity-40"
+                      className="nf-draft-action nf-draft-danger flex h-9 w-full items-center gap-2 px-2.5 disabled:opacity-40"
                     >
                       <Trash2 size={14} />
                       放弃草稿
@@ -1429,25 +1454,24 @@ export default function AIDraftWorkspace() {
             <button
               type="button"
               onClick={dismissDraftWorkspace}
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-jelly-text-muted transition-colors hover:bg-[#f1f4f6] hover:text-jelly-text"
+              className="nf-draft-close"
               aria-label="关闭草稿工作台"
-              title="关闭后可从对话中继续打开"
             >
-              <X size={19} />
+              <X size={18} strokeWidth={1.8} />
             </button>
           </header>
 
           {activeSections.length > 0 && (
-            <div className="h-1 shrink-0 bg-[#edf1f4]">
-              <div className="h-full bg-jelly-blue transition-[width] duration-500" style={{ width: `${progress}%` }} />
+            <div className="nf-draft-progress h-1 shrink-0" role="progressbar" aria-label="草稿正文生成进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
+              <div className="nf-draft-progress-fill h-full transition-[width] duration-500" style={{ width: `${progress}%` }} />
             </div>
           )}
 
           <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-            <aside className="flex h-[168px] shrink-0 flex-col border-b border-[#e7ebef] bg-white md:h-auto md:w-[282px] md:border-b-0 md:border-r">
+            <aside className="nf-draft-outline flex h-[168px] shrink-0 flex-col md:h-auto md:w-[282px]">
               <div className="flex shrink-0 items-center justify-between px-5 pb-3 pt-5">
-                <p className="text-[15px] font-semibold text-jelly-text">大纲目录</p>
-                <span className="rounded-full bg-[#f2f5f7] px-2 py-1 text-[11px] text-jelly-text-muted">
+                <p className="nf-draft-section-title">大纲目录</p>
+                <span className="nf-draft-count text-[11px]">
                   {activeSections.length} 章
                 </span>
               </div>
@@ -1463,23 +1487,15 @@ export default function AIDraftWorkspace() {
                           type="button"
                           key={section.id}
                           onClick={() => setSelectedSectionId(section.id)}
-                          className={`flex h-11 w-full items-center gap-2.5 rounded-xl px-3 text-left transition-colors ${selected ? "bg-[#eef7fb]" : "hover:bg-[#f5f7f8]"}`}
+                          className="nf-draft-chapter flex h-11 w-full items-center gap-2.5 px-3 text-left"
                           aria-current={selected ? "page" : undefined}
                           aria-label={`${index + 1}. ${section.title}，${statusLabel(section.status)}`}
                           title={`${section.title} · ${statusLabel(section.status)}`}
                         >
-                          <span className={`grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full border text-[9px] ${
-                            completed
-                              ? "border-jelly-green bg-jelly-green text-white"
-                              : section.status === "generating"
-                                ? "border-jelly-blue bg-jelly-blue-pale text-jelly-blue-deep"
-                                : selected
-                                  ? "border-jelly-blue bg-jelly-blue text-white"
-                                  : "border-[#cbd5dc] bg-white text-jelly-text-muted"
-                          }`}>
+                          <span className="nf-draft-marker" data-state={section.status}>
                             {completed ? "✓" : section.status === "generating" ? <Loader2 size={10} className="animate-spin" /> : index + 1}
                           </span>
-                          <span className={`min-w-0 flex-1 truncate text-[13px] font-medium ${selected ? "text-jelly-blue-deep" : "text-jelly-text"}`}>
+                          <span className="nf-draft-chapter-title min-w-0 flex-1 truncate">
                             {section.title}
                           </span>
                         </button>
@@ -1494,10 +1510,10 @@ export default function AIDraftWorkspace() {
               </nav>
             </aside>
 
-            <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#fdfdfc]">
-              <div className="flex min-h-[58px] shrink-0 items-center justify-between gap-3 border-b border-[#edf0f2] bg-white/75 px-5 sm:px-7">
+            <section className="nf-draft-main flex min-h-0 min-w-0 flex-1 flex-col">
+              <div className="nf-draft-section-bar flex min-h-[58px] shrink-0 items-center justify-between gap-3 px-5 sm:px-7">
                 <div className="min-w-0">
-                  <h2 className="truncate text-[15px] font-semibold text-jelly-text">
+                  <h2 className="nf-draft-section-title truncate">
                     {selectedSection?.title || (busyMode === "outline" ? "正在准备章节" : "选择一个章节")}
                   </h2>
                 </div>
@@ -1511,7 +1527,7 @@ export default function AIDraftWorkspace() {
                       <button
                         type="button"
                         onClick={stopActiveRequest}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-jelly-red/25 bg-white px-2.5 text-[11px] font-medium text-jelly-red hover:bg-jelly-red-bg"
+                        className="nf-draft-action nf-draft-danger inline-flex h-8 items-center gap-1.5 px-2.5"
                         aria-label={`停止生成 ${selectedSection.title}`}
                       >
                         <Square size={11} fill="currentColor" />
@@ -1525,7 +1541,7 @@ export default function AIDraftWorkspace() {
               <div className="min-h-0 flex-1 overflow-y-auto">
                 <div className="mx-auto w-full max-w-[820px] px-6 py-7 sm:px-10 sm:py-10">
                   {errorText && (
-                    <div className="mb-5 rounded-lg border border-jelly-red/25 bg-jelly-red-bg px-3 py-2 text-[12px] leading-relaxed text-jelly-red">
+                    <div role="alert" className="mb-5 rounded-lg border border-jelly-red/25 bg-jelly-red-bg px-3 py-2 text-[12px] leading-relaxed text-jelly-red">
                       {errorText}
                     </div>
                   )}
@@ -1544,7 +1560,7 @@ export default function AIDraftWorkspace() {
                     <textarea
                       value={sectionEditContent}
                       onChange={(event) => setSectionEditContent(event.target.value)}
-                      className="min-h-[520px] w-full resize-y rounded-xl border border-[#dfe5e9] bg-white p-5 font-mono text-[13px] leading-7 text-jelly-text outline-none"
+                      className="nf-draft-field nf-draft-body-editor min-h-[520px] w-full resize-y p-5 leading-7"
                       aria-label={`编辑 ${selectedSection.title}`}
                     />
                   ) : selectedSection?.content ? (
@@ -1564,7 +1580,7 @@ export default function AIDraftWorkspace() {
                         type="button"
                         onClick={() => void generateOneSection(selectedSection)}
                         disabled={isBusy || draft.status === "generating"}
-                        className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl bg-jelly-blue px-5 text-[13px] font-semibold text-white shadow-[0_8px_20px_rgba(54,125,163,0.18)] hover:brightness-95 disabled:opacity-45"
+                        className="nf-draft-action nf-draft-primary mt-5 inline-flex h-10 items-center gap-2 px-5 disabled:opacity-45"
                       >
                         <Wand2 size={15} />
                         生成正文
@@ -1578,7 +1594,7 @@ export default function AIDraftWorkspace() {
                 </div>
               </div>
 
-              <footer className="shrink-0 border-t border-[#e7ebef] bg-white px-4 py-3 sm:px-6">
+              <footer className="nf-draft-footer shrink-0 px-4 py-3 sm:px-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
                     {selectedSection?.content.trim() ? (
@@ -1587,7 +1603,7 @@ export default function AIDraftWorkspace() {
                           type="button"
                           onClick={() => void generateOneSection(selectedSection)}
                           disabled={isBusy || draft?.status === "generating"}
-                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dfe5e9] bg-white px-3 text-[12px] text-jelly-text-soft hover:bg-[#f6f8f9] disabled:opacity-45"
+                          className="nf-draft-action inline-flex h-9 items-center gap-1.5 px-3 disabled:opacity-45"
                         >
                           <RefreshCcw size={13} />
                           重新生成
@@ -1602,7 +1618,7 @@ export default function AIDraftWorkspace() {
                             }
                           }}
                           disabled={isBusy || !selectedSection.content.trim()}
-                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dfe5e9] bg-white px-3 text-[12px] text-jelly-text-soft hover:bg-[#f6f8f9] disabled:opacity-45"
+                          className="nf-draft-action inline-flex h-9 items-center gap-1.5 px-3 disabled:opacity-45"
                         >
                           <Pencil size={13} />
                           {sectionEditing ? "保存修改" : "编辑"}
@@ -1612,7 +1628,7 @@ export default function AIDraftWorkspace() {
                             type="button"
                             onClick={() => void confirmSection()}
                             disabled={isBusy}
-                            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-jelly-green/25 bg-jelly-green-bg px-3 text-[12px] text-jelly-green disabled:opacity-45"
+                            className="nf-draft-action nf-draft-confirm inline-flex h-9 items-center gap-1.5 px-3 disabled:opacity-45"
                           >
                             <CheckCircle2 size={13} />
                             确认
@@ -1628,7 +1644,7 @@ export default function AIDraftWorkspace() {
                         type="button"
                         onClick={() => void stopBackgroundGeneration()}
                         disabled={isBusy}
-                        className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-jelly-red/25 bg-white px-3 text-[12px] text-jelly-red disabled:opacity-45"
+                        className="nf-draft-action nf-draft-danger inline-flex h-9 items-center gap-1.5 px-3 disabled:opacity-45"
                       >
                         <Square size={12} fill="currentColor" />
                         停止
@@ -1638,7 +1654,7 @@ export default function AIDraftWorkspace() {
                         type="button"
                         onClick={openSaveDialog}
                         disabled={!canSave || isBusy}
-                        className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-jelly-blue px-4 text-[12px] font-semibold text-white disabled:opacity-45"
+                        className="nf-draft-action nf-draft-primary inline-flex h-9 items-center gap-1.5 px-4 disabled:opacity-45"
                       >
                         <Save size={14} />
                         保存为笔记
@@ -1648,7 +1664,7 @@ export default function AIDraftWorkspace() {
                         type="button"
                         onClick={() => void assembleCurrentDraft()}
                         disabled={isBusy}
-                        className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-jelly-blue px-4 text-[12px] font-semibold text-white disabled:opacity-45"
+                        className="nf-draft-action nf-draft-primary inline-flex h-9 items-center gap-1.5 px-4 disabled:opacity-45"
                       >
                         <FileText size={14} />
                         完成草稿
@@ -1658,24 +1674,25 @@ export default function AIDraftWorkspace() {
                 </div>
 
                 {selectedSection?.content.trim() && !sectionEditing && (
-                  <div className="mt-3 flex items-end gap-2 rounded-xl border border-[#dde6eb] bg-[#f8fbfc] p-2.5">
+                  <div className="nf-draft-revision mt-3 flex items-end gap-2 p-2.5">
                     <div className="min-w-0 flex-1">
                       <label htmlFor="draft-section-instruction" className="mb-1 block text-[10px] font-semibold text-jelly-text-muted">
                         告诉 AI 如何修改
                       </label>
                       <textarea
                         id="draft-section-instruction"
+                        ref={sectionInstructionRef}
                         value={sectionInstruction}
                         onChange={(event) => setSectionInstruction(event.target.value)}
                         placeholder="例如：增加一个可运行示例，把概念解释得更适合初学者…"
-                        className="min-h-[52px] w-full resize-none border-0 bg-transparent text-[12px] leading-relaxed text-jelly-text outline-none placeholder:text-[#a3adb5]"
+                        className="nf-draft-field min-h-[52px] w-full resize-none leading-relaxed"
                       />
                     </div>
                     <button
                       type="button"
                       onClick={() => void generateOneSection(selectedSection, sectionInstruction)}
                       disabled={!sectionInstruction.trim() || isBusy || draft?.status === "generating"}
-                      className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-jelly-blue px-3 text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                      className="nf-draft-action nf-draft-primary inline-flex h-9 shrink-0 items-center gap-1.5 px-3 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Wand2 size={13} />
                       按要求修改
@@ -1691,12 +1708,12 @@ export default function AIDraftWorkspace() {
           <div className="fixed inset-0 z-[130] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="目录管理">
             <button
               type="button"
-              className="absolute inset-0 bg-[#17202a]/20 backdrop-blur-[1px]"
+              className="nf-draft-backdrop absolute inset-0"
               onClick={() => setDirectoryManagerOpen(false)}
               aria-label="关闭目录管理"
             />
-            <section className="relative flex max-h-[min(720px,calc(100vh-40px))] w-[min(680px,calc(100vw-32px))] flex-col overflow-hidden rounded-[20px] border border-white/90 bg-[#fbfcfd] shadow-[0_24px_80px_rgba(28,43,56,0.24)]">
-              <header className="flex h-[66px] shrink-0 items-center justify-between border-b border-[#e7ebef] bg-white px-5">
+            <section className="nf-draft-panel relative flex max-h-[min(720px,calc(100vh-40px))] w-[min(680px,calc(100vw-32px))] flex-col overflow-hidden">
+              <header className="nf-draft-header flex h-[66px] shrink-0 items-center justify-between px-5">
                 <div>
                   <h2 className="text-[16px] font-semibold text-jelly-text">目录管理</h2>
                   <p className="mt-0.5 text-[11px] text-jelly-text-muted">添加、改名、排序或重新规划一级章节</p>
@@ -1704,17 +1721,17 @@ export default function AIDraftWorkspace() {
                 <button
                   type="button"
                   onClick={() => setDirectoryManagerOpen(false)}
-                  className="grid h-8 w-8 place-items-center rounded-lg text-jelly-text-muted hover:bg-[#f1f4f6] hover:text-jelly-text"
+                  className="nf-draft-close"
                   aria-label="关闭目录管理"
                 >
-                  <X size={17} />
+                  <X size={18} strokeWidth={1.8} />
                 </button>
               </header>
 
               <div className="min-h-0 flex-1 overflow-y-auto p-5">
                 <div className="space-y-2">
                   {activeSections.map((section, index) => (
-                    <div key={section.id} className="flex min-h-[48px] items-center gap-2 rounded-xl border border-[#e5eaee] bg-white px-3 py-2">
+                    <div key={section.id} className="nf-draft-directory-row flex min-h-[48px] items-center gap-2 px-3 py-2">
                       <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#f1f5f7] text-[10px] text-jelly-text-muted">
                         {index + 1}
                       </span>
@@ -1726,7 +1743,7 @@ export default function AIDraftWorkspace() {
                             if (event.key === "Enter") void saveSectionTitle(section);
                             if (event.key === "Escape") setRenamingSectionId(null);
                           }}
-                          className="draft-control-no-focus-ring h-8 min-w-0 flex-1 rounded-lg border border-[#dfe5e9] bg-[#fafbfc] px-2.5 text-[12px] text-jelly-text outline-none"
+                          className="nf-draft-field h-8 min-w-0 flex-1 px-2.5"
                           aria-label="修改章节名称"
                           autoFocus
                         />
@@ -1738,7 +1755,7 @@ export default function AIDraftWorkspace() {
                           type="button"
                           onClick={() => void moveSection(section.id, -1)}
                           disabled={index === 0 || isBusy}
-                          className="grid h-8 w-8 place-items-center rounded-lg text-jelly-text-muted hover:bg-[#f2f6f8] hover:text-jelly-blue-deep disabled:opacity-25"
+                          className="nf-draft-action nf-draft-icon grid h-8 w-8 place-items-center disabled:opacity-25"
                           aria-label={`上移章节 ${section.title}`}
                         >
                           <ChevronUp size={14} />
@@ -1747,7 +1764,7 @@ export default function AIDraftWorkspace() {
                           type="button"
                           onClick={() => void moveSection(section.id, 1)}
                           disabled={index === activeSections.length - 1 || isBusy}
-                          className="grid h-8 w-8 place-items-center rounded-lg text-jelly-text-muted hover:bg-[#f2f6f8] hover:text-jelly-blue-deep disabled:opacity-25"
+                          className="nf-draft-action nf-draft-icon grid h-8 w-8 place-items-center disabled:opacity-25"
                           aria-label={`下移章节 ${section.title}`}
                         >
                           <ChevronDown size={14} />
@@ -1756,7 +1773,7 @@ export default function AIDraftWorkspace() {
                           <button
                             type="button"
                             onClick={() => void saveSectionTitle(section)}
-                            className="grid h-8 w-8 place-items-center rounded-lg text-jelly-blue-deep hover:bg-jelly-blue-pale"
+                            className="nf-draft-action nf-draft-icon grid h-8 w-8 place-items-center"
                             aria-label="保存章节名称"
                           >
                             <Check size={14} />
@@ -1768,7 +1785,7 @@ export default function AIDraftWorkspace() {
                               setRenamingSectionId(section.id);
                               setRenamingSectionTitle(section.title);
                             }}
-                            className="grid h-8 w-8 place-items-center rounded-lg text-jelly-text-muted hover:bg-[#f2f6f8] hover:text-jelly-blue-deep"
+                            className="nf-draft-action nf-draft-icon grid h-8 w-8 place-items-center"
                             aria-label={`修改章节 ${section.title}`}
                           >
                             <Pencil size={13} />
@@ -1778,7 +1795,7 @@ export default function AIDraftWorkspace() {
                           type="button"
                           onClick={() => void deleteSection(section)}
                           disabled={activeSections.length <= 1 || isBusy}
-                          className="grid h-8 w-8 place-items-center rounded-lg text-jelly-text-muted hover:bg-jelly-red-bg hover:text-jelly-red disabled:opacity-25"
+                          className="nf-draft-action nf-draft-icon grid h-8 w-8 place-items-center disabled:opacity-25"
                           aria-label={`删除章节 ${section.title}`}
                         >
                           <Trash2 size={13} />
@@ -1796,13 +1813,13 @@ export default function AIDraftWorkspace() {
                       if (event.key === "Enter") void addOutlineSection();
                     }}
                     placeholder="添加一级章节"
-                    className="draft-control-no-focus-ring h-9 min-w-0 flex-1 rounded-lg border border-[#dfe5e9] bg-white px-3 text-[12px] text-jelly-text outline-none"
+                    className="nf-draft-field h-9 min-w-0 flex-1 px-3"
                   />
                   <button
                     type="button"
                     onClick={() => void addOutlineSection()}
                     disabled={!newSectionTitle.trim() || isBusy}
-                    className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[#eef7fb] px-3 text-[12px] font-semibold text-jelly-blue-deep hover:bg-[#e2f1f7] disabled:opacity-40"
+                    className="nf-draft-action inline-flex h-9 shrink-0 items-center gap-1.5 px-3 disabled:opacity-40"
                   >
                     <Plus size={14} />
                     添加
@@ -1818,7 +1835,7 @@ export default function AIDraftWorkspace() {
                           type="button"
                           key={section.id}
                           onClick={() => void restoreSection(section)}
-                          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#e2e7ea] bg-white px-2.5 text-[11px] text-jelly-text-muted hover:border-jelly-blue/25 hover:text-jelly-blue-deep"
+                          className="nf-draft-action inline-flex h-8 items-center gap-1.5 px-2.5"
                         >
                           {section.title}
                           <span className="text-jelly-blue-deep">恢复</span>
@@ -1828,21 +1845,21 @@ export default function AIDraftWorkspace() {
                   </div>
                 )}
 
-                <div className="mt-5 border-t border-[#e7ebef] pt-4">
+                <div className="mt-5 pt-4">
                   <p className="text-[12px] font-semibold text-jelly-text">按新要求调整大纲</p>
                   <p className="mt-1 text-[11px] text-jelly-text-muted">说明需要增删或强化的内容，AI 会重新规划全部章节。</p>
                   <textarea
                     value={outlineInstruction}
                     onChange={(event) => setOutlineInstruction(event.target.value)}
                     placeholder="例如：减少基础内容，增加两个实战章节…"
-                    className="draft-control-no-focus-ring mt-2 min-h-[72px] w-full resize-none rounded-xl border border-[#e3e8eb] bg-white px-3 py-2.5 text-[12px] leading-relaxed text-jelly-text outline-none"
+                    className="nf-draft-field mt-2 min-h-[72px] w-full resize-none px-3 py-2.5 leading-relaxed"
                   />
                   <div className="mt-2 flex justify-end">
                     <button
                       type="button"
                       onClick={() => void reviseOutlineWithInstruction()}
                       disabled={!outlineInstruction.trim() || isBusy}
-                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-jelly-blue px-3.5 text-[12px] font-semibold text-white hover:brightness-95 disabled:opacity-40"
+                      className="nf-draft-action nf-draft-primary inline-flex h-9 items-center justify-center gap-1.5 px-3.5 disabled:opacity-40"
                     >
                       <RefreshCcw size={13} />
                       按要求重新规划
@@ -1858,11 +1875,11 @@ export default function AIDraftWorkspace() {
           <div className="fixed inset-0 z-[130] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="保存为笔记">
             <button
               type="button"
-              className="absolute inset-0 bg-[#17202a]/20 backdrop-blur-[1px]"
+              className="nf-draft-backdrop absolute inset-0"
               onClick={() => setSaveDialogOpen(false)}
               aria-label="关闭保存弹窗"
             />
-            <section className="relative w-[min(460px,calc(100vw-32px))] rounded-[20px] border border-white/90 bg-white p-5 shadow-[0_24px_80px_rgba(28,43,56,0.24)]">
+            <section className="nf-draft-panel relative w-[min(460px,calc(100vw-32px))] p-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h2 className="text-[16px] font-semibold text-jelly-text">保存为笔记</h2>
@@ -1871,10 +1888,10 @@ export default function AIDraftWorkspace() {
                 <button
                   type="button"
                   onClick={() => setSaveDialogOpen(false)}
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-jelly-text-muted hover:bg-[#f1f4f6]"
+                  className="nf-draft-close"
                   aria-label="关闭保存弹窗"
                 >
-                  <X size={17} />
+                  <X size={18} strokeWidth={1.8} />
                 </button>
               </div>
               <div className="mt-5 space-y-4">
@@ -1883,7 +1900,7 @@ export default function AIDraftWorkspace() {
                   <input
                     value={saveTitle}
                     onChange={(event) => setSaveTitle(event.target.value)}
-                    className="draft-control-no-focus-ring h-10 w-full rounded-xl border border-[#dfe5e9] bg-[#fafbfc] px-3 text-[13px] text-jelly-text outline-none"
+                    className="nf-draft-field h-10 w-full px-3"
                     maxLength={120}
                   />
                 </label>
@@ -1900,7 +1917,7 @@ export default function AIDraftWorkspace() {
                 <button
                   type="button"
                   onClick={() => setSaveDialogOpen(false)}
-                  className="inline-flex h-9 items-center rounded-lg border border-[#dfe5e9] bg-white px-3.5 text-[12px] font-medium text-jelly-text-soft hover:bg-[#f5f7f8]"
+                  className="nf-draft-action inline-flex h-9 items-center px-3.5"
                 >
                   继续编辑
                 </button>
@@ -1908,7 +1925,7 @@ export default function AIDraftWorkspace() {
                   type="button"
                   onClick={() => void saveDraft()}
                   disabled={!saveTitle.trim() || isBusy}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-jelly-blue px-4 text-[12px] font-semibold text-white hover:brightness-95 disabled:opacity-40"
+                  className="nf-draft-action nf-draft-primary inline-flex h-9 items-center gap-1.5 px-4 disabled:opacity-40"
                 >
                   <Save size={14} />
                   确认保存
@@ -1918,7 +1935,7 @@ export default function AIDraftWorkspace() {
           </div>
         )}
       </div>
-      {confirmDialog}
+      <div className="nf-draft-workspace nf-draft-confirmation">{confirmDialog}</div>
     </>
   );
 }
