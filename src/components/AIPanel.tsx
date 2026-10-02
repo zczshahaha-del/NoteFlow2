@@ -1,6 +1,6 @@
 import { Fragment, useState, useRef, useEffect, useCallback } from "react";
 import {
-  Send,
+  ArrowUp,
   FileText,
   BookOpen,
   MessageCircle,
@@ -34,6 +34,8 @@ import { shouldSubmitChatInput } from "../utils/inputComposition";
 import type { AgentToolTrace, ChatMessage, ChatSource } from "../types";
 import { resolveAgentCheckpoint, type AgentTaskSnapshot } from "../services/agent";
 import { getNoteDraft } from "../services/drafts";
+import ChatGenerationStatus from "./ChatGenerationStatus";
+import "./ai-conversation.css";
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
@@ -927,7 +929,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
   }, []);
 
   return (
-    <aside className="ai-side-panel relative flex h-full flex-col border-l border-[#e9edf1] bg-white/80 px-5 pb-5 pt-3">
+    <aside className="ai-side-panel nf-ai-conversation relative flex h-full flex-col border-l border-[#e9edf1] bg-white/80 px-5 pb-5 pt-3">
       <div className="relative z-40 flex h-10 shrink-0 items-center justify-between gap-2" ref={historyMenuRef}>
         <button
           type="button"
@@ -1100,17 +1102,15 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
           <Fragment key={msg.id}>
           <div className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
             <div
-              className={`
-                rounded-xl border px-4 py-3 text-[14px] leading-relaxed
-                ${msg.role === "user"
-                  ? "max-w-[92%] border-[#dcebf4] bg-[#f1f8fd] text-jelly-text shadow-none"
-                  : "max-w-[92%] border-[#e9edf1] bg-white text-jelly-text shadow-none"
-                }
-              `}
+              className={`nf-chat-message nf-chat-message--${msg.role}`}
+              data-streaming={isStreaming}
             >
-              {msg.role === "assistant" && msg.text ? (
+              {isStreaming && !msg.text.trim() ? (
+                <ChatGenerationStatus />
+              ) : msg.role === "assistant" && msg.text ? (
                 <div
                   className="chat-markdown"
+                  aria-busy={isStreaming || undefined}
                   onClick={(event) => handleChatContentClick(event, msg.sources)}
                   dangerouslySetInnerHTML={{
                     __html: renderChatMarkdown(msg.text, msg.sources?.length ?? 0),
@@ -1119,7 +1119,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
               ) : (
                 <div className="space-y-2">
                   <span className="whitespace-pre-wrap">
-                    {msg.text || (isStreaming ? "正在生成" : "")}
+                    {msg.text}
                   </span>
                   {msg.role === "user" && msg.attachedSelection && (
                     <div className="border-l-2 border-jelly-blue/25 pl-2.5 text-left">
@@ -1153,7 +1153,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
                   )}
                 </div>
               )}
-              {isStreaming && <span className="typing-caret" />}
+              {isStreaming && Boolean(msg.text.trim()) && <ChatGenerationStatus streaming />}
               {msg.role === "assistant" && msg.text && precedingSelection && !isStreaming && (
                 <button
                   type="button"
@@ -1214,15 +1214,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
           );
         })}
         {chatLoading && chatMessages[chatMessages.length - 1]?.role !== "assistant" && (
-          <div className="flex">
-            <div className="rounded-2xl border border-jelly-border bg-white px-3.5 py-2.5">
-              <div className="flex items-center gap-1.5">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-jelly-blue animate-bounce" style={{ animationDelay: "0ms" }} />
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-jelly-blue animate-bounce" style={{ animationDelay: "150ms" }} />
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-jelly-blue animate-bounce" style={{ animationDelay: "300ms" }} />
-              </div>
-            </div>
-          </div>
+          <ChatGenerationStatus />
         )}
         {!chatPinnedToBottom && chatMessages.length > 0 && (
           <div className="sticky bottom-2 z-20 flex justify-center">
@@ -1241,15 +1233,15 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
 
       {/* Input */}
       <div className="shrink-0">
-        <div className="ai-chat-composer ai-large-composer flex min-h-[158px] flex-col rounded-2xl border border-[#dfe6ec] bg-white px-3.5 py-3 shadow-[0_2px_8px_rgba(36,51,67,0.025)]">
-          <div className="mb-2 flex max-w-full flex-wrap gap-1.5">
+        <div className="ai-chat-composer ai-large-composer nf-chat-composer" data-generating={chatLoading}>
+          <div className="nf-chat-attachments flex max-w-full flex-wrap gap-1.5">
             {selectedFile && currentNoteReferenced && (
-              <span className="group inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#e5e9ed] bg-[#fafbfc] py-1.5 pl-2.5 pr-1.5 text-[12px] text-[#687584]">
+              <span className="nf-chat-attachment group inline-flex max-w-full items-center gap-1.5 py-1.5 pl-2.5 pr-1.5">
                 <FileText size={13} strokeWidth={1.8} />
                 <span className="min-w-0 truncate">{currentNoteTitle}</span>
                 <button
                   type="button"
-                  className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#edf0f2] text-[#67717c] opacity-0 transition-opacity group-hover:opacity-100"
+                  className="nf-chat-attachment-remove grid h-5 w-5 shrink-0 place-items-center rounded-full"
                   onClick={() => setCurrentNoteReferenced(false)}
                   aria-label="移除当前笔记引用"
                 >
@@ -1258,11 +1250,11 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
               </span>
             )}
             {chatSelection && (
-              <span className="group inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#d8e8f2] bg-[#f3f9fc] py-1.5 pl-2.5 pr-1.5 text-[12px] text-[#47708a]">
+              <span className="nf-chat-attachment group inline-flex max-w-full items-center gap-1.5 py-1.5 pl-2.5 pr-1.5">
                 <span className="min-w-0 truncate">引用：{chatSelection.text}</span>
                 <button
                   type="button"
-                  className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#e5eef4] text-[#607483] opacity-0 transition-opacity group-hover:opacity-100"
+                  className="nf-chat-attachment-remove grid h-5 w-5 shrink-0 place-items-center rounded-full"
                   onClick={clearChatSelection}
                   aria-label="移除选中文字引用"
                 >
@@ -1278,6 +1270,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
             onCompositionStart={() => setInputComposing(true)}
             onCompositionEnd={() => setInputComposing(false)}
             onKeyDown={handleKeyDown}
+            aria-label="消息输入框"
             placeholder={
               activeEditPreview
                 ? "继续调整，或输入“应用吧 / 取消”..."
@@ -1287,32 +1280,24 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
             }
             className="ai-chat-input min-h-[82px] flex-1 resize-none border-0 bg-transparent text-[15px] leading-7 text-jelly-text outline-none placeholder:text-[#a4aab2]"
           />
-          <div className="mt-2 flex items-center justify-between gap-2 border-t border-[#f0f2f4] pt-2.5">
+          <div className="nf-chat-composer-toolbar flex items-center justify-between gap-2">
             <div className="relative" ref={modeMenuRef}>
               <button
                 type="button"
-                className={`inline-flex min-w-[104px] items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-semibold transition-colors ${
-                  composerMode === "ask_notes"
-                    ? "bg-[#f1f7fb] text-[#28749c]"
-                    : "bg-transparent text-[#637383] hover:bg-[#f1f7fb] hover:text-[#28749c]"
-                }`}
+                className="nf-chat-mode inline-flex items-center gap-2 rounded-lg px-2.5 py-2"
                 onClick={() => setModeMenuOpen((value) => !value)}
                 aria-haspopup="listbox"
                 aria-expanded={modeMenuOpen}
               >
-                <span className="grid h-[18px] w-[18px] place-items-center rounded-full bg-[#e8f4fa] text-[#2c7da5]">
-                  {composerMode === "ask_notes" ? <Search size={12} strokeWidth={2} /> : <MessageCircle size={12} strokeWidth={2} />}
-                </span>
+                {composerMode === "ask_notes" ? <Search size={15} strokeWidth={1.7} /> : <MessageCircle size={15} strokeWidth={1.7} />}
                 <span>{composerMode === "ask_notes" ? "全库搜索" : "对话"}</span>
-                <ChevronDown size={14} strokeWidth={2} />
+                <ChevronDown size={13} strokeWidth={1.7} />
               </button>
               {modeMenuOpen && (
-                <div className="absolute bottom-11 left-0 z-30 w-44 rounded-xl border border-[#e2e8ed] bg-white p-1.5 shadow-[0_14px_30px_rgba(36,57,74,0.14)]" role="listbox">
+                <div className="nf-chat-mode-menu absolute bottom-11 left-0 z-30 w-44 p-1.5" role="listbox" aria-label="对话模式">
                   <button
                     type="button"
-                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors ${
-                      composerMode === "chat" ? "bg-[#f0f7fb] text-[#28749c]" : "text-[#4f5360] hover:bg-[#f0f7fb] hover:text-[#28749c]"
-                    }`}
+                    className="nf-chat-mode-option flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left"
                     onClick={() => {
                       setComposerMode("chat");
                       setModeMenuOpen(false);
@@ -1325,9 +1310,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
                   </button>
                   <button
                     type="button"
-                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors ${
-                      composerMode === "ask_notes" ? "bg-[#f0f7fb] text-[#28749c]" : "text-[#4f5360] hover:bg-[#f0f7fb] hover:text-[#28749c]"
-                    }`}
+                    className="nf-chat-mode-option flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left"
                     onClick={() => {
                       setComposerMode("ask_notes");
                       setModeMenuOpen(false);
@@ -1351,21 +1334,12 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
               }}
               disabled={!chatLoading && !input.trim()}
               aria-label={chatLoading ? "停止生成" : "发送"}
-              title={chatLoading ? "停止生成" : "发送"}
-              className={`
-                grid h-9 w-9 shrink-0 place-items-center rounded-xl transition-colors duration-150
-                ${chatLoading
-                  ? "bg-jelly-red text-white hover:brightness-90"
-                  : input.trim()
-                    ? "bg-jelly-blue text-white shadow-[0_4px_10px_rgba(45,122,164,0.18)] hover:brightness-95"
-                    : "cursor-not-allowed bg-[#f3f4f5] text-[#c4c9cf]"
-                }
-              `}
+              className="nf-chat-send"
             >
               {chatLoading ? (
-                <Square size={13} fill="currentColor" strokeWidth={2.4} />
+                <Square size={12} fill="currentColor" strokeWidth={1.6} />
               ) : (
-                <Send size={16} strokeWidth={2.2} />
+                <ArrowUp size={18} strokeWidth={1.8} />
               )}
             </button>
           </div>

@@ -13,7 +13,10 @@ Object.assign(globalThis, {
   document: dom.window.document,
   localStorage: dom.window.localStorage,
   HTMLElement: dom.window.HTMLElement,
+  HTMLButtonElement: dom.window.HTMLButtonElement,
+  Element: dom.window.Element,
   Node: dom.window.Node,
+  NodeFilter: dom.window.NodeFilter,
 });
 Object.defineProperty(globalThis, "navigator", {
   configurable: true,
@@ -27,6 +30,7 @@ window.matchMedia ??= () => ({
 dom.window.HTMLElement.prototype.attachEvent ??= function attachEvent() {};
 dom.window.HTMLElement.prototype.detachEvent ??= function detachEvent() {};
 dom.window.HTMLElement.prototype.scrollIntoView ??= function scrollIntoView() {};
+dom.window.HTMLElement.prototype.scrollTo ??= function scrollTo() {};
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { createRoot } = await import("react-dom/client");
 const testFetch = async (input) => new Response(JSON.stringify(
@@ -71,6 +75,7 @@ try {
     DirectoryTree,
     LibrarySearchDialog,
     AccountMenu,
+    AIPanel,
   } = await vite.ssrLoadModule("/src/testing/frontendHarness.ts");
 
   const initialState = useAppStore.getInitialState();
@@ -178,6 +183,107 @@ try {
     return React.createElement("output", null, `${selectedFileId}:${treeData.length}`);
   }
   assert.equal(await renderClient(React.createElement(WorkspaceProbe)), '<output>note-test-1:1</output>');
+
+  // Drive production conversation UI with synthetic messages; never call the live AI.
+  const beforeConversation = useAppStore.getState();
+  const conversationContainer = document.createElement("div"); document.body.appendChild(conversationContainer);
+  const conversationRoot = createRoot(conversationContainer);
+  const userMessage = { id: "ui-user", role: "user", text: "帮我解释这段笔记" };
+  const assistantMessage = { id: "ui-assistant", role: "assistant", text: "" };
+  const sentMessages = [];
+  const openedChatSources = [];
+  let stoppedMessages = 0;
+  useAppStore.setState({ ...initialState, ...snapshot, chatMessages: [userMessage, assistantMessage], chatLoading: true,
+    sendMessage(...args) { sentMessages.push(args); },
+    focusChatSource(source) { openedChatSources.push(source); },
+    stopGeneration() { stoppedMessages += 1; useAppStore.setState({ chatLoading: false }); },
+  }, true);
+  await act(async () => conversationRoot.render(React.createElement(AIPanel)));
+  const conversationStatus = () => conversationContainer.querySelector('.nf-chat-status');
+  const composer = conversationContainer.querySelector('.nf-chat-composer');
+  const composerInput = conversationContainer.querySelector('textarea[aria-label="消息输入框"]');
+  assert.ok(composer);
+  assert.ok(composerInput);
+  assert.equal(conversationContainer.querySelectorAll('[role="status"]').length, 1);
+  assert.equal(conversationStatus().dataset.streaming, "false");
+  assert.equal(conversationStatus().textContent, "正在回复");
+  assert.equal(conversationStatus().querySelector('.nf-chat-status-dot').getAttribute('aria-hidden'), "true");
+  assert.equal(conversationContainer.querySelector('.typing-caret'), null);
+  assert.equal(conversationContainer.querySelector('.nf-chat-message--assistant .chat-markdown'), null);
+  assert.equal(composer.dataset.generating, "true");
+  assert.ok(conversationContainer.querySelector('button[aria-label="停止生成"]'));
+  await act(async () => useAppStore.setState({ chatMessages: [userMessage, { ...assistantMessage, text: "   " }] }));
+  assert.equal(conversationStatus().dataset.streaming, "false");
+  await act(async () => useAppStore.setState({ chatMessages: [userMessage, { ...assistantMessage, text: "这是 **重点**。" }] }));
+  assert.equal(conversationStatus().dataset.streaming, "true");
+  assert.equal(conversationContainer.querySelector('.chat-markdown strong').textContent, "重点");
+  assert.equal(conversationContainer.querySelector('.chat-markdown').getAttribute('aria-busy'), "true");
+  assert.equal(conversationContainer.querySelectorAll('[role="status"]').length, 1);
+  await act(async () => useAppStore.setState({ chatLoading: false }));
+  assert.equal(conversationStatus(), null);
+  assert.match(conversationContainer.querySelector('.chat-markdown').textContent, /重点/);
+  await act(async () => useAppStore.setState({ chatLoading: true }));
+  await act(async () => conversationContainer.querySelector('button[aria-label="停止生成"]').click());
+  assert.equal(stoppedMessages, 1);
+  assert.equal(conversationStatus(), null);
+  assert.match(conversationContainer.querySelector('.chat-markdown').textContent, /重点/);
+  assert.equal(conversationContainer.querySelector('.chat-markdown').hasAttribute('aria-busy'), false);
+  assert.equal(conversationContainer.querySelector('button[aria-label="发送"]').disabled, true);
+  await act(async () => useAppStore.setState({ chatLoading: true, chatMessages: [userMessage] }));
+  assert.equal(conversationContainer.querySelectorAll('[role="status"]').length, 1);
+  assert.equal(conversationStatus().dataset.streaming, "false");
+  await act(async () => useAppStore.setState({ chatLoading: false, chatMessages: [userMessage, { ...assistantMessage, text: "请求失败，请稍后重试。" }] }));
+  assert.equal(conversationStatus(), null);
+  assert.match(conversationContainer.querySelector('.chat-markdown').textContent, /请求失败/);
+  const changeComposerInput = async (value) => act(async () => {
+    Object.getOwnPropertyDescriptor(dom.window.HTMLTextAreaElement.prototype, 'value').set.call(composerInput, value);
+    composerInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  });
+  await changeComposerInput("继续解释");
+  assert.equal(conversationContainer.querySelector('button[aria-label="发送"]').disabled, false);
+  await act(async () => composerInput.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true })));
+  assert.equal(sentMessages.length, 0);
+  await act(async () => composerInput.dispatchEvent(new dom.window.CompositionEvent('compositionstart', { bubbles: true })));
+  await act(async () => composerInput.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true })));
+  assert.equal(sentMessages.length, 0);
+  await act(async () => composerInput.dispatchEvent(new dom.window.CompositionEvent('compositionend', { bubbles: true })));
+  await act(async () => composerInput.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+  assert.equal(sentMessages.length, 1);
+  assert.equal(sentMessages[0][0], "继续解释");
+  assert.equal(sentMessages[0][1].contextScope, "current_note");
+  assert.equal(sentMessages[0][2].mode, "chat");
+  assert.equal(composerInput.value, "");
+  const modeTrigger = conversationContainer.querySelector('.nf-chat-mode');
+  await act(async () => modeTrigger.click());
+  const libraryMode = conversationContainer.querySelector('[role="option"][aria-selected="false"]');
+  assert.match(libraryMode.textContent, /全库搜索/);
+  await act(async () => libraryMode.click());
+  await changeComposerInput("全库查找");
+  await act(async () => conversationContainer.querySelector('button[aria-label="发送"]').click());
+  assert.equal(sentMessages[1][1].contextScope, "knowledge_base");
+  assert.equal(sentMessages[1][2].mode, "ask_notes");
+  const removeNoteReference = conversationContainer.querySelector('button[aria-label="移除当前笔记引用"]');
+  assert.ok(removeNoteReference);
+  await act(async () => removeNoteReference.click());
+  assert.equal(conversationContainer.querySelector('button[aria-label="移除当前笔记引用"]'), null);
+  const chatSource = { noteId: note.id, noteTitle: "组件测试笔记", sectionId: "ui-section", sectionTitle: "重点章节", sectionPath: ["重点章节"], chunkId: null, sourceType: "note", snippet: "合成引用", score: 1 };
+  const attachedSelection = { text: "合成选中原文".repeat(20), noteId: note.id, noteTitle: "组件测试笔记" };
+  await act(async () => useAppStore.setState({ chatMessages: [{ ...userMessage, attachedSelection }, { ...assistantMessage, text: "参考原文【1】", sources: [chatSource] }], chatSelection: attachedSelection }));
+  assert.match(conversationContainer.textContent, /参考 · 1 篇笔记 · 1 处原文/);
+  await act(async () => conversationContainer.querySelector('[data-chat-citation="1"]').click());
+  assert.deepEqual(openedChatSources, [chatSource]);
+  await act(async () => conversationContainer.querySelector('.nf-chat-message--user button').click());
+  assert.ok(conversationContainer.querySelector('.nf-chat-message--user p.max-h-44'));
+  assert.ok(Array.from(conversationContainer.querySelectorAll('button')).find(button => button.textContent.trim() === "补充理解"));
+  await act(async () => modeTrigger.click());
+  await act(async () => conversationContainer.querySelector('[role="option"][aria-selected="false"]').click());
+  await changeComposerInput("解释引用");
+  await act(async () => conversationContainer.querySelector('button[aria-label="发送"]').click());
+  assert.equal(sentMessages[2][1].contextScope, "selection");
+  assert.equal(sentMessages[2][1].selectedText, attachedSelection.text);
+  assert.equal(conversationContainer.querySelector('button[aria-label="移除选中文字引用"]'), null);
+  await act(async () => conversationRoot.unmount()); conversationContainer.remove();
+  useAppStore.setState(beforeConversation, true);
 
   const loginHtml = await renderClient(
     React.createElement(LoginPage, {
@@ -798,9 +904,11 @@ try {
       "DirectoryTree",
       "LibrarySearchDialog",
       "AccountMenu",
+      "AIPanel",
     ],
     accountMenuCoverage: ["single-entry", "username", "no-native-tooltip", "username-click", "long-username", "unframed-footer-menu", "numeric-avatar-fallback", "enter-exit", "email-confirm", "devices-revoke", "device-error", "memory-CRUD", "memory-button-rollback-only", "ZIP-JSON-export", "import", "trash-restore", "modal-focus-trap", "escape-focus", "IME", "outside-pointer", "focus-leave", "sign-out", "compact", "note-folder-delete-confirm"],
     directoryRowCoverage: ["whole-row-selection", "full-name", "selected-more", "nested-indent", "pin-favorite-glyphs", "folder-disclosure", "file-open-callback", "independent-menu", "rename-cancel"],
+    conversationCoverage: ["empty-wait", "whitespace-wait", "streaming-markdown", "single-status", "completion", "stop-callback", "error-clears-status", "fallback-wait", "empty-send-disabled", "Enter-Shift-IME", "send-context", "library-mode", "remove-note-reference", "citation-open", "selection-expand", "selection-send"],
   }));
 } finally {
   await vite.close();

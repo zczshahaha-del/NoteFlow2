@@ -1,0 +1,152 @@
+/* Conversation surfaces only; no editor, sidebar or business-state overrides. */
+.nf-ai-conversation {
+  --nf-chat-text: #30343a;
+  --nf-chat-muted: #6b7178;
+  --nf-chat-soft: #f3f4f5;
+  --nf-chat-surface: #fff;
+  --nf-chat-line: #e6e8eb;
+  --nf-chat-focus: #a6acb4;
+  --nf-chat-button: #30343a;
+  --nf-chat-on-button: #fff;
+  --nf-chat-shadow: rgba(24, 30, 38, .08);
+}
+.theme-dark .nf-ai-conversation {
+  --nf-chat-text: #e7e9ec;
+  --nf-chat-muted: #a0a6af;
+  --nf-chat-soft: #2a3139;
+  --nf-chat-surface: #1c252e;
+  --nf-chat-line: #36404a;
+  --nf-chat-focus: #7c8794;
+  --nf-chat-button: #e7e9ec;
+  --nf-chat-on-button: #20272f;
+  --nf-chat-shadow: rgba(0, 0, 0, .2);
+}
+.nf-ai-conversation .nf-chat-message {
+  min-width: 0;
+  color: var(--nf-chat-text);
+  font: 400 14px/1.75 -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+  overflow-wrap: anywhere;
+}
+.nf-ai-conversation .nf-chat-message--user {
+  max-width: 92%;
+  padding: 11px 16px;
+  border-radius: 19px;
+  background: var(--nf-chat-soft);
+}
+.nf-ai-conversation .nf-chat-message--assistant {
+  width: 100%;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+}
+.nf-ai-conversation .chat-markdown { font-size: 14px; line-height: 1.75; color: var(--nf-chat-text); }
+.nf-ai-conversation .nf-chat-status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 26px;
+  color: var(--nf-chat-muted);
+  font: 400 13px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+}
+.nf-ai-conversation .nf-chat-status[data-streaming="true"] { margin-top: 10px; font-size: 12px; }
+.nf-ai-conversation .nf-chat-status-dot {
+  width: 5px;
+  height: 5px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: currentColor;
+}
+.nf-ai-conversation .nf-chat-status[data-streaming="false"] .nf-chat-status-label {
+  background: linear-gradient(110deg, var(--nf-chat-muted) 35%, var(--nf-chat-text) 50%, var(--nf-chat-muted) 65%);
+  background-size: 240% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: nf-chat-shimmer 2.4s ease-in-out infinite;
+}
+.nf-ai-conversation .nf-chat-composer {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 158px;
+  padding: 12px 14px;
+  border: 1px solid var(--nf-chat-line);
+  border-radius: 20px;
+  background: var(--nf-chat-surface);
+  box-shadow: 0 3px 12px var(--nf-chat-shadow);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+.nf-ai-conversation .nf-chat-composer:focus-within { border-color: var(--nf-chat-focus); }
+.nf-ai-conversation .nf-chat-attachments:not(:empty) { margin-bottom: 8px; }
+.nf-ai-conversation .nf-chat-attachment {
+  min-width: 0;
+  border: 0;
+  border-radius: 8px;
+  color: var(--nf-chat-muted);
+  background: var(--nf-chat-soft);
+  font-size: 12px;
+}
+.nf-ai-conversation .nf-chat-attachment-remove { color: var(--nf-chat-muted); background: transparent; }
+.nf-ai-conversation .nf-chat-attachment-remove:hover { background: var(--nf-chat-line); }
+.nf-ai-conversation .ai-chat-input {
+  min-width: 0;
+  padding: 0 2px;
+  color: var(--nf-chat-text);
+  font: 400 14px/1.75 -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+}
+.nf-ai-conversation .ai-chat-input::placeholder { color: var(--nf-chat-muted); }
+.nf-ai-conversation .nf-chat-composer-toolbar { margin-top: 10px; border: 0; }
+.nf-ai-conversation .nf-chat-mode, .nf-ai-conversation .nf-chat-mode-option {
+  border: 0;
+  color: var(--nf-chat-muted);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 400;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.nf-ai-conversation .nf-chat-mode:hover, .nf-ai-conversation .nf-chat-mode[aria-expanded="true"],
+.nf-ai-conversation .nf-chat-mode-option:hover, .nf-ai-conversation .nf-chat-mode-option[aria-selected="true"] {
+  color: var(--nf-chat-text);
+  background: var(--nf-chat-soft);
+}
+.nf-ai-conversation .nf-chat-mode-menu {
+  border: 0;
+  border-radius: 13px;
+  background: var(--nf-chat-surface);
+  box-shadow: 0 7px 24px var(--nf-chat-shadow);
+  animation: nf-chat-menu-in 160ms ease both;
+}
+.nf-ai-conversation .nf-chat-send {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--nf-chat-on-button);
+  background: var(--nf-chat-button);
+  cursor: pointer;
+  transition: background-color 150ms ease, opacity 150ms ease, transform 120ms ease;
+}
+.nf-ai-conversation .nf-chat-send:hover:not(:disabled) { opacity: .85; }
+.nf-ai-conversation .nf-chat-send:active:not(:disabled) { transform: scale(.95); }
+.nf-ai-conversation .nf-chat-send:disabled { color: var(--nf-chat-muted); background: var(--nf-chat-soft); cursor: not-allowed; }
+.nf-ai-conversation .ai-chat-composer button:focus-visible {
+  outline: 2px solid var(--nf-chat-muted) !important;
+  outline-offset: 2px;
+}
+@keyframes nf-chat-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@keyframes nf-chat-menu-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .nf-ai-conversation .nf-chat-status-label { animation: none !important; background: none !important; color: var(--nf-chat-muted) !important; }
+  .nf-ai-conversation .nf-chat-mode-menu { animation: none; }
+  .nf-ai-conversation .nf-chat-composer, .nf-ai-conversation button { transition: none; }
+}
+@media (forced-colors: active) {
+  .nf-ai-conversation .nf-chat-status-label { animation: none !important; background: none !important; color: CanvasText !important; }
+  .nf-ai-conversation .nf-chat-status-dot { background: CanvasText; }
+  .nf-ai-conversation .nf-chat-composer { border-color: CanvasText; }
+  .nf-ai-conversation .nf-chat-send { border: 1px solid ButtonText; }
+}

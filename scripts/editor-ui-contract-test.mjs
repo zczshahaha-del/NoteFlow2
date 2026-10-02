@@ -5,6 +5,8 @@ const editor = readFileSync(new URL("../src/components/NoteEditor.tsx", import.m
 const outlinePanel = readFileSync(new URL("../src/components/OutlinePanel.tsx", import.meta.url), "utf8");
 const tiptapExtensions = readFileSync(new URL("../src/editor/tiptapExtensions.ts", import.meta.url), "utf8");
 const aiPanel = readFileSync(new URL("../src/components/AIPanel.tsx", import.meta.url), "utf8");
+const conversationStyles = readFileSync(new URL("../src/components/ai-conversation.css", import.meta.url), "utf8");
+const generationStatus = readFileSync(new URL("../src/components/ChatGenerationStatus.tsx", import.meta.url), "utf8");
 const aiDraftWorkspace = readFileSync(new URL("../src/components/AIDraftWorkspace.tsx", import.meta.url), "utf8");
 const editPreviewWorkspace = readFileSync(new URL("../src/components/EditPreviewWorkspace.tsx", import.meta.url), "utf8");
 const app = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
@@ -67,6 +69,19 @@ assert.match(styles, /\.document-toolbar-button:focus-visible::after/);
 assert.match(aiPanel, /className="ai-chat-composer/);
 assert.match(aiPanel, /ai-large-composer/);
 assert.match(aiPanel, /className="ai-chat-input/);
+assert.doesNotMatch(aiPanel, /typing-caret|animate-bounce|\? "正在生成"/);
+assert.doesNotMatch(styles, /typing-caret|caret-blink/);
+assert.match(aiPanel, /isStreaming && !msg\.text\.trim\(\)/);
+assert.match(aiPanel, /<ChatGenerationStatus streaming \/>/);
+assert.match(generationStatus, /role="status" aria-live="polite" aria-atomic="true"/);
+assert.match(generationStatus, /aria-hidden="true"/);
+assert.match(aiPanel, /aria-label="消息输入框"/);
+assert.match(conversationStyles, /\.nf-chat-message--assistant \{[^}]*border: 0;[^}]*background: transparent;/);
+assert.match(conversationStyles, /\.nf-chat-composer-toolbar \{[^}]*border: 0;/);
+assert.match(conversationStyles, /\.theme-dark \.nf-ai-conversation/);
+assert.match(conversationStyles, /prefers-reduced-motion: reduce/);
+assert.match(conversationStyles, /forced-colors: active/);
+assert.match(conversationStyles, /\.ai-chat-composer button:focus-visible \{[^}]*outline: 2px[^}]*!important/);
 assert.equal(aiPanel.includes("focus-within:shadow-[0_0_0_3px"), false);
 assert.equal(aiPanel.includes("focus-within:border-[#8bbbd9]"), false);
 for (const hiddenChatControl of ["本次上下文", "统一输入 · 随时切换", "setContextScope"]) {
