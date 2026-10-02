@@ -1,0 +1,59 @@
+<div id="nf-close-study" aria-label="NoteFlow 关闭按钮局部对照">
+  <div class="viz-carousel viz-dotted-background" aria-label="关闭按钮方案" data-previous-label="上一版" data-next-label="下一版">
+    <section data-variant="上版圆底" aria-label="上版圆底小叉">
+      <div class="ncc-stage"><div class="ncc-label">实际尺寸</div><div class="ncc-bar"><span class="ncc-title">Redis 学习笔记</span><div class="ncc-actions"><button type="button" class="ncc-more cursor-interaction" aria-label="更多草稿操作"><i data-lucide="ellipsis" aria-hidden="true"></i></button><button type="button" class="ncc-close ncc-before cursor-interaction" aria-label="试按上版关闭按钮"><i data-lucide="x" aria-hidden="true"></i></button></div></div><div class="ncc-detail"><div class="ncc-label">4× 放大</div><div class="ncc-zoom-mark ncc-before" role="img" aria-label="上版：常驻圆底与偏小的叉"><i data-lucide="x" aria-hidden="true"></i></div></div></div>
+    </section>
+    <section data-variant="无常驻底座" aria-label="无常驻底座关闭候选" hidden>
+      <div class="ncc-stage"><div class="ncc-label">实际尺寸</div><div class="ncc-bar"><span class="ncc-title">Redis 学习笔记</span><div class="ncc-actions"><button type="button" class="ncc-more cursor-interaction" aria-label="更多草稿操作"><i data-lucide="ellipsis" aria-hidden="true"></i></button><button type="button" class="ncc-close ncc-after cursor-interaction" aria-label="试按无常驻底座关闭按钮"><i data-lucide="x" aria-hidden="true"></i></button></div></div><div class="ncc-detail"><div class="ncc-label">4× 放大</div><div class="ncc-zoom-mark ncc-after" role="img" aria-label="候选：默认无底座，校准叉的大小与笔画"><i data-lucide="x" aria-hidden="true"></i></div></div></div>
+    </section>
+  </div>
+  <span class="ncc-announcement" role="status" aria-live="polite"></span>
+</div>
+<style>
+  #nf-close-study { --ncc-text:light-dark(#30353c,#e9edf2);--ncc-muted:light-dark(#69737f,#a7b0bc);--ncc-surface:light-dark(#fcfcfd,#252b33);--ncc-soft:light-dark(#f4f5f7,#2d3540);--ncc-selected:light-dark(#eceff2,#363f4a);--ncc-shadow:light-dark(rgba(36,44,55,.08),rgba(0,0,0,.25));--ncc-size:18px;--ncc-zoom-size:72px;--ncc-stroke:1.8;width:100%;max-width:520px;margin:auto;color:var(--ncc-text);font:400 14px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif; }
+  #nf-close-study * { box-sizing:border-box; }
+  #nf-close-study [hidden] { display:none!important; }
+  #nf-close-study .ncc-stage { padding:18px;min-height:348px; }
+  #nf-close-study .ncc-label { font-size:12px;color:var(--ncc-muted);margin:0 0 12px; }
+  #nf-close-study .ncc-bar { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px;background:var(--ncc-surface);border-radius:16px;box-shadow:0 4px 14px var(--ncc-shadow); }
+  #nf-close-study .ncc-title { min-width:0;font-weight:500; }
+  #nf-close-study .ncc-actions { display:flex;align-items:center;gap:8px;flex:none; }
+  #nf-close-study button { display:grid;place-items:center;flex:none;margin:0;padding:0;border:0;background:transparent;color:var(--ncc-muted);font:inherit; }
+  #nf-close-study .ncc-more { width:34px;height:34px;border-radius:9px; }
+  #nf-close-study .ncc-more svg.lucide { width:16px!important;height:16px!important;stroke-width:1.65; }
+  #nf-close-study .ncc-close { width:34px;height:34px;transition:background-color 140ms ease,color 140ms ease; }
+  #nf-close-study .ncc-before { border-radius:50%;background:var(--ncc-soft);color:var(--ncc-muted); }
+  #nf-close-study .ncc-before svg.lucide { width:14px!important;height:14px!important;stroke-width:1.8; }
+  #nf-close-study .ncc-after { border-radius:10px;background:transparent;color:var(--ncc-muted); }
+  #nf-close-study .ncc-after svg.lucide { width:var(--ncc-size)!important;height:var(--ncc-size)!important;stroke-width:var(--ncc-stroke); }
+  #nf-close-study button:hover { background:var(--ncc-soft);color:var(--ncc-text); }
+  #nf-close-study button.ncc-before:hover { background:var(--ncc-selected); }
+  #nf-close-study button:active { background:var(--ncc-selected); }
+  #nf-close-study .ncc-detail { display:flex;flex-direction:column;align-items:center;margin-top:28px; }
+  #nf-close-study .ncc-zoom-mark { display:grid;place-items:center;width:136px;height:136px; }
+  #nf-close-study .ncc-zoom-mark.ncc-after { border-radius:40px; }
+  #nf-close-study .ncc-zoom-mark.ncc-before svg.lucide { width:56px!important;height:56px!important;stroke-width:1.8; }
+  #nf-close-study .ncc-zoom-mark.ncc-after svg.lucide { width:var(--ncc-zoom-size)!important;height:var(--ncc-zoom-size)!important;stroke-width:var(--ncc-stroke); }
+  #nf-close-study section[data-hover="true"] .ncc-zoom-mark.ncc-after { background:var(--ncc-soft);color:var(--ncc-text); }
+  #nf-close-study .ncc-announcement { position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%); }
+  @media(pointer:coarse) { #nf-close-study .ncc-actions button { width:44px;height:44px; } }
+  @media(max-width:400px) { #nf-close-study .ncc-stage { padding:16px; } #nf-close-study .ncc-bar { padding:12px;gap:8px; } }
+  @media(prefers-reduced-motion:reduce) { #nf-close-study .ncc-close { transition:none; } }
+</style>
+<script>
+(() => {
+  const root=document.getElementById('nf-close-study'),identity='NoteFlow close study 20261003';
+  const state={size:18,stroke:1.8,revision:0};
+  const candidate=root.querySelector('[data-variant="无常驻底座"]');
+  function render(){root.style.setProperty('--ncc-size',state.size+'px');root.style.setProperty('--ncc-zoom-size',state.size*4+'px');root.style.setProperty('--ncc-stroke',String(state.stroke));}
+  function persist(action){state.revision++;window.openai?.setWidgetState?.({modelContent:{design:identity,action,iconSize:state.size,stroke:state.stroke},privateContent:{closeStudy:{design:identity,...state}}})?.catch(()=>{});}
+  function restore(value){if(value?.design!==identity || !Number.isInteger(value.revision) || value.revision<state.revision)return;if(Number.isFinite(value.size))state.size=Math.max(16,Math.min(20,value.size));if(Number.isFinite(value.stroke))state.stroke=Math.max(1.6,Math.min(2,value.stroke));state.revision=value.revision;render();}
+  root.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>{root.querySelector('.ncc-announcement').textContent='仅按钮外观预览，不会关闭应用或打开真实菜单。';persist(button.classList.contains('ncc-after')?'试按无底座关闭':button.classList.contains('ncc-before')?'试按上版关闭':'试按参考菜单');}));
+  const close=candidate.querySelector('.ncc-close');let hovered=false;
+  const feedback=()=>candidate.dataset.hover=String(hovered || document.activeElement===close);
+  close.addEventListener('pointerenter',()=>{hovered=true;feedback();});close.addEventListener('pointerleave',()=>{hovered=false;feedback();});close.addEventListener('focus',feedback);close.addEventListener('blur',feedback);
+  render();const saved=window.openai?.widgetState;restore(saved?.privateContent?.closeStudy??saved?.closeStudy);
+  window.addEventListener('openai:set_globals',event=>{const saved=event.detail?.globals?.widgetState;restore(saved?.privateContent?.closeStudy??saved?.closeStudy);});
+  if(globalThis.Tweak){const tweak=new Tweak({container:candidate,onChange:()=>{render();persist('校准关闭比例');}});tweak.addSlider(state,'size',{label:'图标尺寸',min:16,max:20,unit:'px'});tweak.addSlider(state,'stroke',{label:'笔画',min:1.6,max:2,step:.1});}
+})();
+</script>
