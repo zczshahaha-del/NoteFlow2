@@ -205,20 +205,24 @@ try {
   assert.ok(composer);
   assert.ok(composerInput);
   assert.equal(conversationContainer.querySelectorAll('[role="status"]').length, 1);
-  assert.equal(conversationStatus().dataset.streaming, "false");
-  assert.equal(conversationStatus().textContent, "正在回复");
+  assert.equal(conversationStatus().textContent, "正在思考");
   assert.equal(conversationStatus().querySelector('.nf-chat-status-dot').getAttribute('aria-hidden'), "true");
   assert.equal(conversationContainer.querySelector('.typing-caret'), null);
   assert.equal(conversationContainer.querySelector('.nf-chat-message--assistant .chat-markdown'), null);
   assert.equal(composer.dataset.generating, "true");
   assert.ok(conversationContainer.querySelector('button[aria-label="停止生成"]'));
   await act(async () => useAppStore.setState({ chatMessages: [userMessage, { ...assistantMessage, text: "   " }] }));
-  assert.equal(conversationStatus().dataset.streaming, "false");
+  assert.equal(conversationStatus().textContent, "正在思考");
   await act(async () => useAppStore.setState({ chatMessages: [userMessage, { ...assistantMessage, text: "这是 **重点**。" }] }));
-  assert.equal(conversationStatus().dataset.streaming, "true");
+  assert.equal(conversationStatus(), null);
   assert.equal(conversationContainer.querySelector('.chat-markdown strong').textContent, "重点");
   assert.equal(conversationContainer.querySelector('.chat-markdown').getAttribute('aria-busy'), "true");
-  assert.equal(conversationContainer.querySelectorAll('[role="status"]').length, 1);
+  assert.equal(conversationContainer.querySelectorAll('[role="status"]').length, 0);
+  assert.equal(composer.dataset.generating, "true");
+  assert.ok(conversationContainer.querySelector('button[aria-label="停止生成"]'));
+  // The final-looking text must not keep a status while transport cleanup is pending.
+  await act(async () => useAppStore.setState({ chatMessages: [userMessage, { ...assistantMessage, text: "这是 **重点**。回复正文已输出。" }] }));
+  assert.equal(conversationStatus(), null);
   await act(async () => useAppStore.setState({ chatLoading: false }));
   assert.equal(conversationStatus(), null);
   assert.match(conversationContainer.querySelector('.chat-markdown').textContent, /重点/);
@@ -231,7 +235,7 @@ try {
   assert.equal(conversationContainer.querySelector('button[aria-label="发送"]').disabled, true);
   await act(async () => useAppStore.setState({ chatLoading: true, chatMessages: [userMessage] }));
   assert.equal(conversationContainer.querySelectorAll('[role="status"]').length, 1);
-  assert.equal(conversationStatus().dataset.streaming, "false");
+  assert.equal(conversationStatus().textContent, "正在思考");
   await act(async () => useAppStore.setState({ chatLoading: false, chatMessages: [userMessage, { ...assistantMessage, text: "请求失败，请稍后重试。" }] }));
   assert.equal(conversationStatus(), null);
   assert.match(conversationContainer.querySelector('.chat-markdown').textContent, /请求失败/);
@@ -908,7 +912,7 @@ try {
     ],
     accountMenuCoverage: ["single-entry", "username", "no-native-tooltip", "username-click", "long-username", "unframed-footer-menu", "numeric-avatar-fallback", "enter-exit", "email-confirm", "devices-revoke", "device-error", "memory-CRUD", "memory-button-rollback-only", "ZIP-JSON-export", "import", "trash-restore", "modal-focus-trap", "escape-focus", "IME", "outside-pointer", "focus-leave", "sign-out", "compact", "note-folder-delete-confirm"],
     directoryRowCoverage: ["whole-row-selection", "full-name", "selected-more", "nested-indent", "pin-favorite-glyphs", "folder-disclosure", "file-open-callback", "independent-menu", "rename-cancel"],
-    conversationCoverage: ["empty-wait", "whitespace-wait", "streaming-markdown", "single-status", "completion", "stop-callback", "error-clears-status", "fallback-wait", "empty-send-disabled", "Enter-Shift-IME", "send-context", "library-mode", "remove-note-reference", "citation-open", "selection-expand", "selection-send"],
+    conversationCoverage: ["empty-wait", "whitespace-wait", "streaming-markdown", "hide-status-on-first-text", "no-status-during-transport-cleanup", "single-status", "completion", "stop-callback", "error-clears-status", "fallback-wait", "empty-send-disabled", "Enter-Shift-IME", "send-context", "library-mode", "remove-note-reference", "citation-open", "selection-expand", "selection-send"],
   }));
 } finally {
   await vite.close();

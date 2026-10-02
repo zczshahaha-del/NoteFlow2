@@ -48,7 +48,6 @@
   color: var(--nf-chat-muted);
   font: 400 13px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
 }
-.nf-ai-conversation .nf-chat-status[data-streaming="true"] { margin-top: 10px; font-size: 12px; }
 .nf-ai-conversation .nf-chat-status-dot {
   width: 5px;
   height: 5px;
@@ -56,7 +55,7 @@
   border-radius: 50%;
   background: currentColor;
 }
-.nf-ai-conversation .nf-chat-status[data-streaming="false"] .nf-chat-status-label {
+.nf-ai-conversation .nf-chat-status-label {
   background: linear-gradient(110deg, var(--nf-chat-muted) 35%, var(--nf-chat-text) 50%, var(--nf-chat-muted) 65%);
   background-size: 240% 100%;
   background-clip: text;

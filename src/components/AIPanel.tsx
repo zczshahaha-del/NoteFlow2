@@ -1153,7 +1153,6 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
                   )}
                 </div>
               )}
-              {isStreaming && Boolean(msg.text.trim()) && <ChatGenerationStatus streaming />}
               {msg.role === "assistant" && msg.text && precedingSelection && !isStreaming && (
                 <button
                   type="button"
