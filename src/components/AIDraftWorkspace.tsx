@@ -629,12 +629,12 @@ export default function AIDraftWorkspace() {
     const controller = activeRequestRef.current;
     controller?.abort();
     activeRequestRef.current = null;
+    setBusyMode("idle");
     if (controller) {
-      setStatusText("正在停止当前生成…");
-    } else {
-      setBusyMode("idle");
+      setStatusText("已停止当前生成。");
+      if (!draft) setErrorText("大纲生成已停止，请点击“重新生成大纲”继续。");
     }
-  }, []);
+  }, [draft]);
 
   const createOutline = useCallback(async (feedbackText = "", topicOverride = "") => {
     const isFeedback = Boolean(feedbackText.trim());
@@ -682,11 +682,13 @@ export default function AIDraftWorkspace() {
         temperature: 0.35,
         signal: controller.signal,
         onDelta: (delta) => {
+          if (controller.signal.aborted || activeRequestRef.current !== controller) return;
           outline += delta;
           setStreamingOutline(outline);
         },
       });
 
+      if (controller.signal.aborted || activeRequestRef.current !== controller) return;
       if (!outline.trim()) {
         throw new Error("大纲为空，请换一个主题或稍后重试。");
       }
@@ -721,23 +723,24 @@ export default function AIDraftWorkspace() {
             sections: makeSectionPayloads(outline),
           });
 
+      if (controller.signal.aborted || activeRequestRef.current !== controller) return;
       replaceDraft(created);
       if (!draft && pendingCheckpoint?.checkpointType === "draft_workspace") {
         await bindAgentCheckpoint(pendingCheckpoint.id, { draftId: created.id }).catch(() => null);
       }
+      if (controller.signal.aborted || activeRequestRef.current !== controller) return;
       setStreamingOutline("");
       setOutlineInstruction("");
       setStatusText(feedbackText.trim() ? "已根据你的反馈重新生成大纲。确认后可以逐节生成正文。" : "大纲已生成。确认后可以逐节生成正文。");
     } catch (error) {
-      if (!(error instanceof Error && error.name === "AbortError")) {
-        setErrorText(outlineGenerationError(error));
-        setStatusText("");
-      }
+      if (controller.signal.aborted || activeRequestRef.current !== controller) return;
+      setErrorText(outlineGenerationError(error));
+      setStatusText("");
     } finally {
       if (activeRequestRef.current === controller) {
         activeRequestRef.current = null;
+        setBusyMode("idle");
       }
-      setBusyMode("idle");
     }
   }, [
     categoryId,
@@ -760,14 +763,22 @@ export default function AIDraftWorkspace() {
       : null;
     if (
       draft ||
+      draftCommand ||
       isBusy ||
       autoOutlineStartedRef.current ||
       (typeof restoredDraftId === "string" && restoredDraftId) ||
       !draftSeed.trim()
     ) return;
-    autoOutlineStartedRef.current = true;
-    void createOutline("", initialTopic);
-  }, [checkpointMatchesCurrentSeed, createOutline, draft, draftSeed, initialTopic, isBusy, pendingCheckpoint]);
+    // StrictMode replays effects before this microtask. Only the surviving
+    // setup may launch a request; its cleanup must not poison the start flag.
+    let canceled = false;
+    queueMicrotask(() => {
+      if (canceled || autoOutlineStartedRef.current) return;
+      autoOutlineStartedRef.current = true;
+      void createOutline("", initialTopic);
+    });
+    return () => { canceled = true; };
+  }, [checkpointMatchesCurrentSeed, createOutline, draft, draftCommand, draftSeed, initialTopic, isBusy, pendingCheckpoint]);
 
   useEffect(() => {
     if (
@@ -775,12 +786,18 @@ export default function AIDraftWorkspace() {
       !["generate_outline", "regenerate_outline"].includes(draftCommand.action) ||
       isBusy
     ) return;
-    consumeDraftCommand(draftCommand.id);
-    const currentDraftTopic = draft ? draft.topic || draft.title || topic : "";
-    void createOutline(
-      draftCommand.action === "regenerate_outline" ? draftCommand.feedback : "",
-      currentDraftTopic || draftCommand.seed
-    );
+    let canceled = false;
+    queueMicrotask(() => {
+      if (canceled) return;
+      autoOutlineStartedRef.current = true;
+      consumeDraftCommand(draftCommand.id);
+      const currentDraftTopic = draft ? draft.topic || draft.title || topic : "";
+      void createOutline(
+        draftCommand.action === "regenerate_outline" ? draftCommand.feedback : "",
+        currentDraftTopic || draftCommand.seed
+      );
+    });
+    return () => { canceled = true; };
   }, [consumeDraftCommand, createOutline, draft, draftCommand, isBusy, topic]);
 
   const runSectionGeneration = useCallback(

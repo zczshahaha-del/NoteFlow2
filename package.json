@@ -19,6 +19,7 @@
     "test:frontend": "node scripts/frontend-component-store-test.mjs",
     "test:search-ui": "node scripts/search-surface-browser-test.mjs",
     "test:draft-ui": "node scripts/draft-surface-browser-test.mjs",
+    "test:draft-lifecycle": "node scripts/draft-lifecycle-test.mjs",
     "test:e2e-runtime": "node scripts/run-python.mjs server/tests/runtime_e2e.py",
     "test:pwa": "node scripts/pwa-installability-test.mjs",
     "test:tiptap-history": "node scripts/run-python.mjs scripts/export-note-corpus.py | node --experimental-strip-types scripts/tiptap-history-audit.ts",
