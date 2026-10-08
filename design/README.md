@@ -1,6 +1,18 @@
 # NoteFlow 设计稿索引
 
-> 更新：2026-10-03。设计稿不是正式应用；业务界面仍以 `src/` 为准。下述组件合成标本也不等于用户实屏。
+> 更新：2026-10-08。设计稿不是正式应用；业务界面仍以 `src/` 为准。下述组件合成标本也不等于用户实屏。
+
+## 登录与注册 · A 流程待评审
+
+用户明确要求先重设计认证入口，并选择“邮箱验证码注册、无强制密码”。本轮按新 UI 偏好提供「柔和留白 / 轻盈聚焦」，明确登录 / 注册，保留密码登录与重设密码。只做离线视觉和交互稿，不扩大为整页工作台改造；正式认证行为尚未改变。
+
+- [柔和留白：登录](noteflow-auth-entry-login.png) / [注册](noteflow-auth-entry-register.png)
+- [轻盈聚焦：登录](noteflow-auth-entry-focus-login.png) / [注册](noteflow-auth-entry-focus-register.png)
+- [窄屏](noteflow-auth-entry-mobile.png) / [深色](noteflow-auth-entry-dark.png)
+- [可交互预览](noteflow-auth-entry.preview.html) / [源稿](noteflow-auth-entry.source.html)
+- [流程、验证与未解决项](noteflow-auth-entry-notes.md) / [离线检查脚本](verify-auth-entry.mjs)
+
+两版 1024 / 736 / 320px、本地切换 / 等待 / 取消 / 焦点、输入隐私、深色与减少动效采用独立检查，不访问应用账号。样例不发邮件、不创建账号。最终审美、实体设备及真实认证 E2E 待验收，AUTH-02 / AUTH-04 等安全事项仍未解决。
 
 ## 当前基线：正式页面，不采用整页重排
 
