@@ -1,4 +1,4 @@
-import { Fragment, useState, useRef, useEffect, useCallback } from "react";
+import { Fragment, memo, useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   ArrowUp,
   FileText,
@@ -35,6 +35,7 @@ import type { AgentToolTrace, ChatMessage, ChatSource } from "../types";
 import { resolveAgentCheckpoint, type AgentTaskSnapshot } from "../services/agent";
 import { getNoteDraft } from "../services/drafts";
 import ChatGenerationStatus from "./ChatGenerationStatus";
+import { useChatPresentation } from "../hooks/useChatPresentation";
 import SoftMenu from "./SoftMenu";
 import "./ai-conversation.css";
 
@@ -335,6 +336,18 @@ function AgentTaskDetailPanel({
   );
 }
 
+const ChatMarkdown = memo(function ChatMarkdown({ text, sources, busy, onContentClick }: {
+  text: string;
+  sources: ChatSource[] | undefined;
+  busy: boolean;
+  onContentClick: (event: React.MouseEvent<HTMLDivElement>, sources: ChatSource[] | undefined) => void;
+}) {
+  const citationCount = sources?.length ?? 0;
+  const html = useMemo(() => renderChatMarkdown(text, citationCount), [text, citationCount]);
+  return <div className="chat-markdown" aria-busy={busy || undefined}
+    onClick={event => onContentClick(event, sources)} dangerouslySetInnerHTML={{ __html: html }} />;
+});
+
 export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
   const {
     chatMessages,
@@ -350,6 +363,10 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
     chatSelection,
     clearChatSelection,
   } = useChatSlice();
+  const presentation = useChatPresentation(chatMessages);
+  const visibleMessages = presentation.messages;
+  const replyBusy = chatLoading || presentation.pending;
+  const lastVisibleMessage = visibleMessages[visibleMessages.length - 1];
   const {
     activeEditPreview,
     createEditPreviewRequest,
@@ -646,7 +663,8 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
 
     if (!shouldAutoScrollChatRef.current) return;
     element.scrollTo({ top: element.scrollHeight, behavior: "auto" });
-  }, [chatMessages, scrollChatToBottom]);
+  }, [visibleMessages.length, lastVisibleMessage?.id, lastVisibleMessage?.text,
+    lastVisibleMessage?.sources, lastVisibleMessage?.draftCard, scrollChatToBottom]);
 
   useEffect(() => {
     if (
@@ -849,7 +867,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
   const handleSend = useCallback(
     (text?: string) => {
       const msg = (text ?? input).trim();
-      if (!msg || chatLoading) return;
+      if (!msg || replyBusy) return;
       if (voiceListening) stopVoiceRecognition();
       const selectedText = chatSelection?.text.trim() || "";
       const contextScope =
@@ -873,7 +891,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
     },
     [
       input,
-      chatLoading,
+      replyBusy,
       sendMessage,
       composerMode,
       chatSelection,
@@ -1077,9 +1095,9 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
         onScroll={handleChatScroll}
         className="ai-message-list flex-1 space-y-[26px] overflow-y-auto px-0 py-[34px]"
       >
-        {chatMessages.map((msg, index) => {
+        {visibleMessages.map((msg, index) => {
           const isStreaming =
-            chatLoading &&
+            replyBusy &&
             msg.role === "assistant" &&
             index === chatMessages.length - 1;
           const selectionExpanded = expandedSelectionMessageIds.has(msg.id);
@@ -1107,14 +1125,8 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
               {isStreaming && !msg.text.trim() ? (
                 <ChatGenerationStatus />
               ) : msg.role === "assistant" && msg.text ? (
-                <div
-                  className="chat-markdown"
-                  aria-busy={isStreaming || undefined}
-                  onClick={(event) => handleChatContentClick(event, msg.sources)}
-                  dangerouslySetInnerHTML={{
-                    __html: renderChatMarkdown(msg.text, msg.sources?.length ?? 0),
-                  }}
-                />
+                <ChatMarkdown text={msg.text} sources={msg.sources} busy={isStreaming}
+                  onContentClick={handleChatContentClick} />
               ) : (
                 <div className="space-y-2">
                   <span className="whitespace-pre-wrap">
@@ -1231,7 +1243,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
 
       {/* Input */}
       <div className="shrink-0">
-        <div className="ai-chat-composer ai-large-composer nf-chat-composer" data-generating={chatLoading}>
+        <div className="ai-chat-composer ai-large-composer nf-chat-composer" data-generating={replyBusy}>
           <div className="nf-chat-attachments flex max-w-full flex-wrap gap-1.5">
             {selectedFile && currentNoteReferenced && (
               <span className="nf-chat-attachment group inline-flex max-w-full items-center gap-1.5 py-1.5 pl-2.5 pr-1.5">
@@ -1324,17 +1336,18 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
             </div>
             <button
               onClick={() => {
-                if (chatLoading) {
-                  stopGeneration();
+                if (replyBusy) {
+                  presentation.finish();
+                  if (chatLoading) stopGeneration();
                 } else {
                   handleSend();
                 }
               }}
-              disabled={!chatLoading && !input.trim()}
-              aria-label={chatLoading ? "停止生成" : "发送"}
+              disabled={!replyBusy && !input.trim()}
+              aria-label={replyBusy ? "停止生成" : "发送"}
               className="nf-chat-send"
             >
-              {chatLoading ? (
+              {replyBusy ? (
                 <Square size={12} fill="currentColor" strokeWidth={1.6} />
               ) : (
                 <ArrowUp size={18} strokeWidth={1.8} />

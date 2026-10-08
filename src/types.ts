@@ -19,6 +19,8 @@ export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   text: string;
+  /** Client-only presentation lifecycle; restored history does not replay typing. */
+  streamState?: "streaming" | "completed" | "stopped" | "failed";
   chatMode?: "chat" | "ask_notes";
   attachedSelection?: {
     text: string;

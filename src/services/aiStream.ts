@@ -155,7 +155,7 @@ export async function askAIStream({
       documentTitle,
       documentContent,
       pageState,
-      history,
+      history: history.map(({ role, text }) => ({ role, text })),
       maxTokens,
       temperature,
       memoryEnabled,

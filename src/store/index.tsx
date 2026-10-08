@@ -1487,6 +1487,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       role: "assistant",
       text: "",
       chatMode,
+      streamState: "streaming",
     };
 
     set((current) => ({
@@ -1960,6 +1961,11 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         },
         onAgentDone: (result) => {
           set((current) => ({
+            chatMessages: result.status === "failed" || result.status === "cancelled"
+              ? current.chatMessages.map(message => message.id === assistantMsg.id
+                ? { ...message, streamState: result.status === "failed" ? "failed" : "stopped" }
+                : message)
+              : current.chatMessages,
             agentTask: result.status === "failed"
               ? taskWithRunStatus(current.agentTask, result.runId, "failed")
               : current.agentTask?.checkpoint
@@ -1973,6 +1979,9 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
             const runId = event.runId ?? current.agentTask?.run.id;
             const failedTask = runId ? taskWithRunStatus(current.agentTask, runId, "failed") : current.agentTask;
             return {
+              chatMessages: current.chatMessages.map(message => message.id === assistantMsg.id
+                ? { ...message, streamState: "failed" }
+                : message),
               agentTask: failedTask
                 ? {
                     ...failedTask,
@@ -2006,8 +2015,8 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
             ? taskWithRunStatus(current.agentTask, current.agentTask.run.id, "cancelled")
             : current.agentTask,
           chatMessages: current.chatMessages.map((message) =>
-            message.id === assistantMsg.id && !message.text
-              ? { ...message, text: "已停止生成。" }
+            message.id === assistantMsg.id
+              ? { ...message, text: message.text || "已停止生成。", streamState: "stopped" }
               : message
           ),
         }));
@@ -2027,13 +2036,20 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
             }
           : current.agentTask,
         chatMessages: current.chatMessages.map((message) =>
-          message.id === assistantMsg.id ? { ...message, text: errorText } : message
+          message.id === assistantMsg.id ? { ...message, text: errorText, streamState: "failed" } : message
         ),
       }));
     } finally {
       if (generationAbortController === abortController) {
         generationAbortController = null;
-        set({ chatLoading: false });
+        set((current) => ({
+          chatLoading: false,
+          chatMessages: current.chatMessages.map(message =>
+            message.id === assistantMsg.id && message.streamState === "streaming"
+              ? { ...message, streamState: abortController.signal.aborted ? "stopped" : "completed" }
+              : message
+          ),
+        }));
       }
       get().refreshAgentRunHistory(get().agentSessionId);
       void get().refreshChatSessions().catch(() => {});
@@ -2048,6 +2064,9 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     generationAbortController?.abort();
     set((state) => ({
       chatLoading: false,
+      chatMessages: state.chatMessages.map(message =>
+        message.streamState === "streaming" ? { ...message, streamState: "stopped" } : message
+      ),
       agentTask: runId ? taskWithRunStatus(state.agentTask, runId, "cancelled") : state.agentTask,
     }));
     if (runId) {
