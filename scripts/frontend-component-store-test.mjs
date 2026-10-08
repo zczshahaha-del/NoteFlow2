@@ -380,12 +380,14 @@ try {
       onSignUp: async () => {},
     }),
   );
-  assert.match(loginHtml, /登录 NoteFlow/);
-  assert.match(loginHtml, /欢迎回来/);
-  assert.match(loginHtml, /选择登录或注册/);
+  assert.match(loginHtml, /登录你的 NoteFlow 账号/);
+  assert.match(loginHtml, /你的笔记工作空间/);
+  assert.ok(!loginHtml.includes("auth-switch"));
+  assert.match(loginHtml, /data-step="email"/);
   assert.match(loginHtml, /注册/);
   assert.match(loginHtml, /密码登录/);
-  assert.match(loginHtml, /获取验证码/);
+  assert.match(loginHtml, /继续/);
+  assert.ok(!loginHtml.includes('autocomplete="one-time-code"'));
 
   const metadataHtml = await renderClient(React.createElement(NoteMetadataControls, { note }));
   assert.match(metadataHtml, /测试/);

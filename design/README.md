@@ -2,7 +2,16 @@
 
 > 更新：2026-10-09。设计稿不是正式应用；业务界面仍以 `src/` 为准。下述组件合成标本也不等于用户实屏。
 
-## 登录与注册 · A 外观已确认，已正式实施
+## 登录与注册 · 当前采用 Notion 风格邮箱优先入口
+
+2026-10-09 用户指出 A 版两个邮箱验证码表单重复，调研实页后明确选择 Notion。已改正式 LoginPage 为居中品牌 / 标题、首屏单邮箱 + 继续、下方轻注册入口与分步验证码；保留柔和蓝、密码登录 / 重设和明确验证后建号，不添加社交登录、不修改后端。最新隔离运行验证通过，真实邮件与最终审美待验收。
+
+- [最新范围、步骤与验证](noteflow-auth-notion-notes.md)
+- [首屏桌面](noteflow-auth-notion-login-1024.png) / [320px](noteflow-auth-notion-login-320.png)
+- [注册入口](noteflow-auth-notion-register-1024.png) / [验证步骤](noteflow-auth-notion-verify-1024.png)
+- [密码登录](noteflow-auth-notion-password-1024.png) / [深色及长邮箱](noteflow-auth-notion-dark-320.png)
+
+## 登录与注册 · 历史 A 实施与配色对照
 
 2026-10-09 用户确认「柔和留白」A 布局与柔和蓝主按钮，随后明确批准正式实施。已接入 LoginPage、注册目的验证码与验证后建号，保留已有密码登录及重设密码；正式组件与隔离接口检查通过，真实邮件 / 生产 / 迁移与最终审美待验收。
 
@@ -15,7 +24,7 @@
 - [原深色登录图](noteflow-auth-color-deep-login.png) / [320px 蓝色图](noteflow-auth-color-mobile.png)
 - [颜色可交互对照](noteflow-auth-color.preview.html) / [源稿](noteflow-auth-color.source.html) / [范围、对比度与验证](noteflow-auth-color-notes.md)
 
-以下两种布局为此前历史候选；当前选定外观以以上柔和蓝 A 稿为准。
+以下两种布局为此前历史候选；当前外观以顶部 Notion 风格实施为准，柔和蓝配色保留，不恢复旧大号切换栏。
 
 用户明确要求先重设计认证入口，并选择“邮箱验证码注册、无强制密码”。本轮按新 UI 偏好提供「柔和留白 / 轻盈聚焦」，明确登录 / 注册，保留密码登录与重设密码。只做离线视觉和交互稿，不扩大为整页工作台改造；正式认证行为尚未改变。
 
