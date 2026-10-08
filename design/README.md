@@ -4,6 +4,14 @@
 
 ## 登录与注册 · A 流程待评审
 
+后续用户已选「柔和留白」布局，当前只评审按钮颜色：柔和蓝 / 原深色使用完全相同的 A 页面，不改输入、排版或账号流程。正式应用未替换。
+
+- [蓝色完整登录图](noteflow-auth-color-login.png) / [蓝色注册图](noteflow-auth-color-register.png)
+- [原深色登录图](noteflow-auth-color-deep-login.png) / [320px 蓝色图](noteflow-auth-color-mobile.png)
+- [颜色可交互对照](noteflow-auth-color.preview.html) / [源稿](noteflow-auth-color.source.html) / [范围、对比度与验证](noteflow-auth-color-notes.md)
+
+以下两种布局为此前历史候选；认可 A 不代表已确定按钮配色或授权正式认证改造。
+
 用户明确要求先重设计认证入口，并选择“邮箱验证码注册、无强制密码”。本轮按新 UI 偏好提供「柔和留白 / 轻盈聚焦」，明确登录 / 注册，保留密码登录与重设密码。只做离线视觉和交互稿，不扩大为整页工作台改造；正式认证行为尚未改变。
 
 - [柔和留白：登录](noteflow-auth-entry-login.png) / [注册](noteflow-auth-entry-register.png)
