@@ -1,0 +1,3 @@
+-r requirements.txt
+# Isolated authentication route tests; never connect to the application DB.
+aiosqlite==0.22.1

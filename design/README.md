@@ -2,9 +2,14 @@
 
 > 更新：2026-10-09。设计稿不是正式应用；业务界面仍以 `src/` 为准。下述组件合成标本也不等于用户实屏。
 
-## 登录与注册 · A 外观已确认，待正式实施
+## 登录与注册 · A 外观已确认，已正式实施
 
-2026-10-09 用户确认「柔和留白」A 布局与柔和蓝主按钮。柔和蓝 / 原深色对照使用完全相同的 A 页面，不改输入、排版或账号流程。正式应用未替换，设计确认不代表正式认证改造已获实施授权或完成验收。
+2026-10-09 用户确认「柔和留白」A 布局与柔和蓝主按钮，随后明确批准正式实施。已接入 LoginPage、注册目的验证码与验证后建号，保留已有密码登录及重设密码；正式组件与隔离接口检查通过，真实邮件 / 生产 / 迁移与最终审美待验收。
+
+- [正式实施范围与验证](noteflow-auth-implemented-notes.md)
+- [正式组件登录截图](noteflow-auth-implemented-login-1024.png) / [注册截图](noteflow-auth-implemented-register-1024.png) / [320px](noteflow-auth-implemented-login-320.png)
+
+下面仍保留原设计对照作为过程证据，不是当前账号的运行截图。
 
 - [蓝色完整登录图](noteflow-auth-color-login.png) / [蓝色注册图](noteflow-auth-color-register.png)
 - [原深色登录图](noteflow-auth-color-deep-login.png) / [320px 蓝色图](noteflow-auth-color-mobile.png)
@@ -20,7 +25,7 @@
 - [可交互预览](noteflow-auth-entry.preview.html) / [源稿](noteflow-auth-entry.source.html)
 - [流程、验证与未解决项](noteflow-auth-entry-notes.md) / [离线检查脚本](verify-auth-entry.mjs)
 
-两版 1024 / 736 / 320px、本地切换 / 等待 / 取消 / 焦点、输入隐私、深色与减少动效采用独立检查，不访问应用账号。样例不发邮件、不创建账号。预览外观已确认，正式页面、实体设备及真实认证 E2E 待验收，AUTH-02 / AUTH-04 等安全事项仍未解决。
+两版历史稿的 1024 / 736 / 320px、本地切换 / 等待 / 取消 / 焦点、输入隐私、深色与减少动效采用独立检查，不访问应用账号。样例不发邮件、不创建账号。正式实施的证据与未验收项以以上实施说明为准，不能借设计验证宣布真实认证或安全问题全面解决。
 
 ## 当前基线：正式页面，不采用整页重排
 

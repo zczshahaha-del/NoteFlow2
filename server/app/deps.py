@@ -12,7 +12,7 @@ from sqlalchemy import select
 from app import database as db
 from app.config import cfg
 from app.database import AsyncSessionLocal
-from app.models.db import UserSession
+from app.models.db import User, UserSession
 from app.utils import decode_token
 
 
@@ -62,6 +62,12 @@ async def get_current_user(
             )
             if result.scalar_one_or_none() is None:
                 raise HTTPException(status_code=401, detail="session has been revoked or expired")
+    else:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(select(User).where(User.id == payload["sub"]))
+            user = result.scalar_one_or_none()
+            if user is None or user.email_verified_at is not None:
+                raise HTTPException(status_code=401, detail="请重新验证邮箱登录。")
 
     return CurrentUser(
         id=payload["sub"],

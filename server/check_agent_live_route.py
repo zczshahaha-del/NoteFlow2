@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import http.cookiejar
 import os
 from pathlib import Path
 import sys
@@ -24,6 +25,8 @@ def _base_url() -> str:
 
 
 BASE_URL = _base_url()
+COOKIE_JAR = http.cookiejar.CookieJar()
+OPENER = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(COOKIE_JAR))
 
 
 def _request(path: str, payload: dict, token: str | None = None) -> bytes:
@@ -32,7 +35,7 @@ def _request(path: str, payload: dict, token: str | None = None) -> bytes:
     if token:
         headers["Authorization"] = f"Bearer {token}"
     request = urllib.request.Request(BASE_URL + path, data=body, headers=headers, method="POST")
-    with urllib.request.urlopen(request, timeout=90) as response:
+    with OPENER.open(request, timeout=90) as response:
         return response.read()
 
 
@@ -61,9 +64,12 @@ def _put(path: str, payload: dict, token: str) -> dict:
 def _auth() -> str:
     suffix = int(time.time() * 1000)
     email = f"planner-live-{suffix}@noteflow.test"
-    payload = {"email": email, "password": "noteflow-test", "displayName": "Planner Live"}
-    data = json.loads(_request("/api/auth/register", payload).decode("utf-8"))
-    return data["token"]
+    issued = json.loads(_request("/api/auth/email-code/request", {"email": email, "purpose": "register"}).decode("utf-8"))
+    if not issued.get("developmentCode"):
+        raise RuntimeError("Synthetic live checks require development email delivery fallback; do not run against production.")
+    _request("/api/auth/register", {"email": email, "code": issued["developmentCode"]})
+    from app.config import cfg
+    return next(cookie.value for cookie in COOKIE_JAR if cookie.name == cfg.AUTH_COOKIE_NAME)
 
 
 def _create_note(token: str) -> dict:

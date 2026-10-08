@@ -381,7 +381,9 @@ try {
     }),
   );
   assert.match(loginHtml, /登录 NoteFlow/);
-  assert.match(loginHtml, /验证码登录/);
+  assert.match(loginHtml, /欢迎回来/);
+  assert.match(loginHtml, /选择登录或注册/);
+  assert.match(loginHtml, /注册/);
   assert.match(loginHtml, /密码登录/);
   assert.match(loginHtml, /获取验证码/);
 

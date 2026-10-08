@@ -177,7 +177,6 @@ def main() -> int:
 
     run_id = uuid.uuid4().hex[:10]
     email = f"noteflow-performance-{run_id}@local.test"
-    password = "NoteFlow-Performance-2026!"
     client = Client(args.base_url)
     latency: dict[str, list[float]] = {
         "healthApi": [],
@@ -193,10 +192,13 @@ def main() -> int:
             _, duration = client.json("GET", "/api/health")
             latency["healthApi"].append(duration)
 
+        issued, _ = client.json("POST", "/api/auth/email-code/request", {"email": email, "purpose": "register"})
+        if not issued.get("developmentCode"):
+            raise RuntimeError("Synthetic performance tests require development email delivery fallback; do not run against production.")
         client.json(
             "POST",
             "/api/auth/register",
-            {"email": email, "password": password, "displayName": "Performance Baseline"},
+            {"email": email, "code": issued["developmentCode"]},
         )
         for _ in range(samples * 3):
             _, duration = client.json("GET", "/api/notes")

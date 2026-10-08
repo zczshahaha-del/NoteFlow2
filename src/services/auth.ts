@@ -44,19 +44,19 @@ const CACHED_AUTH_SESSION_KEY = "noteflow:cached-auth-session";
 const DEFAULT_OFFLINE_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function cacheAuthSession(session: AuthSession): void {
-  if (typeof localStorage === "undefined") return;
   const parsedExpiry = session.sessionExpiresAt ? Date.parse(session.sessionExpiresAt) : Number.NaN;
   const expiresAt = Number.isFinite(parsedExpiry)
     ? parsedExpiry
     : Date.now() + DEFAULT_OFFLINE_SESSION_TTL_MS;
   try {
+    if (typeof localStorage === "undefined") return;
     localStorage.setItem(CACHED_AUTH_SESSION_KEY, JSON.stringify({ session, expiresAt }));
   } catch {}
 }
 
 function loadCachedAuthSession(): AuthSession | null {
-  if (typeof localStorage === "undefined") return null;
   try {
+    if (typeof localStorage === "undefined") return null;
     const raw = localStorage.getItem(CACHED_AUTH_SESSION_KEY);
     if (!raw) return null;
     const cached = JSON.parse(raw) as CachedAuthSession;
@@ -71,13 +71,13 @@ function loadCachedAuthSession(): AuthSession | null {
 }
 
 function clearCachedAuthSession(): void {
-  if (typeof localStorage === "undefined") return;
   try {
+    if (typeof localStorage === "undefined") return;
     localStorage.removeItem(CACHED_AUTH_SESSION_KEY);
   } catch {}
 }
 
-async function submitAuth(path: string, payload: AuthPayload): Promise<AuthSession> {
+async function submitAuth(path: string, payload: AuthPayload | { email: string; code: string }): Promise<AuthSession> {
   // A deliberate sign-in/register must always win over a token left by the old
   // frontend. Abort any migration before the new cookie is issued; otherwise a
   // late legacy response can overwrite the freshly authenticated account.
@@ -98,18 +98,19 @@ export function login(payload: AuthPayload): Promise<AuthSession> {
   return submitAuth("/api/auth/login", payload);
 }
 
-export function register(payload: AuthPayload): Promise<AuthSession> {
+export function register(payload: { email: string; code: string }): Promise<AuthSession> {
   return submitAuth("/api/auth/register", payload);
 }
 
-export async function requestEmailLoginCode(email: string): Promise<{
+export async function requestEmailLoginCode(email: string, purpose: "login" | "register" = "login", signal?: AbortSignal): Promise<{
   message: string;
   developmentCode?: string;
 }> {
   const response = await publicApiFetch("/api/auth/email-code/request", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, purpose }),
+    signal,
   });
   if (!response.ok) throw new Error(await readApiError(response));
   return readApiJson<{ message: string; developmentCode?: string }>(response);
@@ -192,13 +193,14 @@ export async function revokeUserSession(sessionId: string): Promise<boolean> {
   return result.currentSessionRevoked;
 }
 
-export async function requestPasswordReset(email: string): Promise<{
+export async function requestPasswordReset(email: string, signal?: AbortSignal): Promise<{
   message: string;
 }> {
   const response = await publicApiFetch("/api/auth/password-reset/request", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
+    signal,
   });
   if (!response.ok) throw new Error(await readApiError(response));
   return readApiJson<{ message: string }>(response);

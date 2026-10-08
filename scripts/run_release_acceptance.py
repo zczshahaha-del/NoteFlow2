@@ -92,7 +92,10 @@ def main() -> int:
     errors: list[str] = []
     asyncio.run(cleanup(email))
     try:
-        client.json("POST", "/api/auth/register", {"email": email, "password": "NoteFlow-Release-2026!", "displayName": "Release Acceptance"})
+        issued, _ = client.json("POST", "/api/auth/email-code/request", {"email": email, "purpose": "register"})
+        if not issued.get("developmentCode"):
+            raise RuntimeError("Synthetic release tests require development email delivery fallback; do not run against production.")
+        client.json("POST", "/api/auth/register", {"email": email, "code": issued["developmentCode"]})
         marker = f"RELEASE_ACCEPTANCE_{run_id}"
         note_ids: list[str] = []
         for index in range(max(1, min(args.notes, 100))):

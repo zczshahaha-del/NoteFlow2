@@ -24,8 +24,8 @@ export function useAuthSession() {
     queryClient.setQueryData(authSessionQueryKey, nextSession);
   }, [queryClient]);
 
-  const signUp = useCallback(async (email: string, password: string, displayName: string) => {
-    const nextSession = await register({ email, password, displayName });
+  const signUp = useCallback(async (email: string, code: string) => {
+    const nextSession = await register({ email, code });
     queryClient.setQueryData(authSessionQueryKey, nextSession);
   }, [queryClient]);
 

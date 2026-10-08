@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
@@ -77,11 +77,16 @@ class PasswordResetRequestResponse(BaseModel):
 
 class EmailCodeRequest(BaseModel):
     email: str
+    purpose: Literal["login", "register"] = "login"
 
 
 class EmailCodeConfirm(BaseModel):
     email: str
     code: str
+
+
+class RegisterPayload(EmailCodeConfirm):
+    """Registration never accepts a password before email ownership is proven."""
 
 
 class EmailCodeRequestResponse(BaseModel):
@@ -306,36 +311,8 @@ async def _consume_email_code(
     response_model=AuthResponse,
     dependencies=[Depends(public_rate_limit("register", 8, 300))],
 )
-async def register(payload: AuthPayload, request: Request, response: Response):
-    email = normalize_email(payload.email)
-    if not is_valid_email(email):
-        raise HTTPException(status_code=400, detail="email is invalid")
-    if len(payload.password) < 8:
-        raise HTTPException(status_code=400, detail="password must be at least 8 characters")
-
-    display_name = (payload.displayName or "").strip() or email.split("@")[0]
-    user = User(
-        id=random_id(),
-        email=email,
-        display_name=display_name,
-        password_hash=hash_password(payload.password),
-    )
-    auth_session = _new_session(user.id, request)
-
-    async with AsyncSessionLocal() as session:
-        session.add(user)
-        session.add(auth_session)
-        try:
-            await session.commit()
-        except IntegrityError:
-            await session.rollback()
-            raise HTTPException(status_code=409, detail="email already exists")
-
-    _set_auth_cookie(
-        response,
-        create_token(user.id, user.email, user.display_name, auth_session.id),
-    )
-    return _auth_response(user, auth_session)
+async def register(payload: RegisterPayload, request: Request, response: Response):
+    return await _confirm_email_identity(payload, request, response, purpose="register")
 
 
 @router.post(
@@ -347,7 +324,7 @@ async def login(payload: AuthPayload, request: Request, response: Response):
     email = normalize_email(payload.email)
 
     async with AsyncSessionLocal() as session:
-        result = await session.execute(select(User).where(User.email == email))
+        result = await session.execute(select(User).where(User.email == email).with_for_update())
         user = result.scalar_one_or_none()
         if user is None or not user.password_hash or not verify_password(payload.password, user.password_hash):
             raise HTTPException(status_code=401, detail="邮箱或密码不正确")
@@ -375,7 +352,9 @@ async def request_email_login_code(payload: EmailCodeRequest, request: Request):
     email = normalize_email(payload.email)
     if not is_valid_email(email):
         raise HTTPException(status_code=400, detail="请输入有效邮箱地址。")
-    return await _issue_email_code(email=email, purpose="login", request=request)
+    # Send the same neutral response for every valid address. Account existence
+    # is disclosed only after ownership proof, never through the request endpoint.
+    return await _issue_email_code(email=email, purpose=payload.purpose, request=request)
 
 
 @router.post(
@@ -388,6 +367,27 @@ async def confirm_email_login_code(
     request: Request,
     response: Response,
 ):
+    return await _confirm_email_identity(payload, request, response, purpose="login")
+
+
+async def _verify_legacy_owner(user: User, session, now: datetime) -> None:
+    if user.email_verified_at is not None:
+        return
+    # Keep the original identity/data, not the unverified registrant's credentials.
+    user.password_hash = None
+    user.email_verified_at = now
+    result = await session.execute(
+        select(UserSession).where(
+            UserSession.user_id == user.id, UserSession.revoked_at.is_(None),
+        )
+    )
+    for previous in result.scalars().all():
+        previous.revoked_at = now
+
+
+async def _confirm_email_identity(
+    payload: EmailCodeConfirm, request: Request, response: Response, *, purpose: str,
+):
     email = normalize_email(payload.email)
     code = payload.code.strip()
     if not is_valid_email(email) or len(code) != 6 or not code.isdigit():
@@ -398,11 +398,18 @@ async def confirm_email_login_code(
         await _consume_email_code(
             email=email,
             code=code,
-            purpose="login",
+            purpose=purpose,
             session=session,
         )
-        result = await session.execute(select(User).where(User.email == email))
+        result = await session.execute(select(User).where(User.email == email).with_for_update())
         user = result.scalar_one_or_none()
+        if purpose == "login" and user is None:
+            # Consume the valid code even when no account exists.
+            await session.commit()
+            raise HTTPException(status_code=404, detail="该邮箱还没有账号，请先注册。")
+        if purpose == "register" and user is not None and user.email_verified_at is not None:
+            await session.commit()
+            raise HTTPException(status_code=409, detail="该邮箱已有账号，请切换到登录。")
         if user is None:
             user = User(
                 id=random_id(),
@@ -412,11 +419,15 @@ async def confirm_email_login_code(
                 password_hash=None,
             )
             session.add(user)
-        elif user.email_verified_at is None:
-            user.email_verified_at = now
+        else:
+            await _verify_legacy_owner(user, session, now)
         auth_session = _new_session(user.id, request)
         session.add(auth_session)
-        await session.commit()
+        try:
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
+            raise HTTPException(status_code=409, detail="账号状态已变化，请重新获取验证码。")
 
     _set_auth_cookie(
         response,
@@ -571,10 +582,12 @@ async def migrate_legacy_token(
             raise HTTPException(status_code=401, detail="session has been revoked or expired")
 
         async with AsyncSessionLocal() as session:
-            result = await session.execute(select(User).where(User.id == legacy_payload["sub"]))
+            result = await session.execute(select(User).where(User.id == legacy_payload["sub"]).with_for_update())
             user_record = result.scalar_one_or_none()
             if user_record is None:
                 raise HTTPException(status_code=401, detail="legacy session user no longer exists")
+            if user_record.email_verified_at is not None:
+                raise HTTPException(status_code=401, detail="请重新验证邮箱登录。")
             auth_session = _new_session(user_record.id, request)
             session.add(auth_session)
             await session.commit()
@@ -717,7 +730,7 @@ async def confirm_password_reset(payload: PasswordResetConfirm, response: Respon
     now = datetime.utcnow()
 
     async with AsyncSessionLocal() as session:
-        result = await session.execute(select(User).where(User.email == email))
+        result = await session.execute(select(User).where(User.email == email).with_for_update())
         user = result.scalar_one_or_none()
         if user is None:
             raise HTTPException(status_code=400, detail="验证码不正确或已失效。")
@@ -728,6 +741,7 @@ async def confirm_password_reset(payload: PasswordResetConfirm, response: Respon
             session=session,
             user_id=user.id,
         )
+        await _verify_legacy_owner(user, session, now)
         user.password_hash = hash_password(payload.newPassword)
         session_result = await session.execute(
             select(UserSession).where(

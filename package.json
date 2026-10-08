@@ -17,6 +17,7 @@
     "test:markdown-diff": "node --experimental-strip-types scripts/markdown-diff-test.ts",
     "test:offline-conflict": "node --experimental-strip-types scripts/offline-conflict-test.ts",
     "test:frontend": "node scripts/frontend-component-store-test.mjs",
+    "test:auth-ui": "node scripts/auth-surface-browser-test.mjs",
     "test:search-ui": "node scripts/search-surface-browser-test.mjs",
     "test:draft-ui": "node scripts/draft-surface-browser-test.mjs",
     "test:draft-lifecycle": "node scripts/draft-lifecycle-test.mjs",

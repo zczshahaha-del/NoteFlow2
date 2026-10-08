@@ -36,7 +36,12 @@ async def deliver_email_code(email: str, code: str, purpose: str) -> bool:
             response = await client.post(
                 cfg.AUTH_EMAIL_WEBHOOK_URL,
                 json={
-                    "type": "email_login_code" if purpose == "login" else "email_change_code",
+                    "type": {
+                        "login": "email_login_code",
+                        "register": "email_register_code",
+                        "reset_password": "password_reset_code",
+                        "change_email": "email_change_code",
+                    }[purpose],
                     "email": email,
                     "code": code,
                     "expiresInMinutes": cfg.EMAIL_CODE_TTL_MINUTES,
@@ -47,6 +52,7 @@ async def deliver_email_code(email: str, code: str, purpose: str) -> bool:
     if not cfg.SMTP_HOST or not cfg.SMTP_FROM_EMAIL:
         return False
     action = {
+        "register": "注册 NoteFlow 账号",
         "change_email": "更换登录邮箱",
         "reset_password": "重置 NoteFlow 密码",
     }.get(purpose, "登录 NoteFlow")

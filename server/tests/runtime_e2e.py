@@ -23,7 +23,6 @@ from app.models.db import User  # noqa: E402
 
 BASE_URL = os.environ.get("NOTEFLOW_API_URL", "http://127.0.0.1:8080").rstrip("/")
 TEST_EMAIL = "noteflow-runtime-e2e@local.test"
-TEST_PASSWORD = "NoteFlow-E2E-2026!"
 
 
 async def cleanup_test_user() -> None:
@@ -119,13 +118,15 @@ def run() -> dict:
     client = ApiClient()
     summary: dict[str, object] = {}
 
+    issued, _ = client.request("POST", "/api/auth/email-code/request", {"email": TEST_EMAIL, "purpose": "register"})
+    if not issued.get("developmentCode"):
+        raise RuntimeError("Synthetic runtime E2E requires development email delivery fallback; do not run against production.")
     auth, headers = client.request(
         "POST",
         "/api/auth/register",
         {
             "email": TEST_EMAIL,
-            "password": TEST_PASSWORD,
-            "displayName": "NoteFlow Runtime E2E",
+            "code": issued["developmentCode"],
         },
     )
     assert auth["user"]["email"] == TEST_EMAIL
