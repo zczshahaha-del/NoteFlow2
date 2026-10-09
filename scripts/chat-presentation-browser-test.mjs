@@ -47,7 +47,7 @@ try{
     await page.setContent('<html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>'+css+'#root{width:100%;max-width:500px;height:95vh;display:flex}#root>aside{flex:1;min-width:0}</style></head><body><div id="root"></div><script type="module">'+source+'</script></body></html>');
     await page.waitForFunction(()=>Boolean(window.presentationTest));
 
-    // The real history search must not get a rectangular inner focus frame.
+    // The real history search signals focus without an inner frame or baseline.
     await page.evaluate(()=>{const a=window.presentationTest;a.agent.agentSessionId='history-current';a.chat.chatSessions=[
       {id:'history-current',title:'当前对话',updatedAt:'2026-10-10T02:49:00+08:00'},
       {id:'history-other',title:'资料整理',updatedAt:'2026-10-10T02:50:00+08:00'},
@@ -58,13 +58,18 @@ try{
     const historySearch=historyMenu.getByPlaceholder('搜索历史对话');
     await historySearch.waitFor();
     await historyMenu.evaluate(async n=>Promise.all(n.getAnimations().map(a=>a.finished)));
-    const historySearchStyle=await historySearch.evaluate(n=>{const s=getComputedStyle(n),field=getComputedStyle(n.parentElement);return {focused:document.activeElement===n,focusVisible:n.matches(':focus-visible'),outline:s.outlineStyle,shadow:s.boxShadow,background:field.backgroundColor,radius:field.borderRadius,height:n.getBoundingClientRect().height}});
+    const settleHistorySearch=()=>historySearch.evaluate(async n=>Promise.all(n.parentElement.getAnimations({subtree:true}).map(a=>a.finished)));
+    await settleHistorySearch();
+    const historySearchStyle=await historySearch.evaluate(n=>{const s=getComputedStyle(n),field=getComputedStyle(n.parentElement);return {focused:document.activeElement===n,focusVisible:n.matches(':focus-visible'),outline:s.outlineStyle,shadow:s.boxShadow,background:field.backgroundColor,fieldOutline:field.outlineStyle,fieldShadow:field.boxShadow,icon:getComputedStyle(n.parentElement.querySelector('svg')).color,radius:field.borderRadius,height:n.getBoundingClientRect().height}});
     console.log(JSON.stringify({mobile,historySearchStyle}));
     assert.equal(historySearchStyle.focused,true);
-    assert.equal(historySearchStyle.outline,'none','history search has a soft baseline, never an inner rectangle');
-    assert.notEqual(historySearchStyle.shadow,'none','focused search keeps a visible baseline');
+    assert.equal(historySearchStyle.outline,'none','normal search focus has no inner rectangle');
+    assert.equal(historySearchStyle.shadow,'none','normal search focus has no baseline');
+    assert.equal(historySearchStyle.fieldOutline,'none');
+    assert.equal(historySearchStyle.fieldShadow,'none','no replacement outer ring');
     assert.equal(historySearchStyle.radius,'9px');
-    assert.equal(historySearchStyle.background,'rgb(236, 239, 242)');
+    assert.equal(historySearchStyle.background,'rgb(227, 232, 238)','the whole existing field softly changes fill on focus');
+    assert.equal(historySearchStyle.icon,'rgb(48, 53, 60)','the search icon makes keyboard focus recognizable without adding lines');
     const rootFontSize=await page.evaluate(()=>parseFloat(getComputedStyle(document.documentElement).fontSize));
     assert.equal(historySearchStyle.height,mobile?44:2.25*rootFontSize,'preserve existing h-9 sizing and coarse-pointer minimum');
     assert.equal(await historySearch.getAttribute('aria-label'),'搜索历史对话');
@@ -76,16 +81,28 @@ try{
     assert.deepEqual(await historySearch.boundingBox(),historySearchBox,'filtering does not move the search input');
     await historySearch.fill('');
     await page.keyboard.press('Tab');
-    assert.equal(await historySearch.evaluate(n=>getComputedStyle(n).boxShadow),'none','blur removes the field baseline');
+    await settleHistorySearch();
+    assert.equal(await historySearch.evaluate(n=>getComputedStyle(n).boxShadow),'none');
+    assert.equal(await historySearch.evaluate(n=>getComputedStyle(n.parentElement).backgroundColor),'rgb(236, 239, 242)','blur restores the original fill');
+    assert.equal(await historySearch.evaluate(n=>getComputedStyle(n.parentElement.querySelector('svg')).color),'rgb(126, 135, 145)');
     assert.equal(await page.evaluate(()=>getComputedStyle(document.activeElement).outlineStyle),'solid','other menu controls keep keyboard focus');
     await page.keyboard.press('Shift+Tab');assert.equal(await historySearch.evaluate(n=>document.activeElement===n),true);
+    await settleHistorySearch();
+    assert.equal(await historySearch.evaluate(n=>getComputedStyle(n.parentElement).backgroundColor),'rgb(227, 232, 238)');
     await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));
+    await settleHistorySearch();
     assert.equal(await historySearch.evaluate(n=>getComputedStyle(n).outlineStyle),'none');
-    assert.notEqual(await historySearch.evaluate(n=>getComputedStyle(n).boxShadow),'none');
+    assert.equal(await historySearch.evaluate(n=>getComputedStyle(n).boxShadow),'none');
+    assert.equal(await historySearch.evaluate(n=>getComputedStyle(n.parentElement).backgroundColor),'rgb(65, 75, 88)');
+    assert.equal(await historySearch.evaluate(n=>getComputedStyle(n.parentElement.querySelector('svg')).color),'rgb(233, 237, 242)');
+    await page.keyboard.press('Tab');await settleHistorySearch();
     assert.equal(await historySearch.evaluate(n=>getComputedStyle(n.parentElement).backgroundColor),'rgb(54, 63, 74)');
+    await page.keyboard.press('Shift+Tab');await settleHistorySearch();
     await page.evaluate(()=>document.documentElement.classList.remove('theme-dark'));
+    await settleHistorySearch();
     await page.emulateMedia({reducedMotion:'reduce'});
     assert.equal(await historyMenu.evaluate(n=>getComputedStyle(n).animationName),'none');
+    assert.equal(await historySearch.evaluate(n=>getComputedStyle(n.parentElement).transitionDuration),'0s');
     await page.emulateMedia({forcedColors:'active'});
     assert.equal(await historySearch.evaluate(n=>getComputedStyle(n).outlineStyle),'solid','forced colors retain system focus without relying on shadows');
     await page.emulateMedia({forcedColors:'none',reducedMotion:'no-preference'});

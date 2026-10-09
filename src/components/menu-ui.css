@@ -6,6 +6,7 @@
   --nf-menu-muted: #727b86;
   --nf-menu-icon: #7e8791;
   --nf-menu-hover: #eceff2;
+  --nf-menu-search-focus: #e3e8ee;
   --nf-menu-danger: #b34c49;
   --nf-menu-danger-hover: #f9eeec;
   --nf-menu-shadow: rgba(36, 44, 55, .10);
@@ -25,6 +26,7 @@
   --nf-menu-muted: #a7b0bc;
   --nf-menu-icon: #a8b1be;
   --nf-menu-hover: #363f4a;
+  --nf-menu-search-focus: #414b58;
   --nf-menu-danger: #ee9e97;
   --nf-menu-danger-hover: #482e30;
   --nf-menu-shadow: rgba(0, 0, 0, .32);
@@ -77,16 +79,21 @@
 }
 .nf-soft-menu [aria-checked="true"] .nf-menu-checkbox { background: var(--nf-menu-hover); }
 .nf-soft-menu.nf-history-menu { max-height: calc(100dvh - 96px); overflow-y: auto; }
-.nf-soft-menu .nf-history-search { background: var(--nf-menu-hover); border-radius: 9px; }
-.nf-soft-menu .nf-history-search > svg { color: var(--nf-menu-icon); }
+.nf-soft-menu .nf-history-search {
+  background: var(--nf-menu-hover);
+  border-radius: 9px;
+  transition: background-color 150ms ease;
+}
+.nf-soft-menu .nf-history-search > svg {
+  color: var(--nf-menu-icon);
+  transition: color 150ms ease;
+}
+/* Focus belongs to the whole soft field, not a line or nested input frame. */
+.nf-soft-menu .nf-history-search:focus-within { background: var(--nf-menu-search-focus); }
+.nf-soft-menu .nf-history-search:focus-within > svg { color: var(--nf-menu-text); }
 .nf-soft-menu .nf-history-search input,
 .nf-soft-menu .nf-history-rename { color: var(--nf-menu-text); font: inherit; }
 .nf-soft-menu .nf-history-search input { outline: none; box-shadow: none; }
-.nf-soft-menu .nf-history-search input:focus-visible {
-  /* One subtle baseline inside the existing soft field, never a second frame. */
-  outline: none;
-  box-shadow: inset 0 -2px 0 var(--nf-menu-muted);
-}
 .nf-soft-menu .nf-history-search input::placeholder { color: var(--nf-menu-muted); }
 .nf-soft-menu .nf-history-group { color: var(--nf-menu-muted); font-size: 11px; font-weight: 400; }
 .nf-soft-menu .nf-history-row { min-height: 38px; border-radius: 9px; }
