@@ -9,6 +9,8 @@
   --nf-chat-button: #30343a;
   --nf-chat-on-button: #fff;
   --nf-chat-shadow: rgba(24, 30, 38, .08);
+  --nf-chat-scrollbar: color-mix(in srgb, var(--nf-chat-muted) 40%, transparent);
+  --nf-chat-scrollbar-hover: color-mix(in srgb, var(--nf-chat-muted) 72%, transparent);
 }
 .theme-dark .nf-ai-conversation {
   --nf-chat-text: #e7e9ec;
@@ -20,6 +22,29 @@
   --nf-chat-button: #e7e9ec;
   --nf-chat-on-button: #20272f;
   --nf-chat-shadow: rgba(0, 0, 0, .2);
+}
+.nf-ai-conversation .ai-message-list {
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+}
+/* Narrow, transparent tracks; do not hide the native scrolling affordance. */
+.nf-ai-conversation,
+.nf-ai-conversation * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--nf-chat-scrollbar) transparent;
+}
+@supports selector(::-webkit-scrollbar) {
+  .nf-ai-conversation, .nf-ai-conversation * { scrollbar-width: auto; scrollbar-color: auto; }
+  .nf-ai-conversation::-webkit-scrollbar, .nf-ai-conversation ::-webkit-scrollbar { width: 5px; height: 5px; }
+  .nf-ai-conversation::-webkit-scrollbar-track, .nf-ai-conversation ::-webkit-scrollbar-track { background: transparent; }
+  .nf-ai-conversation::-webkit-scrollbar-thumb, .nf-ai-conversation ::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: var(--nf-chat-scrollbar);
+  }
+  .nf-ai-conversation::-webkit-scrollbar-thumb:hover, .nf-ai-conversation ::-webkit-scrollbar-thumb:hover {
+    background: var(--nf-chat-scrollbar-hover);
+  }
 }
 .nf-ai-conversation .nf-chat-message {
   min-width: 0;
@@ -40,6 +65,14 @@
   background: transparent;
 }
 .nf-ai-conversation .chat-markdown { font-size: 14px; line-height: 1.75; color: var(--nf-chat-text); }
+.nf-ai-conversation .chat-markdown img { max-width: 100%; height: auto; }
+.nf-ai-conversation .chat-table-scroll {
+  max-width: 100%;
+  margin: .65rem 0;
+  overflow-x: auto;
+}
+.nf-ai-conversation .chat-table-scroll > table { margin: 0; }
+.nf-ai-conversation .chat-table-scroll:focus-visible { outline: 1px solid var(--nf-chat-muted); outline-offset: -1px; }
 .nf-ai-conversation .nf-chat-status {
   display: flex;
   align-items: center;
@@ -144,8 +177,14 @@
   .nf-ai-conversation .nf-chat-composer, .nf-ai-conversation button { transition: none; }
 }
 @media (forced-colors: active) {
+  .nf-ai-conversation, .nf-ai-conversation * { scrollbar-width: auto; scrollbar-color: auto; }
+  .nf-ai-conversation::-webkit-scrollbar, .nf-ai-conversation ::-webkit-scrollbar { width: revert; height: revert; }
+  .nf-ai-conversation::-webkit-scrollbar-thumb, .nf-ai-conversation ::-webkit-scrollbar-thumb { background: CanvasText; }
   .nf-ai-conversation .nf-chat-status-label { animation: none !important; background: none !important; color: CanvasText !important; }
   .nf-ai-conversation .nf-chat-status-dot { background: CanvasText; }
   .nf-ai-conversation .nf-chat-composer { border-color: CanvasText; }
   .nf-ai-conversation .nf-chat-send { border: 1px solid ButtonText; }
+}
+@media (prefers-contrast: more) {
+  .nf-ai-conversation { --nf-chat-scrollbar: var(--nf-chat-muted); }
 }

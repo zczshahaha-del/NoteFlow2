@@ -343,7 +343,7 @@ const ChatMarkdown = memo(function ChatMarkdown({ text, sources, busy, onContent
   onContentClick: (event: React.MouseEvent<HTMLDivElement>, sources: ChatSource[] | undefined) => void;
 }) {
   const citationCount = sources?.length ?? 0;
-  const html = useMemo(() => renderChatMarkdown(text, citationCount), [text, citationCount]);
+  const html = useMemo(() => renderChatMarkdown(text, citationCount, { scrollTables: true }), [text, citationCount]);
   return <div className="chat-markdown" aria-busy={busy || undefined}
     onClick={event => onContentClick(event, sources)} dangerouslySetInnerHTML={{ __html: html }} />;
 });

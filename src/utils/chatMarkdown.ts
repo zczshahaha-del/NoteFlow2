@@ -224,12 +224,23 @@ function enhanceCitations(root: DocumentFragment, validCitationCount = 0): void 
   });
 }
 
-export function renderChatMarkdown(markdown: string, validCitationCount = 0): string {
+export function renderChatMarkdown(markdown: string, validCitationCount = 0, options: { scrollTables?: boolean } = {}): string {
   const template = document.createElement("template");
   template.innerHTML = marked.parse(markdown || "") as string;
   sanitizeHtml(template.content);
   enhanceCodeBlocks(template.content);
   enhanceCitations(template.content, validCitationCount);
+  if (options.scrollTables) {
+    template.content.querySelectorAll("table").forEach(table => {
+      const scroller = document.createElement("div");
+      scroller.className = "chat-table-scroll";
+      scroller.tabIndex = 0;
+      scroller.setAttribute("role", "region");
+      scroller.setAttribute("aria-label", "表格");
+      table.replaceWith(scroller);
+      scroller.append(table);
+    });
+  }
   return template.innerHTML;
 }
 

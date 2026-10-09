@@ -42,7 +42,7 @@ const result = await build({root:repo,configFile:false,logLevel:'silent',plugins
   name:'isolated-chat-diagnostic',enforce:'pre',
   resolveId(id,importer){if(id==='virtual:chat-audit')return '\0chat-audit';if(importer===component&&id==='../store/selectors')return '\0chat-audit-selectors'},
   load(id){if(id==='\0chat-audit')return entry;if(id==='\0chat-audit-selectors')return 'export const useChatSlice=()=>window.audit.chat;export const useEditorSlice=()=>window.audit.editor;export const useDraftSlice=()=>window.audit.draft;export const useAgentSlice=()=>window.audit.agent;export const useWorkspaceSlice=()=>window.audit.workspace;'},
-  transform(source,id){if(id===markdown)return source.replace('export function renderChatMarkdown(', 'function originalRenderChatMarkdown(')+'\nexport function renderChatMarkdown(text,count=0){const start=performance.now();const html=originalRenderChatMarkdown(text,count);window.audit?.metrics.push({historical:text.startsWith("## 合成历史"),ms:performance.now()-start});return html;}';}
+  transform(source,id){if(id===markdown)return source.replace('export function renderChatMarkdown(', 'function originalRenderChatMarkdown(')+'\nexport function renderChatMarkdown(text,count=0,options){const start=performance.now();const html=originalRenderChatMarkdown(text,count,options);window.audit?.metrics.push({historical:text.startsWith("## 合成历史"),ms:performance.now()-start});return html;}';}
 }],build:{write:false,minify:false,rolldownOptions:{input:'virtual:chat-audit'}}});
 const chunks=result.output.filter(item=>item.type==='chunk');
 assert.equal(chunks.length,1);

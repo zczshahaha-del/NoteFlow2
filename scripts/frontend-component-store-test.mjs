@@ -329,6 +329,18 @@ try {
   assert.equal(sentMessages[2][1].selectedText, attachedSelection.text);
   assert.equal(conversationContainer.querySelector('button[aria-label="移除选中文字引用"]'), null);
 
+  const tableMarkdown = "| 第一列 | 第二列 |\n| --- | --- |\n| 完整内容 | 最后一列 |";
+  await act(async () => useAppStore.setState({ chatMessages: [{ ...assistantMessage, text: tableMarkdown }] }));
+  const tableScroller = conversationContainer.querySelector('.chat-table-scroll');
+  assert.ok(tableScroller);
+  assert.equal(tableScroller.tabIndex, 0);
+  assert.equal(tableScroller.getAttribute('role'), 'region');
+  assert.equal(tableScroller.getAttribute('aria-label'), '表格');
+  assert.equal(tableScroller.querySelectorAll('th').length, 2);
+  assert.equal(tableScroller.querySelectorAll('td').length, 2);
+  const { renderChatMarkdown } = await vite.ssrLoadModule('/src/utils/chatMarkdown.ts');
+  assert.ok(!renderChatMarkdown(tableMarkdown).includes('chat-table-scroll'), 'draft/preview default Markdown output must not change');
+
   const historyCalls = [];
   await act(async () => useAppStore.setState({
     agentSessionId: "history-current",
@@ -1141,7 +1153,7 @@ try {
   console.log(JSON.stringify({
     ok: true,
     storeAssertions: 10,
-    componentAssertionGroups: 42,
+    componentAssertionGroups: 43,
     components: [
       "SoftMenu",
       "LoginPage",
@@ -1154,7 +1166,7 @@ try {
     ],
     accountMenuCoverage: ["single-entry", "username", "no-native-tooltip", "username-click", "long-username", "unframed-footer-menu", "numeric-avatar-fallback", "enter-exit", "email-confirm", "devices-revoke", "device-error", "memory-CRUD", "memory-button-rollback-only", "ZIP-JSON-export", "import", "trash-restore", "modal-focus-trap", "escape-focus", "IME", "outside-pointer", "focus-leave", "sign-out", "compact", "note-folder-delete-confirm"],
     directoryRowCoverage: ["whole-row-selection", "full-name", "selected-more", "nested-indent", "pin-favorite-glyphs", "folder-disclosure", "file-open-callback", "independent-menu", "rename-cancel"],
-    conversationCoverage: ["empty-wait", "whitespace-wait", "streaming-markdown", "hide-status-on-first-text", "no-status-during-transport-cleanup", "single-status", "completion", "stop-callback", "error-clears-status", "fallback-wait", "empty-send-disabled", "Enter-Shift-IME", "send-context", "library-mode", "remove-note-reference", "citation-open", "selection-expand", "selection-send"],
+    conversationCoverage: ["empty-wait", "whitespace-wait", "streaming-markdown", "hide-status-on-first-text", "no-status-during-transport-cleanup", "single-status", "completion", "stop-callback", "error-clears-status", "fallback-wait", "empty-send-disabled", "Enter-Shift-IME", "send-context", "library-mode", "remove-note-reference", "citation-open", "selection-expand", "selection-send", "scoped-scrollable-tables"],
     softMenuCoverage: ["exit-inert", "unmount-after-exit", "quick-reopen", "reduced-motion", "Escape-focus", "IME-Escape", "file-action-order", "history-inline-actions", "history-rename-callback", "history-delete-confirmation", "history-switch-callback"],
     searchSurfaceCoverage: ["compact-initial", "single-wait", "groups-count-highlight", "keyboard-select", "focus-trap-return", "background-inert", "exit-inert-click-block", "quick-reopen", "clear", "abort-stale-response", "empty", "title-content-scope", "error-retry", "escaped-input", "IME", "IME-pointer-close-reopen", "abort-close", "frozen-exit", "reopen-reset", "reduced-motion"],
   }));

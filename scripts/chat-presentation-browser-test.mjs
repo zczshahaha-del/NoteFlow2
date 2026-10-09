@@ -1,7 +1,7 @@
 // Real production conversation component/CSS, fresh contexts, synthetic state.
 // Every network request is blocked; no localhost, profile, model or account access.
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
 const { chromium } = await import(process.env.NOTEFLOW_PLAYWRIGHT_MODULE || 'playwright');
@@ -30,11 +30,11 @@ const result=await build({root:repo,configFile:false,logLevel:'silent',plugins:[
   name:'isolated-chat-presentation',enforce:'pre',
   resolveId(id,importer){if(id==='virtual:chat-presentation')return '\0chat-presentation';if(importer===component&&id==='../store/selectors')return '\0chat-selectors'},
   load(id){if(id==='\0chat-presentation')return entry;if(id==='\0chat-selectors')return 'export const useChatSlice=()=>window.presentationTest.chat;export const useEditorSlice=()=>window.presentationTest.editor;export const useDraftSlice=()=>window.presentationTest.draft;export const useAgentSlice=()=>window.presentationTest.agent;export const useWorkspaceSlice=()=>window.presentationTest.workspace;'},
-  transform(source,id){if(id===markdown)return source.replace('export function renderChatMarkdown(', 'function originalRenderChatMarkdown(')+'\nexport function renderChatMarkdown(text,count=0){const html=originalRenderChatMarkdown(text,count);const api=window.presentationTest;api.metrics.push({history:text.startsWith("## 合成历史"),length:text.length});if(!text.startsWith("## 合成历史")){api.currentText=text;api.samples.push({time:performance.now(),length:text.length})}return html;}';}
+  transform(source,id){if(id===markdown)return source.replace('export function renderChatMarkdown(', 'function originalRenderChatMarkdown(')+'\nexport function renderChatMarkdown(text,count=0,options){const html=originalRenderChatMarkdown(text,count,options);const api=window.presentationTest;api.metrics.push({history:text.startsWith("## 合成历史"),length:text.length});if(!text.startsWith("## 合成历史")){api.currentText=text;api.samples.push({time:performance.now(),length:text.length})}return html;}';}
 }],build:{write:false,minify:false,rolldownOptions:{input:'virtual:chat-presentation'}}});
 const chunks=result.output.filter(item=>item.type==='chunk');assert.equal(chunks.length,1);
 const source=chunks[0].code.replaceAll('</script','<\\/script');
-const browser=await chromium.launch({executablePath:process.env.NOTEFLOW_BROWSER_EXECUTABLE || undefined,headless:true});
+const browser=await chromium.launch({executablePath:process.env.NOTEFLOW_BROWSER_EXECUTABLE || undefined,headless:true,ignoreDefaultArgs:['--hide-scrollbars']});
 const errors=[],requests=[],reports=[];
 try{
   for(const mobile of [false,true]){
@@ -124,9 +124,56 @@ try{
     await page.waitForTimeout(150);
     assert.equal(await page.locator('.ai-message-list').evaluate(n=>n.scrollTop),0);
     await page.getByRole('button',{name:'回到底部',exact:true}).waitFor();
+
+    // An older wide answer must not add a horizontal bar above the composer.
+    const columns=Array.from({length:24},(_,i)=>'字段'+i);
+    const wideTable='| '+columns.join(' | ')+' |\n| '+columns.map(()=>'---').join(' | ')+' |\n| '+columns.map((_,i)=>'值'+i).join(' | ')+' |';
+    const longCode='const result = "'+ 'code-keeps-its-own-horizontal-scroll-'.repeat(12)+'";';
+    const rich='完整表格与代码应在各自区域滚动。\n\n'+wideTable+'\n\n```javascript\n'+longCode+'\n```\n\n'+('https://fixture.invalid/long-path-'.repeat(16))+'\n\n<img alt="合成宽图" width="1200" height="100" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%221200%22 height=%22100%22%3E%3C/svg%3E">';
+    await page.evaluate(({rich})=>{const a=window.presentationTest;a.chat.chatLoading=false;a.chat.chatMessages=[{id:'wide-history',role:'assistant',text:rich},...Array.from({length:16},(_,i)=>({id:'scroll-'+i,role:'assistant',text:'合成历史内容，保留正常纵向滚动。'})),{id:'plain-last',role:'assistant',text:'我还是老样子，待命中 😁\n\n没有具体任务的时候，我就是闲着等你开口。你要是有事就直接说，没事也可以随便聊两句。'}];a.render()},{rich});
+    await page.getByText('完整表格与代码应在各自区域滚动。',{exact:true}).waitFor();
+    const scrollSurface=await page.locator('.ai-message-list').evaluate(n=>{
+      const style=getComputedStyle(n),bar=getComputedStyle(n,'::-webkit-scrollbar');
+      const edge=n.getBoundingClientRect().left+n.clientWidth;
+      const contentFits=[...n.querySelectorAll('.nf-chat-message,.chat-markdown,.chat-table-scroll,.rendered-code-block,img')].every(x=>x.getBoundingClientRect().right<=edge+1);
+      return {clientWidth:n.clientWidth,scrollWidth:n.scrollWidth,clientHeight:n.clientHeight,scrollHeight:n.scrollHeight,overflowX:style.overflowX,barWidth:bar.width,barHeight:bar.height,contentFits};
+    });
+    console.log(JSON.stringify({mobile,scrollSurface}));
+    // Allow only a scrollbar-sized counting residual; check actual content bounds separately.
+    assert.ok(scrollSurface.scrollWidth<=scrollSurface.clientWidth+parseFloat(scrollSurface.barWidth)+1,'wide history must not overflow beyond the native scrollbar gutter');
+    assert.equal(scrollSurface.contentFits,true,'message, image, code and table viewports must fit without clipping');
+    assert.equal(scrollSurface.overflowX,'hidden','the conversation itself must not expose a horizontal scrollbar');
+    assert.ok(scrollSurface.scrollHeight>scrollSurface.clientHeight,'vertical history scrolling must remain available');
+    assert.equal(scrollSurface.barWidth,'5px');assert.equal(scrollSurface.barHeight,'5px');
+    const table=page.locator('.chat-table-scroll');
+    await table.focus();await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(()=>document.querySelector('.chat-table-scroll')?.scrollLeft>0);
+    assert.equal(await table.getAttribute('aria-label'),'表格');
+    assert.equal(await table.locator('th').count(),24);assert.equal(await table.locator('td').count(),24);
+    const code=page.locator('.rendered-code-block pre');
+    const codeScroll=await code.evaluate(n=>{n.scrollLeft=n.scrollWidth;return {left:n.scrollLeft,width:n.clientWidth,total:n.scrollWidth,text:n.textContent}});
+    assert.ok(codeScroll.total>codeScroll.width);assert.ok(codeScroll.left>0);assert.equal(codeScroll.text.trim(),longCode);
+    assert.equal(await page.locator('.ai-message-list').evaluate(n=>n.scrollLeft),0);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),mobile?320:600);
+    // Default, hover, dark and forced-colors scrollbar states stay scoped.
+    const defaultThumb=await page.locator('.ai-message-list').evaluate(n=>getComputedStyle(n,'::-webkit-scrollbar-thumb').backgroundColor);
+    await page.locator('.ai-message-list').hover();
+    await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));
+    const darkThumb=await page.locator('.ai-message-list').evaluate(n=>getComputedStyle(n,'::-webkit-scrollbar-thumb').backgroundColor);
+    assert.notEqual(darkThumb,defaultThumb);
+    await page.emulateMedia({forcedColors:'active'});
+    assert.equal(await page.locator('.ai-message-list').evaluate(n=>getComputedStyle(n).scrollbarColor),'auto');
+    assert.notEqual(await page.locator('.ai-message-list').evaluate(n=>getComputedStyle(n,'::-webkit-scrollbar-thumb').backgroundColor),'rgba(0, 0, 0, 0)');
+    await page.emulateMedia({forcedColors:'none'});await page.evaluate(()=>document.documentElement.classList.remove('theme-dark'));
+    if(process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR){
+      mkdirSync(process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR,{recursive:true});
+      await page.locator('.ai-message-list').evaluate(n=>n.scrollTo({top:n.scrollHeight,behavior:'instant'}));
+      await page.waitForTimeout(80);
+      await page.locator('#root').screenshot({path:process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR+'/chat-scroll-'+(mobile?'mobile':'desktop')+'.png'});
+    }
     await page.evaluate(()=>window.presentationTest.clear());await page.waitForTimeout(100);
     assert.equal(await page.locator('.nf-chat-message').count(),0);
-    reports.push({mobile,singleChunkTyping:true,stats,stop:true,completedTailStop:true,switchHistory:true,canonicalReplacement:true,markdownActions:true,reducedMotion:true,backgroundFlush:true,readingPosition:true,inputStable:true});
+    reports.push({mobile,singleChunkTyping:true,stats,stop:true,completedTailStop:true,switchHistory:true,canonicalReplacement:true,markdownActions:true,reducedMotion:true,backgroundFlush:true,readingPosition:true,inputStable:true,scrollSurface,wideContentLocalScroll:true});
     await context.close();
   }
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
