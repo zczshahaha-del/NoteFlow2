@@ -16,7 +16,7 @@
 
 当前归档任务中没有属于该 NoteFlow 工作区的对话。问题按主题去重归并；用户针对同一问题的多次反馈会合并为一项，但会保留方案反复、失败重试和方向纠偏等关键过程。
 
-初次归并出 69 项问题与决策记录，后续按相同口径持续追加；当前共 99 项，覆盖认证、账号信息架构、主工作台、AI 草稿、开发测试、阿里云运维、Git/交付与安全八个类别。
+初次归并出 69 项问题与决策记录，后续按相同口径持续追加；当前共 100 项，覆盖认证、账号信息架构、主工作台、AI 草稿、开发测试、阿里云运维、Git/交付与安全八个类别。
 
 状态说明：
 
@@ -168,6 +168,14 @@ IA-04 / IA-05、UI-02 / UI-17 仍部分解决；真实写入 E2E、深色视觉�
 验证：修复前新增宽历史用例先失败，修复后正式 AIPanel / Markdown / 生产 CSS 在 StrictMode、全新且网络阻断的 600px / 320px 浏览器中通过。主区横向 hidden，消息 / 正文 / 图片 / 表格与代码视口几何边界均适配；24 列表格完整且键盘 ArrowRight 能滚动，长代码原文完整且内部可滚动，保留纵向阅读、输入焦点、会话切换、引用 / 代码菜单与打字机状态。滚动条实测宽 / 高 5px，深色和强制颜色状态验证通过，pageerror / 外部请求为空。scrollWidth 存在 5px 计数余量，不宣称它与 clientWidth 完全相等；以实际容器边界、主区状态及局部滚动证明内容没有直接裁掉，初版精确相等断言失败未作为通过证据。
 
 回归：build、test:frontend（新增表格作用域检查，43 组组件 / 10 项 store）、test:editor-ui、test:chat-presentation、test:chat-ui 和 check:dev-ports 通过。状态：🟡 部分解决；局部修复已隔离运行验证，用户原会话刷新后的实际审美、Safari / Firefox 与实体设备仍待验收，不把其他区域滚动条或 SEC-01 等历史问题判为已解决。随 `fix: 精简聊天滚动条并收纳宽内容滚动`；相关文件 src/components/ai-conversation.css、src/components/AIPanel.tsx、src/utils/chatMarkdown.ts 及三个前端回归 / 诊断脚本。
+
+### UI-25：历史菜单输入法组合期 Escape 会误关（未解决）
+
+现象：2026-10-10 修正历史搜索焦点内框时，独立诊断在搜索输入中派发 `keydown Escape` 且 `isComposing=true`，历史菜单仍关闭；真实输入法取消候选时也可能丢掉当前搜索上下文。根因：SoftMenu 自身虽然跳过组合期 Escape，但 AIPanel 的 `historyOpen` effect 另有 document 级 `closeOnEscape`，只检查 key，没有检查 isComposing；未被 SoftMenu 停止的组合事件继续冒泡至此。不是焦点描边、复制 tooltip 或后端问题，也不能用共享 SoftMenu 的单组件 IME 通过证明整个历史层正确。
+
+处理：本轮只记录，不混入已完成的搜索外观修复 `de8d7ea`，未更改任何关闭逻辑。下一步需单独统一历史层的输入法 Escape 保护，并验证菜单内 / 外焦点、普通 Esc 返回、重命名、退出动效与搜索草稿。当前状态：🔴 未解决。
+
+验证证据：`test:chat-ui` 的正式 AIPanel / 生产 CSS、全新全网络阻断 StrictMode 浏览器在 600px / 320px 均报告 `historyImeEscapeCloses=true`；该字段是缺陷诊断，不是通过的 IME 防护断言。重开后普通 Esc 关闭 / 焦点返回通过，搜索外观 / 过滤回归也通过，不据此提高本问题状态。未操作真实会话或实体输入法；源码关联 src/components/AIPanel.tsx 的历史菜单 document keydown effect、src/components/SoftMenu.tsx 与 scripts/chat-presentation-browser-test.mjs。随 `docs: 记录历史菜单输入法 Escape 误关问题`，累计总数由 99 增至 100；UI-23 原焦点显现条目保持原状态。
 
 ### 2026-10-10：消息时间 / 复制与圆形返回底部（UI-17 局部实施）
 
@@ -632,4 +640,4 @@ DEV-14 后续取图证据：圆润无箭头局部稿使用普通 `clip`，按外
 
 ---
 
-本文初始基线为 2026-09-13，最后更新于 2026-10-10，当前共 99 项问题与决策记录。后续遇到新问题时，应继续沿用现有 ID 分类追加，并在状态变化时同时补充提交号或提交说明和验证证据。
+本文初始基线为 2026-09-13，最后更新于 2026-10-10，当前共 100 项问题与决策记录。后续遇到新问题时，应继续沿用现有 ID 分类追加，并在状态变化时同时补充提交号或提交说明和验证证据。
