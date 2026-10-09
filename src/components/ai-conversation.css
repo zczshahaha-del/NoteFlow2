@@ -41,6 +41,15 @@
 .nf-ai-conversation .nf-chat-copy:active { background: var(--nf-chat-line); }
 .nf-ai-conversation .nf-chat-copy[aria-disabled="true"] { cursor: progress; }
 .nf-ai-conversation .nf-chat-copy[data-copy-state="copied"] { color: var(--nf-chat-text); }
+/* Portaled copy hints: independent of scroll clipping and conversation layout. */
+.nf-chat-copy-tooltip {
+  position: fixed; z-index: 90; display: grid; place-items: center; width: 72px; height: 30px;
+  box-sizing: border-box; padding: 6px 10px; border: 0; border-radius: 10px;
+  color: #fff; background: #202124; box-shadow: 0 4px 14px rgba(0, 0, 0, .14);
+  font: 400 12px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+  white-space: nowrap; animation: nf-chat-copy-hint-in 120ms ease both;
+}
+@keyframes nf-chat-copy-hint-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
 .nf-ai-conversation .nf-chat-message-actions[aria-hidden="true"] .nf-chat-copy { visibility: hidden; }
 .nf-ai-conversation .nf-chat-copy-error { color: var(--nf-chat-muted); font-size: 12px; }
 .nf-ai-conversation .nf-chat-message-actions[data-role="user"] .nf-chat-copy-error { order: -1; }
@@ -66,9 +75,11 @@
   .nf-ai-conversation .nf-chat-copy { opacity: 0; pointer-events: none; }
   .nf-ai-conversation .nf-chat-message-time { opacity: 0; }
   .nf-ai-conversation .nf-chat-message-row:hover .nf-chat-copy,
-  .nf-ai-conversation .nf-chat-copy:focus-visible { opacity: 1; pointer-events: auto; }
+  .nf-ai-conversation .nf-chat-copy:focus-visible,
+  .nf-ai-conversation .nf-chat-copy[data-hint-open="true"] { opacity: 1; pointer-events: auto; }
   .nf-ai-conversation .nf-chat-message-row:hover .nf-chat-message-time,
-  .nf-ai-conversation .nf-chat-message-actions:has(.nf-chat-copy:focus-visible) .nf-chat-message-time { opacity: 1; }
+  .nf-ai-conversation .nf-chat-message-actions:has(.nf-chat-copy:focus-visible) .nf-chat-message-time,
+  .nf-ai-conversation .nf-chat-message-actions:has(.nf-chat-copy[data-hint-open="true"]) .nf-chat-message-time { opacity: 1; }
 }
 @media (pointer: coarse) {
   .nf-ai-conversation .nf-chat-copy, .nf-ai-conversation .nf-chat-jump-button { width: 44px; height: 44px; }
@@ -218,12 +229,14 @@
 @keyframes nf-chat-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @keyframes nf-chat-menu-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) {
+  .nf-chat-copy-tooltip { animation: none; }
   .nf-ai-conversation .nf-chat-status-label { animation: none !important; background: none !important; color: var(--nf-chat-muted) !important; }
   .nf-ai-conversation .nf-chat-mode-menu { animation: none; }
   .nf-ai-conversation .nf-chat-jump { transition: none; transform: translate(-50%, 0); }
   .nf-ai-conversation .nf-chat-composer, .nf-ai-conversation button, .nf-ai-conversation .nf-chat-message-time { transition: none; }
 }
 @media (forced-colors: active) {
+  .nf-chat-copy-tooltip { color: Canvas; background: CanvasText; border: 1px solid Canvas; box-shadow: none; }
   .nf-ai-conversation, .nf-ai-conversation * { scrollbar-width: auto; scrollbar-color: auto; }
   .nf-ai-conversation::-webkit-scrollbar, .nf-ai-conversation ::-webkit-scrollbar { width: revert; height: revert; }
   .nf-ai-conversation::-webkit-scrollbar-thumb, .nf-ai-conversation ::-webkit-scrollbar-thumb { background: CanvasText; }

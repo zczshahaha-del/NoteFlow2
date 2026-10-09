@@ -425,6 +425,76 @@ try {
   await copyMessageText('无 Clipboard API 的合成回退');
   assert.equal(legacyCopied, '无 Clipboard API 的合成回退');
   assert.equal(window.getSelection().toString(), '保留正文选区'); selectedCopyText.remove(); window.getSelection().removeAllRanges();
+
+  // Small visual hints are portaled and cancellable, not native title boxes.
+  await act(async () => useAppStore.setState({ chatMessages: [
+    { ...userMessage, text: userCopyText, createdAt: copyCreatedAt },
+    { ...assistantMessage, text: replyCopyText, createdAt: copyCreatedAt },
+  ] }));
+  const hint = () => document.querySelector('.nf-chat-copy-tooltip');
+  const hintWait = ms => act(async () => { await new Promise(resolve => window.setTimeout(resolve, ms)); });
+  const mockCopyRect = (role, left = 60, top = 100) => {
+    const target = copyButton(role);
+    target.getBoundingClientRect = () => ({ left, top, right: left + 26, bottom: top + 26, width: 26, height: 26 });
+    // JSDOM has no real input-modality engine; the browser suite checks actual Tab.
+    const nativeMatches = dom.window.Element.prototype.matches;
+    target.matches = selector => selector === ':focus-visible' || nativeMatches.call(target, selector);
+  };
+  mockCopyRect('user'); mockCopyRect('assistant');
+  await act(async () => copyButton('assistant').focus()); await hintWait(10);
+  assert.equal(hint().textContent, '复制回复');
+  const replyHintId = hint().id;
+  assert.equal(copyButton('assistant').getAttribute('aria-describedby'), replyHintId);
+  assert.equal(conversationContainer.contains(hint()), false, 'tooltip must escape the message scroller');
+  assert.equal(hint().getAttribute('role'), 'tooltip');
+  await act(async () => copyButton('user').focus()); await hintWait(10);
+  assert.equal(hint().textContent, '复制消息'); assert.notEqual(hint().id, replyHintId);
+  await act(async () => document.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true })));
+  assert.ok(hint(), 'IME Escape does not dismiss the hint');
+  await act(async () => document.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+  assert.equal(hint(), null); assert.equal(document.activeElement, copyButton('user'));
+  await act(async () => { composerInput.focus(); copyButton('user').focus(); }); await hintWait(10);
+  await act(async () => conversationContainer.dispatchEvent(new dom.window.Event('scroll')));
+  assert.equal(hint(), null, 'scroll clears stale portal coordinates');
+  mockCopyRect('user', 1, 1);
+  await act(async () => { composerInput.focus(); copyButton('user').focus(); }); await hintWait(10);
+  assert.equal(hint().style.left, '8px'); assert.equal(hint().style.top, '35px', 'top-edge hint flips below its trigger');
+  await act(async () => window.dispatchEvent(new dom.window.Event('resize'))); assert.equal(hint(), null);
+  mockCopyRect('user', window.innerWidth - 1);
+  await act(async () => { composerInput.focus(); copyButton('user').focus(); }); await hintWait(10);
+  assert.equal(hint().style.left, `${window.innerWidth - 72 - 8}px`, 'right edge stays inside the viewport');
+  await act(async () => window.dispatchEvent(new dom.window.Event('blur'))); assert.equal(hint(), null);
+  mockCopyRect('user', 60, -50);
+  await act(async () => { composerInput.focus(); copyButton('user').focus(); }); await hintWait(10);
+  assert.equal(hint(), null, 'offscreen trigger cannot leave a floating hint');
+  await act(async () => composerInput.focus()); mockCopyRect('user');
+  const previousHintMedia = window.matchMedia;
+  window.matchMedia = query => ({ matches: query.includes('hover: hover') });
+  const mouseHintEvent = (type, target) => act(async () => target.dispatchEvent(new dom.window.MouseEvent(type, { bubbles: true, relatedTarget: document.body })));
+  await mouseHintEvent('mouseover', copyButton('user')); await hintWait(100);
+  assert.equal(hint(), null, 'passing over a button does not immediately show a hint');
+  await mouseHintEvent('mouseout', copyButton('user')); await hintWait(330);
+  assert.equal(hint(), null, 'early mouse-out cancels the pending hint');
+  for (const [target, type] of [[conversationContainer, 'scroll'], [window, 'resize'], [window, 'blur']]) {
+    await mouseHintEvent('mouseover', copyButton('user'));
+    await act(async () => target.dispatchEvent(new dom.window.Event(type))); await hintWait(330);
+    assert.equal(hint(), null, `${type} cancels the pending hint before it can open`);
+  }
+  await mouseHintEvent('mouseover', copyButton('user')); await hintWait(330);
+  assert.equal(hint().textContent, '复制消息');
+  await mouseHintEvent('mouseout', copyButton('user'));
+  await mouseHintEvent('mouseover', hint()); await hintWait(180);
+  assert.ok(hint(), 'hovering the tooltip bridges the gap and keeps its label readable');
+  await mouseHintEvent('mouseout', hint()); await hintWait(150); assert.equal(hint(), null);
+  await mouseHintEvent('mouseover', copyButton('assistant'));
+  await act(async () => useAppStore.setState({ chatMessages: [{ ...assistantMessage, text: '提示切换后的正文' }] }));
+  await hintWait(330); assert.equal(hint(), null, 'message replacement cancels a pending tooltip');
+  mockCopyRect('assistant');
+  await mouseHintEvent('mouseover', copyButton('assistant'));
+  await act(async () => useAppStore.setState({ chatMessages: [] })); await hintWait(330);
+  assert.equal(hint(), null, 'unmount cancels the pending hint and removes its portal');
+  window.matchMedia = previousHintMedia;
+  await act(async () => useAppStore.setState({ chatMessages: [{ ...assistantMessage, text: '卸载时复制测试' }] }));
   clipboardMode = 'pending';
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => new Promise(resolve => { finishClipboard = resolve; }) } });
   await act(async () => copyButton('assistant').click());
@@ -1246,7 +1316,7 @@ try {
   console.log(JSON.stringify({
     ok: true,
     storeAssertions: 10,
-    componentAssertionGroups: 44,
+    componentAssertionGroups: 45,
     components: [
       "SoftMenu",
       "LoginPage",
@@ -1259,7 +1329,7 @@ try {
     ],
     accountMenuCoverage: ["single-entry", "username", "no-native-tooltip", "username-click", "long-username", "unframed-footer-menu", "numeric-avatar-fallback", "enter-exit", "email-confirm", "devices-revoke", "device-error", "memory-CRUD", "memory-button-rollback-only", "ZIP-JSON-export", "import", "trash-restore", "modal-focus-trap", "escape-focus", "IME", "outside-pointer", "focus-leave", "sign-out", "compact", "note-folder-delete-confirm"],
     directoryRowCoverage: ["whole-row-selection", "full-name", "selected-more", "nested-indent", "pin-favorite-glyphs", "folder-disclosure", "file-open-callback", "independent-menu", "rename-cancel"],
-    conversationCoverage: ["empty-wait", "whitespace-wait", "streaming-markdown", "hide-status-on-first-text", "no-status-during-transport-cleanup", "single-status", "completion", "stop-callback", "error-clears-status", "fallback-wait", "empty-send-disabled", "Enter-Shift-IME", "send-context", "library-mode", "remove-note-reference", "citation-open", "selection-expand", "selection-send", "scoped-scrollable-tables", "both-role-copy", "raw-Markdown-copy", "copy-success-reset", "copy-failure-retry", "copy-duplicate-lock", "copy-late-result", "copy-fallback-focus-draft-selection"],
+    conversationCoverage: ["empty-wait", "whitespace-wait", "streaming-markdown", "hide-status-on-first-text", "no-status-during-transport-cleanup", "single-status", "completion", "stop-callback", "error-clears-status", "fallback-wait", "empty-send-disabled", "Enter-Shift-IME", "send-context", "library-mode", "remove-note-reference", "citation-open", "selection-expand", "selection-send", "scoped-scrollable-tables", "both-role-copy", "raw-Markdown-copy", "copy-success-reset", "copy-failure-retry", "copy-duplicate-lock", "copy-late-result", "copy-fallback-focus-draft-selection", "copy-hint-label-portal", "copy-hint-keyboard-IME-Escape", "copy-hint-viewport-flip", "copy-hint-hover-delay-bridge", "copy-hint-scroll-resize-blur-lifecycle"],
     softMenuCoverage: ["exit-inert", "unmount-after-exit", "quick-reopen", "reduced-motion", "Escape-focus", "IME-Escape", "file-action-order", "history-inline-actions", "history-rename-callback", "history-delete-confirmation", "history-switch-callback"],
     searchSurfaceCoverage: ["compact-initial", "single-wait", "groups-count-highlight", "keyboard-select", "focus-trap-return", "background-inert", "exit-inert-click-block", "quick-reopen", "clear", "abort-stale-response", "empty", "title-content-scope", "error-retry", "escaped-input", "IME", "IME-pointer-close-reopen", "abort-close", "frozen-exit", "reopen-reset", "reduced-motion"],
   }));

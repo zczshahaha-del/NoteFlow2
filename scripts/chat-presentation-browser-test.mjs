@@ -247,19 +247,88 @@ try{
     assert.ok(Math.abs(alignments.userRight-alignments.userCopyRight)<1);assert.ok(Math.abs(alignments.replyLeft-alignments.replyTimeLeft)<1);
     assert.deepEqual(await page.locator('.nf-chat-message-actions time').allTextContents(),['2:49','2:50']);
     assert.equal(await userCopy.getAttribute('title'),null);assert.equal(await replyCopy.getAttribute('title'),null);
+
+    // The reference's small dark hint: only the copy trigger, no native title.
+    const tooltip=page.locator('.nf-chat-copy-tooltip[role="tooltip"]');
+    if(!mobile){
+      await page.mouse.move(599,1);await input.focus();await page.waitForTimeout(300);
+      assert.equal(await tooltip.count(),0);
+      // Measure inside the browser: Playwright hover auto-waits are not timer evidence.
+      await userCopy.evaluate(n=>{
+        window.copyHintTiming={};
+        n.addEventListener('mouseenter',()=>{window.copyHintTiming.entered=performance.now()},{once:true});
+        const observer=new MutationObserver(()=>{
+          if(document.querySelector('.nf-chat-copy-tooltip')&&window.copyHintTiming.entered!==undefined){
+            window.copyHintTiming.delay=performance.now()-window.copyHintTiming.entered;observer.disconnect();
+          }
+        });observer.observe(document.body,{childList:true});
+      });
+      await page.locator('.nf-chat-message-row').filter({has:userCopy}).hover();await userCopy.hover();
+      await tooltip.filter({hasText:'复制消息'}).waitFor();
+      const measuredHintDelay=await page.evaluate(()=>window.copyHintTiming.delay);
+      assert.ok(measuredHintDelay>=280&&measuredHintDelay<1000,`hint respects its 300ms delay (${measuredHintDelay}ms)`);
+      await tooltip.evaluate(async n=>Promise.all(n.getAnimations().map(a=>a.finished)));
+      const hintStyle=await tooltip.evaluate(n=>{const s=getComputedStyle(n);return {width:s.width,height:s.height,radius:s.borderRadius,font:s.fontSize,background:s.backgroundColor,color:s.color,position:s.position,portal:!n.closest('.nf-ai-conversation')}});
+      assert.deepEqual(hintStyle,{width:'72px',height:'30px',radius:'10px',font:'12px',background:'rgb(32, 33, 36)',color:'rgb(255, 255, 255)',position:'fixed',portal:true});
+      assert.equal(await userCopy.getAttribute('aria-describedby'),await tooltip.getAttribute('id'));
+      const hintBox=await tooltip.boundingBox();
+      assert.ok(hintBox.x>=8&&hintBox.x+hintBox.width<=592);
+      assert.ok(Math.abs(hintBox.y+hintBox.height+8-copyBox.y)<1,'hint sits just above its trigger');
+      assert.deepEqual(await input.boundingBox(),copyInputBox);assert.deepEqual(await userCopy.boundingBox(),copyBox);
+      await tooltip.hover();await page.waitForTimeout(180);
+      assert.equal(await tooltip.textContent(),'复制消息','moving into the hint keeps it readable');
+      assert.equal(await page.locator('[data-role="user"] time').evaluate(n=>getComputedStyle(n).opacity),'1');
+      await page.mouse.move(599,1);await page.waitForTimeout(300);
+      assert.equal(await tooltip.count(),0);assert.equal(await userCopy.evaluate(n=>getComputedStyle(n).opacity),'0');
+      await page.locator('.nf-chat-message-row').filter({has:replyCopy}).hover();await replyCopy.hover();
+      await tooltip.filter({hasText:'复制回复'}).waitFor();
+      await tooltip.evaluate(async n=>Promise.all(n.getAnimations().map(a=>a.finished)));
+      if(process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR){
+        const box=await tooltip.boundingBox();
+        const x=Math.max(0,box.x-14),y=Math.max(0,box.y-12);
+        await page.screenshot({path:process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR+'/chat-copy-hint.png',clip:{x,y,width:Math.min(200,600-x),height:90}});
+      }
+      await page.keyboard.press('Escape');assert.equal(await tooltip.count(),0);
+      await page.mouse.move(599,1);await page.waitForTimeout(300);
+    }else{
+      await userCopy.hover();await page.waitForTimeout(350);
+      assert.equal(await tooltip.count(),0,'coarse/touch input does not require a hover hint or an extra tap');
+      await page.mouse.move(319,1);
+    }
     await page.keyboard.press('Tab');await userCopy.focus();assert.notEqual(await userCopy.evaluate(n=>getComputedStyle(n).outlineStyle),'none');
     await page.waitForTimeout(150);assert.equal(await userCopy.evaluate(n=>getComputedStyle(n).opacity),'1');
     assert.equal(await page.locator('[data-role="user"] time').evaluate(n=>getComputedStyle(n).opacity),'1');
+    await tooltip.filter({hasText:'复制消息'}).waitFor();
+    await page.keyboard.press('Escape');assert.equal(await tooltip.count(),0);
+    assert.equal(await userCopy.evaluate(n=>document.activeElement===n),true,'Escape closes the hint without discarding the action focus');
+    await page.emulateMedia({reducedMotion:'reduce'});await input.focus();await userCopy.focus();
+    await tooltip.waitFor();assert.equal(await tooltip.evaluate(n=>getComputedStyle(n).animationName),'none');
+    await page.emulateMedia({forcedColors:'active'});
+    assert.equal(await tooltip.evaluate(n=>getComputedStyle(n).boxShadow),'none');
+    assert.notEqual(await tooltip.evaluate(n=>getComputedStyle(n).backgroundColor),'rgba(0, 0, 0, 0)');
+    await page.emulateMedia({forcedColors:'none',reducedMotion:'no-preference'});
+    await page.locator('.ai-message-list').evaluate(n=>n.dispatchEvent(new Event('scroll')));
+    assert.equal(await tooltip.count(),0,'scroll dismisses portaled hints');
+    await input.focus();await userCopy.focus();await tooltip.waitFor();
+    await page.evaluate(()=>window.dispatchEvent(new Event('resize')));assert.equal(await tooltip.count(),0);
+    await input.focus();await userCopy.focus();await tooltip.waitFor();
     await page.keyboard.press('Enter');
     await page.waitForFunction(()=>document.querySelector('[aria-label="复制消息"]').dataset.copyState==='copied');
     assert.equal(await page.evaluate(()=>window.presentationTest.copies.at(-1)),userText);
+    assert.equal(await tooltip.textContent(),'已复制','an open hint reflects successful copying');
     assert.equal(await replyCopy.getAttribute('data-copy-state'),'idle');
     await page.locator('.nf-chat-message-row').filter({has:replyCopy}).hover();await replyCopy.click();
     await page.waitForFunction(()=>document.querySelector('[aria-label="复制回复"]').dataset.copyState==='copied');
     assert.equal(await page.evaluate(()=>window.presentationTest.copies.at(-1)),replyText);
     assert.equal(await input.inputValue(),'复制时保留草稿');assert.deepEqual(await input.boundingBox(),copyInputBox);
     assert.deepEqual(await userCopy.boundingBox(),copyBox,'success check does not move its action target');
-    if(!mobile){await page.mouse.move(599,1);await page.waitForTimeout(150);assert.equal(await replyCopy.evaluate(n=>getComputedStyle(n).opacity),'0','mouse-out hides even a mouse-focused copy action');assert.equal(await page.locator('[data-role="assistant"] time').evaluate(n=>getComputedStyle(n).opacity),'0','time hides together with copy');}
+    if(!mobile){
+      await page.mouse.move(599,1);
+      await page.waitForFunction(()=>getComputedStyle(document.querySelector('[aria-label="复制回复"]')).opacity==='0',null,{timeout:800});
+      assert.equal(await replyCopy.evaluate(n=>getComputedStyle(n).opacity),'0','mouse-out hides even a mouse-focused copy action');
+      assert.equal(await page.locator('[data-role="assistant"] time').evaluate(n=>getComputedStyle(n).opacity),'0','time hides together with copy');
+      assert.equal(await tooltip.count(),0);
+    }
     await page.waitForFunction(()=>[...document.querySelectorAll('.nf-chat-copy')].every(n=>n.dataset.copyState==='idle'),null,{timeout:2000});
     assert.equal(await page.getByText('已复制',{exact:true}).count(),0);
     await page.evaluate(()=>window.presentationTest.copyMode='pending');
@@ -290,9 +359,10 @@ try{
       if(!mobile) await page.locator('.nf-chat-message-row').filter({has:replyCopy}).hover();
       await page.locator('#root').screenshot({path:process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR+'/chat-actions-'+(mobile?'mobile':'desktop')+'.png'});
     }
-    await page.evaluate(()=>window.presentationTest.clear());await page.waitForTimeout(100);
+    await page.evaluate(()=>window.presentationTest.clear());await page.waitForTimeout(350);
     assert.equal(await page.locator('.nf-chat-message').count(),0);
-    reports.push({mobile,singleChunkTyping:true,stats,stop:true,completedTailStop:true,switchHistory:true,canonicalReplacement:true,markdownActions:true,reducedMotion:true,backgroundFlush:true,readingPosition:true,inputStable:true,scrollSurface,wideContentLocalScroll:true,jumpGeometry,jumpStable:true,bothRoleCopy:true,smallHoverCopy:true,timeTogether:true,copyKeyboard:true,pendingCopyFocus:true,copyFeedbackStable:true,copyFailureRetry:true,copyFallback:true});
+    assert.equal(await tooltip.count(),0,'clearing the conversation removes all hint portals and pending timers');
+    reports.push({mobile,singleChunkTyping:true,stats,stop:true,completedTailStop:true,switchHistory:true,canonicalReplacement:true,markdownActions:true,reducedMotion:true,backgroundFlush:true,readingPosition:true,inputStable:true,scrollSurface,wideContentLocalScroll:true,jumpGeometry,jumpStable:true,bothRoleCopy:true,smallHoverCopy:true,timeTogether:true,copyKeyboard:true,copyTooltip:true,tooltipDelayHoverBridge:true,tooltipNoLayoutShift:true,tooltipEscapeScrollResize:true,tooltipReducedMotionForcedColors:true,pendingCopyFocus:true,copyFeedbackStable:true,copyFailureRetry:true,copyFallback:true});
     await context.close();
   }
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
