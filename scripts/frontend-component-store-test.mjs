@@ -253,6 +253,9 @@ try {
   assert.equal(conversationContainer.querySelector('.nf-chat-message--assistant .chat-markdown'), null);
   assert.equal(composer.dataset.generating, "true");
   assert.ok(conversationContainer.querySelector('button[aria-label="停止生成"]'));
+  assert.equal(conversationContainer.querySelector('button[aria-label="复制回复"]').disabled, true);
+  assert.equal(conversationContainer.querySelector('button[aria-label="复制消息"]').disabled, false);
+  assert.equal(conversationContainer.querySelectorAll('time').length, 0, 'do not invent times for missing historical metadata');
   await act(async () => useAppStore.setState({ chatMessages: [userMessage, { ...assistantMessage, text: "   " }] }));
   assert.equal(conversationStatus().textContent, "正在思考");
   await act(async () => useAppStore.setState({ chatMessages: [userMessage, { ...assistantMessage, text: "这是 **重点**。" }] }));
@@ -340,6 +343,96 @@ try {
   assert.equal(tableScroller.querySelectorAll('td').length, 2);
   const { renderChatMarkdown } = await vite.ssrLoadModule('/src/utils/chatMarkdown.ts');
   assert.ok(!renderChatMarkdown(tableMarkdown).includes('chat-table-scroll'), 'draft/preview default Markdown output must not change');
+
+  // Clipboard writes are synthetic; never read or overwrite the user's clipboard.
+  const copiedMessages = [];
+  let clipboardMode = 'success', finishClipboard;
+  const previousClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+  const previousExecCommand = document.execCommand;
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+    async writeText(text) {
+      copiedMessages.push(text);
+      if (clipboardMode === 'denied') throw new Error('synthetic denial');
+      if (clipboardMode === 'pending') await new Promise(resolve => { finishClipboard = resolve; });
+    },
+  } });
+  document.execCommand = () => false;
+  const userCopyText = '原始消息\n第二行 👩🏽‍💻';
+  const replyCopyText = '**保留 Markdown**\n\n```python\nprint("复制正文")\n```';
+  const copyCreatedAt = '2026-10-10T02:49:00+08:00';
+  const copyButton = role => conversationContainer.querySelector(`button[aria-label="${role === 'user' ? '复制消息' : '复制回复'}"]`);
+  await act(async () => useAppStore.setState({ chatLoading: false, chatMessages: [
+    { ...userMessage, text: userCopyText, attachedSelection, createdAt: copyCreatedAt },
+    { ...assistantMessage, text: replyCopyText, sources: [chatSource], createdAt: copyCreatedAt },
+  ] }));
+  const copiedTimes = conversationContainer.querySelectorAll('time');
+  assert.equal(copiedTimes.length, 2);
+  const copyDate = new Date(copyCreatedAt);
+  assert.equal(copiedTimes[0].textContent, `${copyDate.getHours()}:${String(copyDate.getMinutes()).padStart(2, '0')}`);
+  assert.equal(copiedTimes[1].dateTime, copyCreatedAt);
+  assert.ok(copiedTimes[0].getAttribute('aria-label').startsWith('消息时间 '));
+  assert.equal(copiedTimes[0].hasAttribute('title'), false);
+  assert.equal(copyButton('user').hasAttribute('title'), false);
+  assert.equal(copyButton('assistant').hasAttribute('title'), false);
+  await changeComposerInput('复制不清空草稿'); composerInput.focus(); composerInput.setSelectionRange(2, 5);
+  await act(async () => copyButton('user').click());
+  assert.equal(copiedMessages.at(-1), userCopyText, 'copy only this message, not attachment controls');
+  assert.equal(copyButton('user').dataset.copyState, 'copied');
+  assert.equal(copyButton('assistant').dataset.copyState, 'idle');
+  assert.equal(document.activeElement, composerInput);
+  await act(async () => copyButton('assistant').click());
+  assert.equal(copiedMessages.at(-1), replyCopyText, 'preserve Markdown and code, exclude toolbar/source labels');
+  assert.equal(composerInput.value, '复制不清空草稿');
+  assert.equal(conversationContainer.querySelectorAll('[role="status"]').length, 2);
+  await act(async () => { await new Promise(resolve => window.setTimeout(resolve, 1250)); });
+  assert.equal(copyButton('user').dataset.copyState, 'idle');
+  assert.equal(copyButton('assistant').dataset.copyState, 'idle');
+  assert.equal(conversationContainer.querySelectorAll('[role="status"]').length, 0);
+  clipboardMode = 'pending';
+  const beforeDuplicateCopy = copiedMessages.length;
+  await act(async () => { copyButton('assistant').click(); copyButton('assistant').click(); });
+  assert.equal(copiedMessages.length, beforeDuplicateCopy + 1);
+  assert.equal(copyButton('assistant').getAttribute('aria-disabled'), 'true');
+  assert.equal(copyButton('assistant').disabled, false, 'pending copy keeps keyboard focus while its request lock prevents duplicate writes');
+  await act(async () => useAppStore.setState({ chatMessages: [{ ...assistantMessage, text: '切换后的消息' }] }));
+  await act(async () => finishClipboard());
+  assert.equal(copyButton('assistant').dataset.copyState, 'idle', 'late clipboard completion cannot mark replacement text copied');
+  await act(async () => useAppStore.setState({ chatMessages: [{ ...assistantMessage, text: '切换后的消息', createdAt: 'invalid-date' }] }));
+  assert.equal(conversationContainer.querySelectorAll('time').length, 0, 'invalid timestamps stay absent instead of rendering Invalid Date');
+  clipboardMode = 'denied';
+  await act(async () => copyButton('assistant').click());
+  assert.equal(copyButton('assistant').dataset.copyState, 'error');
+  assert.equal(conversationContainer.querySelector('[role="alert"]').textContent, '复制失败，请重试');
+  assert.equal(conversationContainer.querySelector('[role="status"]'), null, 'a failed legacy copy is never reported as success');
+  let legacyCopied;
+  document.execCommand = command => {
+    assert.equal(command, 'copy');
+    legacyCopied = document.querySelector('[data-message-copy-fallback]').value;
+    return true;
+  };
+  composerInput.focus(); composerInput.setSelectionRange(2, 5);
+  await act(async () => copyButton('assistant').click());
+  assert.equal(legacyCopied, '切换后的消息');
+  assert.equal(copyButton('assistant').dataset.copyState, 'copied');
+  assert.equal(document.activeElement, composerInput);
+  assert.equal(composerInput.selectionStart, 2); assert.equal(composerInput.selectionEnd, 5);
+  assert.equal(composerInput.value, '复制不清空草稿');
+  assert.equal(document.querySelector('[data-message-copy-fallback]'), null);
+  const { copyMessageText } = await vite.ssrLoadModule('/src/utils/messageClipboard.ts');
+  const selectedCopyText = document.createElement('p'); selectedCopyText.textContent = '保留正文选区'; document.body.appendChild(selectedCopyText);
+  window.getSelection().selectAllChildren(selectedCopyText);
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+  await copyMessageText('无 Clipboard API 的合成回退');
+  assert.equal(legacyCopied, '无 Clipboard API 的合成回退');
+  assert.equal(window.getSelection().toString(), '保留正文选区'); selectedCopyText.remove(); window.getSelection().removeAllRanges();
+  clipboardMode = 'pending';
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => new Promise(resolve => { finishClipboard = resolve; }) } });
+  await act(async () => copyButton('assistant').click());
+  await act(async () => useAppStore.setState({ chatMessages: [] }));
+  await act(async () => finishClipboard());
+  assert.equal(conversationContainer.querySelector('.nf-chat-message-actions'), null, 'unmounted actions ignore late completion');
+  if (previousClipboard) Object.defineProperty(navigator, 'clipboard', previousClipboard); else delete navigator.clipboard;
+  if (previousExecCommand) document.execCommand = previousExecCommand; else delete document.execCommand;
 
   const historyCalls = [];
   await act(async () => useAppStore.setState({
@@ -1153,7 +1246,7 @@ try {
   console.log(JSON.stringify({
     ok: true,
     storeAssertions: 10,
-    componentAssertionGroups: 43,
+    componentAssertionGroups: 44,
     components: [
       "SoftMenu",
       "LoginPage",
@@ -1166,7 +1259,7 @@ try {
     ],
     accountMenuCoverage: ["single-entry", "username", "no-native-tooltip", "username-click", "long-username", "unframed-footer-menu", "numeric-avatar-fallback", "enter-exit", "email-confirm", "devices-revoke", "device-error", "memory-CRUD", "memory-button-rollback-only", "ZIP-JSON-export", "import", "trash-restore", "modal-focus-trap", "escape-focus", "IME", "outside-pointer", "focus-leave", "sign-out", "compact", "note-folder-delete-confirm"],
     directoryRowCoverage: ["whole-row-selection", "full-name", "selected-more", "nested-indent", "pin-favorite-glyphs", "folder-disclosure", "file-open-callback", "independent-menu", "rename-cancel"],
-    conversationCoverage: ["empty-wait", "whitespace-wait", "streaming-markdown", "hide-status-on-first-text", "no-status-during-transport-cleanup", "single-status", "completion", "stop-callback", "error-clears-status", "fallback-wait", "empty-send-disabled", "Enter-Shift-IME", "send-context", "library-mode", "remove-note-reference", "citation-open", "selection-expand", "selection-send", "scoped-scrollable-tables"],
+    conversationCoverage: ["empty-wait", "whitespace-wait", "streaming-markdown", "hide-status-on-first-text", "no-status-during-transport-cleanup", "single-status", "completion", "stop-callback", "error-clears-status", "fallback-wait", "empty-send-disabled", "Enter-Shift-IME", "send-context", "library-mode", "remove-note-reference", "citation-open", "selection-expand", "selection-send", "scoped-scrollable-tables", "both-role-copy", "raw-Markdown-copy", "copy-success-reset", "copy-failure-retry", "copy-duplicate-lock", "copy-late-result", "copy-fallback-focus-draft-selection"],
     softMenuCoverage: ["exit-inert", "unmount-after-exit", "quick-reopen", "reduced-motion", "Escape-focus", "IME-Escape", "file-action-order", "history-inline-actions", "history-rename-callback", "history-delete-confirmation", "history-switch-callback"],
     searchSurfaceCoverage: ["compact-initial", "single-wait", "groups-count-highlight", "keyboard-select", "focus-trap-return", "background-inert", "exit-inert-click-block", "quick-reopen", "clear", "abort-stale-response", "empty", "title-content-scope", "error-retry", "escaped-input", "IME", "IME-pointer-close-reopen", "abort-close", "frozen-exit", "reopen-reset", "reduced-motion"],
   }));

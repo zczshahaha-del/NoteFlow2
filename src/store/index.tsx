@@ -243,6 +243,9 @@ interface InternalAppState extends AppState {
 }
 
 let chatMsgCounter = 0;
+function newChatMessageMetadata(): Pick<ChatMessage, "id" | "createdAt"> {
+  return { id: `msg-${++chatMsgCounter}`, createdAt: new Date().toISOString() };
+}
 let nodeCounter = 0;
 let generationAbortController: AbortController | null = null;
 let noteSaveTimer: ReturnType<typeof window.setTimeout> | null = null;
@@ -667,12 +670,12 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     const messages: ChatMessage[] = trimmedSeed
       ? [
           {
-            id: `msg-${++chatMsgCounter}`,
+            ...newChatMessageMetadata(),
             role: "user",
             text: trimmedSeed,
           },
           {
-            id: `msg-${++chatMsgCounter}`,
+            ...newChatMessageMetadata(),
             role: "assistant",
             text: "好，我会先整理一份大纲。准备好后，你可以打开查看和调整。",
             draftCard: { seed: trimmedSeed },
@@ -771,7 +774,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       set((state) => ({
         chatMessages: [
           ...state.chatMessages,
-          { id: `msg-${++chatMsgCounter}`, role: "assistant", text },
+          { ...newChatMessageMetadata(), role: "assistant", text },
         ],
       }));
     }
@@ -833,9 +836,9 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     const state = get();
     if (state.chatLoading) return;
     if (!state.selectedFileId) {
-      const userMsg: ChatMessage = { id: `msg-${++chatMsgCounter}`, role: "user", text: instruction };
+      const userMsg: ChatMessage = { ...newChatMessageMetadata(), role: "user", text: instruction };
       const assistantMsg: ChatMessage = {
-        id: `msg-${++chatMsgCounter}`,
+        ...newChatMessageMetadata(),
         role: "assistant",
         text: "请先打开一篇正式笔记，再让我生成修改预览。",
       };
@@ -843,9 +846,9 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       return;
     }
 
-    const userMsg: ChatMessage = { id: `msg-${++chatMsgCounter}`, role: "user", text: instruction };
+    const userMsg: ChatMessage = { ...newChatMessageMetadata(), role: "user", text: instruction };
     const assistantMsg: ChatMessage = {
-      id: `msg-${++chatMsgCounter}`,
+      ...newChatMessageMetadata(),
       role: "assistant",
       text: "我正在生成修改预览，不会直接改正式笔记。",
     };
@@ -897,9 +900,9 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   reviseEditPreviewRequest: async (instruction) => {
     const preview = get().activeEditPreview;
     if (!preview || get().chatLoading) return;
-    const userMsg: ChatMessage = { id: `msg-${++chatMsgCounter}`, role: "user", text: instruction };
+    const userMsg: ChatMessage = { ...newChatMessageMetadata(), role: "user", text: instruction };
     const assistantMsg: ChatMessage = {
-      id: `msg-${++chatMsgCounter}`,
+      ...newChatMessageMetadata(),
       role: "assistant",
       text: "我会基于当前预览继续调整，仍然不会写回正式笔记。",
     };
@@ -955,7 +958,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       set((current) => ({
         chatMessages: [
           ...current.chatMessages,
-          { id: `msg-${++chatMsgCounter}`, role: "assistant", text },
+          { ...newChatMessageMetadata(), role: "assistant", text },
         ],
       }));
       throw error;
@@ -1006,7 +1009,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         chatMessages: [
           ...current.chatMessages,
           {
-            id: `msg-${++chatMsgCounter}`,
+            ...newChatMessageMetadata(),
             role: "assistant",
             text: "修改已应用到正式笔记，并已保存旧版本和更新索引。",
           },
@@ -1019,7 +1022,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         editPreviewError: text,
         chatMessages: [
           ...current.chatMessages,
-          { id: `msg-${++chatMsgCounter}`, role: "assistant", text },
+          { ...newChatMessageMetadata(), role: "assistant", text },
         ],
       }));
     } finally {
@@ -1053,7 +1056,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       chatMessages: [
         ...current.chatMessages,
         {
-          id: `msg-${++chatMsgCounter}`,
+          ...newChatMessageMetadata(),
           role: "assistant",
           text: "已取消本次修改预览，正式笔记没有变化。",
         },
@@ -1103,9 +1106,9 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   saveMemoryFromText: async (text) => {
     const trimmed = text.trim();
     if (!trimmed || get().chatLoading) return;
-    const userMsg: ChatMessage = { id: `msg-${++chatMsgCounter}`, role: "user", text: trimmed };
+    const userMsg: ChatMessage = { ...newChatMessageMetadata(), role: "user", text: trimmed };
     const assistantMsg: ChatMessage = {
-      id: `msg-${++chatMsgCounter}`,
+      ...newChatMessageMetadata(),
       role: "assistant",
       text: "我在判断这是不是适合长期保存的偏好。",
     };
@@ -1161,9 +1164,9 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
 
   listMemoryRequest: async (text = "你记住了什么") => {
     if (get().chatLoading) return;
-    const userMsg: ChatMessage = { id: `msg-${++chatMsgCounter}`, role: "user", text };
+    const userMsg: ChatMessage = { ...newChatMessageMetadata(), role: "user", text };
     const assistantMsg: ChatMessage = {
-      id: `msg-${++chatMsgCounter}`,
+      ...newChatMessageMetadata(),
       role: "assistant",
       text: "正在读取你的长期记忆。",
     };
@@ -1470,7 +1473,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     generationAbortController = abortController;
 
     const userMsg: ChatMessage = {
-      id: `msg-${++chatMsgCounter}`,
+      ...newChatMessageMetadata(),
       role: "user",
       text,
       chatMode,
@@ -1483,7 +1486,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         : undefined,
     };
     const assistantMsg: ChatMessage = {
-      id: `msg-${++chatMsgCounter}`,
+      ...newChatMessageMetadata(),
       role: "assistant",
       text: "",
       chatMode,

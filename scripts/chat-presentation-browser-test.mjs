@@ -18,13 +18,16 @@ const editor={activeEditPreview:null,createEditPreviewRequest:noop,applyEditPrev
 const draft={centerMode:'note',activeDraftContext:null,pendingCheckpoint:null,setActiveDraftContext:noop,closeDraft:noop,openPendingEditPreview:noop,openPendingDraft:noop,requestDraftCommand:noop};
 const agent={agentSessionId:null,agentTask:null,agentRunHistory:[],agentTaskDetailOpen:false};
 const workspace={selectedFileId:null,treeData:[],reloadWorkspace:noop};
-let key=0;const api={chat,editor,draft,agent,workspace,metrics:[],samples:[],sources:[],stops:0,currentText:'',render(){root.render(React.createElement(React.StrictMode,null,React.createElement(Panel)))},
+let key=0;const api={chat,editor,draft,agent,workspace,metrics:[],samples:[],sources:[],stops:0,copies:[],copyMode:'success',currentText:'',render(){root.render(React.createElement(React.StrictMode,null,React.createElement(Panel)))},
 begin(history=0){this.metrics=[];this.samples=[];this.currentText='';chat.chatLoading=true;chat.chatMessages=[];for(let i=0;i<history;i++)chat.chatMessages.push({id:'h-'+i,role:'assistant',text:'## 合成历史 '+i+'\\n\\n历史内容 **完整保留**。'});chat.chatMessages.push({id:'live-'+(++key),role:'assistant',text:'',streamState:'streaming'});this.render()},
 chunk(delta,complete=false){chat.chatMessages=chat.chatMessages.map((m,i)=>i===chat.chatMessages.length-1?{...m,text:m.text+delta,streamState:complete?'completed':'streaming'}:m);chat.chatLoading=!complete;this.render()},
 replace(text,status='streaming',sources){chat.chatMessages=chat.chatMessages.map((m,i)=>i===chat.chatMessages.length-1?{...m,text,streamState:status,sources}:m);chat.chatLoading=status==='streaming';this.render()},
 history(text){chat.chatLoading=false;chat.chatMessages=[{id:'loaded-'+(++key),role:'assistant',text}];this.render()},
 clear(){chat.chatLoading=false;chat.chatMessages=[];this.render()}};
 chat.stopGeneration=()=>{api.stops++;chat.chatLoading=false;chat.chatMessages=chat.chatMessages.map(m=>m.streamState==='streaming'?{...m,streamState:'stopped'}:m);api.render()};
+// In-memory clipboard substitute: no system clipboard access in browser tests.
+Object.defineProperty(navigator,'clipboard',{configurable:true,value:{async writeText(text){api.copies.push(text);if(api.copyMode==='denied')throw new Error('synthetic denial');if(api.copyMode==='pending')await new Promise(resolve=>{api.finishCopy=resolve})}}});
+document.execCommand=command=>{if(command!=='copy'||api.copyMode!=='fallback')return false;api.copies.push(document.querySelector('[data-message-copy-fallback]').value);return true};
 window.presentationTest=api;api.render();`;
 const result=await build({root:repo,configFile:false,logLevel:'silent',plugins:[{
   name:'isolated-chat-presentation',enforce:'pre',
@@ -38,14 +41,16 @@ const browser=await chromium.launch({executablePath:process.env.NOTEFLOW_BROWSER
 const errors=[],requests=[],reports=[];
 try{
   for(const mobile of [false,true]){
-    const context=await browser.newContext({viewport:mobile?{width:320,height:700}:{width:600,height:850},deviceScaleFactor:1});
+    const context=await browser.newContext({viewport:mobile?{width:320,height:700}:{width:600,height:850},deviceScaleFactor:1,isMobile:mobile,hasTouch:mobile,timezoneId:'Asia/Shanghai'});
     await context.route('**/*',route=>{requests.push(route.request().url());return route.abort()});
-    const page=await context.newPage();page.on('pageerror',error=>errors.push(String(error)));
+    const page=await context.newPage();page.setDefaultTimeout(4000);page.on('pageerror',error=>errors.push(String(error)));
     await page.setContent('<html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>'+css+'#root{width:100%;max-width:500px;height:95vh;display:flex}#root>aside{flex:1;min-width:0}</style></head><body><div id="root"></div><script type="module">'+source+'</script></body></html>');
     await page.waitForFunction(()=>Boolean(window.presentationTest));
     const full='这是模拟整段数据到达时的连续输出。'.repeat(18)+'👩🏽‍💻🇨🇳e\u0301👨‍👩‍👧‍👦结束。';
     await page.evaluate(()=>window.presentationTest.begin(10));
     await page.getByText('正在思考',{exact:true}).waitFor();
+    assert.equal(await page.locator('.nf-chat-message-actions button').last().isDisabled(),true);
+    assert.equal(await page.locator('.nf-chat-message-actions').last().getAttribute('aria-hidden'),'true');
     await page.waitForTimeout(100);
     await page.evaluate(()=>{window.presentationTest.metrics=[];window.presentationTest.samples=[]});
     await page.evaluate(text=>window.presentationTest.chunk(text,true),full);
@@ -118,12 +123,52 @@ try{
 
     // Reading history must not be forced back down by incoming display frames.
     await page.evaluate(()=>window.presentationTest.begin(30));await page.getByText('正在思考',{exact:true}).waitFor();
-    await page.waitForTimeout(800);
+    // Copy footers lengthen history; wait for real arrival, not a fixed animation guess.
+    await page.waitForFunction(()=>{const n=document.querySelector('.ai-message-list');return n.scrollHeight-n.scrollTop-n.clientHeight<2},null,{timeout:2500});
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
     await page.locator('.ai-message-list').evaluate(n=>{n.scrollTo({top:0,behavior:'instant'});n.dispatchEvent(new Event('scroll'))});
     await page.evaluate(text=>window.presentationTest.chunk(text,true),full);
     await page.waitForTimeout(150);
-    assert.equal(await page.locator('.ai-message-list').evaluate(n=>n.scrollTop),0);
+    assert.ok(await page.locator('.ai-message-list').evaluate(n=>n.scrollTop<=1),'reading at the top stays put within a native pixel rounding margin');
     await page.getByRole('button',{name:'回到底部',exact:true}).waitFor();
+    const jump=page.getByRole('button',{name:'回到底部',exact:true});
+    await page.waitForTimeout(180);
+    const jumpGeometry=await jump.evaluate(n=>{const r=n.getBoundingClientRect(),thread=n.closest('.nf-chat-thread').getBoundingClientRect(),composer=document.querySelector('.nf-chat-composer').getBoundingClientRect();return {width:r.width,height:r.height,radius:getComputedStyle(n).borderRadius,center:r.x+r.width/2,threadCenter:thread.x+thread.width/2,bottom:r.bottom,composerTop:composer.top,text:n.textContent,title:n.getAttribute('title')}});
+    assert.equal(jumpGeometry.width,mobile?44:34);assert.equal(jumpGeometry.height,jumpGeometry.width);
+    assert.equal(jumpGeometry.radius,'50%');assert.equal(jumpGeometry.text,'');assert.equal(jumpGeometry.title,null);
+    assert.ok(Math.abs(jumpGeometry.center-jumpGeometry.threadCenter)<1);assert.ok(jumpGeometry.bottom<jumpGeometry.composerTop);
+    if(process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR){
+      mkdirSync(process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR,{recursive:true});
+      await page.locator('#root').screenshot({path:process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR+'/chat-jump-'+(mobile?'mobile':'desktop')+'.png'});
+    }
+    const stableComposer=await input.boundingBox();
+    await page.evaluate(()=>{const a=window.presentationTest;a.jumpStates=[];const node=document.querySelector('.nf-chat-jump');a.jumpObserver=new MutationObserver(()=>a.jumpStates.push(node.dataset.visible));a.jumpObserver.observe(node,{attributes:true,attributeFilter:['data-visible']})});
+    await jump.click();
+    await page.waitForFunction(()=>{const n=document.querySelector('.ai-message-list');return n.scrollHeight-n.scrollTop-n.clientHeight<2},null,{timeout:3000});
+    await page.waitForTimeout(180);
+    assert.equal(await page.locator('.nf-chat-jump').getAttribute('data-visible'),'false');
+    assert.equal(await page.locator('.nf-chat-jump-button').isDisabled(),true);
+    assert.equal(await page.locator('.ai-message-list').evaluate(n=>document.activeElement===n),true,'jump focus stays on history, not hidden button or mobile composer');
+    assert.deepEqual(await input.boundingBox(),stableComposer,'overlay never changes composer geometry');
+    const jumpStates=await page.evaluate(()=>{window.presentationTest.jumpObserver.disconnect();return window.presentationTest.jumpStates});
+    assert.ok(jumpStates.length>0);assert.ok(jumpStates.every(s=>s==='false'),'smooth arrival must not hide then re-show the arrow');
+    await page.emulateMedia({reducedMotion:'reduce'});
+    await page.locator('.ai-message-list').evaluate(n=>{n.scrollTo({top:0,behavior:'instant'});n.dispatchEvent(new Event('scroll'))});
+    await jump.waitFor();
+    const reducedJump=await page.locator('.nf-chat-jump').evaluate(n=>getComputedStyle(n).transitionDuration);
+    assert.ok(reducedJump.split(',').every(duration=>parseFloat(duration)<=0.0001),'reduced motion permits only the global near-zero transition override');
+    await jump.click();
+    await page.waitForFunction(()=>document.querySelector('.nf-chat-jump').dataset.visible==='false');
+    await page.waitForFunction(()=>{const n=document.querySelector('.ai-message-list');return n.scrollHeight-n.scrollTop-n.clientHeight<2});
+    // Native scroll events settle after an immediate reduced-motion jump.
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    await page.emulateMedia({reducedMotion:'no-preference'});
+    await page.locator('.ai-message-list').evaluate(n=>{n.scrollTo({top:0,behavior:'instant'});n.dispatchEvent(new Event('scroll'))});
+    await jump.waitFor();await jump.click();
+    await page.locator('.ai-message-list').hover();await page.mouse.wheel(0,-500);
+    await page.evaluate(()=>window.presentationTest.chunk('取消回到底部后保留阅读位置',true));
+    await page.waitForTimeout(180);
+    assert.ok(await page.locator('.ai-message-list').evaluate(n=>n.scrollTop<n.scrollHeight-n.clientHeight-96),'manual wheel cancels a live jump and incoming text must not force the user back down');
 
     // An older wide answer must not add a horizontal bar above the composer.
     const columns=Array.from({length:24},(_,i)=>'字段'+i);
@@ -171,9 +216,83 @@ try{
       await page.waitForTimeout(80);
       await page.locator('#root').screenshot({path:process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR+'/chat-scroll-'+(mobile?'mobile':'desktop')+'.png'});
     }
+
+    // Both message roles: exact raw text, stable icon feedback, retry and lifecycle.
+    const userText='请解释这段代码\n保留换行 👩🏽‍💻';
+    const replyText='这是 **完整回复**。\n\n```python\nprint("合成测试")\n```';
+    await page.evaluate(({userText,replyText})=>{const a=window.presentationTest;a.chat.chatMessages=[{id:'copy-user',role:'user',text:userText,createdAt:'2026-10-10T02:49:00+08:00'},{id:'copy-reply',role:'assistant',text:replyText,createdAt:'2026-10-10T02:50:00+08:00'}];a.chat.chatLoading=false;a.render()},{userText,replyText});
+    const userCopy=page.getByRole('button',{name:'复制消息',exact:true}),replyCopy=page.getByRole('button',{name:'复制回复',exact:true});
+    await userCopy.waitFor();await replyCopy.waitFor();
+    await input.fill('复制时保留草稿');
+    const copyInputBox=await input.boundingBox(),copyBox=await userCopy.boundingBox();
+    assert.equal(copyBox.width,mobile?44:26);assert.equal(copyBox.height,copyBox.width);
+    assert.equal(await userCopy.locator('svg').getAttribute('width'),'14');
+    assert.equal(await replyCopy.locator('svg').getAttribute('width'),'14');
+    assert.equal((await userCopy.locator('svg').boundingBox()).width,14);
+    assert.equal((await replyCopy.locator('svg').boundingBox()).height,14);
+    await input.focus();await page.mouse.move(599,1);await page.waitForTimeout(150);
+    assert.equal(await userCopy.evaluate(n=>getComputedStyle(n).opacity),mobile?'1':'0');
+    assert.equal(await page.locator('[data-role="user"] time').evaluate(n=>getComputedStyle(n).opacity),mobile?'1':'0');
+    if(!mobile){
+      const messageRow=page.locator('.nf-chat-message-row').filter({has:page.locator('.nf-chat-message--user')});
+      await messageRow.hover();await page.waitForTimeout(150);
+      assert.equal(await userCopy.evaluate(n=>getComputedStyle(n).opacity),'1');
+      assert.equal(await page.locator('[data-role="user"] time').evaluate(n=>getComputedStyle(n).opacity),'1');
+      assert.deepEqual(await userCopy.boundingBox(),copyBox,'hover cannot move the copy target');
+      await page.mouse.move(599,1);await page.waitForTimeout(150);
+      assert.equal(await userCopy.evaluate(n=>getComputedStyle(n).opacity),'0');
+      assert.equal(await page.locator('[data-role="user"] time').evaluate(n=>getComputedStyle(n).opacity),'0');
+    }
+    const alignments=await page.evaluate(()=>{const user=document.querySelector('.nf-chat-message--user').getBoundingClientRect(),userCopy=document.querySelector('[aria-label="复制消息"]').getBoundingClientRect(),reply=document.querySelector('.nf-chat-message--assistant').getBoundingClientRect(),replyTime=document.querySelector('[data-role="assistant"] time').getBoundingClientRect();return {userRight:user.right,userCopyRight:userCopy.right,replyLeft:reply.left,replyTimeLeft:replyTime.left}});
+    assert.ok(Math.abs(alignments.userRight-alignments.userCopyRight)<1);assert.ok(Math.abs(alignments.replyLeft-alignments.replyTimeLeft)<1);
+    assert.deepEqual(await page.locator('.nf-chat-message-actions time').allTextContents(),['2:49','2:50']);
+    assert.equal(await userCopy.getAttribute('title'),null);assert.equal(await replyCopy.getAttribute('title'),null);
+    await page.keyboard.press('Tab');await userCopy.focus();assert.notEqual(await userCopy.evaluate(n=>getComputedStyle(n).outlineStyle),'none');
+    await page.waitForTimeout(150);assert.equal(await userCopy.evaluate(n=>getComputedStyle(n).opacity),'1');
+    assert.equal(await page.locator('[data-role="user"] time').evaluate(n=>getComputedStyle(n).opacity),'1');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(()=>document.querySelector('[aria-label="复制消息"]').dataset.copyState==='copied');
+    assert.equal(await page.evaluate(()=>window.presentationTest.copies.at(-1)),userText);
+    assert.equal(await replyCopy.getAttribute('data-copy-state'),'idle');
+    await page.locator('.nf-chat-message-row').filter({has:replyCopy}).hover();await replyCopy.click();
+    await page.waitForFunction(()=>document.querySelector('[aria-label="复制回复"]').dataset.copyState==='copied');
+    assert.equal(await page.evaluate(()=>window.presentationTest.copies.at(-1)),replyText);
+    assert.equal(await input.inputValue(),'复制时保留草稿');assert.deepEqual(await input.boundingBox(),copyInputBox);
+    assert.deepEqual(await userCopy.boundingBox(),copyBox,'success check does not move its action target');
+    if(!mobile){await page.mouse.move(599,1);await page.waitForTimeout(150);assert.equal(await replyCopy.evaluate(n=>getComputedStyle(n).opacity),'0','mouse-out hides even a mouse-focused copy action');assert.equal(await page.locator('[data-role="assistant"] time').evaluate(n=>getComputedStyle(n).opacity),'0','time hides together with copy');}
+    await page.waitForFunction(()=>[...document.querySelectorAll('.nf-chat-copy')].every(n=>n.dataset.copyState==='idle'),null,{timeout:2000});
+    assert.equal(await page.getByText('已复制',{exact:true}).count(),0);
+    await page.evaluate(()=>window.presentationTest.copyMode='pending');
+    await page.keyboard.press('Tab');await replyCopy.focus();await page.keyboard.press('Enter');
+    await page.waitForFunction(()=>document.querySelector('[aria-label="复制回复"]').dataset.copyState==='copying');
+    assert.equal(await replyCopy.evaluate(n=>document.activeElement===n),true,'a pending clipboard write must not discard keyboard focus');
+    const pendingWrites=await page.evaluate(()=>window.presentationTest.copies.length);
+    await replyCopy.evaluate(n=>n.click());
+    assert.equal(await page.evaluate(()=>window.presentationTest.copies.length),pendingWrites);
+    await page.evaluate(()=>window.presentationTest.finishCopy());
+    await page.waitForFunction(()=>document.querySelector('[aria-label="复制回复"]').dataset.copyState==='copied');
+    await page.evaluate(()=>window.presentationTest.copyMode='denied');await page.locator('.nf-chat-message-row').filter({has:replyCopy}).hover();await replyCopy.click();
+    await page.getByRole('alert').filter({hasText:'复制失败，请重试'}).waitFor();
+    assert.equal(await replyCopy.getAttribute('data-copy-state'),'error');assert.deepEqual(await input.boundingBox(),copyInputBox);
+    const errorUserCopyBox=await userCopy.boundingBox();
+    await userCopy.focus();await page.keyboard.press('Enter');
+    await page.waitForFunction(()=>document.querySelector('[aria-label="复制消息"]').dataset.copyState==='error');
+    assert.deepEqual(await userCopy.boundingBox(),errorUserCopyBox,'user-side retry feedback must not shift the copy target');
+    await page.evaluate(()=>{const a=window.presentationTest;a.copyMode='fallback';Object.defineProperty(navigator,'clipboard',{configurable:true,value:undefined})});
+    await page.locator('.nf-chat-message-row').filter({has:replyCopy}).hover();await replyCopy.click();await page.waitForFunction(()=>document.querySelector('[aria-label="复制回复"]').dataset.copyState==='copied');
+    assert.equal(await page.evaluate(()=>window.presentationTest.copies.at(-1)),replyText);
+    assert.equal(await page.locator('[data-message-copy-fallback]').count(),0);
+    assert.equal(await replyCopy.evaluate(n=>document.activeElement===n),true);assert.equal(await input.inputValue(),'复制时保留草稿');
+    await userCopy.focus();await page.keyboard.press('Enter');
+    await page.waitForFunction(()=>document.querySelector('[aria-label="复制消息"]').dataset.copyState==='copied');
+    if(process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR){
+      await page.waitForTimeout(1250);await input.focus();
+      if(!mobile) await page.locator('.nf-chat-message-row').filter({has:replyCopy}).hover();
+      await page.locator('#root').screenshot({path:process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR+'/chat-actions-'+(mobile?'mobile':'desktop')+'.png'});
+    }
     await page.evaluate(()=>window.presentationTest.clear());await page.waitForTimeout(100);
     assert.equal(await page.locator('.nf-chat-message').count(),0);
-    reports.push({mobile,singleChunkTyping:true,stats,stop:true,completedTailStop:true,switchHistory:true,canonicalReplacement:true,markdownActions:true,reducedMotion:true,backgroundFlush:true,readingPosition:true,inputStable:true,scrollSurface,wideContentLocalScroll:true});
+    reports.push({mobile,singleChunkTyping:true,stats,stop:true,completedTailStop:true,switchHistory:true,canonicalReplacement:true,markdownActions:true,reducedMotion:true,backgroundFlush:true,readingPosition:true,inputStable:true,scrollSurface,wideContentLocalScroll:true,jumpGeometry,jumpStable:true,bothRoleCopy:true,smallHoverCopy:true,timeTogether:true,copyKeyboard:true,pendingCopyFocus:true,copyFeedbackStable:true,copyFailureRetry:true,copyFallback:true});
     await context.close();
   }
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);

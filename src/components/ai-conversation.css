@@ -28,6 +28,52 @@
   min-height: 0;
   overflow-x: hidden;
 }
+.nf-ai-conversation .nf-chat-thread { position: relative; display: flex; flex: 1; min-width: 0; min-height: 0; }
+.nf-ai-conversation .nf-chat-message-actions { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 26px; margin-top: 4px; }
+.nf-ai-conversation .nf-chat-message-actions[data-role="user"] { max-width: 92%; justify-content: flex-end; }
+.nf-ai-conversation .nf-chat-message-time { color: var(--nf-chat-muted); font-size: 12px; line-height: 1.5; font-variant-numeric: tabular-nums; transition: opacity 120ms ease; }
+.nf-ai-conversation .nf-chat-message-actions[aria-hidden="true"] .nf-chat-message-time { visibility: hidden; }
+.nf-ai-conversation .nf-chat-copy {
+  display: grid; place-items: center; flex-shrink: 0; width: 26px; height: 26px; padding: 0;
+  border: 0; border-radius: 7px; color: var(--nf-chat-muted); background: transparent; cursor: pointer;
+  transition: opacity 120ms ease, color 140ms ease, background-color 140ms ease;
+}
+.nf-ai-conversation .nf-chat-copy:active { background: var(--nf-chat-line); }
+.nf-ai-conversation .nf-chat-copy[aria-disabled="true"] { cursor: progress; }
+.nf-ai-conversation .nf-chat-copy[data-copy-state="copied"] { color: var(--nf-chat-text); }
+.nf-ai-conversation .nf-chat-message-actions[aria-hidden="true"] .nf-chat-copy { visibility: hidden; }
+.nf-ai-conversation .nf-chat-copy-error { color: var(--nf-chat-muted); font-size: 12px; }
+.nf-ai-conversation .nf-chat-message-actions[data-role="user"] .nf-chat-copy-error { order: -1; }
+.nf-ai-conversation .nf-chat-copy:focus-visible, .nf-ai-conversation .nf-chat-jump-button:focus-visible {
+  outline: 2px solid var(--nf-chat-muted); outline-offset: 2px;
+}
+.nf-ai-conversation .nf-chat-jump {
+  position: absolute; left: 50%; bottom: 12px; z-index: 20; opacity: 0; pointer-events: none;
+  transform: translate(-50%, 6px); transition: opacity 140ms ease, transform 160ms ease;
+}
+.nf-ai-conversation .nf-chat-jump[data-visible="true"] { opacity: 1; transform: translate(-50%, 0); }
+.nf-ai-conversation .nf-chat-jump-button {
+  display: grid; place-items: center; width: 34px; height: 34px; padding: 0;
+  border: 1px solid var(--nf-chat-line); border-radius: 50%; color: var(--nf-chat-text);
+  background: var(--nf-chat-surface); box-shadow: 0 2px 8px var(--nf-chat-shadow); cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+.nf-ai-conversation .nf-chat-jump[data-visible="true"] .nf-chat-jump-button { pointer-events: auto; }
+.nf-ai-conversation .nf-chat-jump-button:active { background: var(--nf-chat-line); }
+@media (hover: hover) and (pointer: fine) {
+  .nf-ai-conversation .nf-chat-copy:hover { color: var(--nf-chat-text); background: var(--nf-chat-soft); }
+  .nf-ai-conversation .nf-chat-jump-button:hover { background: var(--nf-chat-soft); border-color: var(--nf-chat-focus); }
+  .nf-ai-conversation .nf-chat-copy { opacity: 0; pointer-events: none; }
+  .nf-ai-conversation .nf-chat-message-time { opacity: 0; }
+  .nf-ai-conversation .nf-chat-message-row:hover .nf-chat-copy,
+  .nf-ai-conversation .nf-chat-copy:focus-visible { opacity: 1; pointer-events: auto; }
+  .nf-ai-conversation .nf-chat-message-row:hover .nf-chat-message-time,
+  .nf-ai-conversation .nf-chat-message-actions:has(.nf-chat-copy:focus-visible) .nf-chat-message-time { opacity: 1; }
+}
+@media (pointer: coarse) {
+  .nf-ai-conversation .nf-chat-copy, .nf-ai-conversation .nf-chat-jump-button { width: 44px; height: 44px; }
+  .nf-ai-conversation .nf-chat-message-actions { min-height: 44px; }
+}
 /* Narrow, transparent tracks; do not hide the native scrolling affordance. */
 .nf-ai-conversation,
 .nf-ai-conversation * {
@@ -174,7 +220,8 @@
 @media (prefers-reduced-motion: reduce) {
   .nf-ai-conversation .nf-chat-status-label { animation: none !important; background: none !important; color: var(--nf-chat-muted) !important; }
   .nf-ai-conversation .nf-chat-mode-menu { animation: none; }
-  .nf-ai-conversation .nf-chat-composer, .nf-ai-conversation button { transition: none; }
+  .nf-ai-conversation .nf-chat-jump { transition: none; transform: translate(-50%, 0); }
+  .nf-ai-conversation .nf-chat-composer, .nf-ai-conversation button, .nf-ai-conversation .nf-chat-message-time { transition: none; }
 }
 @media (forced-colors: active) {
   .nf-ai-conversation, .nf-ai-conversation * { scrollbar-width: auto; scrollbar-color: auto; }
@@ -183,7 +230,7 @@
   .nf-ai-conversation .nf-chat-status-label { animation: none !important; background: none !important; color: CanvasText !important; }
   .nf-ai-conversation .nf-chat-status-dot { background: CanvasText; }
   .nf-ai-conversation .nf-chat-composer { border-color: CanvasText; }
-  .nf-ai-conversation .nf-chat-send { border: 1px solid ButtonText; }
+  .nf-ai-conversation .nf-chat-send, .nf-ai-conversation .nf-chat-jump-button { border: 1px solid ButtonText; }
 }
 @media (prefers-contrast: more) {
   .nf-ai-conversation { --nf-chat-scrollbar: var(--nf-chat-muted); }

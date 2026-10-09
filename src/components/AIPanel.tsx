@@ -1,6 +1,7 @@
 import { Fragment, memo, useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   ArrowUp,
+  ArrowDown,
   FileText,
   BookOpen,
   MessageCircle,
@@ -35,6 +36,7 @@ import type { AgentToolTrace, ChatMessage, ChatSource } from "../types";
 import { resolveAgentCheckpoint, type AgentTaskSnapshot } from "../services/agent";
 import { getNoteDraft } from "../services/drafts";
 import ChatGenerationStatus from "./ChatGenerationStatus";
+import ChatMessageActions from "./ChatMessageActions";
 import { useChatPresentation } from "../hooks/useChatPresentation";
 import SoftMenu from "./SoftMenu";
 import "./ai-conversation.css";
@@ -408,6 +410,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollChatRef = useRef(true);
+  const manualChatJumpRef = useRef(false);
   const previousMessageCountRef = useRef(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const modeMenuRef = useRef<HTMLDivElement>(null);
@@ -633,11 +636,14 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
   }, []);
 
   const scrollChatToBottom = useCallback(
-    (behavior: ScrollBehavior = "smooth") => {
+    (behavior: ScrollBehavior = "smooth", manualJump = false) => {
       const element = chatScrollRef.current;
       if (!element) return;
+      // Ignore intermediate smooth-scroll positions when resuming live output.
+      manualChatJumpRef.current = manualJump;
       setChatAutoScroll(true);
-      element.scrollTo({ top: element.scrollHeight, behavior });
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      element.scrollTo({ top: element.scrollHeight, behavior: reduceMotion ? "auto" : behavior });
     },
     [setChatAutoScroll]
   );
@@ -646,7 +652,17 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
     const element = chatScrollRef.current;
     if (!element) return;
     const distanceToBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
+    if (manualChatJumpRef.current && distanceToBottom > 96) return;
+    manualChatJumpRef.current = false;
     setChatAutoScroll(distanceToBottom <= 96);
+  }, [setChatAutoScroll]);
+
+  const interruptManualChatJump = useCallback(() => {
+    if (!manualChatJumpRef.current) return;
+    manualChatJumpRef.current = false;
+    const element = chatScrollRef.current;
+    if (element) element.scrollTo({ top: element.scrollTop, behavior: "auto" });
+    setChatAutoScroll(false);
   }, [setChatAutoScroll]);
 
   useEffect(() => {
@@ -662,7 +678,8 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
     }
 
     if (!shouldAutoScrollChatRef.current) return;
-    element.scrollTo({ top: element.scrollHeight, behavior: "auto" });
+    const smoothJump = manualChatJumpRef.current && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    element.scrollTo({ top: element.scrollHeight, behavior: smoothJump ? "smooth" : "auto" });
   }, [visibleMessages.length, lastVisibleMessage?.id, lastVisibleMessage?.text,
     lastVisibleMessage?.sources, lastVisibleMessage?.draftCard, scrollChatToBottom]);
 
@@ -1090,9 +1107,19 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
       )}
 
       {/* Chat messages */}
+      <div className="nf-chat-thread">
       <div
         ref={chatScrollRef}
         onScroll={handleChatScroll}
+        onWheel={interruptManualChatJump}
+        onTouchStart={interruptManualChatJump}
+        onPointerDown={interruptManualChatJump}
+        onKeyDown={(event) => {
+          if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key)) interruptManualChatJump();
+        }}
+        role="region"
+        aria-label="聊天记录"
+        tabIndex={-1}
         className="ai-message-list flex-1 space-y-[26px] overflow-y-auto px-0 py-[34px]"
       >
         {visibleMessages.map((msg, index) => {
@@ -1117,7 +1144,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
           })();
           return (
           <Fragment key={msg.id}>
-          <div className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
+          <div className={`nf-chat-message-row flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
             <div
               className={`nf-chat-message nf-chat-message--${msg.role}`}
               data-streaming={isStreaming}
@@ -1217,6 +1244,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
                 </div>
               )}
             </div>
+            {(msg.text.trim() || isStreaming) && <ChatMessageActions text={msg.text} role={msg.role} busy={isStreaming} createdAt={msg.createdAt} />}
             {msg.role === "assistant" && msg.draftCard &&
               renderDraftConversationCard(msg.draftCard)}
           </div>
@@ -1226,19 +1254,23 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
         {chatLoading && chatMessages[chatMessages.length - 1]?.role !== "assistant" && (
           <ChatGenerationStatus />
         )}
-        {!chatPinnedToBottom && chatMessages.length > 0 && (
-          <div className="sticky bottom-2 z-20 flex justify-center">
-            <button
-              type="button"
-              onClick={() => scrollChatToBottom("smooth")}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-jelly-blue/20 bg-white/95 px-2.5 text-[12px] font-medium text-jelly-blue-deep shadow-[0_8px_24px_rgba(22,34,45,0.12)] backdrop-blur transition-colors hover:bg-jelly-blue-pale"
-            >
-              <ChevronDown size={13} strokeWidth={1.9} />
-              回到底部
-            </button>
-          </div>
-        )}
         <div ref={chatEndRef} />
+      </div>
+        <div className="nf-chat-jump" data-visible={!chatPinnedToBottom && chatMessages.length > 0}
+          aria-hidden={chatPinnedToBottom || chatMessages.length === 0}>
+          <button
+            type="button"
+            aria-label="回到底部"
+            disabled={chatPinnedToBottom || chatMessages.length === 0}
+            onClick={() => {
+              chatScrollRef.current?.focus({ preventScroll: true });
+              scrollChatToBottom("smooth", true);
+            }}
+            className="nf-chat-jump-button"
+          >
+            <ArrowDown size={20} strokeWidth={1.8} aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       {/* Input */}

@@ -74,14 +74,19 @@ try {
   const { useAppStore } = await vite.ssrLoadModule('/src/store/index.tsx');
   const initial = useAppStore.getInitialState();
   useAppStore.setState(initial, true);
+  const messageStarted = Date.now();
   let operation = useAppStore.getState().sendMessage('合成完整输出');
   while (streams.length < 1) await tick();
+  const messageTimes = useAppStore.getState().chatMessages.map(message => message.createdAt);
+  assert.equal(messageTimes.length, 2);
+  assert.ok(messageTimes.every(time => Date.parse(time) >= messageStarted && Date.parse(time) <= Date.now()), 'both local message roles record real creation times');
   assert.equal(useAppStore.getState().chatMessages.at(-1).streamState, 'streaming');
   streams[0].push({ choices: [{ delta: { content: full } }] }); await tick();
   assert.equal(useAppStore.getState().chatMessages.at(-1).text, full, 'raw store is never paced or truncated');
   streams[0].close(); await operation;
   assert.equal(useAppStore.getState().chatMessages.at(-1).streamState, 'completed');
   assert.equal(useAppStore.getState().chatLoading, false);
+  assert.deepEqual(useAppStore.getState().chatMessages.map(message => message.createdAt), messageTimes, 'stream updates never rewrite the original creation times');
 
   operation = useAppStore.getState().sendMessage('合成停止输出');
   while (streams.length < 2) await tick();
