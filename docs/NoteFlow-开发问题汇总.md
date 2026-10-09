@@ -195,6 +195,10 @@ IA-04 / IA-05、UI-02 / UI-17 仍部分解决；真实写入 E2E、深色视觉�
 
 测试迭代：原界面已有其他 tooltip，最初泛用 role 数量断言混入旧提示，已限制到新增复制提示；提示跨间隙收起与原按钮淡出是两个阶段，固定等待没有证明最终状态，改为有界等待实际透明度归零。初版失败不计为验证通过。状态仍为 🟡 部分解决，实体读屏 / 触屏、Safari / Firefox、真实剪贴板权限与用户审美待验收；DEV-11 既有 Node 弃用警告未处理。相关文件 src/components/ChatMessageActions.tsx、src/components/ai-conversation.css 及两份前端回归脚本；随 `feat: 为消息复制添加轻量悬停提示`，不重复新增问题 ID。
 
+2026-10-10 历史搜索内框修正（UI-05 / UI-17）：用户截图中的搜索框呈现「浅灰圆角底 + 深色直角内框」。根因是 menu-ui.css 通用 `:where(button, input):focus-visible` 描边，未分层菜单规则盖过输入框的 Tailwind `outline-none`，而不是新增复制 tooltip。正式组件 / 生产 CSS 的隔离浏览器在修改前复现 outline=solid、box-shadow=none，新增回归先失败。仅为 `.nf-history-search input` 覆盖重复描边，沿用已经认可的资料库搜索细底线焦点方式、原圆角底色和尺寸；补充明确 aria-label。不改变自动聚焦、过滤、菜单按钮、重命名、复制提示、关闭逻辑或后端。强制颜色下保留系统焦点描边，避免阴影被系统移除后没有可见焦点。
+
+验证：build、test:frontend（46 组组件 / 10 项 store）、test:editor-ui、test:chat-presentation、test:chat-ui、脚本语法、diff --check 和 check:dev-ports 通过，5173 / 8081 保持运行。正式 AIPanel / 生产 CSS 在全新、全网络阻断的 StrictMode 浏览器 600px / 320px 夹具实测：普通 focus-visible 时 outline=none、仅内侧 2px 底线；外底色仍为 rgb(236,239,242)、圆角 9px，桌面 h-9 随原 15px 根字号实际 33.75px，触屏 44px，不为修外观改大或缩小输入框。自动聚焦、过滤 / 无结果 / 清空、Tab / Shift+Tab、失焦清底线、其他菜单按钮焦点、普通 Esc 关闭与返回、深色 / 减少动效 / 强制颜色、输入几何稳定及无横向溢出通过；旧聊天回归继续通过，pageerror / 外部请求为空。两张合成局部截图人工检查，未访问受限原应用 / 用户会话或读写系统剪贴板。测试切回减少动效偏好时会重启原菜单进场，最终几何与截图等待实际 animation.finished，不把中间帧采样失败视为产品尺寸变化。UI-05 全局未解决，UI-17 仍部分解决；真实页面审美、实体设备 / 读屏和 Safari / Firefox 未验收，历史输入法 Escape 的独立诊断不计为正常关闭回归通过。随 `fix: 去除历史搜索框重复焦点描边`。
+
 ### 2026-10-02 整体前端审查：区分已精修与旧组件
 
 搜索局部稿后续实施：用户明确表示“可以修改”后，只修改 LibrarySearchDialog 与局部 library-search.css。根因沿用 UI-10 的固定大容器及 UI-02 / UI-05 / UI-17 的分散控件状态，不新增同义问题。正式初始约 193px、610px 宽，输入锚点稳定、内容按实测高度展开，结果区滚动；去重复线 / 胶囊 / 图标框，中性反馈与细线图标。退出 130ms 立即失活、快速重开取消卸载、背景 inert / 焦点返回；范围、防抖、literal / limit20、AbortController / 请求序列、归并 / 原文回调与错误重试保留。输入法鼠标关闭可能没有 compositionend，重开时取消未确认草稿 / 保留上次确认查询，并以组件回归验证不会残留 Escape 锁；不改变输入法确认规则。不把设计标本或合成内容塞进正式页面，不改后端或真实笔记。

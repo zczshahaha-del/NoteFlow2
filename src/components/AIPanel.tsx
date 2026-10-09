@@ -1027,6 +1027,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
               value={historyQuery}
               onChange={(event) => setHistoryQuery(event.target.value)}
               placeholder="搜索历史对话"
+              aria-label="搜索历史对话"
               className="h-9 min-w-0 flex-1 border-0 bg-transparent text-[13px] text-jelly-text outline-none placeholder:text-[#9aa5ad]"
               autoFocus
             />

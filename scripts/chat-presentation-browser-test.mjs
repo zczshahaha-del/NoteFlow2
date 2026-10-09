@@ -46,6 +46,69 @@ try{
     const page=await context.newPage();page.setDefaultTimeout(4000);page.on('pageerror',error=>errors.push(String(error)));
     await page.setContent('<html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>'+css+'#root{width:100%;max-width:500px;height:95vh;display:flex}#root>aside{flex:1;min-width:0}</style></head><body><div id="root"></div><script type="module">'+source+'</script></body></html>');
     await page.waitForFunction(()=>Boolean(window.presentationTest));
+
+    // The real history search must not get a rectangular inner focus frame.
+    await page.evaluate(()=>{const a=window.presentationTest;a.agent.agentSessionId='history-current';a.chat.chatSessions=[
+      {id:'history-current',title:'当前对话',updatedAt:'2026-10-10T02:49:00+08:00'},
+      {id:'history-other',title:'资料整理',updatedAt:'2026-10-10T02:50:00+08:00'},
+    ];a.render()});
+    const historyTrigger=page.locator('button[aria-haspopup="menu"]');
+    const historyMenu=page.locator('.nf-history-menu');
+    await historyTrigger.click();
+    const historySearch=historyMenu.getByPlaceholder('搜索历史对话');
+    await historySearch.waitFor();
+    await historyMenu.evaluate(async n=>Promise.all(n.getAnimations().map(a=>a.finished)));
+    const historySearchStyle=await historySearch.evaluate(n=>{const s=getComputedStyle(n),field=getComputedStyle(n.parentElement);return {focused:document.activeElement===n,focusVisible:n.matches(':focus-visible'),outline:s.outlineStyle,shadow:s.boxShadow,background:field.backgroundColor,radius:field.borderRadius,height:n.getBoundingClientRect().height}});
+    console.log(JSON.stringify({mobile,historySearchStyle}));
+    assert.equal(historySearchStyle.focused,true);
+    assert.equal(historySearchStyle.outline,'none','history search has a soft baseline, never an inner rectangle');
+    assert.notEqual(historySearchStyle.shadow,'none','focused search keeps a visible baseline');
+    assert.equal(historySearchStyle.radius,'9px');
+    assert.equal(historySearchStyle.background,'rgb(236, 239, 242)');
+    const rootFontSize=await page.evaluate(()=>parseFloat(getComputedStyle(document.documentElement).fontSize));
+    assert.equal(historySearchStyle.height,mobile?44:2.25*rootFontSize,'preserve existing h-9 sizing and coarse-pointer minimum');
+    assert.equal(await historySearch.getAttribute('aria-label'),'搜索历史对话');
+    const historySearchBox=await historySearch.boundingBox();
+    assert.equal(await historyMenu.locator('.nf-history-row').count(),2);
+    await historySearch.fill('资料');assert.equal(await historyMenu.locator('.nf-history-row').count(),1);
+    assert.equal(await historyMenu.locator('.nf-history-name').textContent(),'资料整理');
+    await historySearch.fill('不存在');await historyMenu.getByText('没有找到对话',{exact:true}).waitFor();
+    assert.deepEqual(await historySearch.boundingBox(),historySearchBox,'filtering does not move the search input');
+    await historySearch.fill('');
+    await page.keyboard.press('Tab');
+    assert.equal(await historySearch.evaluate(n=>getComputedStyle(n).boxShadow),'none','blur removes the field baseline');
+    assert.equal(await page.evaluate(()=>getComputedStyle(document.activeElement).outlineStyle),'solid','other menu controls keep keyboard focus');
+    await page.keyboard.press('Shift+Tab');assert.equal(await historySearch.evaluate(n=>document.activeElement===n),true);
+    await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));
+    assert.equal(await historySearch.evaluate(n=>getComputedStyle(n).outlineStyle),'none');
+    assert.notEqual(await historySearch.evaluate(n=>getComputedStyle(n).boxShadow),'none');
+    assert.equal(await historySearch.evaluate(n=>getComputedStyle(n.parentElement).backgroundColor),'rgb(54, 63, 74)');
+    await page.evaluate(()=>document.documentElement.classList.remove('theme-dark'));
+    await page.emulateMedia({reducedMotion:'reduce'});
+    assert.equal(await historyMenu.evaluate(n=>getComputedStyle(n).animationName),'none');
+    await page.emulateMedia({forcedColors:'active'});
+    assert.equal(await historySearch.evaluate(n=>getComputedStyle(n).outlineStyle),'solid','forced colors retain system focus without relying on shadows');
+    await page.emulateMedia({forcedColors:'none',reducedMotion:'no-preference'});
+    await historyMenu.evaluate(async n=>Promise.all(n.getAnimations().map(a=>a.finished)));
+    assert.deepEqual(await historySearch.boundingBox(),historySearchBox);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),mobile?320:600);
+    if(process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR){
+      mkdirSync(process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR,{recursive:true});
+      await historyMenu.screenshot({path:process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR+'/history-search-'+(mobile?'mobile':'desktop')+'.png'});
+    }
+    // Read-only diagnostic of a separate existing issue, not a passing IME guard.
+    await historySearch.dispatchEvent('keydown',{key:'Escape',isComposing:true,bubbles:true});
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(resolve)));
+    const historyImeEscapeCloses=await historyTrigger.getAttribute('aria-expanded')==='false';
+    if(historyImeEscapeCloses){
+      await historyMenu.waitFor({state:'detached'});await historyTrigger.click();await historySearch.waitFor();
+      await historyMenu.evaluate(async n=>Promise.all(n.getAnimations().map(a=>a.finished)));
+    }
+    await page.keyboard.press('Escape');
+    assert.equal(await historyTrigger.getAttribute('aria-expanded'),'false');
+    assert.equal(await historyTrigger.evaluate(n=>document.activeElement===n),true);
+    await historyMenu.waitFor({state:'detached'});
+    await page.evaluate(()=>{const a=window.presentationTest;a.agent.agentSessionId=null;a.chat.chatSessions=[];a.render()});
     const full='这是模拟整段数据到达时的连续输出。'.repeat(18)+'👩🏽‍💻🇨🇳e\u0301👨‍👩‍👧‍👦结束。';
     await page.evaluate(()=>window.presentationTest.begin(10));
     await page.getByText('正在思考',{exact:true}).waitFor();
@@ -362,7 +425,7 @@ try{
     await page.evaluate(()=>window.presentationTest.clear());await page.waitForTimeout(350);
     assert.equal(await page.locator('.nf-chat-message').count(),0);
     assert.equal(await tooltip.count(),0,'clearing the conversation removes all hint portals and pending timers');
-    reports.push({mobile,singleChunkTyping:true,stats,stop:true,completedTailStop:true,switchHistory:true,canonicalReplacement:true,markdownActions:true,reducedMotion:true,backgroundFlush:true,readingPosition:true,inputStable:true,scrollSurface,wideContentLocalScroll:true,jumpGeometry,jumpStable:true,bothRoleCopy:true,smallHoverCopy:true,timeTogether:true,copyKeyboard:true,copyTooltip:true,tooltipDelayHoverBridge:true,tooltipNoLayoutShift:true,tooltipEscapeScrollResize:true,tooltipReducedMotionForcedColors:true,pendingCopyFocus:true,copyFeedbackStable:true,copyFailureRetry:true,copyFallback:true});
+    reports.push({mobile,historySearchSoftFocus:true,historySearchStyle,historySearchFilter:true,historySearchFocusReturn:true,historyImeEscapeCloses,singleChunkTyping:true,stats,stop:true,completedTailStop:true,switchHistory:true,canonicalReplacement:true,markdownActions:true,reducedMotion:true,backgroundFlush:true,readingPosition:true,inputStable:true,scrollSurface,wideContentLocalScroll:true,jumpGeometry,jumpStable:true,bothRoleCopy:true,smallHoverCopy:true,timeTogether:true,copyKeyboard:true,copyTooltip:true,tooltipDelayHoverBridge:true,tooltipNoLayoutShift:true,tooltipEscapeScrollResize:true,tooltipReducedMotionForcedColors:true,pendingCopyFocus:true,copyFeedbackStable:true,copyFailureRetry:true,copyFallback:true});
     await context.close();
   }
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
