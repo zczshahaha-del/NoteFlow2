@@ -306,8 +306,10 @@ try{
       assert.equal(await userCopy.evaluate(n=>getComputedStyle(n).opacity),'0');
       assert.equal(await page.locator('[data-role="user"] time').evaluate(n=>getComputedStyle(n).opacity),'0');
     }
-    const alignments=await page.evaluate(()=>{const user=document.querySelector('.nf-chat-message--user').getBoundingClientRect(),userCopy=document.querySelector('[aria-label="复制消息"]').getBoundingClientRect(),reply=document.querySelector('.nf-chat-message--assistant').getBoundingClientRect(),replyTime=document.querySelector('[data-role="assistant"] time').getBoundingClientRect();return {userRight:user.right,userCopyRight:userCopy.right,replyLeft:reply.left,replyTimeLeft:replyTime.left}});
-    assert.ok(Math.abs(alignments.userRight-alignments.userCopyRight)<1);assert.ok(Math.abs(alignments.replyLeft-alignments.replyTimeLeft)<1);
+    const alignments=await page.evaluate(()=>{const user=document.querySelector('.nf-chat-message--user').getBoundingClientRect(),userCopy=document.querySelector('[aria-label="复制消息"]').getBoundingClientRect(),userTime=document.querySelector('[data-role="user"] time').getBoundingClientRect(),reply=document.querySelector('.nf-chat-message--assistant').getBoundingClientRect(),replyCopy=document.querySelector('[aria-label="复制回复"]').getBoundingClientRect(),replyTime=document.querySelector('[data-role="assistant"] time').getBoundingClientRect();return {userRight:user.right,userCopyRight:userCopy.right,userGap:userCopy.left-userTime.right,replyLeft:reply.left,replyCopyLeft:replyCopy.left,replyGap:replyTime.left-replyCopy.right}});
+    assert.ok(Math.abs(alignments.userRight-alignments.userCopyRight)<1);
+    assert.ok(Math.abs(alignments.replyLeft-alignments.replyCopyLeft)<1,'reply action starts with copy, aligned to the reply content');
+    assert.equal(alignments.replyGap,6,'reply time is immediately after copy');assert.equal(alignments.userGap,6,'user time stays before copy');
     assert.deepEqual(await page.locator('.nf-chat-message-actions time').allTextContents(),['2:49','2:50']);
     assert.equal(await userCopy.getAttribute('title'),null);assert.equal(await replyCopy.getAttribute('title'),null);
 

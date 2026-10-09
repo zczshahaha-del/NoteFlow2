@@ -111,8 +111,9 @@ export default memo(function ChatMessageActions({ text, role, busy, createdAt }:
     }
   };
 
+  const timeElement = time && <time className="nf-chat-message-time" dateTime={createdAt!} aria-label={`消息时间 ${time.full}`}>{time.label}</time>;
   return <div className="nf-chat-message-actions" data-role={role} aria-hidden={!available || undefined}>
-    {time && <time className="nf-chat-message-time" dateTime={createdAt!} aria-label={`消息时间 ${time.full}`}>{time.label}</time>}
+    {role === "user" && timeElement}
     <button ref={button} type="button" className="nf-chat-copy" data-copy-state={state} data-hint-open={Boolean(hint)}
       aria-label={label} aria-describedby={hint ? hintId : undefined} aria-busy={state === "copying" || undefined}
       onMouseEnter={() => { if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) showHint(300); }}
@@ -121,6 +122,7 @@ export default memo(function ChatMessageActions({ text, role, busy, createdAt }:
       aria-disabled={state === "copying" || undefined} disabled={!available} onClick={() => void copy()}>
       {state === "copied" ? <Check size={14} strokeWidth={1.6} aria-hidden="true" /> : <Copy size={14} strokeWidth={1.6} aria-hidden="true" />}
     </button>
+    {role === "assistant" && timeElement}
     {state === "error" && <span className="nf-chat-copy-error" role="alert">复制失败，请重试</span>}
     {state === "copied" && <span className="sr-only" role="status">已复制</span>}
     {hint && createPortal(<span id={hintId} role="tooltip" className="nf-chat-copy-tooltip" style={hint}
