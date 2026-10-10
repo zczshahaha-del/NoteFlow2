@@ -38,7 +38,7 @@ const result=await build({root:repo,configFile:false,logLevel:'silent',plugins:[
 const chunks=result.output.filter(item=>item.type==='chunk');assert.equal(chunks.length,1);
 const source=chunks[0].code.replaceAll('</script','<\\/script');
 const browser=await chromium.launch({executablePath:process.env.NOTEFLOW_BROWSER_EXECUTABLE || undefined,headless:true,ignoreDefaultArgs:['--hide-scrollbars']});
-const errors=[],requests=[],reports=[];
+const errors=[],requests=[],reports=[],timeZoneReports=[];
 try{
   for(const mobile of [false,true]){
     const context=await browser.newContext({viewport:mobile?{width:320,height:700}:{width:600,height:850},deviceScaleFactor:1,isMobile:mobile,hasTouch:mobile,timezoneId:'Asia/Shanghai'});
@@ -447,6 +447,22 @@ try{
     reports.push({mobile,historySearchSoftFocus:true,historySearchStyle,historySearchFilter:true,historySearchFocusReturn:true,historyImeEscapeCloses,singleChunkTyping:true,stats,stop:true,completedTailStop:true,switchHistory:true,canonicalReplacement:true,markdownActions:true,reducedMotion:true,backgroundFlush:true,readingPosition:true,inputStable:true,scrollSurface,wideContentLocalScroll:true,jumpGeometry,jumpStable:true,bothRoleCopy:true,smallHoverCopy:true,timeTogether:true,copyKeyboard:true,copyTooltip:true,tooltipDelayHoverBridge:true,tooltipNoLayoutShift:true,tooltipEscapeScrollResize:true,tooltipReducedMotionForcedColors:true,pendingCopyFocus:true,copyFeedbackStable:true,copyFailureRetry:true,copyFallback:true});
     await context.close();
   }
+  // China message time is independent of the browser's timezone and supports old UTC responses.
+  const timestampCases=['2026-10-10T18:47:00','2026-10-10T18:47:00.123456','2026-10-10T18:47:00Z','2026-10-10T18:47:00+00:00','2026-10-11T02:47:00+08:00','2026-10-10T14:47:00-04:00','2026-10-10T16:00:00Z'];
+  for(const timezoneId of ['Asia/Shanghai','UTC','America/New_York']){
+    const context=await browser.newContext({viewport:{width:600,height:850},timezoneId});
+    await context.route('**/*',route=>{requests.push(route.request().url());return route.abort()});
+    const page=await context.newPage();page.setDefaultTimeout(4000);page.on('pageerror',error=>errors.push(String(error)));
+    await page.setContent('<html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>'+css+'#root{width:100%;max-width:500px;height:95vh;display:flex}#root>aside{flex:1;min-width:0}</style></head><body><div id="root"></div><script type="module">'+source+'</script></body></html>');
+    await page.waitForFunction(()=>Boolean(window.presentationTest));
+    await page.evaluate(timestamps=>{const a=window.presentationTest;a.chat.chatMessages=timestamps.map((createdAt,i)=>({id:'timezone-'+i,role:i%2?'user':'assistant',text:'合成时间检查',createdAt}));a.render()},timestampCases);
+    const times=page.locator('.nf-chat-message-actions time');await times.first().waitFor({state:'attached'});
+    assert.deepEqual(await times.allTextContents(),[...Array(6).fill('2:47'),'0:00']);
+    for(let i=0;i<6;i++)assert.match(await times.nth(i).getAttribute('aria-label'),/2026-10-11.*中国时间/,'the full date uses China time across midnight');
+    assert.equal(await times.first().getAttribute('datetime'),'2026-10-10T18:47:00Z','legacy machine-readable UTC is explicitly labeled');
+    timeZoneReports.push({timezoneId,legacyUtc:true,explicitOffsets:true,chinaDateRollover:true,midnight:true});
+    await context.close();
+  }
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
-  console.log(JSON.stringify({ok:true,productionComponent:true,networkBlocked:true,strictMode:true,reports,errors},null,2));
+  console.log(JSON.stringify({ok:true,productionComponent:true,networkBlocked:true,strictMode:true,reports,timeZoneReports,errors},null,2));
 }finally{await browser.close()}

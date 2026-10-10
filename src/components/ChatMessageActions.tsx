@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from "
 import { createPortal } from "react-dom";
 import { Check, Copy } from "lucide-react";
 import { copyMessageText } from "../utils/messageClipboard";
+import { formatChatMessageTime } from "../utils/chatMessageTime";
 
 export default memo(function ChatMessageActions({ text, role, busy, createdAt }: {
   text: string;
@@ -53,12 +54,7 @@ export default memo(function ChatMessageActions({ text, role, busy, createdAt }:
     cancelHintTimers();
     if (hint) hintHideTimer.current = window.setTimeout(hideHint, 120);
   };
-  const time = useMemo(() => {
-    const date = createdAt ? new Date(createdAt) : null;
-    if (!date || !Number.isFinite(date.getTime())) return null;
-    return { label: `${date.getHours()}:${String(date.getMinutes()).padStart(2, "0")}`,
-      full: date.toLocaleString("zh-CN", { hour12: false }) };
-  }, [createdAt]);
+  const time = useMemo(() => formatChatMessageTime(createdAt), [createdAt]);
   useEffect(() => {
     request.current++;
     pending.current = false;
@@ -111,7 +107,7 @@ export default memo(function ChatMessageActions({ text, role, busy, createdAt }:
     }
   };
 
-  const timeElement = time && <time className="nf-chat-message-time" dateTime={createdAt!} aria-label={`消息时间 ${time.full}`}>{time.label}</time>;
+  const timeElement = time && <time className="nf-chat-message-time" dateTime={time.dateTime} aria-label={`消息时间 ${time.full}`}>{time.label}</time>;
   return <div className="nf-chat-message-actions" data-role={role} aria-hidden={!available || undefined}>
     {role === "user" && timeElement}
     <button ref={button} type="button" className="nf-chat-copy" data-copy-state={state} data-hint-open={Boolean(hint)}

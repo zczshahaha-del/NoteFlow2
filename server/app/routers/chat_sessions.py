@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -16,15 +16,28 @@ from app.schemas.agent import ChatSessionCreatePayload, ChatSessionUpdatePayload
 router = APIRouter(prefix="/chat-sessions", tags=["chat-sessions"])
 
 
+def _utc_naive(value: datetime) -> datetime:
+    # The existing database uses naive UTC; offset-bearing cursors must match it.
+    return value.astimezone(timezone.utc).replace(tzinfo=None) if value.tzinfo else value
+
+
+def _utc_iso(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    # Label legacy naive UTC instead of silently interpreting it in the server timezone.
+    aware = value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+    return aware.astimezone(timezone.utc).isoformat()
+
+
 def _session_out(session: ChatSession) -> dict:
     return {
         "id": session.id,
         "title": session.title,
         "status": session.status,
         "currentNoteId": session.current_note_id,
-        "createdAt": session.created_at.isoformat() if session.created_at else None,
-        "updatedAt": session.updated_at.isoformat() if session.updated_at else None,
-        "lastMessageAt": session.last_message_at.isoformat() if session.last_message_at else None,
+        "createdAt": _utc_iso(session.created_at),
+        "updatedAt": _utc_iso(session.updated_at),
+        "lastMessageAt": _utc_iso(session.last_message_at),
     }
 
 
@@ -58,7 +71,7 @@ def _message_out(message: ChatMessage, draft_cards_by_run_id: dict[str, dict] | 
         "agentSessionId": message.session_id,
         "agentRunId": message.run_id,
         "draftCard": draft_card,
-        "createdAt": message.created_at.isoformat() if message.created_at else None,
+        "createdAt": _utc_iso(message.created_at),
     }
 
 
@@ -133,7 +146,7 @@ async def list_chat_messages(
             ChatMessage.user_id == user.id,
         )
         if before is not None:
-            statement = statement.where(ChatMessage.created_at < before)
+            statement = statement.where(ChatMessage.created_at < _utc_naive(before))
         result = await db.execute(
             statement.order_by(ChatMessage.created_at.desc()).limit(safe_limit)
         )

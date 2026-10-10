@@ -367,8 +367,7 @@ try {
   ] }));
   const copiedTimes = conversationContainer.querySelectorAll('time');
   assert.equal(copiedTimes.length, 2);
-  const copyDate = new Date(copyCreatedAt);
-  assert.equal(copiedTimes[0].textContent, `${copyDate.getHours()}:${String(copyDate.getMinutes()).padStart(2, '0')}`);
+  assert.equal(copiedTimes[0].textContent, '2:49', 'message times use China time, not the host timezone');
   assert.equal(copiedTimes[1].dateTime, copyCreatedAt);
   assert.ok(copiedTimes[0].getAttribute('aria-label').startsWith('消息时间 '));
   assert.equal(copiedTimes[0].hasAttribute('title'), false);
@@ -401,6 +400,16 @@ try {
   assert.equal(copyButton('assistant').dataset.copyState, 'idle', 'late clipboard completion cannot mark replacement text copied');
   await act(async () => useAppStore.setState({ chatMessages: [{ ...assistantMessage, text: '切换后的消息', createdAt: 'invalid-date' }] }));
   assert.equal(conversationContainer.querySelectorAll('time').length, 0, 'invalid timestamps stay absent instead of rendering Invalid Date');
+  for (const createdAt of ['2026-10-10T18:47:00', '2026-10-10T18:47:00.123456', '2026-10-10T18:47:00Z', '2026-10-10T18:47:00+00:00', '2026-10-11T02:47:00+08:00', '2026-10-10T14:47:00-04:00']) {
+    await act(async () => useAppStore.setState({ chatMessages: [{ ...assistantMessage, text: '跨时区历史', createdAt }] }));
+    const time = conversationContainer.querySelector('time');
+    assert.equal(time.textContent, '2:47', `legacy UTC / explicit offset must identify the same China time: ${createdAt}`);
+    assert.match(time.getAttribute('aria-label'), /2026-10-11.*中国时间/, 'the accessible full date crosses midnight too');
+    assert.equal(new Date(time.dateTime).toISOString().slice(0,19), '2026-10-10T18:47:00', 'machine-readable time retains the correct instant');
+  }
+  await act(async () => useAppStore.setState({ chatMessages: [{ ...assistantMessage, text: '午夜', createdAt: '2026-10-10T16:00:00Z' }] }));
+  assert.equal(conversationContainer.querySelector('time').textContent, '0:00', 'midnight is not shown as 24:00');
+  await act(async () => useAppStore.setState({ chatMessages: [{ ...assistantMessage, text: '切换后的消息', createdAt: 'invalid-date' }] }));
   clipboardMode = 'denied';
   await act(async () => copyButton('assistant').click());
   assert.equal(copyButton('assistant').dataset.copyState, 'error');
@@ -1331,6 +1340,7 @@ try {
     ok: true,
     storeAssertions: 10,
     componentAssertionGroups: 46,
+    chatTimeCoverage: ["China-time", "legacy-naive-UTC", "microseconds", "explicit-offsets", "date-rollover", "midnight", "invalid-time-hidden"],
     components: [
       "SoftMenu",
       "LoginPage",
