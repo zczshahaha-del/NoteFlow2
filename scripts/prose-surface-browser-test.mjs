@@ -91,6 +91,76 @@ function ratio(a, b) {
   const x = luminance(a), y = luminance(b);
   return (Math.max(x, y) + .05) / (Math.min(x, y) + .05);
 }
+async function freshCodeLifecycle(page) {
+  const checks = [];
+  for (const [language, source] of [
+    ['javascript', 'class FreshExample {}\nconst value = 42;'],
+    ['python', 'def example():\n    return True'],
+    ['go', 'var users []User\ndb.Preload("Posts").Find(&users)'],
+  ]) {
+    const id = 'fresh-code-' + language;
+    await page.evaluate(({ id }) => {
+      const { slice, api } = window.proseTest;
+      slice.treeData.push({ id, name: '新建代码验证.md', type: 'file', indexStatus: 'indexed' });
+      slice.fileContents[id] = '';
+      slice.selectedFileId = id;
+      api.render();
+    }, { id });
+    const editor = page.locator('.tiptap.note-content');
+    await page.waitForFunction(() => document.querySelector('.note-content')?.textContent === '');
+    await editor.click();
+    await page.keyboard.press('ControlOrMeta+Alt+c');
+    await editor.locator('.code-block').waitFor();
+    // Exercise the browser's editable paste event with an in-memory payload.
+    // Do not access the system clipboard or seed colored HTML/decorations.
+    await editor.evaluate((el, text) => {
+      const payload = new DataTransfer();
+      payload.setData('text/plain', text);
+      el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: payload, bubbles: true, cancelable: true }));
+    }, source);
+    const block = editor.locator('.code-block');
+    await page.waitForFunction(language => document.querySelector('.note-content .code-block')?.dataset.language === language, language);
+    assert.equal(await block.locator('code').textContent(), source);
+    assert.equal(await block.getAttribute('data-language-mode'), 'auto');
+    assert(await block.locator('code [class^="token-"]').count() > 0);
+    assert.equal(await editor.evaluate(el => el.contains(document.activeElement)), true);
+    await page.keyboard.press('End');
+    await page.keyboard.press('Enter');
+    await page.keyboard.insertText(language === 'python' ? '    # 新输入 😀' : '// 新输入 😀');
+    const edited = await block.locator('code').textContent();
+    assert(edited.endsWith('新输入 😀'));
+    assert(await block.locator('.token-comment').count() > 0, 'New input must be highlighted without changing focus');
+    assert.equal(await editor.evaluate(el => el.contains(document.activeElement)), true);
+    await page.waitForFunction(id => window.proseTest.api.updates.some(item => item.id === id && item.content.includes('新输入 😀')), id);
+    const saved = await page.evaluate(id => window.proseTest.slice.fileContents[id], id);
+    assert.match(saved, /^```\n/);
+    assert.doesNotMatch(saved, /token-|<span|style=/);
+    await block.hover();
+    await block.locator('.code-copy-button').click();
+    assert.equal(await page.evaluate(() => window.proseTest.api.copied.at(-1)), edited);
+    await block.locator('.code-language-trigger').click();
+    await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === '搜索代码语言');
+    await page.getByRole('option', { name: 'Plain Text', exact: true }).click();
+    await page.waitForFunction(() => document.querySelector('.note-content .code-block')?.dataset.languageMode === 'manual');
+    assert.equal(await block.locator('code [class^="token-"]').count(), 0);
+    assert.equal(await block.locator('code').textContent(), edited);
+    await block.locator('.code-language-trigger').click();
+    await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === '搜索代码语言');
+    await page.getByRole('option', { name: '自动识别', exact: true }).click();
+    await page.waitForFunction(() => document.querySelector('.note-content .code-block')?.dataset.languageMode === 'auto');
+    assert(await block.locator('code [class^="token-"]').count() > 0);
+    // Switch away and reopen through the real NoteEditor/Markdown lifecycle.
+    await page.evaluate(() => { window.proseTest.slice.selectedFileId = 'synthetic-prose'; window.proseTest.api.render(); });
+    await page.waitForFunction(() => document.querySelectorAll('.note-content .code-block').length === 3);
+    await page.evaluate(id => { window.proseTest.slice.selectedFileId = id; window.proseTest.api.render(); }, id);
+    await page.waitForFunction(language => document.querySelectorAll('.note-content .code-block').length === 1 && document.querySelector('.note-content .code-block')?.dataset.language === language, language);
+    assert.equal(await editor.locator('pre code').textContent(), edited);
+    assert.equal(await block.getAttribute('data-language-mode'), 'auto');
+    assert(await block.locator('code [class^="token-"]').count() > 0);
+    checks.push({ language, keyboardCreate: true, domPaste: true, liveInput: true, focusPreserved: true, rawCopy: true, manualPlainAndAuto: true, savedReopen: true });
+  }
+  return checks;
+}
 try {
   for (const width of [1280, 736, 320]) {
     console.log('Checking actual NoteEditor at ' + width + 'px');
@@ -192,11 +262,13 @@ try {
     assert.deepEqual(restored.heading, before.heading);
     assert.deepEqual(restored.code, before.code);
     assert.equal(await page.evaluate(() => window.proseTest.api.updates.length), updates);
+    await shell.evaluate(el => el.classList.add('nf-prose-refined'));
+    const freshCode = await freshCodeLifecycle(page);
     assert.deepEqual(errors, []);
     assert.deepEqual(requests, []);
-    reports.push({ width, before, after, dark, nativeCopy: true, languageOpenEscape: true, editingUndo: true, retainedCodeScroll: true, scopeRollback: true, reducedMotion: true, forcedColors: true, errors, requests });
+    reports.push({ width, before, after, dark, freshCode, nativeCopy: true, languageOpenEscape: true, editingUndo: true, retainedCodeScroll: true, scopeRollback: true, reducedMotion: true, forcedColors: true, errors, requests });
     await context.close();
   }
   writeFileSync(join(output, 'results.json'), JSON.stringify(reports, null, 2));
-  console.log(JSON.stringify({ ok: true, actualProductionComponent: true, syntheticStateOnly: true, networkBlocked: true, output, checks: reports.map(r => ({ width: r.width, noOverflow: r.after.pageWidth === r.width, widthPreserved: r.before.width === r.after.width, toolbarClear: r.after.toolbarClear, nativeCopy: r.nativeCopy, languageOpenEscape: r.languageOpenEscape, editingUndo: r.editingUndo, retainedCodeScroll: r.retainedCodeScroll, scopeRollback: r.scopeRollback, errors: r.errors })) }, null, 2));
+  console.log(JSON.stringify({ ok: true, actualProductionComponent: true, syntheticStateOnly: true, networkBlocked: true, output, checks: reports.map(r => ({ width: r.width, freshCode: r.freshCode, noOverflow: r.after.pageWidth === r.width, widthPreserved: r.before.width === r.after.width, toolbarClear: r.after.toolbarClear, nativeCopy: r.nativeCopy, languageOpenEscape: r.languageOpenEscape, editingUndo: r.editingUndo, retainedCodeScroll: r.retainedCodeScroll, scopeRollback: r.scopeRollback, errors: r.errors })) }, null, 2));
 } finally { await browser.close(); }

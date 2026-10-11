@@ -12,6 +12,8 @@ import Image from "@tiptap/extension-image";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { CODE_LANGUAGES, getCodeHighlight, normalizeCodeLanguage } from "./codeHighlight.ts";
+import type { CodeLanguage } from "./codeHighlight.ts";
 
 const NoteFlowUnderline = Underline.extend({
   parseMarkdown(token, helpers) {
@@ -124,83 +126,7 @@ const KeyboardKey = Mark.create({
   },
 });
 
-const CODE_LANGUAGES = [
-  { value: "plaintext", label: "Plain Text" },
-  { value: "javascript", label: "JavaScript" },
-  { value: "typescript", label: "TypeScript" },
-  { value: "tsx", label: "TSX" },
-  { value: "jsx", label: "JSX" },
-  { value: "go", label: "Go" },
-  { value: "java", label: "Java" },
-  { value: "python", label: "Python" },
-  { value: "sql", label: "SQL" },
-  { value: "bash", label: "Bash" },
-  { value: "json", label: "JSON" },
-  { value: "yaml", label: "YAML" },
-  { value: "markdown", label: "Markdown" },
-] as const;
-
-type CodeLanguage = (typeof CODE_LANGUAGES)[number]["value"];
 let closeActiveCodeLanguageMenu: (() => void) | null = null;
-
-const KEYWORDS: Partial<Record<CodeLanguage, string[]>> = {
-  javascript: ["async", "await", "break", "case", "catch", "class", "const", "continue", "default", "else", "export", "for", "from", "function", "if", "import", "let", "new", "return", "switch", "throw", "try", "typeof", "while"],
-  typescript: ["async", "await", "break", "case", "catch", "class", "const", "continue", "default", "else", "export", "for", "from", "function", "if", "import", "interface", "let", "new", "return", "switch", "throw", "try", "type", "typeof", "while"],
-  tsx: ["async", "await", "className", "const", "export", "from", "function", "import", "interface", "props", "return", "type"],
-  jsx: ["async", "await", "className", "const", "export", "from", "function", "import", "props", "return"],
-  go: ["break", "case", "const", "context", "defer", "else", "error", "for", "func", "go", "if", "import", "interface", "map", "nil", "package", "range", "return", "select", "struct", "type", "var"],
-  java: ["boolean", "break", "case", "catch", "class", "else", "extends", "final", "for", "if", "implements", "import", "new", "private", "public", "return", "static", "throw", "try", "void"],
-  python: ["and", "as", "async", "await", "class", "def", "elif", "else", "except", "False", "for", "from", "if", "import", "in", "is", "lambda", "None", "not", "or", "return", "True", "try", "while", "with"],
-  sql: ["alter", "and", "as", "by", "create", "delete", "drop", "from", "group", "having", "in", "insert", "into", "join", "left", "limit", "not", "on", "or", "order", "right", "select", "set", "table", "update", "values", "where"],
-  bash: ["case", "cd", "do", "done", "echo", "elif", "else", "esac", "export", "fi", "for", "function", "go", "if", "in", "npm", "pnpm", "then", "while", "yarn"],
-  json: ["false", "null", "true"],
-  yaml: ["false", "null", "true"],
-  markdown: ["TODO", "NOTE"],
-};
-
-type CodeToken = {
-  from: number;
-  to: number;
-  className: string;
-};
-
-function normalizeCodeLanguage(language: string): CodeLanguage {
-  const normalized = language.toLowerCase().trim().replace(/^language-/, "");
-  const aliases: Record<string, CodeLanguage> = {
-    js: "javascript",
-    ts: "typescript",
-    shell: "bash",
-    sh: "bash",
-    zsh: "bash",
-    py: "python",
-    yml: "yaml",
-    md: "markdown",
-    text: "plaintext",
-    plain: "plaintext",
-  };
-  const value = aliases[normalized] ?? normalized;
-  return CODE_LANGUAGES.some((item) => item.value === value)
-    ? (value as CodeLanguage)
-    : "plaintext";
-}
-
-function inferCodeLanguage(code: string): CodeLanguage {
-  const text = code.trim();
-  if (!text) return "plaintext";
-  if (/^(go\s+(get|mod|run|test|build|env)\b|npm\s+|pnpm\s+|yarn\s+|cd\s+|export\s+)/m.test(text)) {
-    return "bash";
-  }
-  if (/\b(package\s+main|func\s+\w+|gorm\.|fmt\.|return\s+nil|var\s+\w+)/.test(text)) {
-    return "go";
-  }
-  if (/\b(select|insert|update|delete|from|where|join|limit)\b/i.test(text)) {
-    return "sql";
-  }
-  if (/^\s*[{[]/.test(text) && /["'][\w-]+["']\s*:/.test(text)) {
-    return "json";
-  }
-  return "plaintext";
-}
 
 function createCodeToolbarElement(language: CodeLanguage) {
   const toolbar = document.createElement("div");
@@ -375,60 +301,17 @@ function openCodeLanguageMenu({
   return close;
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function codeTokenRanges(rawCode: string, language: CodeLanguage): CodeToken[] {
-  const keywords = KEYWORDS[language] ?? [];
-  const keywordPattern = keywords.length
-    ? `\\b(${keywords.map(escapeRegExp).join("|")})\\b`
-    : "(?!)";
-  const commentPattern =
-    language === "sql"
-      ? "--[^\\n]*"
-      : language === "python" || language === "bash" || language === "yaml"
-        ? "#[^\\n]*"
-        : "\\/\\/[^\\n]*|\\/\\*[\\s\\S]*?\\*\\/";
-  const tokenPattern = new RegExp(
-    `(${commentPattern})|("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*'|\`(?:\\\\.|[^\`\\\\])*\`)|(\\b\\d+(?:\\.\\d+)?\\b)|${keywordPattern}|(\\b[A-Za-z_$][\\w$]*(?=\\s*\\())|(\\.[A-Za-z_$][\\w$]*)|([{}()[\\].,;:+\\-*/%=!<>|&?]+)`,
-    "gi"
-  );
-  const tokens: CodeToken[] = [];
-  for (const match of rawCode.matchAll(tokenPattern)) {
-    const from = match.index ?? 0;
-    const to = from + match[0].length;
-    if (from === to) continue;
-    if (match[1]) {
-      tokens.push({ from, to, className: "token-comment" });
-    } else if (match[2]) {
-      const next = rawCode.slice(to).match(/^\s*:/);
-      tokens.push({ from, to, className: next ? "token-key" : "token-string" });
-    } else if (match[3]) {
-      tokens.push({ from, to, className: "token-number" });
-    } else if (match[4]) {
-      tokens.push({ from, to, className: "token-keyword" });
-    } else if (match[5]) {
-      tokens.push({ from, to, className: "token-function" });
-    } else if (match[6]) {
-      tokens.push({ from, to, className: "token-property" });
-    } else {
-      tokens.push({ from, to, className: "token-operator" });
-    }
-  }
-  return tokens;
-}
-
+const documentDecorations = new WeakMap<ProseMirrorNode, DecorationSet>();
 const codeHighlightPlugin = new Plugin({
   key: new PluginKey("noteflowCodeHighlight"),
   props: {
     decorations(state) {
+      const cached = documentDecorations.get(state.doc);
+      if (cached) return cached;
       const decorations: Decoration[] = [];
       state.doc.descendants((node: ProseMirrorNode, position: number) => {
         if (node.type.name !== "codeBlock") return;
-        const storedLanguage = typeof node.attrs.language === "string" ? node.attrs.language : "";
-        const language = normalizeCodeLanguage(storedLanguage || inferCodeLanguage(node.textContent));
-        codeTokenRanges(node.textContent, language).forEach((token) => {
+        getCodeHighlight(node).tokens.forEach((token) => {
           decorations.push(
             Decoration.inline(position + 1 + token.from, position + 1 + token.to, {
               class: token.className,
@@ -436,22 +319,27 @@ const codeHighlightPlugin = new Plugin({
           );
         });
       });
-      return DecorationSet.create(state.doc, decorations);
+      const result = DecorationSet.create(state.doc, decorations);
+      documentDecorations.set(state.doc, result);
+      return result;
     },
   },
 });
 
 const NoteFlowCodeBlock = CodeBlock.extend({
   renderHTML({ node, HTMLAttributes }) {
-    const storedLanguage = typeof node.attrs.language === "string" ? node.attrs.language : "";
-    const language = normalizeCodeLanguage(storedLanguage || inferCodeLanguage(node.textContent));
+    const { language } = getCodeHighlight(node);
+    const requested = normalizeCodeLanguage(node.attrs.language);
+    const stored = typeof node.attrs.language === "string" ? node.attrs.language.trim() : "";
+    const savedLanguage = requested === "auto" ? (stored && stored !== "auto" ? stored : null) : requested;
     return [
       "div",
       mergeAttributes(HTMLAttributes, {
         class: "code-block",
         "data-language": language,
       }),
-      ["pre", { class: "code-pre" }, ["code", { class: `language-${language}` }, 0]],
+      // Do not persist an automatic guess or colored spans in exported content.
+      ["pre", { class: "code-pre" }, ["code", savedLanguage ? { class: `language-${savedLanguage}` } : {}, 0]],
     ];
   },
   addProseMirrorPlugins() {
@@ -462,9 +350,7 @@ const NoteFlowCodeBlock = CodeBlock.extend({
       let currentNode = node;
       let menuClose: (() => void) | null = null;
       let copyResetTimer: number | null = null;
-      const initialLanguage = normalizeCodeLanguage(
-        (typeof node.attrs.language === "string" ? node.attrs.language : "") || inferCodeLanguage(node.textContent)
-      );
+      const initialLanguage = getCodeHighlight(node).language;
 
       const dom = document.createElement("div");
       dom.className = "code-block";
@@ -479,11 +365,17 @@ const NoteFlowCodeBlock = CodeBlock.extend({
       pre.append(code);
       dom.append(toolbarView.toolbar, pre);
 
-      const syncLanguage = (language: CodeLanguage) => {
+      const syncLanguage = () => {
+        const { language } = getCodeHighlight(currentNode);
+        const automatic = normalizeCodeLanguage(currentNode.attrs.language) === "auto";
         dom.dataset.language = language;
+        dom.dataset.languageMode = automatic ? "auto" : "manual";
         code.className = `language-${language}`;
-        toolbarView.languageCurrent.textContent = CODE_LANGUAGES.find((item) => item.value === language)?.label ?? "Plain Text";
+        const label = CODE_LANGUAGES.find(item => item.value === language)?.label ?? "Plain Text";
+        toolbarView.languageCurrent.textContent = automatic && language === "plaintext" ? "自动识别" : label;
+        toolbarView.languageButton.setAttribute("aria-label", automatic ? `选择代码语言，自动识别${language === "plaintext" ? "" : `为 ${label}`}` : `选择代码语言，${label}`);
       };
+      syncLanguage();
 
       const closeMenu = () => {
         const close = menuClose;
@@ -498,10 +390,10 @@ const NoteFlowCodeBlock = CodeBlock.extend({
         if (typeof position !== "number") return;
         const transaction = editor.view.state.tr.setNodeMarkup(position, undefined, {
           ...currentNode.attrs,
-          language,
+          language: language === "auto" ? null : language,
         });
         editor.view.dispatch(transaction);
-        syncLanguage(language);
+        syncLanguage();
         closeMenu();
         window.requestAnimationFrame(() => editor.view.focus());
       };
@@ -510,10 +402,9 @@ const NoteFlowCodeBlock = CodeBlock.extend({
         closeMenu();
         toolbarView.menu.classList.add("is-open");
         toolbarView.languageButton.setAttribute("aria-expanded", "true");
-        const storedLanguage = typeof currentNode.attrs.language === "string" ? currentNode.attrs.language : "";
         menuClose = openCodeLanguageMenu({
           trigger: toolbarView.languageButton,
-          selected: normalizeCodeLanguage(storedLanguage || inferCodeLanguage(currentNode.textContent)),
+          selected: normalizeCodeLanguage(currentNode.attrs.language),
           onSelect: selectLanguage,
           onClose: () => {
             menuClose = null;
@@ -586,8 +477,7 @@ const NoteFlowCodeBlock = CodeBlock.extend({
         update(updatedNode) {
           if (updatedNode.type !== currentNode.type) return false;
           currentNode = updatedNode;
-          const storedLanguage = typeof updatedNode.attrs.language === "string" ? updatedNode.attrs.language : "";
-          syncLanguage(normalizeCodeLanguage(storedLanguage || inferCodeLanguage(updatedNode.textContent)));
+          syncLanguage();
           return true;
         },
         stopEvent(event) {

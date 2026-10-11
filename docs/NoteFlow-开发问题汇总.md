@@ -177,7 +177,7 @@ IA-04 / IA-05、UI-02 / UI-17 仍部分解决；真实写入 E2E、深色视觉�
 
 验证证据：`test:chat-ui` 的正式 AIPanel / 生产 CSS、全新全网络阻断 StrictMode 浏览器在 600px / 320px 均报告 `historyImeEscapeCloses=true`；该字段是缺陷诊断，不是通过的 IME 防护断言。重开后普通 Esc 关闭 / 焦点返回通过，搜索外观 / 过滤回归也通过，不据此提高本问题状态。未操作真实会话或实体输入法；源码关联 src/components/AIPanel.tsx 的历史菜单 document keydown effect、src/components/SoftMenu.tsx 与 scripts/chat-presentation-browser-test.mjs。随 `docs: 记录历史菜单输入法 Escape 误关问题`，累计总数由 99 增至 100；UI-23 原焦点显现条目保持原状态。
 
-### UI-26：新建代码块的语言识别与高亮不完整（未解决）
+### UI-26：新建代码块的语言识别与高亮不完整（部分解决）
 
 现象：2026-10-11 用户质疑展示的彩色代码是否只在示例中手工上色，并指出新建代码框粘贴代码可能都是黑色。只读源码确认：独立设计稿是静态语法标记；正式编辑器则使用真实 codeHighlightPlugin，遍历所有 codeBlock，并根据每次当前内容生成 token 装饰，document-prose.css 仅定义各类 token 的统一配色，并不识别特定笔记或示例。因此新建代码块并非天然无高亮，但上一轮正文实施只检查带 Go 标记的既有合成代码块，未覆盖空块新建 / 粘贴。
 
@@ -186,6 +186,14 @@ IA-04 / IA-05、UI-02 / UI-17 仍部分解决；真实写入 E2E、深色视觉�
 验证证据：真实 createNoteFlowTiptapExtensions + Tiptap / ProseMirror，在独立 JSDOM 中逐次创建全新空编辑器，用 toggleCodeBlock 建空代码块，再经 EditorView.pasteText 走文本粘贴路径，未手工注入 token。Go 示例自动识别为 go，var / 字符串 / 函数等生成 token；JavaScript 的 class / const 和 Python 的 def / return / True 自动识别为 plaintext，关键字未生成 token，更新语言属性为 javascript / python 后正确生成对应关键词 token；不支持的 rust 属性仍归一为 plaintext。未选语言的 example 函数名被误标为 token-keyword、符号为 token-property，也确认组号错位。四个合成用例通过原文不变和上述诊断断言；这不是系统剪贴板、原生键盘 / 鼠标、正式页面实屏或全语言质量验收。首次探针缺少 Node 全局 ClipboardEvent 在粘贴前失败，改为传入隔离 DOM 的 paste Event 后才取得证据，不算产品错误或通过。
 
 处理与状态：本轮按用户提问只检查与记录，不修改业务代码或用户笔记。暂可在代码块已有语言菜单选对应受支持语言；需要另行完善语言识别 / token 分类，并补新建、粘贴、编辑、手动切换、保存重开及不支持语言回归。🔴 未解决，不提高正文审美或可访问性状态。相关源码 src/editor/tiptapExtensions.ts 的 inferCodeLanguage / codeTokenRanges / codeHighlightPlugin；上轮 a76ab98 的局部配色未改变此识别逻辑。随 `docs: 记录新建代码块高亮识别缺口`，问题总数由 103 增至 104。
+
+2026-10-11 后续实施：用户明确要求在编辑器底层统一自动变色。新增 src/editor/codeHighlight.ts，由 Lowlight 3.3.0 / Highlight.js 11.11.2 的真实语法树生成安全的 ProseMirror token 装饰，移除旧关键词正则和捕获组错位；按需注册 16 种语法，含 JSX / TSX 的 18 种代码语言入口共用此机制。自动识别先检查少量明确语法特征，再对最多前 12000 字符评分；确定语言后解析整块，不裁掉原文。原配色 / 正文 CSS 不改；函数调用与符号只在语法树未着色的空隙补充原有分类，不覆盖已解析的字符串 / 注释。默认 null 语言表示自动，菜单可选「自动识别」、指定语言或明确的 Plain Text；手动纯文本不被后续输入强制改色。未知语言标记按内容回退，但 Markdown / HTML 仍保留原标记；保存原文和手动语言，不保存彩色 HTML，也不把自动猜测写成固定语言。弱引用缓存不可变代码节点和文档装饰，移动光标与编辑其他块复用解析结果。
+
+验证：新增 test:code-highlight，21 个真实编辑器新建 / pasteText 夹具通过，涵盖 JavaScript / TypeScript / JSX、Go、Python、Java、SQL、Bash、JSON、YAML、Markdown、Rust、C / C++ / C#、HTML / CSS 和中文 / emoji / HTML 字面文本；所有手动语言入口、别名、未知语言回退、Markdown / HTML 保存重开、实时重识别、显式纯文本、未完成输入、函数分类、字符串 / 多行注释保护、关键词大小写、选区缓存、编辑其他块缓存及撤销也通过。400 行合成代码解析为毫秒级，仅为本机夹具测量，不代表任意长笔记的性能保证。首次撤销断言把同一时刻的程序化编辑当作独立操作，实际被 ProseMirror 合并为一组；加入明确历史分组后才验证对应一次撤销，不把该测试夹具失败计为产品问题或通过。
+
+正式 NoteEditor / Tiptap / 生产 CSS、StrictMode、全新且全网络阻断的 Edge 浏览器在 1280 / 736 / 320px 均通过：真实键盘新建空块，派发浏览器文本 paste 事件后 JavaScript / Python / Go 自动出现 token，继续键盘输入注释立即变色且焦点保留；复制仍为完整原文，菜单原生点击 Plain Text / 自动识别正确切换，切换笔记后重开保留原文和自动模式。没有预先灌彩色节点，也不读取系统剪贴板或真实用户笔记。原正文宽度、至少五种颜色、深浅对比度、工具栏避让、内部横向滚动、编辑撤销、减少动效、强制颜色和局部样式回退仍通过；pageerror / 外部请求为空。build、test:frontend（46 组 / 10 项）、test:editor-ui、test:tiptap-codec（8 项）、test:tiptap-selection（5 项）和 check:dev-ports 通过。具体机制、回退边界与包体影响见 design/noteflow-prose-implemented-notes.md 的后续记录，随 `fix: 统一新建代码块的自动语法高亮`。
+
+当前状态：🟡 部分解决。共享机制及隔离真实组件运行已完成；不承诺短小 / 混合 / 歧义代码或未支持语言能百分之百识别，必要时仍可手动指定。用户原先全黑的那一块及其语言属性尚未读取，原应用实屏、实体输入法 / 触屏、系统剪贴板权限和 Safari / Firefox 未验收，不据此声称所有原页面问题已解决。没有改后端、数据库、模型或用户数据，累计总数保持 104。
 
 ### 2026-10-10：消息时间 / 复制与圆形返回底部（UI-17 局部实施）
 
