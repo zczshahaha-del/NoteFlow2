@@ -185,13 +185,21 @@ IA-04 / IA-05、UI-02 / UI-17 仍部分解决；真实写入 E2E、深色视觉�
 
 回归：build、test:frontend（新增表格作用域检查，43 组组件 / 10 项 store）、test:editor-ui、test:chat-presentation、test:chat-ui 和 check:dev-ports 通过。状态：🟡 部分解决；局部修复已隔离运行验证，用户原会话刷新后的实际审美、Safari / Firefox 与实体设备仍待验收，不把其他区域滚动条或 SEC-01 等历史问题判为已解决。随 `fix: 精简聊天滚动条并收纳宽内容滚动`；相关文件 src/components/ai-conversation.css、src/components/AIPanel.tsx、src/utils/chatMarkdown.ts 及三个前端回归 / 诊断脚本。
 
-### UI-25：历史菜单输入法组合期 Escape 会误关（未解决）
+### UI-25：历史菜单输入法组合期 Escape 会误关（部分解决）
 
 现象：2026-10-10 修正历史搜索焦点内框时，独立诊断在搜索输入中派发 `keydown Escape` 且 `isComposing=true`，历史菜单仍关闭；真实输入法取消候选时也可能丢掉当前搜索上下文。根因：SoftMenu 自身虽然跳过组合期 Escape，但 AIPanel 的 `historyOpen` effect 另有 document 级 `closeOnEscape`，只检查 key，没有检查 isComposing；未被 SoftMenu 停止的组合事件继续冒泡至此。不是焦点描边、复制 tooltip 或后端问题，也不能用共享 SoftMenu 的单组件 IME 通过证明整个历史层正确。
 
 处理：本轮只记录，不混入已完成的搜索外观修复 `de8d7ea`，未更改任何关闭逻辑。下一步需单独统一历史层的输入法 Escape 保护，并验证菜单内 / 外焦点、普通 Esc 返回、重命名、退出动效与搜索草稿。当前状态：🔴 未解决。
 
 验证证据：`test:chat-ui` 的正式 AIPanel / 生产 CSS、全新全网络阻断 StrictMode 浏览器在 600px / 320px 均报告 `historyImeEscapeCloses=true`；该字段是缺陷诊断，不是通过的 IME 防护断言。重开后普通 Esc 关闭 / 焦点返回通过，搜索外观 / 过滤回归也通过，不据此提高本问题状态。未操作真实会话或实体输入法；源码关联 src/components/AIPanel.tsx 的历史菜单 document keydown effect、src/components/SoftMenu.tsx 与 scripts/chat-presentation-browser-test.mjs。随 `docs: 记录历史菜单输入法 Escape 误关问题`，累计总数由 99 增至 100；UI-23 原焦点显现条目保持原状态。
+
+2026-10-12 第三轮聊天历史输入修复：用户授权「下一轮」后，仅修复同一历史菜单的按键归属，保留外观、动作顺序、正文配色、流式和业务接口。将原诊断改为硬断言，修改前正式组件 / 生产 CSS 浏览器明确失败：`historyImeEscapeCloses=true`，预期 false。另核对同一区域重命名 input 原来直接用 Enter 提交、Escape 取消并冒泡到父菜单，没有输入法保护；属于同一组合期按键误判，沿用本条，不新增同义 ID。
+
+处理：历史菜单 capture 层跟踪 compositionstart / compositionend，并同时检查原生 isComposing 和兼容 keyCode=229。组合期 Enter / Escape 仅停止向改名、共享菜单及 document 冒泡，不 preventDefault，保留输入法自身的确认 / 取消。失焦或关闭清理未收到 compositionend 的状态，重开不残留关闭锁；document 兜底亦忽略组合期 / 已消费事件。普通改名 Escape 只取消改名，并在下一帧聚焦原行的重命名入口；再次 Escape 才关闭历史菜单。菜单外焦点下的普通 Escape 保留关闭，并返回历史入口。为改名输入补充「对话名称」可访问名称，不改变实际会话名称或保存接口。
+
+验证与状态：🟡 部分解决。build、frontend（46 组 / 10 项）、editor-ui、input-composition（6）和 chat-presentation 通过；chat-ui 使用正式 AIPanel / 构建 CSS、StrictMode、合成会话与内存剪贴板、全网络阻断，在 600px / 320px 通过 isComposing、composition 状态及 229 保护、输入法默认动作不取消、搜索 / 改名草稿和焦点保留、正常 Enter 恰好提交一次、两级 Escape、失焦 / 鼠标关闭无 end 后重开和菜单外 Escape 返回。原流式连续输出、停止、会话切换、回底 / 阅读位置、宽表格 / 代码、复制 / 时间同组显隐、深色 / 减少动效 / 强制颜色继续通过；三个时区的中国消息时间回归通过，pageerror / 外部请求为空。此次没有操作真实笔记、会话、模型、后端或系统剪贴板，也不宣称降低真实网络首字等待。
+
+测试边界：首次命令误把 Playwright 目录作为 ESM 模块入口，改用其 index.mjs 后才取得产品负向断言；组件夹具缺少 requestAnimationFrame，补 JSDOM visual 模式及绑定的浏览器全局后焦点回归通过，不为测试改产品调度或降低断言。以上工具 / 夹具失败不计为产品验证成功。实体中文输入法候选窗、Safari / Firefox、读屏、生产改名写入仍待验收；其他弹层的输入法和模态键盘契约未在本轮全面处理，UI-17 / DEV-11 保持原状态。关联 src/components/AIPanel.tsx 和两份聊天组件 / 浏览器回归脚本，随 `fix: 保护聊天历史输入法与改名退出焦点`，累计仍为 109。
 
 ### UI-26：新建代码块的语言识别与高亮不完整（部分解决）
 

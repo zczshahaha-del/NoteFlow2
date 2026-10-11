@@ -6,6 +6,7 @@ import { createServer } from "vite";
 
 const dom = new JSDOM("<!doctype html><html><body><div id='root'></div></body></html>", {
   url: "http://127.0.0.1:5173/",
+  pretendToBeVisual: true,
 });
 
 Object.assign(globalThis, {
@@ -17,6 +18,8 @@ Object.assign(globalThis, {
   Element: dom.window.Element,
   Node: dom.window.Node,
   NodeFilter: dom.window.NodeFilter,
+  requestAnimationFrame: dom.window.requestAnimationFrame.bind(dom.window),
+  cancelAnimationFrame: dom.window.cancelAnimationFrame.bind(dom.window),
 });
 Object.defineProperty(globalThis, "navigator", {
   configurable: true,
@@ -543,6 +546,16 @@ try {
   assert.equal(document.activeElement, historySearchInput, 'filtering keeps the input focus');
   await changeHistoryQuery('没有这个对话'); assert.match(historyMenu.textContent, /没有找到对话/);
   await changeHistoryQuery(''); assert.equal(historyMenu.querySelectorAll('.nf-history-row').length, 2);
+  for (const init of [{ isComposing: true }, { keyCode: 229 }]) {
+    await act(async () => historySearchInput.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, ...init })));
+    assert.equal(historyTrigger.getAttribute('aria-expanded'), 'true', 'history ignores IME Escape through every layer');
+  }
+  await act(async () => historySearchInput.dispatchEvent(new dom.window.CompositionEvent('compositionstart', { bubbles: true })));
+  let imeDefaultAllowed;
+  await act(async () => { imeDefaultAllowed = historySearchInput.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); });
+  assert.equal(imeDefaultAllowed, true, 'IME default action stays intact');
+  assert.equal(historyTrigger.getAttribute('aria-expanded'), 'true');
+  await act(async () => historySearchInput.dispatchEvent(new dom.window.CompositionEvent('compositionend', { bubbles: true })));
   const renameHistory = historyMenu.querySelector('button[aria-label="重命名历史对话"]');
   renameHistory.focus();
   assert.equal(document.activeElement === renameHistory, true);
@@ -550,9 +563,29 @@ try {
   assert.equal(renameHistory.closest('.nf-history-row').querySelectorAll('.nf-history-action').length, 2, "actions stay inline");
   await act(async () => renameHistory.click());
   const renameHistoryInput = historyMenu.querySelector('.nf-history-rename');
+  assert.equal(renameHistoryInput.getAttribute('aria-label'), '对话名称');
   await act(async () => {
     Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, "value").set.call(renameHistoryInput, "修改后的对话");
     renameHistoryInput.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+  });
+  for (const init of [{ isComposing: true }, { keyCode: 229 }]) {
+    for (const key of ['Enter', 'Escape']) {
+      await act(async () => renameHistoryInput.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key, bubbles: true, ...init })));
+      assert.equal(historyCalls.length, 0, 'IME never saves a partially composed title');
+      assert.equal(Boolean(historyMenu.querySelector('.nf-history-rename')), true, 'IME never discards rename draft');
+      assert.equal(historyTrigger.getAttribute('aria-expanded'), 'true');
+    }
+  }
+  await act(async () => renameHistoryInput.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })));
+  await act(async () => new Promise(resolve => window.requestAnimationFrame(resolve)));
+  assert.equal(Boolean(historyMenu.querySelector('.nf-history-rename')), false);
+  assert.equal(historyTrigger.getAttribute('aria-expanded'), 'true', 'cancel name without closing history');
+  assert.equal(document.activeElement?.getAttribute('aria-label'), '重命名历史对话');
+  await act(async () => historyMenu.querySelector('button[aria-label="重命名历史对话"]').click());
+  const confirmedRenameInput = historyMenu.querySelector('.nf-history-rename');
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set.call(confirmedRenameInput, '修改后的对话');
+    confirmedRenameInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
   });
   await act(async () => historyMenu.querySelector('button[aria-label="保存名称"]').click());
   assert.deepEqual(historyCalls, [["rename", "history-other", "修改后的对话"]]);
@@ -1360,7 +1393,7 @@ try {
     accountMenuCoverage: ["single-entry", "username", "no-native-tooltip", "username-click", "long-username", "unframed-footer-menu", "numeric-avatar-fallback", "enter-exit", "email-confirm", "devices-revoke", "device-error", "memory-CRUD", "memory-button-rollback-only", "ZIP-JSON-export", "import", "trash-restore", "modal-focus-trap", "escape-focus", "IME", "outside-pointer", "focus-leave", "sign-out", "compact", "note-folder-delete-confirm"],
     directoryRowCoverage: ["whole-row-selection", "full-name", "selected-more", "nested-indent", "pin-favorite-glyphs", "folder-disclosure", "file-open-callback", "independent-menu", "rename-cancel"],
     conversationCoverage: ["empty-wait", "whitespace-wait", "streaming-markdown", "hide-status-on-first-text", "no-status-during-transport-cleanup", "single-status", "completion", "stop-callback", "error-clears-status", "fallback-wait", "empty-send-disabled", "Enter-Shift-IME", "send-context", "library-mode", "remove-note-reference", "citation-open", "selection-expand", "selection-send", "scoped-scrollable-tables", "both-role-copy", "reply-copy-before-time", "user-time-before-copy", "raw-Markdown-copy", "copy-success-reset", "copy-failure-retry", "copy-duplicate-lock", "copy-late-result", "copy-fallback-focus-draft-selection", "copy-hint-label-portal", "copy-hint-keyboard-IME-Escape", "copy-hint-viewport-flip", "copy-hint-hover-delay-bridge", "copy-hint-scroll-resize-blur-lifecycle"],
-    softMenuCoverage: ["exit-inert", "unmount-after-exit", "quick-reopen", "reduced-motion", "Escape-focus", "IME-Escape", "file-action-order", "history-search-label-focus-filter", "history-inline-actions", "history-rename-callback", "history-delete-confirmation", "history-switch-callback"],
+    softMenuCoverage: ["exit-inert", "unmount-after-exit", "quick-reopen", "reduced-motion", "Escape-focus", "IME-Escape", "file-action-order", "history-search-label-focus-filter", "history-inline-actions", "history-IME-default-composition-229", "history-rename-IME-Enter-Escape", "history-rename-cancel-focus", "history-rename-callback", "history-delete-confirmation", "history-switch-callback"],
     searchSurfaceCoverage: ["compact-initial", "single-wait", "groups-count-highlight", "keyboard-select", "focus-trap-return", "background-inert", "exit-inert-click-block", "quick-reopen", "clear", "abort-stale-response", "empty", "title-content-scope", "error-retry", "escaped-input", "IME", "IME-pointer-close-reopen", "abort-close", "frozen-exit", "reopen-reset", "reduced-motion"],
   }));
 } finally {

@@ -24,6 +24,7 @@ chunk(delta,complete=false){chat.chatMessages=chat.chatMessages.map((m,i)=>i===c
 replace(text,status='streaming',sources){chat.chatMessages=chat.chatMessages.map((m,i)=>i===chat.chatMessages.length-1?{...m,text,streamState:status,sources}:m);chat.chatLoading=status==='streaming';this.render()},
 history(text){chat.chatLoading=false;chat.chatMessages=[{id:'loaded-'+(++key),role:'assistant',text}];this.render()},
 clear(){chat.chatLoading=false;chat.chatMessages=[];this.render()}};
+api.renames=[];chat.renameChatSession=async(id,title)=>{api.renames.push({id,title})};
 chat.stopGeneration=()=>{api.stops++;chat.chatLoading=false;chat.chatMessages=chat.chatMessages.map(m=>m.streamState==='streaming'?{...m,streamState:'stopped'}:m);api.render()};
 // In-memory clipboard substitute: no system clipboard access in browser tests.
 Object.defineProperty(navigator,'clipboard',{configurable:true,value:{async writeText(text){api.copies.push(text);if(api.copyMode==='denied')throw new Error('synthetic denial');if(api.copyMode==='pending')await new Promise(resolve=>{api.finishCopy=resolve})}}});
@@ -113,18 +114,63 @@ try{
       mkdirSync(process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR,{recursive:true});
       await historyMenu.screenshot({path:process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR+'/history-search-'+(mobile?'mobile':'desktop')+'.png'});
     }
-    // Read-only diagnostic of a separate existing issue, not a passing IME guard.
+    // IME cancellation must not close the real history menu.
     await historySearch.dispatchEvent('keydown',{key:'Escape',isComposing:true,bubbles:true});
     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(resolve)));
     const historyImeEscapeCloses=await historyTrigger.getAttribute('aria-expanded')==='false';
-    if(historyImeEscapeCloses){
-      await historyMenu.waitFor({state:'detached'});await historyTrigger.click();await historySearch.waitFor();
-      await historyMenu.evaluate(async n=>Promise.all(n.getAnimations().map(a=>a.finished)));
-    }
+    assert.equal(historyImeEscapeCloses,false,'IME Escape keeps history open');
+    assert.equal(await historySearch.evaluate(n=>document.activeElement===n),true);
+    // Track composition even where a browser reports isComposing=false; do not
+    // prevent the IME's native default action or create a stale close lock.
+    await historySearch.fill('资料');
+    await historySearch.dispatchEvent('compositionstart',{data:'资'});
+    assert.equal(await historySearch.evaluate(n=>n.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}))),true,'IME default is not prevented');
+    assert.equal(await historyTrigger.getAttribute('aria-expanded'),'true');
+    assert.equal(await historySearch.inputValue(),'资料');
+    await historySearch.dispatchEvent('compositionend',{data:'资料'});
+    await historySearch.fill('');
+    await historySearch.dispatchEvent('keydown',{key:'Escape',keyCode:229,bubbles:true});
+    assert.equal(await historyTrigger.getAttribute('aria-expanded'),'true','legacy IME keyCode is protected');
+    const renameButton=historyMenu.getByRole('button',{name:'重命名资料整理',exact:true});
+    await renameButton.click();
+    const renameInput=historyMenu.getByRole('textbox',{name:'对话名称',exact:true});
+    await renameInput.waitFor();
+    await renameInput.fill('新的标题');
+    await renameInput.dispatchEvent('keydown',{key:'Enter',isComposing:true,bubbles:true});
+    assert.deepEqual(await page.evaluate(()=>window.presentationTest.renames),[]);
+    await renameInput.dispatchEvent('compositionstart',{data:'新'});
+    await renameInput.dispatchEvent('keydown',{key:'Enter',bubbles:true});
+    await renameInput.dispatchEvent('keydown',{key:'Escape',bubbles:true});
+    assert.deepEqual(await page.evaluate(()=>window.presentationTest.renames),[]);
+    assert.equal(await renameInput.inputValue(),'新的标题');
+    assert.equal(await historyTrigger.getAttribute('aria-expanded'),'true');
+    await renameInput.dispatchEvent('compositionend',{data:'新的标题'});
+    await renameInput.dispatchEvent('keydown',{key:'Enter',keyCode:229,bubbles:true});
+    assert.deepEqual(await page.evaluate(()=>window.presentationTest.renames),[]);
+    await renameInput.press('Escape');
+    await renameInput.waitFor({state:'detached'});
+    await page.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='重命名资料整理');
+    assert.equal(await historyTrigger.getAttribute('aria-expanded'),'true','first Escape cancels only the rename');
+    await renameButton.click();await renameInput.fill('正常确认');await renameInput.press('Enter');
+    await renameInput.waitFor({state:'detached'});
+    assert.deepEqual(await page.evaluate(()=>window.presentationTest.renames),[{id:'history-other',title:'正常确认'}]);
+    // Blur and close both clear abandoned composition when no end event arrives.
+    await historySearch.focus();await historySearch.dispatchEvent('compositionstart');
+    await historyMenu.getByRole('button',{name:'新建对话',exact:true}).focus();
     await page.keyboard.press('Escape');
     assert.equal(await historyTrigger.getAttribute('aria-expanded'),'false');
     assert.equal(await historyTrigger.evaluate(n=>document.activeElement===n),true);
     await historyMenu.waitFor({state:'detached'});
+    await historyTrigger.click();await historySearch.waitFor();
+    await historySearch.dispatchEvent('compositionstart');
+    await historyTrigger.click();await historyMenu.waitFor({state:'detached'});
+    await historyTrigger.click();await historySearch.waitFor();
+    await page.keyboard.press('Escape');await historyMenu.waitFor({state:'detached'});
+    // Document fallback closes from focus outside the menu and returns to entry.
+    await historyTrigger.click();await historySearch.waitFor();
+    await page.getByRole('textbox',{name:'消息输入框'}).focus();
+    await page.keyboard.press('Escape');await historyMenu.waitFor({state:'detached'});
+    assert.equal(await historyTrigger.evaluate(n=>document.activeElement===n),true);
     await page.evaluate(()=>{const a=window.presentationTest;a.agent.agentSessionId=null;a.chat.chatSessions=[];a.render()});
     const full='这是模拟整段数据到达时的连续输出。'.repeat(18)+'👩🏽‍💻🇨🇳e\u0301👨‍👩‍👧‍👦结束。';
     await page.evaluate(()=>window.presentationTest.begin(10));

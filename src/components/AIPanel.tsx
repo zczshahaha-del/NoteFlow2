@@ -415,6 +415,9 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const modeMenuRef = useRef<HTMLDivElement>(null);
   const historyMenuRef = useRef<HTMLDivElement>(null);
+  const historyTriggerRef = useRef<HTMLButtonElement>(null);
+  const historyComposingRef = useRef(false);
+  const renameRowRef = useRef<HTMLElement | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const voiceBaseInputRef = useRef("");
   const voiceFinalTextRef = useRef("");
@@ -545,7 +548,10 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
   }, [modeMenuOpen]);
 
   useEffect(() => {
-    if (!historyOpen) return;
+    if (!historyOpen) {
+      historyComposingRef.current = false;
+      return;
+    }
     const closeOnOutsideClick = (event: MouseEvent) => {
       if (!historyMenuRef.current?.contains(event.target as Node)) {
         setHistoryOpen(false);
@@ -553,9 +559,11 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
       }
     };
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !event.defaultPrevented &&
+          !event.isComposing && event.keyCode !== 229 && !historyComposingRef.current) {
         setHistoryOpen(false);
         setEditingSessionId(null);
+        historyTriggerRef.current?.focus({ preventScroll: true });
       }
     };
     document.addEventListener("mousedown", closeOnOutsideClick, true);
@@ -565,6 +573,16 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [historyOpen]);
+
+  const cancelHistoryRename = () => {
+    setEditingSessionId(null);
+    const row = renameRowRef.current;
+    requestAnimationFrame(() => {
+      if (row?.closest('.nf-history-menu[data-open="true"]')) {
+        row.querySelector<HTMLButtonElement>('button[aria-label^="重命名"]')?.focus({ preventScroll: true });
+      }
+    });
+  };
 
   const handleNewChat = async () => {
     if (sessionActionBusy) return;
@@ -969,6 +987,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
       <div className="relative z-40 flex h-10 shrink-0 items-center justify-between gap-2" ref={historyMenuRef}>
         <button
           type="button"
+          ref={historyTriggerRef}
           onClick={() => setHistoryOpen((open) => !open)}
           className="flex min-w-0 max-w-[calc(100%-80px)] items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-[14px] font-semibold text-jelly-text transition-colors hover:bg-[#f2f6f8]"
           aria-expanded={historyOpen}
@@ -1020,7 +1039,18 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
           )}
         </div>
 
-        <SoftMenu open={historyOpen} onClose={() => { setHistoryOpen(false); setEditingSessionId(null); }} className="nf-history-menu absolute left-0 top-11 w-[min(340px,calc(100vw-32px))]" role="menu">
+        <SoftMenu open={historyOpen} onClose={() => { setHistoryOpen(false); setEditingSessionId(null); }} className="nf-history-menu absolute left-0 top-11 w-[min(340px,calc(100vw-32px))]" role="menu"
+          onCompositionStartCapture={() => { historyComposingRef.current = true; }}
+          onCompositionEndCapture={() => { historyComposingRef.current = false; }}
+          onBlurCapture={() => { historyComposingRef.current = false; }}
+          onKeyDownCapture={(event) => {
+            // Leave IME default handling intact, but don't let confirmation / cancellation
+            // reach the rename input, shared menu, or document Escape handler.
+            if ((event.key === "Enter" || event.key === "Escape") &&
+                (historyComposingRef.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229)) {
+              event.stopPropagation();
+            }
+          }}>
           <div className="nf-history-search flex items-center gap-2 px-3">
             <Search size={15} className="shrink-0 text-jelly-text-muted" />
             <input
@@ -1065,14 +1095,23 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
                           value={editingSessionTitle}
                           onChange={(event) => setEditingSessionTitle(event.target.value)}
                           onKeyDown={(event) => {
-                            if (event.key === "Enter") void handleRenameChat(session.id);
-                            if (event.key === "Escape") setEditingSessionId(null);
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              void handleRenameChat(session.id);
+                            }
+                            if (event.key === "Escape") {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              cancelHistoryRename();
+                            }
                           }}
+                          aria-label="对话名称"
                           className="nf-history-rename h-8 min-w-0 flex-1 rounded-lg border px-2 outline-none"
                           autoFocus
                         />
                         <button type="button" onClick={() => void handleRenameChat(session.id)} className="nf-history-action" data-editing="true" aria-label="保存名称"><Check size={15} strokeWidth={1.65} /></button>
-                        <button type="button" onClick={() => setEditingSessionId(null)} className="nf-history-action" data-editing="true" aria-label="取消重命名"><X size={15} strokeWidth={1.65} /></button>
+                        <button type="button" onClick={cancelHistoryRename} className="nf-history-action" data-editing="true" aria-label="取消重命名"><X size={15} strokeWidth={1.65} /></button>
                       </>
                     ) : (
                       <>
@@ -1082,7 +1121,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
                         {session.id === agentSessionId && <Check size={13} className="nf-history-check mr-1 shrink-0" />}
                         <button
                           type="button"
-                          onClick={() => { setEditingSessionId(session.id); setEditingSessionTitle(session.title); }}
+                          onClick={(event) => { renameRowRef.current = event.currentTarget.closest(".nf-history-row"); setEditingSessionId(session.id); setEditingSessionTitle(session.title); }}
                           className="nf-history-action"
                           aria-label={`重命名${session.title}`}
                         ><Pencil size={15} strokeWidth={1.65} /></button>
