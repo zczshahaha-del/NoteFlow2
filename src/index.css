@@ -1262,7 +1262,7 @@ button,
   border-radius: 3px;
   background: #fff3a3;
   color: inherit;
-  padding: 0.02rem 0.12rem;
+  padding: 0.02rem 0;
 }
 
 .note-content .code-block {
