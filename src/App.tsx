@@ -7,6 +7,8 @@ import EditPreviewWorkspace from "./components/EditPreviewWorkspace";
 import AIPanel from "./components/AIPanel";
 import LoginPage from "./components/LoginPage";
 import NoteOpeningStatus from "./components/NoteOpeningStatus";
+import LibraryDrawer from "./components/LibraryDrawer";
+import "./components/library-navigation.css";
 import { useAuthSession } from "./hooks/useAuthSession";
 import { useChatSlice, useDraftSlice } from "./store/selectors";
 
@@ -227,7 +229,8 @@ export default function App() {
   }, [isDesktop]);
 
   useEffect(() => {
-    if (!libraryDrawerOpen && (isDesktop || !aiOpen)) return;
+    // The library owns its Escape handling, including nested menus and dialogs.
+    if (libraryDrawerOpen || isDesktop || !aiOpen) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       const keyEvent = event as KeyboardEvent & { keyCode?: number };
@@ -269,7 +272,7 @@ export default function App() {
           {/* Persistent library navigation: full panel on desktop, icon rail on tablet. */}
           {isTabletUp && !focusedWorkspace && (
             <div
-              className={`relative z-40 shrink-0 transition-[width] duration-200 ease-out ${
+              className={`library-navigation relative z-40 shrink-0 ${
                 isDesktop && filePanelPinned ? "w-[260px]" : "w-[52px]"
               }`}
             >
@@ -333,15 +336,8 @@ export default function App() {
           )}
 
           {/* Mobile/tablet library drawer. */}
-          {!isDesktop && !focusedWorkspace && libraryDrawerOpen && (
-            <div className="absolute inset-0 z-[70] flex" role="dialog" aria-modal="true" aria-label="知识库">
-              <button
-                type="button"
-                className="drawer-backdrop absolute inset-0"
-                onClick={() => setLibraryDrawerOpen(false)}
-                aria-label="关闭知识库"
-              />
-              <div className="drawer-surface relative h-full w-[280px] max-w-[88vw]">
+          {!isDesktop && !focusedWorkspace && (
+            <LibraryDrawer open={libraryDrawerOpen} onClose={() => setLibraryDrawerOpen(false)}>
                 <DirectoryTree
                   pinned
                   onPinnedChange={(pinned) => {
@@ -355,10 +351,9 @@ export default function App() {
                   userName={session.user.displayName}
                   onEmailChanged={updateSession}
                   onSignOut={signOut}
-                  searchShortcutEnabled
+                  searchShortcutEnabled={libraryDrawerOpen}
                 />
-              </div>
-            </div>
+            </LibraryDrawer>
           )}
 
           {/* Mobile/tablet AI drawer. */}

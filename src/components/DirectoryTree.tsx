@@ -794,7 +794,8 @@ export default function DirectoryTree({
 
   return (
     <aside
-      className={`directory-tree relative top-0 left-0 z-40 flex h-full flex-col border-r border-jelly-border bg-white/80 transition-[width,box-shadow] duration-200 ease-out ${
+      data-expanded={expanded}
+      className={`directory-tree relative top-0 left-0 z-40 flex h-full flex-col border-r border-jelly-border ${expanded ? "bg-white/80" : ""} ${
         expanded
           ? "w-full shadow-none"
           : "w-[52px] shadow-none"
@@ -873,9 +874,10 @@ export default function DirectoryTree({
                 <div className="group/collapse-directory relative ml-1">
                   <button
                     type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-md text-jelly-text-muted transition-colors hover:bg-jelly-blue-pale hover:text-jelly-blue-deep focus-visible:bg-jelly-blue-pale focus-visible:text-jelly-blue-deep focus-visible:outline-none"
+                    className="directory-toggle flex h-8 w-8 items-center justify-center text-jelly-text-muted"
                     onClick={() => onPinnedChange(!pinned)}
                     aria-label="收起目录"
+                    aria-expanded={expanded}
                     aria-describedby="collapse-directory-tooltip"
                   >
                     <SidebarToggleIcon />
@@ -883,7 +885,7 @@ export default function DirectoryTree({
                   <span
                     id="collapse-directory-tooltip"
                     role="tooltip"
-                    className="pointer-events-none absolute right-0 top-full z-50 mt-1.5 -translate-y-1 whitespace-nowrap rounded-md border border-jelly-border bg-white px-2.5 py-1 text-[12px] font-medium text-jelly-text-soft opacity-0 shadow-[0_6px_18px_rgba(30,44,56,0.08)] transition-all duration-150 group-hover/collapse-directory:translate-y-0 group-hover/collapse-directory:opacity-100 group-focus-within/collapse-directory:translate-y-0 group-focus-within/collapse-directory:opacity-100"
+                    className="directory-toggle-tooltip pointer-events-none absolute right-0 top-full z-50 mt-1.5 whitespace-nowrap rounded-md border border-jelly-border bg-white px-2.5 py-1 text-[12px] font-medium text-jelly-text-soft opacity-0 shadow-[0_6px_18px_rgba(30,44,56,0.08)]"
                   >
                     收起目录
                   </span>
@@ -895,9 +897,10 @@ export default function DirectoryTree({
           <div className="flex flex-col items-center gap-2">
             <button
               type="button"
-              className="flex h-8 w-8 items-center justify-center rounded-md text-jelly-text-muted transition-colors hover:bg-jelly-blue-pale hover:text-jelly-blue-deep focus-visible:bg-jelly-blue-pale focus-visible:text-jelly-blue-deep"
+              className="directory-toggle flex h-8 w-8 items-center justify-center text-jelly-text-muted"
               onClick={() => onPinnedChange(true)}
               aria-label="展开目录"
+              aria-expanded={expanded}
               title="展开目录"
             >
               <SidebarToggleIcon />

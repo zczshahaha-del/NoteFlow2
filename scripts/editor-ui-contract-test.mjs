@@ -17,6 +17,8 @@ const accountMenu = readFileSync(new URL("../src/components/AppNav.tsx", import.
 const settingsStyles = readFileSync(new URL("../src/components/settings-ui.css", import.meta.url), "utf8");
 const overlayDialog = readFileSync(new URL("../src/components/OverlayDialog.tsx", import.meta.url), "utf8");
 const sidebarToggleIcon = readFileSync(new URL("../src/components/SidebarToggleIcon.tsx", import.meta.url), "utf8");
+const libraryNavigationStyles = readFileSync(new URL("../src/components/library-navigation.css", import.meta.url), "utf8");
+const libraryDrawer = readFileSync(new URL("../src/components/LibraryDrawer.tsx", import.meta.url), "utf8");
 const styles = readFileSync(new URL("../src/index.css", import.meta.url), "utf8");
 const menuStyles = readFileSync(new URL("../src/components/menu-ui.css", import.meta.url), "utf8");
 const softMenu = readFileSync(new URL("../src/components/SoftMenu.tsx", import.meta.url), "utf8");
@@ -297,6 +299,14 @@ assert.match(directoryTree, /const handleNewFolder[\s\S]*?setNewFolderOpen\(true
 assert.match(directoryTree, /aria-labelledby="new-folder-title"/);
 assert.match(directoryTree, /const handleCreateFolderConfirm[\s\S]*?addNode\(newFolderParentId/);
 assert.match(directoryTree, /className=\{`directory-tree/);
+assert.match(directoryTree, /data-expanded=\{expanded\}/);
+assert.match(libraryNavigationStyles, /\.directory-tree\[data-expanded="false"\] \{[\s\S]*?background: transparent;[\s\S]*?border-right-color: transparent;/);
+assert.match(libraryNavigationStyles, /\.library-drawer-veil \{[\s\S]*?backdrop-filter: none;/);
+assert.match(libraryNavigationStyles, /transition: transform 240ms cubic-bezier/);
+assert.match(app, /<LibraryDrawer open=\{libraryDrawerOpen\}/);
+assert.doesNotMatch(app, /!focusedWorkspace && libraryDrawerOpen &&/);
+assert.match(libraryDrawer, /inert=\{!open\}/);
+assert.match(libraryDrawer, /clearTimeout\(timer\)/);
 assert.match(directoryTree, /<h1[^>]*>目录<\/h1>[\s\S]*?\{fileCount\} 篇/);
 assert.doesNotMatch(directoryTree, /folderCount|个文件夹/);
 assert.match(directoryTree, /id="collapse-directory-tooltip"[\s\S]*?role="tooltip"[\s\S]*?收起目录/);
