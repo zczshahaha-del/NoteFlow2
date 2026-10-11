@@ -1,0 +1,230 @@
+<div id="nf-prose-study">
+  <style>
+    #nf-prose-study {
+      --np-page: light-dark(#ffffff, #1e1e1d);
+      --np-ink: light-dark(#292a28, #e6e5df);
+      --np-secondary: light-dark(#666963, #adafa5);
+      --np-code: light-dark(#f8f7f5, #292927);
+      --np-inline: light-dark(#f3f2ef, #33332f);
+      --np-line: light-dark(#e8e7e3, #3d3e37);
+      --np-blue: light-dark(#07769f, #65bce3);
+      --np-green: light-dark(#587d08, #adca6b);
+      --np-pink: light-dark(#d32d59, #f58aab);
+      --np-number: light-dark(#a81765, #eba1cc);
+      --np-comment: light-dark(#5e6f82, #a2b0c2);
+      --np-punctuation: light-dark(#6a6e67, #a8aba2);
+      --np-operator: light-dark(#8b641e, #d6b574);
+      --np-inline-ink: light-dark(#c44034, #f39c91);
+      --np-mint: light-dark(#e9f2ec, #27372e);
+      --np-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      width: 100%;
+      position: relative;
+    }
+    #nf-prose-study * { box-sizing: border-box; }
+    #nf-prose-study [hidden] { display: none; }
+    #nf-prose-study .np-stage { min-height: var(--np-stage-height, 0px); padding: 18px 16px 0; }
+    #nf-prose-study .np-paper {
+      background: var(--np-page);
+      color: var(--np-ink);
+      max-width: 704px;
+      margin: 0 auto;
+      padding: 36px 34px 38px;
+      border-radius: 14px;
+      font: 400 var(--np-size, 16px)/var(--np-leading, 1.8) var(--np-font);
+      overflow-wrap: anywhere;
+    }
+    #nf-prose-study .np-title { margin: 0 0 30px; font: 650 27px/1.35 var(--np-font); letter-spacing: -.025em; }
+    #nf-prose-study .np-paper h2 { margin: 0 0 18px; font: 650 20px/1.5 var(--np-font); letter-spacing: -.015em; }
+    #nf-prose-study .np-paper p { margin: 16px 0; }
+    #nf-prose-study .np-paper strong { font-weight: 650; }
+    #nf-prose-study .np-paper hr { margin: 32px 0; border: 0; height: 1px; background: var(--np-line); }
+    #nf-prose-study .np-paper p code {
+      font: 400 .94em/1.4 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      color: var(--np-inline-ink);
+      background: var(--np-inline);
+      border-radius: 4px;
+      padding: 2px 5px;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+    }
+    #nf-prose-study .np-code {
+      background: var(--np-code);
+      border-radius: var(--np-radius, 12px);
+      padding: var(--np-code-padding, 22px) 22px;
+      margin: 16px 0;
+      overflow-x: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--np-line) transparent;
+      font: 400 13.5px/1.7 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+    #nf-prose-study .np-code code { color: var(--np-ink); font: inherit; white-space: pre; }
+    #nf-prose-study .np-paper[data-wrap="true"] .np-code code { white-space: pre-wrap; overflow-wrap: anywhere; }
+    #nf-prose-study .np-kw { color: var(--np-blue); }
+    #nf-prose-study .np-string, #nf-prose-study .np-type { color: var(--np-green); }
+    #nf-prose-study .np-function { color: var(--np-pink); }
+    #nf-prose-study .np-number { color: var(--np-number); }
+    #nf-prose-study .np-comment { color: var(--np-comment); }
+    #nf-prose-study .np-punctuation { color: var(--np-punctuation); }
+    #nf-prose-study .np-operator { color: var(--np-operator); }
+    #nf-prose-study .np-callout {
+      background: var(--np-mint);
+      border-radius: var(--np-radius, 12px);
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr);
+      gap: 12px;
+      padding: 17px 19px;
+      margin-top: 18px;
+      align-items: start;
+    }
+    #nf-prose-study .np-callout p { margin: 0; }
+    #nf-prose-study .np-callout-icon { font-size: 19px; line-height: 1.6; }
+    #nf-prose-study .np-reference { --np-size: 16px; --np-leading: 1.65; --np-radius: 12px; --np-code-padding: 26px; }
+    #nf-prose-study .np-reference .np-title { font-size: 28px; margin-bottom: 36px; }
+    #nf-prose-study .np-reference h2 { font-size: 21px; margin-bottom: 22px; }
+    #nf-prose-study .np-reference p { margin: 20px 0; }
+    #nf-prose-study .np-reference hr { margin: 38px 0; }
+    #nf-prose-study .np-reference .np-callout { padding: 22px; gap: 14px; }
+    #nf-prose-study .np-reference .np-callout p { margin: 0; }
+    #nf-prose-study .np-measure { position: absolute; inset: 0 0 auto; visibility: hidden; pointer-events: none; }
+    @media (max-width: 480px) {
+      #nf-prose-study .np-stage { padding: 12px 8px 0; }
+      #nf-prose-study .np-paper { padding: 27px 18px 30px; }
+      #nf-prose-study .np-title { font-size: 25px; }
+      #nf-prose-study .np-reference .np-title { font-size: 26px; }
+      #nf-prose-study .np-paper h2 { font-size: 19px; }
+      #nf-prose-study .np-reference h2 { font-size: 20px; }
+      #nf-prose-study .np-code { padding-inline: 16px; }
+      #nf-prose-study .np-callout { padding: 16px; gap: 9px; }
+    }
+  </style>
+  <div class="viz-carousel viz-dotted-background" aria-label="正文局部对照" data-previous-label="上一版" data-next-label="下一版">
+    <section data-variant="局部精修" aria-label="局部精修正文">
+      <div class="np-stage">
+        <article class="np-paper np-refined" data-wrap="true" aria-label="正文排版">
+          <h1 class="np-title">Go 语言 · GORM 学习笔记</h1>
+          <h2>4.4 删（Delete）</h2>
+          <pre class="np-code"><code>db.<span class="np-function">Delete</span><span class="np-punctuation">(</span><span class="np-operator">&amp;</span>u, <span class="np-number">1</span><span class="np-punctuation">)</span>                     <span class="np-comment">// 删 id=1</span>
+db.<span class="np-function">Where</span><span class="np-punctuation">(</span><span class="np-string">"age &lt; ?"</span>, <span class="np-number">10</span><span class="np-punctuation">)</span>.<span class="np-function">Delete</span><span class="np-punctuation">(</span><span class="np-operator">&amp;</span>User<span class="np-punctuation">{})</span>  <span class="np-comment">// 按条件删</span></code></pre>
+          <p><strong>软删除：</strong>模型里加 <code>gorm.DeletedAt</code> 字段，GORM 就不会真删，只是把 <code>deleted_at</code> 写上时间。</p>
+          <pre class="np-code"><code><span class="np-kw">type</span> User <span class="np-kw">struct</span> <span class="np-punctuation">{</span>
+  ID        <span class="np-type">uint</span>
+  Name      <span class="np-type">string</span>
+  DeletedAt gorm.DeletedAt <span class="np-string">`gorm:"index"`</span> <span class="np-comment">// 软删除魔法字段</span>
+<span class="np-punctuation">}</span></code></pre>
+          <p>查询时会自动过滤被软删除的记录；想看全部用 <code>db.Unscoped().Find(&amp;list)</code>。</p>
+          <hr>
+          <h2>5.4 预加载（Preload）：避免 N+1 查询</h2>
+          <pre class="np-code"><code><span class="np-kw">var</span> users <span class="np-punctuation">[]</span>User
+db.<span class="np-function">Preload</span><span class="np-punctuation">(</span><span class="np-string">"Posts"</span><span class="np-punctuation">)</span>.<span class="np-function">Find</span><span class="np-punctuation">(</span><span class="np-operator">&amp;</span>users<span class="np-punctuation">)</span>
+<span class="np-comment">// 等于先查 users，再一次性把所有 Posts 都查出来填进去</span></code></pre>
+          <aside class="np-callout" aria-label="预加载说明">
+            <span class="np-callout-icon" aria-hidden="true">💡</span>
+            <p><strong>人话：</strong>没有 Preload，你循环 100 个用户就要查 100 次文章（N+1 问题）；有了 Preload，只查 2 次。</p>
+          </aside>
+        </article>
+      </div>
+    </section>
+    <section data-variant="图片参考" aria-label="图片参考排版" hidden>
+      <div class="np-stage">
+        <article class="np-paper np-reference" data-wrap="false" aria-label="正文参考">
+          <h1 class="np-title">Go 语言 · GORM 学习笔记</h1>
+          <h2>4.4 删（Delete）</h2>
+          <pre class="np-code"><code>db.<span class="np-function">Delete</span><span class="np-punctuation">(</span><span class="np-operator">&amp;</span>u, <span class="np-number">1</span><span class="np-punctuation">)</span>                     <span class="np-comment">// 删 id=1</span>
+db.<span class="np-function">Where</span><span class="np-punctuation">(</span><span class="np-string">"age &lt; ?"</span>, <span class="np-number">10</span><span class="np-punctuation">)</span>.<span class="np-function">Delete</span><span class="np-punctuation">(</span><span class="np-operator">&amp;</span>User<span class="np-punctuation">{})</span>  <span class="np-comment">// 按条件删</span></code></pre>
+          <p><strong>软删除：</strong>模型里加 <code>gorm.DeletedAt</code> 字段，GORM 就不会真删，只是把 <code>deleted_at</code> 写上时间。</p>
+          <pre class="np-code"><code><span class="np-kw">type</span> User <span class="np-kw">struct</span> <span class="np-punctuation">{</span>
+  ID        <span class="np-type">uint</span>
+  Name      <span class="np-type">string</span>
+  DeletedAt gorm.DeletedAt <span class="np-string">`gorm:"index"`</span> <span class="np-comment">// 软删除魔法字段</span>
+<span class="np-punctuation">}</span></code></pre>
+          <p>查询时会自动过滤被软删除的记录；想看全部用 <code>db.Unscoped().Find(&amp;list)</code>。</p>
+          <hr>
+          <h2>5.4 预加载（Preload）：避免 N+1 查询</h2>
+          <pre class="np-code"><code><span class="np-kw">var</span> users <span class="np-punctuation">[]</span>User
+db.<span class="np-function">Preload</span><span class="np-punctuation">(</span><span class="np-string">"Posts"</span><span class="np-punctuation">)</span>.<span class="np-function">Find</span><span class="np-punctuation">(</span><span class="np-operator">&amp;</span>users<span class="np-punctuation">)</span>
+<span class="np-comment">// 等于先查 users，再一次性把所有 Posts 都查出来填进去</span></code></pre>
+          <aside class="np-callout" aria-label="预加载说明">
+            <span class="np-callout-icon" aria-hidden="true">💡</span>
+            <p><strong>人话：</strong>没有 Preload，你循环 100 个用户就要查 100 次文章（N+1 问题）；有了 Preload，只查 2 次。</p>
+          </aside>
+        </article>
+      </div>
+    </section>
+  </div>
+  <script>
+    (() => {
+      const root = document.getElementById('nf-prose-study');
+      const article = root.querySelector('.np-refined');
+      const carousel = root.querySelector('.viz-carousel');
+      const defaults = { size: 16, leading: 1.8, padding: 22, wrap: true };
+      const settings = { ...defaults };
+      let revision = 0;
+      let measuredWidth = 0;
+      let pending = 0;
+      function read(snapshot) {
+        if (snapshot?.modelContent?.design !== 'noteflow-prose-study') return false;
+        const nextRevision = snapshot.modelContent.revision;
+        if (!Number.isSafeInteger(nextRevision) || nextRevision < revision) return false;
+        const values = snapshot.privateContent?.settings;
+        if (!values) return false;
+        if (Number.isFinite(values.size) && values.size >= 15 && values.size <= 17) settings.size = values.size;
+        if (Number.isFinite(values.leading) && values.leading >= 1.6 && values.leading <= 1.95) settings.leading = values.leading;
+        if (Number.isFinite(values.padding) && values.padding >= 18 && values.padding <= 28) settings.padding = values.padding;
+        if (typeof values.wrap === 'boolean') settings.wrap = values.wrap;
+        revision = nextRevision;
+        return true;
+      }
+      function measure() {
+        cancelAnimationFrame(pending);
+        pending = requestAnimationFrame(() => {
+          let height = 0;
+          for (const stage of root.querySelectorAll('.np-stage')) {
+            const sample = stage.cloneNode(true);
+            sample.classList.add('np-measure');
+            sample.setAttribute('aria-hidden', 'true');
+            sample.style.minHeight = '0';
+            root.append(sample);
+            height = Math.max(height, Math.ceil(sample.getBoundingClientRect().height));
+            sample.remove();
+          }
+          root.style.setProperty('--np-stage-height', height + 'px');
+        });
+      }
+      function render() {
+        article.style.setProperty('--np-size', settings.size + 'px');
+        article.style.setProperty('--np-leading', settings.leading);
+        article.style.setProperty('--np-code-padding', settings.padding + 'px');
+        article.dataset.wrap = String(settings.wrap);
+        measure();
+      }
+      function changed() {
+        revision += 1;
+        render();
+        if (window.openai?.setWidgetState) window.openai.setWidgetState({
+          modelContent: { design: 'noteflow-prose-study', revision, scope: '正文局部预览，未修改正式页面', source: '用户给出的 GORM 截图', settings: { ...settings } },
+          privateContent: { settings: { ...settings } }
+        }).catch(() => {});
+      }
+      read(window.openai?.widgetState);
+      render();
+      window.addEventListener('openai:set_globals', event => {
+        const snapshot = event.detail?.globals?.widgetState;
+        if (snapshot?.modelContent?.revision <= revision) return;
+        if (read(snapshot)) render();
+      });
+      const observer = new ResizeObserver(entries => {
+        const width = Math.round(entries[0].contentRect.width);
+        if (width !== measuredWidth) { measuredWidth = width; measure(); }
+      });
+      observer.observe(carousel);
+      document.fonts.ready.then(measure);
+      if (globalThis.Tweak) {
+        const tweak = new Tweak({ container: article, onChange: changed });
+        tweak.addSlider(settings, 'size', { label: '正文字号', min: 15, max: 17, step: .5, unit: 'px' });
+        tweak.addSlider(settings, 'leading', { label: '正文行距', min: 1.6, max: 1.95, step: .05 });
+        tweak.addSlider(settings, 'padding', { label: '代码上下留白', min: 18, max: 28, unit: 'px' });
+        tweak.addToggle(settings, 'wrap', { label: '代码自动换行' });
+      }
+    })();
+  </script>
+</div>
