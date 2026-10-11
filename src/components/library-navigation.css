@@ -56,7 +56,7 @@
 .theme-dark .library-drawer-veil { background: rgb(0 0 0 / 20%); }
 .library-drawer-surface {
   position: relative;
-  width: 280px;
+  width: var(--library-panel-width, 280px);
   max-width: 88vw;
   height: 100%;
   background: var(--color-jelly-card);
@@ -67,13 +67,41 @@
 .library-drawer-surface > .directory-tree { border-right: 0; }
 .library-drawer[data-open="true"] .library-drawer-surface { transform: translateX(0); }
 .library-drawer[data-open="true"] .library-drawer-veil { opacity: 1; }
+.library-resize-handle {
+  position: absolute;
+  z-index: 60;
+  right: -5px;
+  top: 16px;
+  bottom: 16px;
+  width: 10px;
+  cursor: col-resize;
+  touch-action: none;
+  outline: none;
+}
+.library-resize-handle > span {
+  position: absolute;
+  inset: 0 auto 0 4px;
+  width: 1px;
+  border-radius: 1px;
+  background: var(--color-jelly-text-muted);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.library-resize-handle:hover > span,
+.library-resize-handle:focus-visible > span,
+.app-frame[data-library-resizing="true"] .library-resize-handle > span { opacity: .65; }
+.app-frame[data-library-resizing="true"] .library-navigation { transition: none; }
+.app-frame.stable-workspace-layout[data-library-resizing="true"] .document-canvas .note-page { transition: none; }
+@media (max-width: 767px) { .library-drawer-surface { width: 280px; } }
+@media (forced-colors: active) { .library-resize-handle > span { background: Highlight; } }
 @media (pointer: coarse) {
   .directory-tree .directory-toggle { min-width: 44px; min-height: 44px; }
   .directory-tree[data-expanded="false"] > div:first-child { padding-inline: 4px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .library-navigation, .library-drawer-surface, .library-drawer-veil,
-  .directory-toggle, .directory-toggle .sidebar-toggle-icon, .directory-toggle-tooltip {
+  .directory-toggle, .directory-toggle .sidebar-toggle-icon, .directory-toggle-tooltip,
+  .library-resize-handle > span {
     transition: none !important;
   }
 }

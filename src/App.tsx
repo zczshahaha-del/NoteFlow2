@@ -8,6 +8,7 @@ import AIPanel from "./components/AIPanel";
 import LoginPage from "./components/LoginPage";
 import NoteOpeningStatus from "./components/NoteOpeningStatus";
 import LibraryDrawer from "./components/LibraryDrawer";
+import LibraryResizeHandle from "./components/LibraryResizeHandle";
 import "./components/library-navigation.css";
 import { useAuthSession } from "./hooks/useAuthSession";
 import { useChatSlice, useDraftSlice } from "./store/selectors";
@@ -16,6 +17,15 @@ const NoteEditor = lazy(() => import("./components/NoteEditor"));
 
 const THEME_STORAGE_KEY = "noteflow-theme-mode";
 const AI_PANEL_DEFAULT_WIDTH = 500;
+const LIBRARY_WIDTH_KEY = "noteflow-library-width";
+
+function loadLibraryWidth(): number | null {
+  try {
+    const stored = localStorage.getItem(LIBRARY_WIDTH_KEY);
+    const value = stored === null ? NaN : Number(stored);
+    return Number.isFinite(value) && value >= 220 && value <= 420 ? value : null;
+  } catch { return null; }
+}
 
 type ThemeMode = "light" | "dark";
 
@@ -177,6 +187,9 @@ function useMediaQuery(query: string) {
 }
 
 export default function App() {
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const [libraryWidth, setLibraryWidth] = useState(loadLibraryWidth);
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
   const [filePanelPinned, setFilePanelPinned] = useState(true);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiPanelWidth, setAiPanelWidth] = useState(AI_PANEL_DEFAULT_WIDTH);
@@ -200,16 +213,40 @@ export default function App() {
   const draftWorkspaceKey =
     draftSeed.trim() || checkpointDraftSeed || activeDraftContext?.topic || "draft-workspace";
   const { loading: authLoading, session, signIn, signInWithEmailCode, signUp, signOut, updateSession } = useAuthSession();
-  const desktopLeftWidth = isDesktop && !focusedWorkspace
-    ? (filePanelPinned ? 260 : 52)
-    : 0;
   const desktopRightWidth = isDesktop && !focusedWorkspace && aiOpen
     ? aiPanelWidth
     : 0;
+  const libraryMaxWidth = isDesktop
+    ? Math.max(220, Math.min(420, viewportWidth - desktopRightWidth - 416)) : 420;
+  const effectiveLibraryWidth = Math.min(libraryWidth ?? (isDesktop ? 260 : 280), libraryMaxWidth);
+  const desktopLeftWidth = isDesktop && !focusedWorkspace
+    ? (filePanelPinned ? "var(--library-panel-width)" : "52px") : "0px";
   const workspaceLayoutStyle = {
-    "--workspace-left-width": `${desktopLeftWidth}px`,
+    "--library-panel-width": `${effectiveLibraryWidth}px`,
+    "--workspace-left-width": desktopLeftWidth,
     "--workspace-right-width": `${desktopRightWidth}px`,
   } as React.CSSProperties;
+
+  const previewLibraryWidth = useCallback((width: number, dragging: boolean) => {
+    workspaceRef.current?.style.setProperty("--library-panel-width", `${width}px`);
+    if (workspaceRef.current) workspaceRef.current.dataset.libraryResizing = String(dragging);
+  }, []);
+  const commitLibraryWidth = useCallback((width: number) => {
+    setLibraryWidth(width);
+    try { localStorage.setItem(LIBRARY_WIDTH_KEY, String(width)); } catch {}
+  }, []);
+  useEffect(() => {
+    previewLibraryWidth(effectiveLibraryWidth, false);
+  }, [effectiveLibraryWidth, isDesktop, filePanelPinned, libraryDrawerOpen, previewLibraryWidth]);
+  useEffect(() => {
+    const resize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, []);
+  const libraryResizeHandle = isTabletUp ? (
+    <LibraryResizeHandle width={effectiveLibraryWidth} maxWidth={libraryMaxWidth}
+      onPreview={previewLibraryWidth} onCommit={commitLibraryWidth} />
+  ) : null;
 
   useEffect(() => {
     document.documentElement.classList.toggle("theme-dark", themeMode === "dark");
@@ -264,6 +301,7 @@ export default function App() {
     <AppProvider userId={session.user.id}>
       <div className="h-full bg-jelly-bg p-0">
         <div
+          ref={workspaceRef}
           className={`app-frame relative flex h-full min-w-0 overflow-hidden ${
             isDesktop ? "stable-workspace-layout" : ""
           }`}
@@ -272,9 +310,8 @@ export default function App() {
           {/* Persistent library navigation: full panel on desktop, icon rail on tablet. */}
           {isTabletUp && !focusedWorkspace && (
             <div
-              className={`library-navigation relative z-40 shrink-0 ${
-                isDesktop && filePanelPinned ? "w-[260px]" : "w-[52px]"
-              }`}
+              className="library-navigation relative z-40 shrink-0"
+              style={{ width: isDesktop && filePanelPinned ? "var(--library-panel-width)" : 52 }}
             >
               <DirectoryTree
                 pinned={isDesktop ? filePanelPinned : false}
@@ -295,6 +332,7 @@ export default function App() {
                 onSignOut={signOut}
                 searchShortcutEnabled={isDesktop || !libraryDrawerOpen}
               />
+              {isDesktop && filePanelPinned && libraryResizeHandle}
             </div>
           )}
 
@@ -337,7 +375,7 @@ export default function App() {
 
           {/* Mobile/tablet library drawer. */}
           {!isDesktop && !focusedWorkspace && (
-            <LibraryDrawer open={libraryDrawerOpen} onClose={() => setLibraryDrawerOpen(false)}>
+            <LibraryDrawer open={libraryDrawerOpen} onClose={() => setLibraryDrawerOpen(false)} resizeHandle={libraryResizeHandle}>
                 <DirectoryTree
                   pinned
                   onPinnedChange={(pinned) => {

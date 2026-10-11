@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /** Keep the same surface alive through exit and interrupted / reversed transitions. */
-export default function LibraryDrawer({ open, onClose, children }: {
+export default function LibraryDrawer({ open, onClose, children, resizeHandle }: {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
+  resizeHandle?: ReactNode;
 }) {
   const [present, setPresent] = useState(open);
   const [shown, setShown] = useState(false);
@@ -74,7 +75,7 @@ export default function LibraryDrawer({ open, onClose, children }: {
         }
       }}>
       <button type="button" className="library-drawer-veil" onClick={onClose} aria-label="关闭知识库" tabIndex={-1} />
-      <div ref={surfaceRef} className="library-drawer-surface">{children}</div>
+      <div ref={surfaceRef} className="library-drawer-surface">{children}{open && resizeHandle}</div>
     </div>
   );
 }

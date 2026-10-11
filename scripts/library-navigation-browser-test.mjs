@@ -24,7 +24,7 @@ const result=await build({configFile:false,logLevel:'silent',plugins:[{
  load(id){
   if(id==='\0entry')return entry;
   if(stubs.has(id))return 'export default function Stub(){return null}';
-  if(id===path('components/NoteEditor.tsx'))return `import React from 'react';export default function Body(){return <div className="document-editor" style={{padding:'84px 72px',width:'100%'}}><h1>Git 入门学习笔记</h1><p>这是隔离验证正文，不读取真实笔记。</p><button>正文操作</button></div>}`;
+  if(id===path('components/NoteEditor.tsx'))return `import React from 'react';export default function Body(){window.bodyRenderCount=(window.bodyRenderCount||0)+1;return <div className="document-editor" style={{padding:'84px 72px',width:'100%'}}><div className="document-canvas"><div className="note-page"><h1>Git 入门学习笔记</h1><p>这是隔离验证正文，不读取真实笔记。</p><button>正文操作</button></div></div></div>}`;
   if(id===path('App.tsx'))return readFileSync(id,'utf8')
    .replace('import { useAuthSession } from "./hooks/useAuthSession";', 'const noop = () => {}; const useAuthSession = () => ({loading:false,session:{user:{id:"synthetic",email:"test@example.invalid",displayName:"合成用户",emailVerified:true}},signIn:noop,signInWithEmailCode:noop,signUp:noop,signOut:noop,updateSession:noop});')
    .replace('<AppProvider userId={session.user.id}>','<>').replace('</AppProvider>','</>');
@@ -36,14 +36,55 @@ const browser=await chromium.launch({executablePath:process.env.NOTEFLOW_BROWSER
 const output=mkdtempSync(join(tmpdir(),'noteflow-library-navigation-')), reports=[];
 async function settled(page){await page.evaluate(async()=>{await Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{})));});}
 async function open(page){const button=page.getByRole('button',{name:/^(展开目录|打开知识库)$/});await button.click();await page.locator('.library-drawer[data-open="true"]').waitFor();await settled(page);}
+async function resizeChecks(page, panel, width) {
+ const handle=page.getByRole('separator',{name:'调整目录宽度'});
+ assert.equal(await handle.count(),1);
+ const start=await panel.boundingBox(), hit=await handle.boundingBox();
+ assert.equal(await handle.locator('span').evaluate(n=>getComputedStyle(n).opacity),'0');
+ const renders=await page.evaluate(()=>window.bodyRenderCount), stored=await page.evaluate(()=>localStorage.getItem('noteflow-library-width'));
+ await page.mouse.move(hit.x+5,200);await page.mouse.down();await page.mouse.move(hit.x+105,200,{steps:12});
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+ assert.equal((await panel.boundingBox()).width,start.width+100);
+ assert.equal(await page.evaluate(()=>window.bodyRenderCount),renders,'Dragging must not rerender the document');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('noteflow-library-width')),stored,'Do not write storage on pointermove');
+ assert.equal(await page.locator('.library-navigation').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
+ if(width>=1280)assert.equal(await page.locator('.note-page').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
+ await page.mouse.up();await settled(page);
+ assert.equal(await page.evaluate(()=>Number(localStorage.getItem('noteflow-library-width'))),start.width+100);
+ const committed=(await panel.boundingBox()).width;
+ const current=await handle.boundingBox();await page.mouse.move(current.x+5,200);await page.mouse.down();await page.mouse.move(current.x+65,200);
+ await handle.press('Escape');await page.mouse.up();await settled(page);
+ assert.equal((await panel.boundingBox()).width,committed,'Escape rolls back only the current drag');
+ assert.equal(await page.evaluate(()=>Number(localStorage.getItem('noteflow-library-width'))),committed);
+ await handle.press('Home');await settled(page);assert.equal((await panel.boundingBox()).width,220);
+ await handle.press('End');await settled(page);assert.equal((await panel.boundingBox()).width,420);
+ await handle.press('ArrowLeft');await settled(page);assert.equal((await panel.boundingBox()).width,404);
+ const limit=await handle.boundingBox();await page.mouse.move(limit.x+5,200);await page.mouse.down();await page.mouse.move(limit.x+305,200);await page.mouse.up();await settled(page);
+ assert.equal((await panel.boundingBox()).width,420,'Pointer maximum');
+ const max=await handle.boundingBox();await page.mouse.move(max.x+5,200);await page.mouse.down();await page.mouse.move(100,200);await page.mouse.up();await settled(page);
+ assert.equal((await panel.boundingBox()).width,220,'Pointer minimum');
+ await handle.press('ArrowRight');await settled(page);assert.equal((await panel.boundingBox()).width,236);
+ assert.equal(await page.evaluate(()=>document.body.style.cursor),'');assert.equal(await page.evaluate(()=>document.body.style.userSelect),'');
+}
 try {
  for(const width of [1440,1277,768,320]){
   const context=await browser.newContext({viewport:{width,height:900},hasTouch:width===320});
-  const requests=[],errors=[];await context.route('**/*',r=>{requests.push(r.request().url());return r.abort();});
+  const html='<html><head><style>'+css+' html,body,#root{height:100%;margin:0}</style></head><body><div id="root"></div><script type="module">'+script+'</script></body></html>';
+  const requests=[],errors=[];await context.route('**/*',r=>{
+   if(r.request().url()==='http://noteflow.test/')return r.fulfill({contentType:'text/html; charset=utf-8',body:html});
+   requests.push(r.request().url());return r.abort();
+  });
   const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
-  await page.setContent('<html><head><style>'+css+' html,body,#root{height:100%;margin:0}</style></head><body><div id="root"></div><script type="module">'+script+'</script></body></html>');
-  await page.getByRole('heading',{name:'Git 入门学习笔记'}).waitFor();
-  if(width===1440){await page.getByRole('button',{name:'收起目录',exact:true}).click();await settled(page);}
+  await page.goto('http://noteflow.test/');
+  try { await page.getByRole('heading',{name:'Git 入门学习笔记'}).waitFor(); }
+  catch(error){console.error(JSON.stringify({width,errors,requests,body:await page.locator('body').innerText()}));throw error;}
+  if(width===1440){
+   await resizeChecks(page,page.locator('.library-navigation'),width);
+   await page.reload();await page.getByRole('heading',{name:'Git 入门学习笔记'}).waitFor();
+   assert.equal((await page.locator('.library-navigation').boundingBox()).width,236,'Saved width after reload');
+   await page.getByRole('button',{name:'收起目录',exact:true}).click();await settled(page);
+   assert.equal(await page.getByRole('separator',{name:'调整目录宽度'}).count(),0);
+  }
   let positions=null;
   if(width>=768){
    const rail=page.locator('.directory-tree');
@@ -64,9 +105,13 @@ try {
    assert.equal(await page.getByRole('button',{name:'收起目录',exact:true}).evaluate(n=>n===document.activeElement),true);
    if(width===320)assert(await page.getByRole('button',{name:'收起目录',exact:true}).evaluate(n=>n.getBoundingClientRect().height)>=44);
    await page.getByRole('button',{name:'搜索全部笔记'}).press('Shift+Tab');
-   assert.equal(await page.locator('.library-drawer .nf-account-trigger').evaluate(n=>n===document.activeElement),true);
-   await page.locator('.library-drawer .nf-account-trigger').press('Tab');
+   const lastControl=width>=768?page.getByRole('separator',{name:'调整目录宽度'}):page.locator('.library-drawer .nf-account-trigger');
+   assert.equal(await lastControl.evaluate(n=>n===document.activeElement),true);
+   await lastControl.press('Tab');
    assert.equal(await page.getByRole('button',{name:'搜索全部笔记'}).evaluate(n=>n===document.activeElement),true);
+   await page.mouse.move(width-10,400);
+   if(width>=768)await resizeChecks(page,page.locator('.library-drawer-surface'),width);
+   else assert.equal(await page.getByRole('separator',{name:'调整目录宽度'}).count(),0);
    if(width===1277)await page.screenshot({path:join(output,'opened.png')});
    await page.locator('.library-drawer .nf-account-trigger').click();
    await page.getByRole('dialog',{name:'账号操作'}).waitFor();
@@ -97,7 +142,36 @@ try {
   if(width<1280){await open(page);assert.equal(await page.locator('.library-drawer-veil').evaluate(n=>getComputedStyle(n).backgroundColor),'rgba(0, 0, 0, 0.2)');await page.getByRole('button',{name:'收起目录',exact:true}).click();await page.locator('.library-drawer').waitFor({state:'detached'});}
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
-  reports.push({width,transparentRail:width>=768,drawerEnterExit:width<1280,stableBodyAndControls:true,focusAndReducedMotion:true,dark:true,requests,errors});await context.close();
+  if(width>=768){
+   await page.reload();await page.getByRole('heading',{name:'Git 入门学习笔记'}).waitFor();
+   if(width<1280)await open(page);
+   const panel=page.locator(width>=1280?'.library-navigation':'.library-drawer-surface');
+   assert.equal((await panel.boundingBox()).width,236,'Persistence across reload');
+   // Storage rejection must not block an in-memory width change.
+   await page.evaluate(()=>{window.originalStorageSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw new DOMException('Denied','SecurityError');};});
+   await page.getByRole('separator',{name:'调整目录宽度'}).press('ArrowRight');await settled(page);
+   assert.equal((await panel.boundingBox()).width,252);
+   if(width===1440){
+    await page.getByRole('button',{name:'展开 AI 助手',exact:true}).click();await settled(page);
+    await page.setViewportSize({width:1280,height:900});await settled(page);
+    assert(Number(await page.getByRole('separator',{name:'调整目录宽度'}).getAttribute('aria-valuemax'))<=364);
+   }
+   const edge=await page.getByRole('separator',{name:'调整目录宽度'}).boundingBox();
+   await page.mouse.move(edge.x+5,200);await page.mouse.down();await page.mouse.move(edge.x+45,200);
+   await page.setViewportSize({width:320,height:900});
+   await page.getByRole('separator',{name:'调整目录宽度'}).waitFor({state:'detached'});
+   await settled(page);await page.mouse.up();
+   assert.equal(await page.getByRole('separator',{name:'调整目录宽度'}).count(),0);
+   assert.equal(await page.evaluate(()=>document.body.style.cursor),'');
+   assert.equal(await page.evaluate(()=>document.body.style.userSelect),'');
+   assert.notEqual(await page.locator('.app-frame').getAttribute('data-library-resizing'),'true');
+   await page.evaluate(()=>{Storage.prototype.setItem=window.originalStorageSetItem;localStorage.setItem('noteflow-library-width','invalid');});
+   await page.setViewportSize({width,height:900});await page.reload();await page.getByRole('heading',{name:'Git 入门学习笔记'}).waitFor();
+   if(width<1280)await open(page);
+   assert.equal((await page.locator(width>=1280?'.library-navigation':'.library-drawer-surface').boundingBox()).width,width>=1280?260:280,'Invalid saved width falls back safely');
+  }
+  assert.deepEqual(errors,[]);
+  reports.push({width,resizing:width>=768,persistence:width>=768,noDocumentRerenderDuringDrag:width>=768,transparentRail:width>=768,drawerEnterExit:width<1280,stableBodyAndControls:true,focusAndReducedMotion:true,dark:true,requests,errors});await context.close();
  }
  console.log(JSON.stringify({actualNavigation:true,syntheticOnly:true,output,reports},null,2));
 } finally {await browser.close();}
