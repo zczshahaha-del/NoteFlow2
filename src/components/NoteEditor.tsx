@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { EditorContent, useEditor, type Editor } from "@tiptap/react";
+import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import {
   Bold,
@@ -39,7 +39,8 @@ import OutlinePanel from "./OutlinePanel";
 import { attachmentMarkdown, uploadAttachment } from "../services/attachments";
 import { getNoteOutline, type NoteSectionRecord } from "../services/notes";
 import { formatDocumentTime } from "../utils/documentTime";
-import { numberHeadings } from "../utils/headingNumbering";
+import { getDocumentHeadings, getDocumentNumberedHeadings, getEditorMarkdown, type TiptapHeading } from "../editor/documentCache";
+import { setHeadingNumbering } from "../editor/headingDecorations";
 
 const VersionHistoryPanel = lazy(() => import("./VersionHistoryPanel"));
 const extensions = createNoteFlowTiptapExtensions();
@@ -71,12 +72,7 @@ function loadHeadingNumberingPreference(): boolean {
   }
 }
 
-interface TiptapHeading {
-  id: string;
-  level: number;
-  text: string;
-  position: number;
-}
+const emptyHeadings: TiptapHeading[] = [];
 
 function useMediaQuery(query: string) {
   const [matches, setMatches] = useState(() =>
@@ -93,17 +89,7 @@ function useMediaQuery(query: string) {
 }
 
 function collectHeadings(editor: Editor): TiptapHeading[] {
-  const headings: TiptapHeading[] = [];
-  editor.state.doc.descendants((node, position) => {
-    if (node.type.name !== "heading") return;
-    headings.push({
-      id: `tiptap-heading-${position}`,
-      level: Number(node.attrs.level) || 1,
-      text: node.textContent.trim() || "未命名标题",
-      position,
-    });
-  });
-  return headings;
+  return getDocumentHeadings(editor.state.doc);
 }
 
 function activeHeadingId(editor: Editor, headings: TiptapHeading[]): string {
@@ -227,6 +213,79 @@ function SelectionToolbarButton({
   );
 }
 
+function NoteSelectionToolbar({
+  editor,
+  onAddToChat,
+  onAddLink,
+}: {
+  editor: Editor;
+  onAddToChat: () => void;
+  onAddLink: () => void;
+}) {
+  // Keep selection formatting reactive without redrawing the note, outline
+  // and chapter rail for every caret move. Only these primitive flags matter.
+  const active = useEditorState({
+    editor,
+    selector: ({ editor: current }) => ({
+      bold: current.isActive("bold"),
+      italic: current.isActive("italic"),
+      underline: current.isActive("underline"),
+      strike: current.isActive("strike"),
+      highlight: current.isActive("highlight"),
+      code: current.isActive("code"),
+      link: current.isActive("link"),
+      bulletList: current.isActive("bulletList"),
+      orderedList: current.isActive("orderedList"),
+      blockquote: current.isActive("blockquote"),
+    }),
+  });
+  return (
+    <>
+      <SelectionToolbarButton label="加入对话" onClick={onAddToChat}>
+        <MessageSquarePlus size={15} />
+      </SelectionToolbarButton>
+      <span className="selection-toolbar-divider" aria-hidden="true" />
+      <SelectionToolbarButton label="加粗" active={active.bold} onClick={() => editor.chain().focus().toggleBold().run()}>
+        <Bold size={15} />
+      </SelectionToolbarButton>
+      <SelectionToolbarButton label="斜体" active={active.italic} onClick={() => editor.chain().focus().toggleItalic().run()}>
+        <Italic size={15} />
+      </SelectionToolbarButton>
+      <SelectionToolbarButton label="下划线" active={active.underline} onClick={() => editor.chain().focus().toggleUnderline().run()}>
+        <UnderlineIcon size={15} />
+      </SelectionToolbarButton>
+      <SelectionToolbarButton label="删除线" active={active.strike} onClick={() => editor.chain().focus().toggleStrike().run()}>
+        <Strikethrough size={15} />
+      </SelectionToolbarButton>
+      <SelectionToolbarButton label="高亮" active={active.highlight} onClick={() => editor.chain().focus().toggleHighlight().run()}>
+        <Highlighter size={15} />
+      </SelectionToolbarButton>
+      <SelectionToolbarButton label="行内代码" active={active.code} onClick={() => editor.chain().focus().toggleCode().run()}>
+        <Code2 size={15} />
+      </SelectionToolbarButton>
+      <SelectionToolbarButton label={active.link ? "取消链接" : "添加链接"} active={active.link} onClick={() => {
+        if (editor.isActive("link")) editor.chain().focus().unsetLink().run();
+        else onAddLink();
+      }}>
+        <Link size={15} />
+      </SelectionToolbarButton>
+      <span className="selection-toolbar-divider" aria-hidden="true" />
+      <SelectionToolbarButton label="无序列表" active={active.bulletList} onClick={() => editor.chain().focus().toggleBulletList().run()}>
+        <List size={15} />
+      </SelectionToolbarButton>
+      <SelectionToolbarButton label="有序列表" active={active.orderedList} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+        <ListOrdered size={15} />
+      </SelectionToolbarButton>
+      <SelectionToolbarButton label="引用" active={active.blockquote} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+        <Quote size={15} />
+      </SelectionToolbarButton>
+      <SelectionToolbarButton label="清除格式" onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}>
+        <RefreshCw size={15} />
+      </SelectionToolbarButton>
+    </>
+  );
+}
+
 export default function NoteEditor() {
   const {
     selectedFileId,
@@ -266,7 +325,7 @@ export default function NoteEditor() {
       content: rawContent,
       contentType: "markdown",
       immediatelyRender: true,
-      shouldRerenderOnTransaction: true,
+      shouldRerenderOnTransaction: false,
       editorProps: {
         attributes: {
           class: "note-content min-h-[56vh] outline-none",
@@ -276,11 +335,24 @@ export default function NoteEditor() {
       },
       onUpdate: ({ editor: currentEditor }) => {
         if (!selectedFileId) return;
-        updateFileContent(selectedFileId, currentEditor.getMarkdown());
+        updateFileContent(selectedFileId, getEditorMarkdown(currentEditor));
       },
     },
     [selectedFileId]
   );
+
+  const documentState = useEditorState({
+    editor,
+    selector: ({ editor: current }) => ({
+      doc: current && !current.isDestroyed ? current.state.doc : null,
+      activeId: current && !current.isDestroyed
+        ? activeHeadingId(current, collectHeadings(current))
+        : "",
+    }),
+    // Compare immutable doc identity, not a deep traversal of the whole note.
+    equalityFn: (previous, next) =>
+      previous.doc === next?.doc && previous.activeId === next?.activeId,
+  });
 
   useEffect(() => {
     setTitleDraft(selectedFile?.name.replace(/\.md$/i, "") ?? "未命名笔记");
@@ -301,7 +373,7 @@ export default function NoteEditor() {
   }, [documentMenuOpen]);
 
   useEffect(() => {
-    if (!editor || editor.isDestroyed || editor.getMarkdown() === rawContent) return;
+    if (!editor || editor.isDestroyed || getEditorMarkdown(editor) === rawContent) return;
     editor.commands.setContent(rawContent, { contentType: "markdown", emitUpdate: false });
   }, [editor, rawContent]);
 
@@ -389,31 +461,27 @@ export default function NoteEditor() {
     clearPendingSourceFocus();
   }, [clearPendingSourceFocus, editor, pendingSourceFocus, rawContent, selectedFileId]);
 
-  const editorReady = Boolean(editor && !editor.isDestroyed);
-  const headings = editorReady ? collectHeadings(editor!) : [];
-  const numberedHeadings = numberHeadings(headings);
-  const visibleHeadings = showHeadingNumbers
+  const headings = useMemo(
+    () => editor && !editor.isDestroyed ? collectHeadings(editor) : emptyHeadings,
+    [editor, documentState?.doc]
+  );
+  const numberedHeadings = useMemo(
+    () => editor && !editor.isDestroyed ? getDocumentNumberedHeadings(editor.state.doc) : [],
+    [editor, headings]
+  );
+  const visibleHeadings = useMemo(() => showHeadingNumbers
     ? numberedHeadings
-    : numberedHeadings.map((heading) => ({ ...heading, displayNumber: "" }));
-  const activeId = editorReady ? activeHeadingId(editor!, headings) : "";
+    : numberedHeadings.map((heading) => ({ ...heading, displayNumber: "" })),
+  [numberedHeadings, showHeadingNumbers]);
+  const activeId = documentState?.activeId ?? "";
   const headingPositions = useMemo(
     () => new Map(headings.map((heading) => [heading.id, heading.position])),
     [headings]
   );
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
-    const headingElements = Array.from(
-      editor.view.dom.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")
-    );
-    editor.view.dom.classList.toggle("heading-numbering-enabled", showHeadingNumbers);
-    headingElements.forEach((element, index) => {
-      const displayNumber = showHeadingNumbers
-        ? numberedHeadings[index]?.displayNumber ?? ""
-        : "";
-      if (displayNumber) element.dataset.headingNumber = displayNumber;
-      else delete element.dataset.headingNumber;
-    });
-  }, [editor, numberedHeadings, showHeadingNumbers]);
+    setHeadingNumbering(editor, showHeadingNumbers);
+  }, [editor, showHeadingNumbers]);
   useEffect(() => {
     let alive = true;
     setBackendSections([]);
@@ -700,47 +768,11 @@ export default function NoteEditor() {
                     className="selection-toolbar tiptap-selection-toolbar"
                     aria-label="选中文字格式工具栏"
                   >
-                    <SelectionToolbarButton label="加入对话" onClick={addCurrentSelectionToChat}>
-                      <MessageSquarePlus size={15} />
-                    </SelectionToolbarButton>
-                    <span className="selection-toolbar-divider" aria-hidden="true" />
-                    <SelectionToolbarButton label="加粗" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
-                      <Bold size={15} />
-                    </SelectionToolbarButton>
-                    <SelectionToolbarButton label="斜体" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}>
-                      <Italic size={15} />
-                    </SelectionToolbarButton>
-                    <SelectionToolbarButton label="下划线" active={editor.isActive("underline")} onClick={() => editor.chain().focus().toggleUnderline().run()}>
-                      <UnderlineIcon size={15} />
-                    </SelectionToolbarButton>
-                    <SelectionToolbarButton label="删除线" active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()}>
-                      <Strikethrough size={15} />
-                    </SelectionToolbarButton>
-                    <SelectionToolbarButton label="高亮" active={editor.isActive("highlight")} onClick={() => editor.chain().focus().toggleHighlight().run()}>
-                      <Highlighter size={15} />
-                    </SelectionToolbarButton>
-                    <SelectionToolbarButton label="行内代码" active={editor.isActive("code")} onClick={() => editor.chain().focus().toggleCode().run()}>
-                      <Code2 size={15} />
-                    </SelectionToolbarButton>
-                    <SelectionToolbarButton label={editor.isActive("link") ? "取消链接" : "添加链接"} active={editor.isActive("link")} onClick={() => {
-                      if (editor.isActive("link")) editor.chain().focus().unsetLink().run();
-                      else setLinkOpen(true);
-                    }}>
-                      <Link size={15} />
-                    </SelectionToolbarButton>
-                    <span className="selection-toolbar-divider" aria-hidden="true" />
-                    <SelectionToolbarButton label="无序列表" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>
-                      <List size={15} />
-                    </SelectionToolbarButton>
-                    <SelectionToolbarButton label="有序列表" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
-                      <ListOrdered size={15} />
-                    </SelectionToolbarButton>
-                    <SelectionToolbarButton label="引用" active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
-                      <Quote size={15} />
-                    </SelectionToolbarButton>
-                    <SelectionToolbarButton label="清除格式" onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}>
-                      <RefreshCw size={15} />
-                    </SelectionToolbarButton>
+                    <NoteSelectionToolbar
+                      editor={editor}
+                      onAddToChat={addCurrentSelectionToChat}
+                      onAddLink={() => setLinkOpen(true)}
+                    />
                   </BubbleMenu>
                   <EditorContent editor={editor} />
                 </div>

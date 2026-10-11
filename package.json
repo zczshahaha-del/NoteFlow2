@@ -14,6 +14,8 @@
     "test:heading-numbering": "node --experimental-strip-types scripts/heading-numbering-test.ts",
     "test:editor-ui": "node scripts/editor-ui-contract-test.mjs",
     "test:prose-ui": "node scripts/prose-surface-browser-test.mjs",
+    "test:editor-performance": "node scripts/editor-performance-browser-test.mjs",
+    "test:editor-document-cache": "node --experimental-strip-types scripts/editor-document-cache-test.ts",
     "test:wiki-links": "node --experimental-strip-types scripts/wiki-links-test.ts",
     "test:knowledge-import": "node --experimental-strip-types scripts/knowledge-import-test.ts",
     "test:markdown-diff": "node --experimental-strip-types scripts/markdown-diff-test.ts",

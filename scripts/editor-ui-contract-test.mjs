@@ -87,7 +87,8 @@ assert.doesNotMatch(
   /const scrollToHeading[\s\S]{0,260}\.focus\(\)[\s\S]{0,120}\.scrollIntoView\(\)/,
   "outline navigation must not jump by focusing the editor before smooth scrolling"
 );
-assert.match(editor, /numberHeadings\(headings\)/);
+assert.match(editor, /getDocumentNumberedHeadings\(editor\.state\.doc\)/);
+assert.match(editor, /setHeadingNumbering\(editor, showHeadingNumbers\)/);
 assert.match(editor, /aria-label="文档显示设置"/);
 assert.match(editor, /显示章节编号/);
 assert.match(editor, /role="menuitemcheckbox"/);

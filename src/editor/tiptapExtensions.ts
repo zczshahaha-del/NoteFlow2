@@ -14,6 +14,7 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { CODE_LANGUAGES, getCodeHighlight, normalizeCodeLanguage } from "./codeHighlight.ts";
 import type { CodeLanguage } from "./codeHighlight.ts";
+import { HeadingDisplay } from "./headingDecorations.ts";
 
 const NoteFlowUnderline = Underline.extend({
   parseMarkdown(token, helpers) {
@@ -506,6 +507,7 @@ export function createNoteFlowTiptapExtensions() {
       codeBlock: false,
     }),
     NoteFlowCodeBlock,
+    HeadingDisplay,
     Markdown.configure({
       markedOptions: { gfm: true, breaks: true },
     }),
