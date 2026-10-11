@@ -254,6 +254,8 @@ let noteSaveTimer: ReturnType<typeof window.setTimeout> | null = null;
 const indexJobPollTimers = new Map<string, ReturnType<typeof window.setTimeout>>();
 let noteSaveInFlight: Promise<void> | null = null;
 const noteMutationQueues = new Map<string, Promise<void>>();
+const noteOpenRequests = new Map<string, object>();
+const localNoteEdits = new Map<string, { userId: string | null; content: string }>();
 
 function enqueueNoteMutation<T>(noteId: string, operation: () => Promise<T>): Promise<T> {
   const previous = noteMutationQueues.get(noteId) ?? Promise.resolve();
@@ -440,6 +442,7 @@ function scheduleNoteSave(noteId: string, content: string) {
 
 async function persistNoteContent(noteId: string, content: string) {
   if (useAppStore.getState().fileContents[noteId] !== content) return;
+  const editOwner = localNoteEdits.get(noteId);
   let baseUpdatedAt: string | null = null;
   let baseContentHash: string | null = null;
   useAppStore.setState({ noteSaveState: noteSaveState("saving") });
@@ -473,6 +476,7 @@ async function persistNoteContent(noteId: string, content: string) {
       treeData: replaceNoteRecordInTree(current.treeData, note),
       noteSaveState: noteSaveState("saved"),
     });
+    if (localNoteEdits.get(noteId) === editOwner) localNoteEdits.delete(noteId);
     persistLocalCurrentState();
   } catch (error) {
     const current = useAppStore.getState();
@@ -637,6 +641,8 @@ async function syncNoteContentBeforeAiEdit(noteId: string) {
     treeData: replaceNoteRecordInTree(latest.treeData, note),
     noteSaveState: noteSaveState("saved"),
   });
+  const localEdit = localNoteEdits.get(noteId);
+  if (localEdit?.userId === latest.hydratedUserId && localEdit.content === content) localNoteEdits.delete(noteId);
   persistLocalCurrentState();
 }
 
@@ -1345,6 +1351,8 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   },
 
   hydrate: (userId) => {
+    noteOpenRequests.clear();
+    localNoteEdits.clear();
     const snapshot = loadLocalSnapshot(userId);
     set({
       hydratedUserId: userId,
@@ -1444,9 +1452,23 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     });
     persistLocalCurrentState();
     if (!id) return;
+    const openedState = get();
+    const openedNode = findFileById(openedState.treeData, id);
+    const openedContent = openedState.fileContents[id];
+    const request = {};
+    noteOpenRequests.set(id, request);
+    const ownsRequest = () => noteOpenRequests.get(id) === request &&
+      get().hydratedUserId === openedState.hydratedUserId;
     void getNote(id)
       .then((note) => {
         const current = get();
+        const localEdit = localNoteEdits.get(id);
+        // The cached editor is usable while this read is pending. Never replace
+        // newer typing, save/rename results, removed notes or another account.
+        if (!ownsRequest() || note.id !== id || !openedNode ||
+          findFileById(current.treeData, id) !== openedNode ||
+          current.fileContents[id] !== openedContent ||
+          (localEdit?.userId === current.hydratedUserId && localEdit?.content === openedContent)) return;
         set({
           fileContents: { ...current.fileContents, [note.id]: note.content },
           treeData: replaceNoteRecordInTree(current.treeData, note),
@@ -1454,7 +1476,10 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         persistLocalCurrentState();
       })
       .catch(() => {
-        if (get().selectedFileId === id) set({ noteOpenError: { noteId: id } });
+        if (ownsRequest() && get().selectedFileId === id) set({ noteOpenError: { noteId: id } });
+      })
+      .finally(() => {
+        if (noteOpenRequests.get(id) === request) noteOpenRequests.delete(id);
       });
   },
 
@@ -1473,6 +1498,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       noteSaveState: noteSaveState("unsaved"),
     }));
     const userId = get().hydratedUserId;
+    localNoteEdits.set(id, { userId, content });
     if (userId && saveLocalNoteContent(userId, id, content)) {
       localStateCheckpoint = { userId, snapshot: snapshotFromState(get()) };
     }
@@ -2214,7 +2240,11 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       const nextTree = removeNode(state.treeData, id);
       const deletedFileIds = new Set(collectFileIds(nodeToDelete));
       const nextContents = { ...state.fileContents };
-      deletedFileIds.forEach((fileId) => delete nextContents[fileId]);
+      deletedFileIds.forEach((fileId) => {
+        delete nextContents[fileId];
+        localNoteEdits.delete(fileId);
+        noteOpenRequests.delete(fileId);
+      });
 
       return {
         treeData: nextTree,
