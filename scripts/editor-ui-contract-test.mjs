@@ -348,6 +348,11 @@ assert.match(
   "the selected note must style the entire row rather than just the middle button"
 );
 assert.match(styles, /\.directory-tree \.directory-node-row\[data-selected="true"\] \{\s*background: var\(--directory-row-selected\);/);
+assert.doesNotMatch(styles, /\.directory-tree \.directory-node-row:focus-within/,
+  "mouse focus cannot keep a second directory row painted after pointer leave");
+assert.match(styles, /\.theme-dark \.directory-tree \.directory-node-list \{[\s\S]*?--directory-row-selected: #384652;/);
+assert.match(styles, /\.note-content mark \{[^}]*padding: 0\.02rem 0;/,
+  "highlight background must not add horizontal width");
 assert.match(styles, /\.directory-tree \.directory-node-row \{[\s\S]*?min-height: 36px;[\s\S]*?font-size: 13\.5px;/);
 assert.match(styles, /\.directory-tree \.directory-node-open \{[\s\S]*?font: inherit;/);
 assert.match(styles, /\.directory-tree \.directory-node-row\[data-folder="true"\],[\s\S]*?font-weight: 500;/);

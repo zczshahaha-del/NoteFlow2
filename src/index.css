@@ -206,11 +206,19 @@ button,
    Do not extend these rules to dialogs, the toolbar or the account controls. */
 .directory-tree .directory-node-list {
   padding-inline: 12px;
-  --directory-row-text: light-dark(#303a45, #e4e8ed);
-  --directory-row-muted: light-dark(#697987, #afbac5);
-  --directory-row-icon: light-dark(#84919d, #99a8b7);
-  --directory-row-hover: light-dark(#f0f3f6, #313a44);
-  --directory-row-selected: light-dark(#eaf0f5, #384652);
+  --directory-row-text: #303a45;
+  --directory-row-muted: #697987;
+  --directory-row-icon: #84919d;
+  --directory-row-hover: #f0f3f6;
+  --directory-row-selected: #eaf0f5;
+}
+
+.theme-dark .directory-tree .directory-node-list {
+  --directory-row-text: #e4e8ed;
+  --directory-row-muted: #afbac5;
+  --directory-row-icon: #99a8b7;
+  --directory-row-hover: #313a44;
+  --directory-row-selected: #384652;
 }
 
 .directory-tree .directory-node-row {
@@ -226,7 +234,6 @@ button,
 }
 
 .directory-tree .directory-node-row:hover,
-.directory-tree .directory-node-row:focus-within,
 .directory-tree .directory-node-row[data-menu-open="true"] {
   background: var(--directory-row-hover);
 }
