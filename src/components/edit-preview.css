@@ -1,0 +1,27 @@
+/* Match the saved-note reading surface without changing saved content. */
+.edit-preview-workspace { background: var(--color-jelly-card); }
+.edit-preview-workspace .bg-white { background: var(--color-jelly-card); }
+.edit-preview-workspace button,
+.edit-preview-workspace textarea,
+.edit-preview-workspace select { border-radius: 9px; }
+.edit-preview-workspace button {
+  transition: background-color 140ms ease, color 140ms ease;
+  min-height: 36px;
+}
+.edit-preview-workspace :is(button, textarea, select):focus-visible {
+  outline: 2px solid var(--color-jelly-text-muted);
+  outline-offset: 2px;
+}
+.edit-preview-result {
+  width: min(100%, 780px);
+  margin-inline: auto;
+  padding: 12px 0 28px;
+  animation: edit-preview-enter 180ms ease;
+}
+.edit-preview-workspace textarea { resize: none; }
+@keyframes edit-preview-enter { from { opacity: 0; } to { opacity: 1; } }
+@media (pointer: coarse) { .edit-preview-workspace button { min-height: 44px; } }
+@media (prefers-reduced-motion: reduce) {
+  .edit-preview-result { animation: none; }
+  .edit-preview-workspace button { transition: none; }
+}

@@ -18,6 +18,8 @@ import {
 } from "../services/edits";
 import { renderChatMarkdown } from "../utils/chatMarkdown";
 import { diffMarkdownLines } from "../utils/markdownDiff";
+import "./document-prose.css";
+import "./edit-preview.css";
 
 const targetTypeLabels: Record<string, string> = {
   selection: "选中内容",
@@ -36,7 +38,7 @@ function PreviewMarkdown({ content }: { content: string }) {
 
   return (
     <div
-      className="chat-markdown max-w-none"
+      className="note-content chat-markdown max-w-none"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -54,14 +56,15 @@ export default function EditPreviewWorkspace() {
   } = useEditorSlice();
   const { chatLoading } = useChatSlice();
   const [revisionText, setRevisionText] = useState("");
-  const [viewMode, setViewMode] = useState<"diff" | "full">("diff");
+  const [viewMode, setViewMode] = useState<"result" | "compare" | "diff">("result");
   const [revisions, setRevisions] = useState<NoteEditPreviewRevisionRecord[]>([]);
   const [revisionError, setRevisionError] = useState("");
 
   const diff = useMemo(
-    () => diffMarkdownLines(activeEditPreview?.oldContent ?? "", activeEditPreview?.newContent ?? ""),
-    [activeEditPreview?.newContent, activeEditPreview?.oldContent]
+    () => viewMode === "diff" ? diffMarkdownLines(activeEditPreview?.oldContent ?? "", activeEditPreview?.newContent ?? "") : null,
+    [viewMode, activeEditPreview?.newContent, activeEditPreview?.oldContent]
   );
+  useEffect(() => { setViewMode("result"); }, [activeEditPreview?.id]);
 
   useEffect(() => {
     if (!activeEditPreview?.id) {
@@ -141,7 +144,7 @@ export default function EditPreviewWorkspace() {
   }
 
   return (
-    <main className="flex min-w-0 flex-1 flex-col border-x border-jelly-border bg-jelly-bg">
+    <main className="edit-preview-workspace document-canvas nf-prose-refined flex min-w-0 flex-1 flex-col bg-jelly-bg">
       <div className="shrink-0 border-b border-jelly-border bg-white px-4 py-3 sm:px-5">
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
@@ -216,29 +219,35 @@ export default function EditPreviewWorkspace() {
 
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex overflow-hidden rounded-md border border-jelly-border bg-white">
+            <button type="button" onClick={() => setViewMode("result")} aria-pressed={viewMode === "result"}
+              className={`h-8 px-3 text-[12px] ${viewMode === "result" ? "bg-jelly-blue-pale font-semibold text-jelly-blue-deep" : "text-jelly-text-soft hover:bg-jelly-surface"}`}>
+              修改后
+            </button>
+            <button type="button" onClick={() => setViewMode("compare")} aria-pressed={viewMode === "compare"}
+              className={`h-8 px-3 text-[12px] ${viewMode === "compare" ? "bg-jelly-blue-pale font-semibold text-jelly-blue-deep" : "text-jelly-text-soft hover:bg-jelly-surface"}`}>
+              对照原文
+            </button>
             <button
               type="button"
               onClick={() => setViewMode("diff")}
+              aria-pressed={viewMode === "diff"}
               className={`flex h-8 items-center gap-1.5 px-3 text-[12px] ${viewMode === "diff" ? "bg-jelly-blue-pale font-semibold text-jelly-blue-deep" : "text-jelly-text-soft hover:bg-jelly-surface"}`}
             >
-              <GitCompareArrows size={14} strokeWidth={1.8} /> 行级 Diff
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("full")}
-              className={`h-8 px-3 text-[12px] ${viewMode === "full" ? "bg-jelly-blue-pale font-semibold text-jelly-blue-deep" : "text-jelly-text-soft hover:bg-jelly-surface"}`}
-            >
-              全文预览
+              <GitCompareArrows size={14} strokeWidth={1.8} /> 详细差异
             </button>
           </div>
-          <div className="flex items-center gap-2 text-[11px]">
+          {diff && <div className="flex items-center gap-2 text-[11px]">
             <span className="rounded-md bg-jelly-green-bg px-2 py-1 text-jelly-green">+{diff.added} 行</span>
             <span className="rounded-md bg-jelly-red-bg px-2 py-1 text-jelly-red">-{diff.removed} 行</span>
             {diff.simplified && <span className="text-jelly-text-muted">长文已使用精简对比</span>}
-          </div>
+          </div>}
         </div>
 
-        {viewMode === "diff" ? (
+        {viewMode === "result" ? (
+          <section className="edit-preview-result" aria-label="修改后正文">
+            <PreviewMarkdown content={activeEditPreview.newContent} />
+          </section>
+        ) : viewMode === "diff" && diff ? (
           <section className="min-h-[420px] overflow-hidden rounded-md border border-jelly-border bg-white">
             <div className="grid grid-cols-[42px_42px_28px_minmax(0,1fr)] border-b border-jelly-border bg-jelly-surface px-1 py-2 text-[11px] font-medium text-jelly-text-muted">
               <span className="text-center">旧</span>

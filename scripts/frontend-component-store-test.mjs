@@ -613,7 +613,10 @@ try {
   });
   const editHtml = await renderClient(React.createElement(EditPreviewWorkspace));
   assert.match(editHtml, /修改预览/);
-  assert.match(editHtml, /旧内容/);
+  assert.doesNotMatch(editHtml, /旧内容/);
+  assert.match(editHtml, /修改后正文/);
+  assert.match(editHtml, /对照原文/);
+  assert.match(editHtml, /详细差异/);
   assert.match(editHtml, /新内容/);
   assert.match(editHtml, /应用修改/);
 
