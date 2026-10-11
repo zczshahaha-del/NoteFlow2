@@ -1,0 +1,98 @@
+<div id="nf-selection-study" aria-label="NoteFlow 选中文字工具条局部效果预览">
+  <div class="viz-carousel viz-dotted-background" aria-label="工具条样式对照" data-previous-label="上一版" data-next-label="下一版">
+    <section data-variant="轻盈精修" aria-label="轻盈精修候选">
+      <div class="nst-stage">
+        <div class="nst-caption">轻盈精修 · 未应用</div>
+        <div class="nst-paper nst-refined">
+          <div class="nst-toolbar" role="group" aria-label="精修工具条"></div>
+          <p class="nst-line"><span class="nst-selection">Go 允许在 <code>if</code> 语句前加一个简单的初始化语句。</span></p>
+          <p class="nst-following">变量只在当前代码块内生效。</p>
+        </div>
+      </div>
+    </section>
+    <section data-variant="当前样式" aria-label="按当前样式重建的对照" hidden>
+      <div class="nst-stage">
+        <div class="nst-caption">当前样式 · 合成对照</div>
+        <div class="nst-paper nst-current">
+          <div class="nst-toolbar" role="group" aria-label="当前工具条"></div>
+          <p class="nst-line"><span class="nst-selection">Go 允许在 <code>if</code> 语句前加一个简单的初始化语句。</span></p>
+          <p class="nst-following">变量只在当前代码块内生效。</p>
+        </div>
+      </div>
+    </section>
+  </div>
+  <span class="nst-announcement" role="status" aria-live="polite"></span>
+</div>
+<style>
+  #nf-selection-study { --nst-text:light-dark(#34383e,#e4e8ed);--nst-muted:light-dark(#737c86,#b1bbc7);--nst-paper:light-dark(#fff,#20252c);--nst-toolbar:light-dark(#fff,#2b323b);--nst-icon:light-dark(#303945,#dce4ed);--nst-border:light-dark(rgba(32,40,50,.085),rgba(225,233,242,.12));--nst-divider:light-dark(rgba(32,40,50,.12),rgba(225,233,242,.16));--nst-selection:light-dark(#dce7ef,#374e62);--nst-code-bg:light-dark(#f2efed,#39323a);--nst-code:light-dark(#c64c41,#ff9c91);--nst-hover:light-dark(#f0f3f6,#37414d);--nst-active:light-dark(#e8f1f8,#304c65);--nst-blue:light-dark(#436f91,#a1c6e2);--nst-shadow:light-dark(rgba(28,38,49,.09),rgba(0,0,0,.26));width:100%;color:var(--nst-text);font:400 16px/1.8 -apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif; }
+  #nf-selection-study * { box-sizing:border-box; }
+  #nf-selection-study [hidden] { display:none!important; }
+  #nf-selection-study .nst-stage { min-height:282px;padding:28px 20px 24px; }
+  #nf-selection-study .nst-caption { font-size:12px;line-height:1.5;color:var(--nst-muted);margin:0 0 16px 4px; }
+  #nf-selection-study .nst-paper { background:var(--nst-paper);padding:30px 28px;border-radius:12px;min-height:196px; }
+  #nf-selection-study .nst-toolbar { position:relative;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;width:max-content;max-width:100%;gap:2.56px;min-height:42px;padding:5px;border:1px solid var(--nst-border);border-radius:10px;background:var(--nst-toolbar);isolation:isolate;margin:0 auto 16px; }
+  #nf-selection-study .nst-toolbar::after { content:"";position:absolute;bottom:-5px;left:calc(50% - 4.5px);width:9px;height:9px;background:var(--nst-toolbar);border-right:1px solid var(--nst-border);border-bottom:1px solid var(--nst-border);transform:rotate(45deg);z-index:-1; }
+  #nf-selection-study .nst-toolbar button { display:inline-flex;align-items:center;justify-content:center;flex:none;width:31px;height:31px;margin:0;padding:0;border:0;border-radius:6px;color:var(--nst-icon);background:transparent;transition:background-color 140ms ease,color 140ms ease,box-shadow 140ms ease; }
+  #nf-selection-study .nst-toolbar svg.lucide { width:15px!important;height:15px!important;stroke-width:2; }
+  #nf-selection-study .nst-divider { width:1px;height:24px;background:var(--nst-divider);margin:0 3.52px;flex:none; }
+  #nf-selection-study .nst-current .nst-toolbar { box-shadow:0 20px 48px light-dark(rgba(18,27,36,.16),rgba(0,0,0,.4)),0 2px 8px light-dark(rgba(18,27,36,.08),rgba(0,0,0,.22)); }
+  #nf-selection-study .nst-current button:hover,#nf-selection-study .nst-current button:focus-visible,#nf-selection-study .nst-current button[aria-pressed="true"] { color:var(--nst-blue);box-shadow:inset 0 -2px 0 var(--nst-blue); }
+  #nf-selection-study .nst-refined .nst-toolbar { gap:3px;padding:5px 6px;border-radius:var(--nst-radius,12px);box-shadow:0 8px 24px var(--nst-shadow),0 1px 3px light-dark(rgba(28,38,49,.04),rgba(0,0,0,.15)); }
+  #nf-selection-study .nst-refined .nst-toolbar::after { width:6px;height:6px;bottom:-4px;left:calc(50% - 3px); }
+  #nf-selection-study .nst-refined .nst-divider { height:15px;margin:0 5px;opacity:.7; }
+  #nf-selection-study .nst-refined svg.lucide { stroke-width:1.7; }
+  #nf-selection-study .nst-refined button:hover,#nf-selection-study .nst-refined button:focus-visible { background:var(--nst-hover); }
+  #nf-selection-study .nst-refined button[aria-pressed="true"] { background:var(--nst-active);color:var(--nst-blue); }
+  #nf-selection-study .nst-refined button:active { background:var(--nst-active); }
+  #nf-selection-study .nst-line,#nf-selection-study .nst-following { margin:0;overflow-wrap:anywhere; }
+  #nf-selection-study .nst-following { margin-top:7px; }
+  #nf-selection-study .nst-selection { background:var(--nst-selection);padding:2px 0;box-decoration-break:clone;-webkit-box-decoration-break:clone; }
+  #nf-selection-study code { font:400 15px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;padding:1px 4px;border-radius:4px;color:var(--nst-code);background:var(--nst-code-bg); }
+  #nf-selection-study .nst-selection.is-bold { font-weight:600; }
+  #nf-selection-study .nst-selection.is-italic { font-style:italic; }
+  #nf-selection-study .nst-selection.is-underline { text-decoration:underline; }
+  #nf-selection-study .nst-selection.is-strike { text-decoration:line-through; }
+  #nf-selection-study .nst-selection.is-highlight { background:light-dark(#f7edb9,#65552c); }
+  #nf-selection-study .nst-selection.is-code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  #nf-selection-study .nst-selection.is-link { color:var(--nst-blue);text-decoration:underline; }
+  #nf-selection-study .nst-line.is-quote { border-left:2px solid var(--nst-divider);padding-left:10px; }
+  #nf-selection-study .nst-line.is-list::before { content:"• "; }
+  #nf-selection-study .nst-line.is-ordered::before { content:"1. "; }
+  #nf-selection-study .nst-announcement { position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%); }
+  @media (max-width:520px) { #nf-selection-study .nst-stage { padding:24px 12px;min-height:348px; }#nf-selection-study .nst-paper { padding:24px 14px;min-height:252px; }#nf-selection-study .nst-divider { display:none; }#nf-selection-study .nst-toolbar { width:100%; } }
+  @media (pointer:coarse) { #nf-selection-study .nst-toolbar button { width:44px;height:44px; }#nf-selection-study .nst-stage { min-height:400px; }#nf-selection-study .nst-paper { min-height:304px; } }
+  @media (prefers-reduced-motion:reduce) { #nf-selection-study .nst-toolbar button { transition:none; } }
+  @media (forced-colors:active) { #nf-selection-study .nst-toolbar { border-color:ButtonText; }#nf-selection-study button[aria-pressed="true"] { outline:2px solid Highlight;outline-offset:-2px; } }
+</style>
+<script>
+(() => {
+  const root=document.getElementById('nf-selection-study');
+  const actions=[['chat','message-square-plus','加入对话'],['bold','bold','加粗'],['italic','italic','斜体'],['underline','underline','下划线'],['strike','strikethrough','删除线'],['highlight','highlighter','高亮'],['code','code-2','行内代码'],['link','link','添加链接'],['list','list','无序列表'],['ordered','list-ordered','有序列表'],['quote','quote','引用'],['clear','refresh-cw','清除格式']];
+  const defaults={radius:12,shadow:9};
+  const settings={...defaults};
+  const saved=window.openai?.widgetState?.privateContent?.selectionToolbarStudy;
+  function restore(value){if(value?.revision!==1)return;settings.radius=Math.min(14,Math.max(8,Number(value.radius)||12));settings.shadow=Math.min(12,Math.max(3,Number(value.shadow)||9));}
+  restore(saved);
+  function render(){root.style.setProperty('--nst-radius',settings.radius+'px');root.style.setProperty('--nst-shadow',`light-dark(rgba(28,38,49,${settings.shadow/100}),rgba(0,0,0,.26))`);}
+  function save(){window.openai?.setWidgetState?.({modelContent:{preview:'选中文字工具条',candidate:'轻盈精修',...settings},privateContent:{selectionToolbarStudy:{revision:1,...settings}}})?.catch(()=>{});}
+  root.querySelectorAll('.nst-paper').forEach(paper=>{
+    const bar=paper.querySelector('.nst-toolbar'),text=paper.querySelector('.nst-selection'),line=paper.querySelector('.nst-line');
+    actions.forEach(([key,icon,label],index)=>{
+      if(index===1||index===8){const divider=document.createElement('span');divider.className='nst-divider';divider.setAttribute('aria-hidden','true');bar.append(divider);}
+      const button=document.createElement('button');button.type='button';button.className='cursor-interaction';button.dataset.action=key;button.setAttribute('aria-label',label);button.dataset.tooltip=label;
+      const toggle=!['chat','clear'].includes(key);if(toggle)button.setAttribute('aria-pressed','false');
+      const mark=document.createElement('i');mark.dataset.lucide=icon;mark.setAttribute('aria-hidden','true');button.append(mark);bar.append(button);
+      button.addEventListener('mousedown',event=>event.preventDefault());
+      button.addEventListener('click',()=>{
+        if(key==='clear'){text.className='nst-selection';line.className='nst-line';bar.querySelectorAll('[aria-pressed]').forEach(n=>n.setAttribute('aria-pressed','false'));}
+        else if(toggle){const active=button.getAttribute('aria-pressed')!=='true';button.setAttribute('aria-pressed',String(active));if(['quote','list','ordered'].includes(key)){line.classList.toggle('is-'+key,active);if(key==='list'||key==='ordered'){const other=key==='list'?'ordered':'list';line.classList.remove('is-'+other);bar.querySelector('[data-action="'+other+'"]').setAttribute('aria-pressed','false');}}else text.classList.toggle('is-'+key,active);}
+        root.querySelector('.nst-announcement').textContent='局部预览：'+label+'，未修改正式笔记。';
+      });
+    });
+  });
+  render();
+  if(globalThis.lucide)lucide.createIcons({attrs:{width:15,height:15}});
+  if(globalThis.Tweak){const tweak=new Tweak({container:root.querySelector('.nst-refined .nst-toolbar'),onChange:()=>{render();save();}});tweak.addSlider(settings,'radius',{label:'圆角',min:8,max:14,unit:'px'});tweak.addSlider(settings,'shadow',{label:'阴影强度',min:3,max:12,unit:'%'});}
+  window.addEventListener('openai:set_globals',event=>{const value=event.detail?.globals?.widgetState?.privateContent?.selectionToolbarStudy;if(value){restore(value);render();}});
+})();
+</script>

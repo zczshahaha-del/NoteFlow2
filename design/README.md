@@ -2,6 +2,16 @@
 
 > 更新：2026-10-11。设计稿不是正式应用；业务界面仍以 `src/` 为准。下述组件合成标本也不等于用户实屏。
 
+## 选中文字工具条 · 新候选，未应用
+
+用户要求先看效果图；以现有 12 个动作 / 顺序为基线，只比较轻阴影、短分隔线、统一图标笔画与柔和状态，不改正式编辑器或删除历史代码。合成对照不是用户实屏；窄屏重排仅用于预览，正式行为待另行确认。
+
+- [上下对照图](noteflow-selection-toolbar-study-comparison.png) / [触屏窄屏图](noteflow-selection-toolbar-study-mobile.png)
+- [源稿](noteflow-selection-toolbar-study.source.html) / [离线预览](noteflow-selection-toolbar-study.preview.html)
+- [范围、历史代码核对与验证](noteflow-selection-toolbar-study-notes.md) / [隔离检查脚本](verify-selection-toolbar-study.mjs)
+
+736 / 480 / 320px、320px 触屏、本地格式反馈、真实轮播 / Tab 焦点、状态恢复、深色表面和减少动效检查通过；最终审美、正式选区与完整编辑行为未验收。
+
 ## 正文局部精修 · 已局部实施，待实屏验收
 
 2026-10-11 用户批准使用对照中的局部精修并要求可回滚，现已仅接入正式 NoteEditor 正文的比例、间距与配色。保留实际 780px 首选宽度、代码滚动、语言 / 复制工具和编辑器；不替换真实内容或改聊天 / SSE。单独提交支持仅撤销这一轮样式，笔记数据不需要回退。
