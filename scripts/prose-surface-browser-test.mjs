@@ -176,6 +176,14 @@ try {
     await editor.waitFor();
     await page.waitForFunction(() => document.querySelectorAll('.note-content pre').length === 3);
     await page.evaluate(() => document.fonts.ready);
+    if (width < 768) {
+      const header = await page.getByRole('toolbar', {name:'笔记导航'}).boundingBox();
+      const title = await page.locator('.document-title').boundingBox();
+      const outlineButton = await page.getByRole('button', {name:'展开目录',exact:true}).boundingBox();
+      assert(title.y >= header.y + header.height, 'Mobile controls must not cover the document title');
+      assert.equal(outlineButton.width,44); assert.equal(outlineButton.height,44);
+      assert(outlineButton.x + outlineButton.width <= width);
+    }
     await shell.evaluate(el => el.classList.remove('nf-prose-refined'));
     await settleStyles(editor);
     const before = await metrics(page);

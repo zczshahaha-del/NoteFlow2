@@ -23,6 +23,7 @@ const result=await build({configFile:false,logLevel:'silent',plugins:[{
  resolveId(id){if(id==='virtual:entry')return '\0entry';},
  load(id){
   if(id==='\0entry')return entry;
+  if(id===path('components/AIPanel.tsx'))return `import React from 'react';export default function AI({onCollapse}){return <div><button aria-label="收起 AI 助手" onClick={onCollapse}>收起</button><textarea aria-label="合成对话输入" /></div>}`;
   if(stubs.has(id))return 'export default function Stub(){return null}';
   if(id===path('components/NoteEditor.tsx'))return `import React from 'react';export default function Body(){window.bodyRenderCount=(window.bodyRenderCount||0)+1;return <div className="document-editor" style={{padding:'84px 72px',width:'100%'}}><div className="document-canvas"><div className="note-page"><h1>Git 入门学习笔记</h1><p>这是隔离验证正文，不读取真实笔记。</p><button>正文操作</button></div></div></div>}`;
   if(id===path('App.tsx'))return readFileSync(id,'utf8')
@@ -171,7 +172,44 @@ try {
    assert.equal((await page.locator(width>=1280?'.library-navigation':'.library-drawer-surface').boundingBox()).width,width>=1280?260:280,'Invalid saved width falls back safely');
   }
   assert.deepEqual(errors,[]);
-  reports.push({width,resizing:width>=768,persistence:width>=768,noDocumentRerenderDuringDrag:width>=768,transparentRail:width>=768,drawerEnterExit:width<1280,stableBodyAndControls:true,focusAndReducedMotion:true,dark:true,requests,errors});await context.close();
+  if(width<1280 && await page.getByRole('button',{name:'收起目录',exact:true}).count()) {
+   await page.getByRole('button',{name:'收起目录',exact:true}).click();
+   await page.locator('.library-drawer:not(.ai-drawer)').waitFor({state:'detached'});
+  }
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.getByRole('button',{name:'展开 AI 助手',exact:true}).click();await settled(page);
+  if(width>=1280){
+   const ai=page.locator('.ai-navigation'), handle=page.getByRole('separator',{name:'调整 AI 助手宽度'});
+   assert.equal((await ai.boundingBox()).width,500);
+   const before=await page.evaluate(()=>window.bodyRenderCount), edge=await handle.boundingBox();
+   await page.mouse.move(edge.x+5,200);await page.mouse.down();await page.mouse.move(edge.x-75,200,{steps:12});
+   await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+   assert.equal((await ai.boundingBox()).width,580);
+   assert.equal(await page.evaluate(()=>window.bodyRenderCount),before,'AI dragging must not rerender the document');
+   assert.equal(await page.locator('.note-page').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
+   await handle.press('Escape');await page.mouse.up();await settled(page);assert.equal((await ai.boundingBox()).width,500);
+   await handle.press('Home');await settled(page);assert.equal((await ai.boundingBox()).width,320);
+   await handle.press('End');await settled(page);assert.equal((await ai.boundingBox()).width,680);
+   await handle.press('ArrowRight');await settled(page);assert.equal((await ai.boundingBox()).width,664);
+   const cancelEdge=await handle.boundingBox();await page.mouse.move(cancelEdge.x+5,200);await page.mouse.down();await page.mouse.move(cancelEdge.x-20,200);
+   await page.getByRole('button',{name:'收起 AI 助手',exact:true}).press('Enter');await page.mouse.up();await settled(page);
+   assert.equal((await ai.boundingBox()).width,0,'Closing during drag cannot leave empty AI space');
+   assert.equal(await page.evaluate(()=>document.body.style.userSelect),'');
+   assert.equal(await page.evaluate(()=>document.body.style.cursor),'');
+   assert.notEqual(await page.locator('.app-frame').getAttribute('data-ai-resizing'),'true');
+  } else {
+   const drawer=page.locator('.ai-drawer');await page.locator('.ai-drawer[data-open="true"]').waitFor({state:'visible'});await settled(page);
+   assert.equal(await page.locator('.workspace-center-layer').evaluate(n=>n.inert),true);
+   const close=drawer.getByRole('button',{name:'收起 AI 助手',exact:true}), input=drawer.getByRole('textbox',{name:'合成对话输入'});
+   await close.focus();await page.keyboard.press('Shift+Tab');assert(await input.evaluate(n=>document.activeElement===n));
+   await page.keyboard.press('Tab');assert(await close.evaluate(n=>document.activeElement===n));
+   await close.dispatchEvent('keydown',{key:'Escape',bubbles:true,isComposing:true});assert.equal(await drawer.getAttribute('data-open'),'true');
+   await close.press('Escape');await drawer.waitFor({state:'detached'});
+   assert.equal(await page.locator('.workspace-center-layer').evaluate(n=>n.inert),false);
+   assert(await page.getByRole('button',{name:'展开 AI 助手',exact:true}).evaluate(n=>document.activeElement===n));
+  }
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);assert.deepEqual(errors,[]);
+  reports.push({width,resizing:width>=768,persistence:width>=768,noDocumentRerenderDuringDrag:width>=768,transparentRail:width>=768,drawerEnterExit:width<1280,aiConsistentMotion:true,aiDragOrFocusVerified:true,stableBodyAndControls:true,focusAndReducedMotion:true,dark:true,requests,errors});await context.close();
  }
  console.log(JSON.stringify({actualNavigation:true,syntheticOnly:true,output,reports},null,2));
 } finally {await browser.close();}

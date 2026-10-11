@@ -67,6 +67,20 @@
 .library-drawer-surface > .directory-tree { border-right: 0; }
 .library-drawer[data-open="true"] .library-drawer-surface { transform: translateX(0); }
 .library-drawer[data-open="true"] .library-drawer-veil { opacity: 1; }
+.ai-drawer { display: flex; justify-content: flex-end; }
+.ai-drawer .library-drawer-surface {
+  width: 400px;
+  max-width: 92vw;
+  transform: translateX(100%);
+  box-shadow: -6px 0 24px rgb(25 35 45 / 6%);
+}
+.ai-drawer[data-open="true"] .library-drawer-surface { transform: translateX(0); }
+.ai-navigation {
+  width: var(--workspace-right-width);
+  transition: width 240ms cubic-bezier(.22, .8, .25, 1);
+}
+.ai-navigation-content { width: var(--ai-panel-width); transition: opacity 180ms ease; }
+.ai-navigation[data-open="false"] .ai-navigation-content { opacity: 0; pointer-events: none; }
 .library-resize-handle {
   position: absolute;
   z-index: 60;
@@ -87,11 +101,16 @@
   opacity: 0;
   transition: opacity 120ms ease;
 }
+.ai-resize-handle { right: auto; left: -5px; }
 .library-resize-handle:hover > span,
 .library-resize-handle:focus-visible > span,
 .app-frame[data-library-resizing="true"] .library-resize-handle > span { opacity: .65; }
 .app-frame[data-library-resizing="true"] .library-navigation { transition: none; }
-.app-frame.stable-workspace-layout[data-library-resizing="true"] .document-canvas .note-page { transition: none; }
+.app-frame[data-ai-resizing="true"] .ai-navigation,
+.app-frame[data-ai-resizing="true"] .library-navigation { transition: none; }
+.app-frame[data-ai-resizing="true"] .ai-resize-handle > span { opacity: .65; }
+.app-frame.stable-workspace-layout[data-library-resizing="true"] .document-canvas .note-page,
+.app-frame.stable-workspace-layout[data-ai-resizing="true"] .document-canvas .note-page { transition: none; }
 @media (max-width: 767px) { .library-drawer-surface { width: 280px; } }
 @media (forced-colors: active) { .library-resize-handle > span { background: Highlight; } }
 @media (pointer: coarse) {
@@ -99,7 +118,7 @@
   .directory-tree[data-expanded="false"] > div:first-child { padding-inline: 4px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .library-navigation, .library-drawer-surface, .library-drawer-veil,
+  .library-navigation, .ai-navigation, .ai-navigation-content, .library-drawer-surface, .library-drawer-veil,
   .directory-toggle, .directory-toggle .sidebar-toggle-icon, .directory-toggle-tooltip,
   .library-resize-handle > span {
     transition: none !important;

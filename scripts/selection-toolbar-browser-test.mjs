@@ -66,6 +66,7 @@ try{
     const scrollDelta=await page.locator('.document-scroll').evaluate(n=>{const before=n.scrollTop;n.scrollTop+=45;return n.scrollTop-before;});assert.equal(scrollDelta,45);await page.waitForTimeout(350);const scrolled=await geometry(page);assert(scrolled.left>=0&&scrolled.right<=width&&scrolled.buttonsFit,JSON.stringify(scrolled));
     const textScrollShift=(await textTop())-textBeforeScroll,menuScrollShift=scrolled.top-menuBeforeScroll.top;
     const followsSelection=Math.abs(textScrollShift-menuScrollShift)<1;
+    assert(followsSelection, JSON.stringify({width,textScrollShift,menuScrollShift}));
     await page.evaluate(()=>window.toolbarTest.api.editor.commands.setTextSelection(1));await bar.waitFor({state:'hidden'});
     assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);reports.push({width,touch,initial,dark,scrolled,scrollDelta,textScrollShift,menuScrollShift,followsSelection,selectionPreserved:true,undo:true,linkCancel:true,chat:true,keyboard:true,reducedMotion:true,forcedColors:true,errors,requests});await context.close();
   }

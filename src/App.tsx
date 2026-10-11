@@ -37,125 +37,6 @@ function loadThemeMode(): ThemeMode {
   }
 }
 
-function ResizablePanel({
-  defaultWidth,
-  minWidth = 220,
-  maxWidth = 360,
-  resizeEdge = "right",
-  collapsed,
-  onWidthChange,
-  children,
-}: {
-  defaultWidth: number;
-  minWidth?: number;
-  maxWidth?: number;
-  resizeEdge?: "left" | "right";
-  collapsed: boolean;
-  onWidthChange?: (width: number) => void;
-  children: React.ReactNode;
-}) {
-  const [width, setWidth] = useState(defaultWidth);
-  const [dragging, setDragging] = useState(false);
-  const isDragging = useRef(false);
-  const startX = useRef(0);
-  const startWidth = useRef(0);
-  const pendingWidth = useRef(width);
-  const animationFrame = useRef<number | null>(null);
-
-  useEffect(() => {
-    pendingWidth.current = width;
-    onWidthChange?.(width);
-  }, [onWidthChange, width]);
-
-  const handleMouseDown = useCallback(
-    (e: React.PointerEvent) => {
-      if (collapsed) return;
-      e.preventDefault();
-      isDragging.current = true;
-      setDragging(true);
-      startX.current = e.clientX;
-      startWidth.current = width;
-      pendingWidth.current = width;
-
-      const commitWidth = () => {
-        animationFrame.current = null;
-        setWidth(pendingWidth.current);
-      };
-
-      const handleMouseMove = (ev: PointerEvent) => {
-        if (!isDragging.current) return;
-        const delta = ev.clientX - startX.current;
-        const signedDelta = resizeEdge === "left" ? -delta : delta;
-        pendingWidth.current = Math.min(maxWidth, Math.max(minWidth, startWidth.current + signedDelta));
-        if (animationFrame.current === null) {
-          animationFrame.current = window.requestAnimationFrame(commitWidth);
-        }
-      };
-
-      const handleMouseUp = () => {
-        isDragging.current = false;
-        setDragging(false);
-        if (animationFrame.current !== null) {
-          window.cancelAnimationFrame(animationFrame.current);
-          animationFrame.current = null;
-        }
-        setWidth(pendingWidth.current);
-        document.removeEventListener("pointermove", handleMouseMove);
-        document.removeEventListener("pointerup", handleMouseUp);
-        document.body.style.cursor = "";
-        document.body.style.userSelect = "";
-      };
-
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
-      document.addEventListener("pointermove", handleMouseMove);
-      document.addEventListener("pointerup", handleMouseUp);
-    },
-    [width, minWidth, maxWidth, collapsed, resizeEdge]
-  );
-
-  useEffect(() => {
-    return () => {
-      if (animationFrame.current !== null) {
-        window.cancelAnimationFrame(animationFrame.current);
-      }
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-  }, []);
-
-  const resizeHandle = !collapsed ? (
-    <div
-      className="relative z-20 w-0 shrink-0 cursor-col-resize overflow-visible group/resize"
-      onPointerDown={handleMouseDown}
-      aria-label="拖拽调整面板宽度"
-      style={{ touchAction: "none" }}
-    >
-      <div
-        className={`absolute inset-y-0 w-3 ${
-          resizeEdge === "left" ? "-left-1.5" : "-right-1.5"
-        }`}
-      />
-      <div className="absolute inset-y-1.5 left-1/2 w-px -translate-x-1/2 rounded-full bg-jelly-blue/35 opacity-0 transition-opacity duration-200 group-hover/resize:opacity-100" />
-    </div>
-  ) : null;
-
-  return (
-    <div
-      className={`shrink-0 flex ${
-        dragging ? "" : "transition-[width] duration-300 ease-in-out"
-      }`}
-      style={{ width: collapsed ? 0 : width, willChange: dragging ? "width" : undefined }}
-    >
-      {resizeEdge === "left" && resizeHandle}
-      <div className="flex-1 min-w-0 overflow-hidden">
-        {children}
-      </div>
-      {resizeEdge === "right" && resizeHandle}
-    </div>
-  );
-}
-
 function WorkspaceCenter() {
   const { centerMode } = useDraftSlice();
   if (centerMode === "edit") return <EditPreviewWorkspace />;
@@ -222,6 +103,7 @@ export default function App() {
   const desktopLeftWidth = isDesktop && !focusedWorkspace
     ? (filePanelPinned ? "var(--library-panel-width)" : "52px") : "0px";
   const workspaceLayoutStyle = {
+    "--ai-panel-width": `${aiPanelWidth}px`,
     "--library-panel-width": `${effectiveLibraryWidth}px`,
     "--workspace-left-width": desktopLeftWidth,
     "--workspace-right-width": `${desktopRightWidth}px`,
@@ -235,6 +117,16 @@ export default function App() {
     setLibraryWidth(width);
     try { localStorage.setItem(LIBRARY_WIDTH_KEY, String(width)); } catch {}
   }, []);
+  const previewAiWidth = useCallback((width: number, dragging: boolean) => {
+    const node = workspaceRef.current;
+    if (!node) return;
+    node.style.setProperty("--ai-panel-width", `${width}px`);
+    const visible = node.querySelector('.ai-navigation[data-open="true"]');
+    node.style.setProperty("--workspace-right-width", `${visible ? width : 0}px`);
+    node.style.setProperty("--library-panel-width", `${Math.min(libraryWidth ?? 260, Math.max(220, Math.min(420, viewportWidth - (visible ? width : 0) - 416)))}px`);
+    node.dataset.aiResizing = String(dragging);
+  }, [libraryWidth, viewportWidth]);
+  const commitAiWidth = useCallback((width: number) => setAiPanelWidth(width), []);
   useEffect(() => {
     previewLibraryWidth(effectiveLibraryWidth, false);
   }, [effectiveLibraryWidth, isDesktop, filePanelPinned, libraryDrawerOpen, previewLibraryWidth]);
@@ -264,20 +156,6 @@ export default function App() {
     }
     wasDesktop.current = isDesktop;
   }, [isDesktop]);
-
-  useEffect(() => {
-    // The library owns its Escape handling, including nested menus and dialogs.
-    if (libraryDrawerOpen || isDesktop || !aiOpen) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      const keyEvent = event as KeyboardEvent & { keyCode?: number };
-      if (keyEvent.isComposing || keyEvent.keyCode === 229) return;
-      setLibraryDrawerOpen(false);
-      if (!isDesktop) setAiOpen(false);
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [aiOpen, isDesktop, libraryDrawerOpen]);
 
   useEffect(() => {
     if (chatSelection) setAiOpen(true);
@@ -353,23 +231,14 @@ export default function App() {
 
           {/* Desktop AI panel stays resizable. */}
           {isDesktop && !focusedWorkspace && (
-            <div className="relative z-40 ml-auto flex h-full shrink-0">
-              <ResizablePanel
-                defaultWidth={AI_PANEL_DEFAULT_WIDTH}
-                minWidth={320}
-                maxWidth={680}
-                resizeEdge="left"
-                collapsed={!aiOpen}
-                onWidthChange={setAiPanelWidth}
-              >
-                <div
-                  className={`h-full transition-opacity duration-200 ${
-                    aiOpen ? "opacity-100" : "pointer-events-none opacity-0"
-                  }`}
-                >
+            <div className="ai-navigation relative z-40 ml-auto h-full shrink-0" data-open={aiOpen}>
+              {aiOpen && <LibraryResizeHandle width={aiPanelWidth} minWidth={320} maxWidth={680}
+                resizeEdge="left" label="调整 AI 助手宽度" onPreview={previewAiWidth} onCommit={commitAiWidth} />}
+              <div className="h-full overflow-hidden" inert={!aiOpen} aria-hidden={!aiOpen || undefined}>
+                <div className="ai-navigation-content h-full">
                   <AIPanel onCollapse={() => setAiOpen(false)} />
                 </div>
-              </ResizablePanel>
+              </div>
             </div>
           )}
 
@@ -395,18 +264,10 @@ export default function App() {
           )}
 
           {/* Mobile/tablet AI drawer. */}
-          {!isDesktop && !focusedWorkspace && aiOpen && (
-            <div className="absolute inset-0 z-[70] flex justify-end" role="dialog" aria-modal="true" aria-label="AI 助手">
-              <button
-                type="button"
-                className="drawer-backdrop absolute inset-0"
-                onClick={() => setAiOpen(false)}
-                aria-label="关闭 AI 助手"
-              />
-              <div className="drawer-surface relative h-full w-[400px] max-w-[92vw] border-l border-jelly-border">
+          {!isDesktop && !focusedWorkspace && (
+            <LibraryDrawer open={aiOpen} side="right" onClose={() => setAiOpen(false)}>
                 <AIPanel onCollapse={() => setAiOpen(false)} />
-              </div>
-            </div>
+            </LibraryDrawer>
           )}
 
           {!isTabletUp && !focusedWorkspace && !libraryDrawerOpen && (

@@ -83,7 +83,7 @@ for (const forbidden of [
 }
 
 assert.match(editor, /className="document-editor/);
-assert.match(editor, /aria-label="文档格式工具栏"/);
+assert.doesNotMatch(editor, /aria-label="文档格式工具栏"|function ToolbarButton\(/);
 assert.match(editor, /aria-label": "笔记正文"/);
 assert.match(editor, /<BubbleMenu/);
 assert.match(editor, /aria-label="选中文字格式工具栏"/);
@@ -191,14 +191,14 @@ assert.match(
 );
 assert.match(
   app,
-  /defaultWidth=\{AI_PANEL_DEFAULT_WIDTH\}[\s\S]*?minWidth=\{320\}[\s\S]*?maxWidth=\{680\}[\s\S]*?resizeEdge="left"/,
+  /<LibraryResizeHandle width=\{aiPanelWidth\} minWidth=\{320\} maxWidth=\{680\}[\s\S]*?resizeEdge="left"/,
   "desktop AI panel must remain horizontally resizable"
 );
 assert.match(app, /className=\{`app-frame[\s\S]*?stable-workspace-layout/);
 assert.match(app, /"--workspace-left-width"/);
 assert.match(app, /"--workspace-right-width"/);
 assert.match(app, /workspace-center-layer absolute inset-0 z-0/);
-assert.match(app, /onWidthChange=\{setAiPanelWidth\}/);
+assert.match(app, /onPreview=\{previewAiWidth\} onCommit=\{commitAiWidth\}/);
 assert.match(
   styles,
   /\.app-frame\.stable-workspace-layout \.document-canvas \.note-page \{[\s\S]*?margin-left: clamp\(/,
@@ -305,6 +305,8 @@ assert.match(libraryNavigationStyles, /\.directory-tree\[data-expanded="false"\]
 assert.match(libraryNavigationStyles, /\.library-drawer-veil \{[\s\S]*?backdrop-filter: none;/);
 assert.match(libraryNavigationStyles, /transition: transform 240ms cubic-bezier/);
 assert.match(app, /<LibraryDrawer open=\{libraryDrawerOpen\}/);
+assert.match(app, /<LibraryDrawer open=\{aiOpen\} side="right"/);
+assert.doesNotMatch(app, /function ResizablePanel|document.addEventListener\("pointermove"/);
 assert.doesNotMatch(app, /!focusedWorkspace && libraryDrawerOpen &&/);
 assert.match(libraryDrawer, /inert=\{!open\}/);
 assert.match(libraryDrawer, /clearTimeout\(timer\)/);
@@ -328,7 +330,7 @@ assert.match(directoryTree, /<LibrarySearchDialog[\s\S]*?open=\{searchOpen\}/);
 assert.doesNotMatch(directoryTree, /searchQuery|searchResults\.map|正在检索知识库/);
 assert.match(directoryTree, /if \(!searchShortcutEnabled\) return/);
 assert.match(app, /searchShortcutEnabled=\{isDesktop \|\| !libraryDrawerOpen\}/);
-assert.match(app, /keyEvent\.isComposing \|\| keyEvent\.keyCode === 229/);
+assert.match(libraryDrawer, /event.nativeEvent.isComposing \|\| event.nativeEvent.keyCode === 229/);
 assert.match(librarySearch, /const SEARCH_DEBOUNCE_MS = 340/);
 assert.match(librarySearch, /onCompositionStart=\{handleCompositionStart\}/);
 assert.match(librarySearch, /onCompositionEnd=\{handleCompositionEnd\}/);
@@ -435,7 +437,7 @@ assert.match(styles, /\.directory-tree \.ui-input:focus-within[\s\S]*?box-shadow
 assert.match(styles, /@media \(hover: none\)[\s\S]*?\.directory-tree \.file-node-menu-button[\s\S]*?opacity: 1;/);
 assert.match(
   editor,
-  /className="floating-launcher absolute right-3 top-3 z-40[\s\S]*?aria-label="展开目录"/,
+  /className="mobile-note-header"[\s\S]*?className="mobile-note-outline"[\s\S]*?aria-label="展开目录"/,
   "the mobile document outline launcher must not overlap the left-side library launcher"
 );
 assert.match(

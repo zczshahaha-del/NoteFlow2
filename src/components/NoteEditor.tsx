@@ -5,28 +5,19 @@ import {
   Bold,
   Calendar,
   Code2,
-  FileCode2,
-  Heading1,
-  Heading2,
-  Heading3,
   Highlighter,
   History,
   Italic,
   Link,
   List,
-  ListChecks,
   ListOrdered,
   Menu,
   MessageSquarePlus,
   MoreHorizontal,
-  Pilcrow,
   Quote,
-  Redo2,
   RefreshCw,
   Strikethrough,
-  Table2,
   Underline as UnderlineIcon,
-  Undo2,
   X,
 } from "lucide-react";
 import { useEditorSlice } from "../store/selectors";
@@ -34,6 +25,7 @@ import SoftMenu from "./SoftMenu";
 import NoteOpeningStatus from "./NoteOpeningStatus";
 import "./document-prose.css";
 import "./selection-toolbar.css";
+import "./mobile-note-navigation.css";
 import { findFileById } from "../workspaceTree";
 import { createNoteFlowTiptapExtensions } from "../editor/tiptapExtensions";
 import { findTiptapTextRange } from "../utils/tiptapSelection";
@@ -155,39 +147,6 @@ function smoothScrollToEditorHeading(editor: Editor, position: number) {
     top: Math.max(0, targetTop),
     behavior: reduceMotion ? "auto" : "smooth",
   });
-}
-
-function ToolbarButton({
-  label,
-  active = false,
-  disabled = false,
-  onClick,
-  children,
-}: {
-  label: string;
-  active?: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      className={`document-toolbar-button relative inline-flex h-8 w-8 items-center justify-center transition-colors disabled:opacity-35 ${
-        active
-          ? "text-jelly-blue-deep after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:bg-jelly-blue-deep"
-          : "text-jelly-text-soft hover:text-jelly-text"
-      }`}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={onClick}
-      disabled={disabled}
-      aria-pressed={active}
-      aria-label={label}
-      title={label}
-    >
-      {children}
-    </button>
-  );
 }
 
 function SelectionToolbarButton({
@@ -363,6 +322,8 @@ function NoteEditorDocument({ onReady, presented = true }: {
   const [linkDraft, setLinkDraft] = useState("");
   const [backendSections, setBackendSections] = useState<NoteSectionRecord[]>([]);
   const documentMenuRef = useRef<HTMLDivElement>(null);
+  const [documentScroller, setDocumentScroller] = useState<HTMLDivElement | null>(null);
+  const toolbarOptions = useMemo(() => ({ ...selectionToolbarOptions, scrollTarget: documentScroller ?? undefined }), [documentScroller]);
   const isMobile = useMediaQuery("(max-width: 767px)");
 
   const editor = useEditor(
@@ -654,17 +615,12 @@ function NoteEditorDocument({ onReady, presented = true }: {
 
   return (
     <main className="document-editor document-canvas nf-prose-refined relative flex min-w-0 flex-1 flex-col overflow-hidden bg-white">
+      {isMobile && <div className="mobile-note-header" role="toolbar" aria-label="笔记导航">
+        <span className="mobile-note-name">{titleDraft || "未命名笔记"}</span>
+        {headings.length > 1 ? <button type="button" className="mobile-note-outline"
+          onClick={() => setMobileOutlineOpen(true)} aria-label="展开目录"><Menu size={18} /></button> : <span className="mobile-note-outline-space" />}
+      </div>}
       <div className="relative flex min-h-0 flex-1">
-        {isMobile && headings.length > 1 && !mobileOutlineOpen && (
-          <button
-            type="button"
-            className="floating-launcher absolute right-3 top-3 z-40 flex h-10 w-10 items-center justify-center text-jelly-text-soft"
-            onClick={() => setMobileOutlineOpen(true)}
-            aria-label="展开目录"
-          >
-            <Menu size={18} />
-          </button>
-        )}
         {mobileOutlineOpen && (
           <div className="absolute inset-0 z-[65] flex justify-end" role="dialog" aria-modal="true" aria-label="本文目录">
             <button type="button" className="drawer-backdrop absolute inset-0" onClick={() => setMobileOutlineOpen(false)} aria-label="关闭本文目录" />
@@ -673,33 +629,6 @@ function NoteEditorDocument({ onReady, presented = true }: {
         )}
 
         <section className="flex min-w-0 flex-1 flex-col">
-          {false && <div className="document-toolbar flex flex-wrap items-center gap-1 border-b border-jelly-border/70 bg-white px-3 py-1.5" role="toolbar" aria-label="文档格式工具栏">
-            <ToolbarButton label="加入对话" onClick={addCurrentSelectionToChat} disabled={editor.state.selection.empty}><MessageSquarePlus size={16} /></ToolbarButton>
-            <span className="mx-1 h-5 w-px bg-jelly-border" />
-            <ToolbarButton label="正文" active={editor.isActive("paragraph")} onClick={() => editor.chain().focus().setParagraph().run()}><Pilcrow size={16} /></ToolbarButton>
-            <ToolbarButton label="标题 1" active={editor.isActive("heading", { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}><Heading1 size={16} /></ToolbarButton>
-            <ToolbarButton label="标题 2" active={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}><Heading2 size={16} /></ToolbarButton>
-            <ToolbarButton label="标题 3" active={editor.isActive("heading", { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}><Heading3 size={16} /></ToolbarButton>
-            <ToolbarButton label="加粗" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}><Bold size={16} /></ToolbarButton>
-            <ToolbarButton label="斜体" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}><Italic size={16} /></ToolbarButton>
-            <ToolbarButton label="下划线" active={editor.isActive("underline")} onClick={() => editor.chain().focus().toggleUnderline().run()}><UnderlineIcon size={16} /></ToolbarButton>
-            <ToolbarButton label="删除线" active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()}><Strikethrough size={16} /></ToolbarButton>
-            <ToolbarButton label="高亮" active={editor.isActive("highlight")} onClick={() => editor.chain().focus().toggleHighlight().run()}><Highlighter size={16} /></ToolbarButton>
-            <ToolbarButton label="行内代码" active={editor.isActive("code")} onClick={() => editor.chain().focus().toggleCode().run()}><Code2 size={16} /></ToolbarButton>
-            <ToolbarButton label="代码块" active={editor.isActive("codeBlock")} onClick={() => editor.chain().focus().toggleCodeBlock().run()}><FileCode2 size={16} /></ToolbarButton>
-            <ToolbarButton label="链接" active={editor.isActive("link")} onClick={() => {
-              if (editor.isActive("link")) editor.chain().focus().unsetLink().run();
-              else setLinkOpen((value) => !value);
-            }}><Link size={16} /></ToolbarButton>
-            <ToolbarButton label="无序列表" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}><List size={16} /></ToolbarButton>
-            <ToolbarButton label="有序列表" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}><ListOrdered size={16} /></ToolbarButton>
-            <ToolbarButton label="任务列表" active={editor.isActive("taskList")} onClick={() => editor.chain().focus().toggleTaskList().run()}><ListChecks size={16} /></ToolbarButton>
-            <ToolbarButton label="引用" active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()}><Quote size={16} /></ToolbarButton>
-            <ToolbarButton label="插入表格" onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}><Table2 size={16} /></ToolbarButton>
-            <span className="mx-1 h-5 w-px bg-jelly-border" />
-            <ToolbarButton label="撤销" disabled={!editor.can().undo()} onClick={() => editor.chain().focus().undo().run()}><Undo2 size={16} /></ToolbarButton>
-            <ToolbarButton label="重做" disabled={!editor.can().redo()} onClick={() => editor.chain().focus().redo().run()}><Redo2 size={16} /></ToolbarButton>
-          </div>}
 
           {linkOpen && (
             <div className="document-inline-panel flex items-center gap-2 border-b border-jelly-border/70 bg-white px-3 py-2">
@@ -722,7 +651,7 @@ function NoteEditorDocument({ onReady, presented = true }: {
           )}
 
           <div className="min-h-0 flex-1">
-            <div className="document-scroll h-full overflow-y-auto px-7 pb-32 pt-20 sm:px-10 xl:px-0">
+            <div ref={setDocumentScroller} className="document-scroll h-full overflow-y-auto px-7 pb-32 pt-20 sm:px-10 xl:px-0">
               <article className="note-page mx-auto max-w-[780px]">
                 <input
                   value={titleDraft}
@@ -813,12 +742,12 @@ function NoteEditorDocument({ onReady, presented = true }: {
                     void uploadEditorFiles(files).catch(() => undefined);
                   }}
                 >
-                  <BubbleMenu
+                  {documentScroller && <BubbleMenu
                     editor={editor}
                     pluginKey="noteSelectionToolbar"
                     appendTo={selectionToolbarAppendTo}
                     shouldShow={selectionToolbarShouldShow}
-                    options={selectionToolbarOptions}
+                    options={toolbarOptions}
                     className="selection-toolbar tiptap-selection-toolbar"
                     aria-label="选中文字格式工具栏"
                   >
@@ -827,7 +756,7 @@ function NoteEditorDocument({ onReady, presented = true }: {
                       onAddToChat={addCurrentSelectionToChat}
                       onAddLink={() => setLinkOpen(true)}
                     />
-                  </BubbleMenu>
+                  </BubbleMenu>}
                   <EditorContent editor={editor} />
                 </div>
               </article>

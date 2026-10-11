@@ -1,11 +1,14 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 /** Preview only the layout variable while dragging; commit preferences once on release. */
-export default function LibraryResizeHandle({ width, maxWidth, onPreview, onCommit }: {
+export default function LibraryResizeHandle({ width, maxWidth, onPreview, onCommit, minWidth = 220, resizeEdge = "right", label = "调整目录宽度" }: {
   width: number;
   maxWidth: number;
   onPreview: (width: number, dragging: boolean) => void;
   onCommit: (width: number) => void;
+  minWidth?: number;
+  resizeEdge?: "left" | "right";
+  label?: string;
 }) {
   const [value, setValue] = useState(width);
   const hintId = useId();
@@ -13,7 +16,7 @@ export default function LibraryResizeHandle({ width, maxWidth, onPreview, onComm
   const frame = useRef<number | null>(null);
   const callbacks = useRef({ onPreview, onCommit });
   callbacks.current = { onPreview, onCommit };
-  const clamp = (next: number) => Math.round(Math.max(220, Math.min(maxWidth, next)));
+  const clamp = (next: number) => Math.round(Math.max(minWidth, Math.min(maxWidth, next)));
 
   const release = () => {
     const current = drag.current;
@@ -47,8 +50,8 @@ export default function LibraryResizeHandle({ width, maxWidth, onPreview, onComm
 
   return (
     <>
-      <div className="library-resize-handle" role="separator" aria-orientation="vertical"
-        aria-label="调整目录宽度" aria-describedby={hintId} aria-valuemin={220} aria-valuemax={maxWidth}
+      <div className={`library-resize-handle ${resizeEdge === "left" ? "ai-resize-handle" : ""}`} role="separator" aria-orientation="vertical"
+        aria-label={label} aria-describedby={hintId} aria-valuemin={minWidth} aria-valuemax={maxWidth}
         aria-valuenow={value} aria-valuetext={`${value} 像素`} tabIndex={0}
         onPointerDown={(event) => {
           if (event.button !== 0 || drag.current) return;
@@ -64,7 +67,7 @@ export default function LibraryResizeHandle({ width, maxWidth, onPreview, onComm
         onPointerMove={(event) => {
           const current = drag.current;
           if (!current || current.id !== event.pointerId) return;
-          current.next = clamp(current.start + event.clientX - current.x);
+          current.next = clamp(current.start + (event.clientX - current.x) * (resizeEdge === "left" ? -1 : 1));
           if (frame.current === null) frame.current = requestAnimationFrame(() => {
             frame.current = null;
             if (!drag.current) return;
@@ -82,8 +85,8 @@ export default function LibraryResizeHandle({ width, maxWidth, onPreview, onComm
           }
           if (drag.current || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
           event.preventDefault(); event.stopPropagation();
-          const next = clamp(event.key === "Home" ? 220 : event.key === "End" ? maxWidth :
-            width + (event.key === "ArrowRight" ? 1 : -1) * (event.shiftKey ? 32 : 16));
+          const next = clamp(event.key === "Home" ? minWidth : event.key === "End" ? maxWidth :
+            width + (event.key === "ArrowRight" ? 1 : -1) * (resizeEdge === "left" ? -1 : 1) * (event.shiftKey ? 32 : 16));
           setValue(next); callbacks.current.onPreview(next, false); callbacks.current.onCommit(next);
         }}><span aria-hidden="true" /></div>
       <span id={hintId} className="sr-only">拖动调整宽度；左右方向键微调，Home 最窄，End 最宽。拖动时按 Escape 取消。</span>
