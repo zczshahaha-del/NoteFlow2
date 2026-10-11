@@ -6,6 +6,7 @@ import AIDraftWorkspace from "./components/AIDraftWorkspace";
 import EditPreviewWorkspace from "./components/EditPreviewWorkspace";
 import AIPanel from "./components/AIPanel";
 import LoginPage from "./components/LoginPage";
+import NoteOpeningStatus from "./components/NoteOpeningStatus";
 import { useAuthSession } from "./hooks/useAuthSession";
 import { useChatSlice, useDraftSlice } from "./store/selectors";
 
@@ -149,9 +150,7 @@ function WorkspaceCenter() {
   return (
     <Suspense
       fallback={(
-        <main className="flex min-w-0 flex-1 items-center justify-center bg-white text-sm text-jelly-text-muted">
-          正在打开文档…
-        </main>
+        <div className="note-entry" aria-busy="true"><NoteOpeningStatus /></div>
       )}
     >
       <NoteEditor />

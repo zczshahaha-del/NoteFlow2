@@ -16,6 +16,8 @@
     "test:prose-ui": "node scripts/prose-surface-browser-test.mjs",
     "test:selection-toolbar-ui": "node scripts/selection-toolbar-browser-test.mjs",
     "test:editor-performance": "node scripts/editor-performance-browser-test.mjs",
+    "test:note-entry": "node scripts/note-entry-browser-test.mjs",
+    "test:highlight-geometry": "node scripts/selection-highlight-diagnostic.mjs",
     "test:editor-document-cache": "node --experimental-strip-types scripts/editor-document-cache-test.ts",
     "test:wiki-links": "node --experimental-strip-types scripts/wiki-links-test.ts",
     "test:knowledge-import": "node --experimental-strip-types scripts/knowledge-import-test.ts",

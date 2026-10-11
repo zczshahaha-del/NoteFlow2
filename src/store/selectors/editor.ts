@@ -6,6 +6,8 @@ export function useEditorSlice() {
   return useAppStore(useShallow((state) => ({
     centerMode: state.centerMode,
     selectedFileId: state.selectedFileId,
+    noteOpenError: state.noteOpenError,
+    setSelectedFileId: state.setSelectedFileId,
     treeData: state.treeData,
     fileContents: state.fileContents,
     updateFileContent: state.updateFileContent,

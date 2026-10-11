@@ -1,5 +1,5 @@
-// Diagnosis only: production NoteEditor + CSS, synthetic note, all network blocked.
-// No changes to the application, user notes, session, or system clipboard.
+// Regression: production NoteEditor + CSS, synthetic note, all network blocked.
+// No changes to user notes, session, or system clipboard.
 import assert from 'node:assert/strict';
 import {readFileSync,readdirSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
@@ -37,7 +37,7 @@ try{
     const context=await browser.newContext({viewport:{width,height:900}}),requests=[],errors=[];
     await context.route('**/*',r=>{requests.push(r.request().url());return r.abort();});const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
     await page.setContent('<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'</style></head><body><div id="root" style="display:flex;height:100vh"></div><script type="module">'+source+'</script></body></html>');
-    await page.waitForFunction(()=>window.toolbarTest?.api.editor);await page.waitForTimeout(250);
+    await page.waitForFunction(()=>document.querySelector('.note-entry')?.dataset.ready==='true');await page.waitForTimeout(250);
     const before=await snapshot(page),a=before.glyphs[4],b=before.glyphs[10];
     // Sample the whole drag and menu delay, not just the final settled frame.
     await page.evaluate(()=>{
@@ -58,14 +58,30 @@ try{
     await page.getByRole('button',{name:'高亮',exact:true}).click();await page.waitForTimeout(200);
     const marked=await snapshot(page);assert(marked.mark);const markShifts=shifts(selected,marked);
     await page.keyboard.press('ControlOrMeta+z');await page.waitForTimeout(200);const undone=await snapshot(page);assert.equal(undone.mark,null);
-    // Causal counterfactual: temporary padding override in this isolated page only.
-    await page.addStyleTag({content:'.note-content mark {padding-inline:0 !important;}'});
+    assert.equal(marked.mark.paddingLeft,'0px');
+    assert.equal(marked.mark.paddingRight,'0px');
+    assert.equal(maximumShift(markShifts),0,'Production highlight must not reflow any glyph');
+    // Reapply after undo: the original product style, not a fixture CSS override.
     await page.getByRole('button',{name:'高亮',exact:true}).click();await page.waitForTimeout(200);const noPadding=await snapshot(page);
     const zeroPaddingShifts=shifts(undone,noPadding);
     assert.equal(noPadding.mark.paddingLeft,'0px');assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
-    assert.equal(maximumShift(zeroPaddingShifts),0,'Isolated padding counterfactual should explain the shift');
+    assert.equal(maximumShift(zeroPaddingShifts),0,'Repeated highlighting must remain stable');
     assert.equal(maximumShift(shifts(selected,undone)),0,'Undo should restore original glyph positions');
-    reports.push({width,selection:selected.selection,nativeMaximumSettledShift:maximumShift(nativeShifts),nativeMaximumFrameShift,sampledFrames:frames.length,markPadding:marked.mark,markedFirstGlyph:markShifts[4],markedFollowingGlyph:markShifts[10],zeroPaddingMaximumShift:maximumShift(zeroPaddingShifts),paragraphUnchanged:JSON.stringify(selected.paragraph)===JSON.stringify(marked.paragraph),undoRestoresPositions:true,requests,errors});await context.close();
+    // Mixed bold/link/inline-code marks, wrapping, serializing and reopening use the same rule.
+    await page.evaluate(()=>{const {slice,api}=window.toolbarTest;slice.fileContents.synthetic='# 合成笔记\n\n前缀文字**选中**[高亮](https://example.invalid)测试后缀文字`代码`不应该移动。';api.render();});
+    await page.waitForFunction(()=>document.querySelector('.note-content p strong') && document.querySelector('.note-content p a'));
+    const mixedBefore=await snapshot(page);
+    await page.evaluate(()=>{const e=window.toolbarTest.api.editor;let range;e.state.doc.descendants((n,p)=>{if(n.type.name==='paragraph'&&n.textContent.startsWith('前缀文字'))range={from:p+1,to:p+1+n.content.size};});e.chain().focus().setTextSelection(range).toggleHighlight().run();});
+    const mixedAfter=await snapshot(page);assert.equal(maximumShift(shifts(mixedBefore,mixedAfter)),0);
+    await page.evaluate(()=>{const {slice,api}=window.toolbarTest;const saved=api.editor.getMarkdown();if(!saved.includes('<mark>'))throw Error('Highlight missing from saved Markdown');slice.fileContents.synthetic=saved;slice.treeData.push({id:'other',name:'另一篇.md',type:'file'});slice.fileContents.other='另一个合成正文';slice.selectedFileId='other';api.render();});
+    await page.waitForFunction(()=>document.querySelector('.note-entry')?.dataset.ready==='true'&&document.querySelector('.note-content')?.textContent==='另一个合成正文');
+    await page.evaluate(()=>{window.toolbarTest.slice.selectedFileId='synthetic';window.toolbarTest.api.render();});
+    await page.waitForFunction(()=>document.querySelector('.note-entry')?.dataset.ready==='true'&&document.querySelector('.note-content mark'));
+    await page.waitForTimeout(250);assert.equal(maximumShift(shifts(mixedBefore,await snapshot(page))),0);
+    await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));
+    assert.equal(maximumShift(shifts(mixedBefore,await snapshot(page))),0);
+    assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
+    reports.push({width,selection:selected.selection,nativeMaximumSettledShift:maximumShift(nativeShifts),nativeMaximumFrameShift,sampledFrames:frames.length,markPadding:marked.mark,markedFirstGlyph:markShifts[4],markedFollowingGlyph:markShifts[10],zeroPaddingMaximumShift:maximumShift(zeroPaddingShifts),paragraphUnchanged:JSON.stringify(selected.paragraph)===JSON.stringify(marked.paragraph),undoRestoresPositions:true,mixedFormatSavedReopenAndDark:true,requests,errors});await context.close();
   }
-  console.log(JSON.stringify({scope:'diagnosis-not-fix',syntheticOnly:true,actualComponent:true,reports},null,2));
+  console.log(JSON.stringify({scope:'highlight-geometry-regression',syntheticOnly:true,actualComponent:true,reports},null,2));
 }finally{await browser.close();}

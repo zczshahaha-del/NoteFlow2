@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import {
@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { useEditorSlice } from "../store/selectors";
 import SoftMenu from "./SoftMenu";
+import NoteOpeningStatus from "./NoteOpeningStatus";
 import "./document-prose.css";
 import "./selection-toolbar.css";
 import { findFileById } from "../workspaceTree";
@@ -288,6 +289,50 @@ function NoteSelectionToolbar({
 }
 
 export default function NoteEditor() {
+  const { selectedFileId, treeData, fileContents, noteOpenError, setSelectedFileId } = useEditorSlice();
+  const file = selectedFileId ? findFileById(treeData, selectedFileId) : undefined;
+  if (!file) return <NoteEditorDocument />;
+  return (
+    <NoteEntry key={file.id}
+      hasContent={fileContents[file.id] !== undefined || file.content !== undefined}
+      error={noteOpenError?.noteId === file.id}
+      onRetry={() => setSelectedFileId(file.id)} />
+  );
+}
+
+function NoteEntry({ hasContent, error, onRetry }: {
+  hasContent: boolean;
+  error: boolean;
+  onRetry: () => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  const [ready, setReady] = useState(false);
+  const failed = error && !hasContent;
+  const onReady = useCallback(() => setReady(true), []);
+  useEffect(() => {
+    if (!hasContent) return;
+    // Let selection/drawer feedback paint before synchronously parsing the new note.
+    // Keyed ownership cancels superseded opens; never render the old editor under a new title.
+    let secondFrame = 0;
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => setMounted(true));
+    });
+    return () => { cancelAnimationFrame(firstFrame); cancelAnimationFrame(secondFrame); };
+  }, [hasContent]);
+  return (
+    <div className="note-entry" data-ready={ready} aria-busy={!ready && !failed}>
+      {!ready && <NoteOpeningStatus error={failed} onRetry={onRetry} />}
+      {mounted && <div className="note-entry-content" inert={!ready} aria-hidden={!ready}>
+        <NoteEditorDocument onReady={onReady} presented={ready} />
+      </div>}
+    </div>
+  );
+}
+
+function NoteEditorDocument({ onReady, presented = true }: {
+  onReady?: () => void;
+  presented?: boolean;
+}) {
   const {
     selectedFileId,
     treeData,
@@ -356,6 +401,12 @@ export default function NoteEditor() {
   });
 
   useEffect(() => {
+    if (!editor || editor.isDestroyed || !onReady) return;
+    const frame = requestAnimationFrame(onReady);
+    return () => cancelAnimationFrame(frame);
+  }, [editor, onReady]);
+
+  useEffect(() => {
     setTitleDraft(selectedFile?.name.replace(/\.md$/i, "") ?? "未命名笔记");
     setVersionHistoryOpen(false);
     setMobileOutlineOpen(false);
@@ -382,6 +433,7 @@ export default function NoteEditor() {
     if (
       !editor ||
       editor.isDestroyed ||
+      !presented ||
       !pendingEditorSelection ||
       pendingEditorSelection.noteId !== selectedFileId
     ) return;
@@ -392,12 +444,13 @@ export default function NoteEditor() {
     else command.setTextSelection(1);
     command.scrollIntoView().run();
     clearPendingEditorSelection();
-  }, [clearPendingEditorSelection, editor, pendingEditorSelection, rawContent, selectedFileId]);
+  }, [clearPendingEditorSelection, editor, pendingEditorSelection, presented, rawContent, selectedFileId]);
 
   useEffect(() => {
     if (
       !editor ||
       editor.isDestroyed ||
+      !presented ||
       !pendingSourceFocus ||
       pendingSourceFocus.noteId !== selectedFileId
     ) return;
@@ -460,7 +513,7 @@ export default function NoteEditor() {
       else focusEditorSource(editor, 1);
     }
     clearPendingSourceFocus();
-  }, [clearPendingSourceFocus, editor, pendingSourceFocus, rawContent, selectedFileId]);
+  }, [clearPendingSourceFocus, editor, pendingSourceFocus, presented, rawContent, selectedFileId]);
 
   const headings = useMemo(
     () => editor && !editor.isDestroyed ? collectHeadings(editor) : emptyHeadings,
@@ -542,7 +595,7 @@ export default function NoteEditor() {
   if (!editor || editor.isDestroyed) {
     return (
       <main className="flex min-w-0 flex-1 items-center justify-center bg-white text-sm text-jelly-text-muted">
-        正在打开文档…
+        正在打开笔记…
       </main>
     );
   }

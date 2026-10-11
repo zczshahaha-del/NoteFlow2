@@ -190,6 +190,7 @@ interface AppState {
   saveMemoryFromText: (text: string) => void;
   listMemoryRequest: (text?: string) => void;
   selectedFileId: string | null;
+  noteOpenError: { noteId: string } | null;
   setSelectedFileId: (id: string | null) => void;
   expandedFolderIds: Set<string>;
   toggleFolder: (id: string) => void;
@@ -649,6 +650,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   pendingEditorSelection: null,
   activeEditorSectionId: null,
   selectedFileId: null,
+  noteOpenError: null,
   expandedFolderIds: new Set(),
   fileContents: {},
   noteSaveState: noteSaveState("idle"),
@@ -1350,6 +1352,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       pendingSourceFocus: null,
       pendingEditorSelection: null,
       selectedFileId: snapshot.selectedFileId,
+      noteOpenError: null,
       expandedFolderIds: new Set(),
       fileContents: snapshot.fileContents,
       noteSaveState: noteSaveState("idle"),
@@ -1382,6 +1385,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   replaceSnapshot: (snapshot) => {
     set((state) => ({
       selectedFileId: snapshot.selectedFileId,
+      noteOpenError: null,
       fileContents: snapshot.fileContents,
       treeData: snapshot.treeData,
       expandedFolderIds:
@@ -1414,6 +1418,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         Boolean(state.activeDraftContext);
       return {
         selectedFileId: id,
+        noteOpenError: null,
         treeData: id
           ? updateFileMetadata(state.treeData, id, { lastOpenedAt: new Date().toISOString() })
           : state.treeData,
@@ -1442,7 +1447,9 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         });
         persistLocalCurrentState();
       })
-      .catch(() => {});
+      .catch(() => {
+        if (get().selectedFileId === id) set({ noteOpenError: { noteId: id } });
+      });
   },
 
   toggleFolder: (id) =>

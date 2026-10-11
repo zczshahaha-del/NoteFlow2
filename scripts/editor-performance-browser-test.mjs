@@ -47,7 +47,12 @@ const result = await build({ configFile: false, logLevel: 'silent', plugins: [{
     if (id === '\0perf-notes') return 'export const getNoteOutline=async()=>({sections:[]});export const listNoteVersions=async()=>[];';
     if (id === '\0perf-attachments') return 'export const attachmentMarkdown=()=>"";export const uploadAttachment=()=>{throw new Error("Unexpected upload")};';
     if (id === component) return componentSource
-      .replace('export default function NoteEditor() {', 'export default function NoteEditor() { window.editorPerf.stats.renders++;')
+      .replace(componentSource.includes('function NoteEditorDocument(')
+        ? '  const [titleDraft, setTitleDraft]'
+        : 'export default function NoteEditor() {',
+        componentSource.includes('function NoteEditorDocument(')
+          ? '  window.editorPerf.stats.renders++; const [titleDraft, setTitleDraft]'
+          : 'export default function NoteEditor() { window.editorPerf.stats.renders++;')
       .replace('editor.state.doc.descendants((node, position) => {', 'window.editorPerf.stats.headingScans++; editor.state.doc.descendants((node, position) => {')
       .replace('const headingElements = Array.from(', 'window.editorPerf.stats.headingDomPasses++; const headingElements = Array.from(')
       .replace('      extensions,', `      extensions,
