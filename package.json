@@ -21,6 +21,7 @@
     "test:account-menu": "node scripts/account-menu-browser-test.mjs",
     "test:highlight-geometry": "node scripts/selection-highlight-diagnostic.mjs",
     "test:editor-document-cache": "node --experimental-strip-types scripts/editor-document-cache-test.ts",
+    "test:local-note-journal": "node scripts/local-note-journal-test.mjs",
     "test:wiki-links": "node --experimental-strip-types scripts/wiki-links-test.ts",
     "test:knowledge-import": "node --experimental-strip-types scripts/knowledge-import-test.ts",
     "test:markdown-diff": "node --experimental-strip-types scripts/markdown-diff-test.ts",

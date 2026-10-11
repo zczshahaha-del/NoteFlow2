@@ -96,6 +96,7 @@ import {
   loadLocalSnapshot,
   resolveSelectedFileId,
   saveLocalSnapshot,
+  saveLocalNoteContent,
 } from "./persistence";
 
 export { reconcilePersistedNoteRecord };
@@ -401,10 +402,14 @@ function formatMemoryList(memories: Awaited<ReturnType<typeof listMemories>>): s
     .join("\n\n");
 }
 
+let localStateCheckpoint: { userId: string; snapshot: KnowledgeBaseSnapshot } | null = null;
 function persistLocalCurrentState() {
   const state = useAppStore.getState();
   if (state.hydratedUserId) {
-    saveLocalSnapshot(state.hydratedUserId, snapshotFromState(state));
+    const snapshot = snapshotFromState(state);
+    if (saveLocalSnapshot(state.hydratedUserId, snapshot)) {
+      localStateCheckpoint = { userId: state.hydratedUserId, snapshot };
+    }
   }
 }
 
@@ -1393,6 +1398,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           ? state.expandedFolderIds
           : new Set(collectFolderIds(snapshot.treeData)),
     }));
+    persistLocalCurrentState();
   },
 
   setServerSyncReady: (ready) => set({ serverSyncReady: ready }),
@@ -1466,7 +1472,10 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       treeData: updateFileContentInTree(state.treeData, id, content),
       noteSaveState: noteSaveState("unsaved"),
     }));
-    persistLocalCurrentState();
+    const userId = get().hydratedUserId;
+    if (userId && saveLocalNoteContent(userId, id, content)) {
+      localStateCheckpoint = { userId, snapshot: snapshotFromState(get()) };
+    }
     scheduleNoteSave(id, content);
   },
 
@@ -2464,7 +2473,6 @@ async function loadStructuredWorkspace(userId: string, preferredSelectedFileId?:
             deletedAt: note.deletedAt,
           })),
       });
-      saveLocalSnapshot(userId, snapshot);
       await clearKnowledgeBase().catch(() => {});
     } else {
       const emptySnapshot: KnowledgeBaseSnapshot = {
@@ -2482,7 +2490,6 @@ async function loadStructuredWorkspace(userId: string, preferredSelectedFileId?:
             deletedAt: note.deletedAt,
           })),
       });
-      saveLocalSnapshot(userId, emptySnapshot);
     }
 
     useAppStore.getState().setServerSyncReady(true);
@@ -2512,9 +2519,6 @@ export function AppProvider({
   userId: string;
 }) {
   const hydratedUserId = useAppStore((state) => state.hydratedUserId);
-  const selectedFileId = useAppStore((state) => state.selectedFileId);
-  const fileContents = useAppStore((state) => state.fileContents);
-  const treeData = useAppStore((state) => state.treeData);
 
   useEffect(() => {
     useAppStore.getState().hydrate(userId);
@@ -2533,6 +2537,42 @@ export function AppProvider({
     void loadStructuredWorkspace(userId);
   }, [hydratedUserId, userId]);
 
+  // Preserve the old safety net for rollback / bulk state changes, without
+  // subscribing React to every keystroke or duplicating the action's write.
+  useEffect(() => {
+    let active = true;
+    let queued = false;
+    const schedule = () => {
+      if (queued) return;
+      queued = true;
+      queueMicrotask(() => {
+        queued = false;
+        const state = useAppStore.getState();
+        if (!active || state.hydratedUserId !== userId) return;
+        const checkpoint = localStateCheckpoint?.userId === userId ? localStateCheckpoint.snapshot : null;
+        if (checkpoint?.treeData === state.treeData && checkpoint.fileContents === state.fileContents && checkpoint.selectedFileId === state.selectedFileId) return;
+        persistLocalCurrentState();
+      });
+    };
+    const unsubscribe = useAppStore.subscribe((state, previous) => {
+      if (state.treeData !== previous.treeData || state.fileContents !== previous.fileContents || state.selectedFileId !== previous.selectedFileId || state.hydratedUserId !== previous.hydratedUserId) schedule();
+    });
+    // Keep the legacy baseline current when leaving, including a code rollback.
+    const flush = () => {
+      if (useAppStore.getState().hydratedUserId === userId) persistLocalCurrentState();
+    };
+    const onVisibility = () => { if (document.visibilityState === "hidden") flush(); };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVisibility);
+    schedule();
+    return () => {
+      active = false; unsubscribe();
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVisibility);
+      flush();
+    };
+  }, [userId]);
+
   useEffect(() => {
     if (hydratedUserId !== userId) return;
     const flush = () => void flushOfflineNoteQueue(userId).catch(() => undefined);
@@ -2540,11 +2580,6 @@ export function AppProvider({
     if (navigator.onLine) flush();
     return () => window.removeEventListener("online", flush);
   }, [hydratedUserId, userId]);
-
-  useEffect(() => {
-    if (hydratedUserId !== userId) return;
-    saveLocalSnapshot(userId, snapshotFromState(useAppStore.getState()));
-  }, [fileContents, hydratedUserId, selectedFileId, treeData, userId]);
 
   return <>{children}</>;
 }

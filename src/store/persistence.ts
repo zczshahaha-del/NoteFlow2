@@ -1,6 +1,7 @@
 import type { KnowledgeBaseSnapshot } from "../services/knowledgeBase";
 import type { FileNode } from "../types";
 import { findFileById } from "../workspaceTree";
+import { updateFileContentInTree } from "./tree";
 
 const BUNDLED_DEMO_FILE_IDS = new Set([
   "redis-cache-3-problems",
@@ -25,7 +26,15 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 function saveToStorage(key: string, value: unknown) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
+    return true;
+  } catch { return false; }
+}
+
+// A synchronous, per-note journal: typing never serializes other notes, and there
+// is no debounce window in which closing the tab would lose the last characters.
+function draftPrefix(userId: string) { return userStorageKey(userId, "note-draft:"); }
+export function saveLocalNoteContent(userId: string, noteId: string, content: string) {
+  return saveToStorage(draftPrefix(userId) + noteId, content);
 }
 
 function findFirstFileId(nodes: FileNode[]): string | null {
@@ -76,6 +85,20 @@ export function loadLocalSnapshot(userId: string): KnowledgeBaseSnapshot {
     treeData = [];
     fileContents = {};
   }
+  // Only hydrate live note IDs from the authoritative tree, never resurrect a
+  // deleted note from a journal. Empty strings are valid edits.
+  const restore = (nodes: FileNode[]) => {
+    for (const node of nodes) {
+      if (node.type === "file") {
+        const content = loadFromStorage<unknown>(draftPrefix(userId) + node.id, null);
+        if (typeof content === "string") {
+          fileContents[node.id] = content;
+          treeData = updateFileContentInTree(treeData, node.id, content);
+        }
+      } else if (node.children) restore(node.children);
+    }
+  };
+  restore(treeData);
   const selectedFileId = resolveSelectedFileId(
     treeData,
     loadFromStorage<string | null>(
@@ -91,10 +114,20 @@ export function saveLocalSnapshot(
   userId: string,
   snapshot: KnowledgeBaseSnapshot
 ) {
-  saveToStorage(userStorageKey(userId, "tree-data"), snapshot.treeData);
-  saveToStorage(userStorageKey(userId, "file-contents"), snapshot.fileContents);
-  saveToStorage(
+  const contentsSaved = saveToStorage(userStorageKey(userId, "file-contents"), snapshot.fileContents);
+  const treeSaved = saveToStorage(userStorageKey(userId, "tree-data"), snapshot.treeData);
+  const selectionSaved = saveToStorage(
     userStorageKey(userId, "selected-file-id"),
     snapshot.selectedFileId
   );
+  // Compact only after both baseline writes succeed. On quota/storage failure,
+  // retain the journal so the last successfully written edit is recoverable.
+  if (contentsSaved && treeSaved) {
+    try {
+      const prefix = draftPrefix(userId);
+      const keys = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index));
+      for (const key of keys) if (key?.startsWith(prefix)) localStorage.removeItem(key);
+    } catch {}
+  }
+  return contentsSaved && treeSaved && selectionSaved;
 }
