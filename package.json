@@ -12,6 +12,7 @@
     "test:tiptap-selection": "node --experimental-strip-types scripts/tiptap-selection-test.ts",
     "test:heading-numbering": "node --experimental-strip-types scripts/heading-numbering-test.ts",
     "test:editor-ui": "node scripts/editor-ui-contract-test.mjs",
+    "test:prose-ui": "node scripts/prose-surface-browser-test.mjs",
     "test:wiki-links": "node --experimental-strip-types scripts/wiki-links-test.ts",
     "test:knowledge-import": "node --experimental-strip-types scripts/knowledge-import-test.ts",
     "test:markdown-diff": "node --experimental-strip-types scripts/markdown-diff-test.ts",

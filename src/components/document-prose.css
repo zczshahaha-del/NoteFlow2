@@ -1,0 +1,193 @@
+/* Approved prose study, scoped to saved-note editing only. Keep the existing
+   canvas width, editor schema, code toolbar, scroll behavior and note data. */
+.document-canvas.nf-prose-refined .note-content {
+  --prose-ink: #292a28;
+  --prose-code: #f8f7f5;
+  --prose-inline: #f3f2ef;
+  --prose-line: #e8e7e3;
+  --prose-blue: #07769f;
+  --prose-green: #587d08;
+  --prose-pink: #d32d59;
+  --prose-number: #a81765;
+  --prose-comment: #5e6f82;
+  --prose-operator: #8b641e;
+  --prose-inline-ink: #c44034;
+  --prose-mint: #e9f2ec;
+  color: var(--prose-ink) !important;
+  font-size: 16px !important;
+  font-weight: 400;
+  line-height: 1.8 !important;
+}
+
+.theme-dark .document-canvas.nf-prose-refined .note-content {
+  --prose-ink: #e6e5df;
+  --prose-code: #292927;
+  --prose-inline: #33332f;
+  --prose-line: #3d3e37;
+  --prose-blue: #65bce3;
+  --prose-green: #adca6b;
+  --prose-pink: #f58aab;
+  --prose-number: #eba1cc;
+  --prose-comment: #a2b0c2;
+  --prose-operator: #d6b574;
+  --prose-inline-ink: #f39c91;
+  --prose-mint: #27372e;
+}
+
+.document-canvas.nf-prose-refined .note-content :is(h1, h2, h3, h4) {
+  color: var(--prose-ink) !important;
+  font-weight: 650 !important;
+  line-height: 1.5 !important;
+  letter-spacing: -0.015em !important;
+}
+
+.document-canvas.nf-prose-refined .note-content h1 {
+  margin: 0 0 30px !important;
+  font-size: 27px !important;
+  line-height: 1.35 !important;
+}
+
+.document-canvas.nf-prose-refined .note-content h2 {
+  margin: 32px 0 18px !important;
+  font-size: 20px !important;
+}
+
+.document-canvas.nf-prose-refined .note-content h3 {
+  margin: 26px 0 14px !important;
+  font-size: 18px !important;
+}
+
+.document-canvas.nf-prose-refined .note-content h4 {
+  margin: 22px 0 12px !important;
+  font-size: 16.5px !important;
+}
+
+.document-canvas.nf-prose-refined .note-content p {
+  margin: 16px 0 !important;
+  color: var(--prose-ink) !important;
+  font-size: 16px !important;
+  line-height: 1.8 !important;
+}
+
+.document-canvas.nf-prose-refined .note-content li {
+  color: var(--prose-ink) !important;
+  font-size: 16px !important;
+  line-height: 1.8 !important;
+}
+
+.document-canvas.nf-prose-refined .note-content strong {
+  color: inherit !important;
+  font-weight: 650 !important;
+}
+
+.document-canvas.nf-prose-refined .note-content > :first-child {
+  margin-top: 0 !important;
+}
+
+.document-canvas.nf-prose-refined .note-content hr {
+  margin: 32px 0 !important;
+  background: var(--prose-line) !important;
+}
+
+.document-canvas.nf-prose-refined .note-content code {
+  background: var(--prose-inline) !important;
+  color: var(--prose-inline-ink) !important;
+  padding: 2px 5px !important;
+  border-radius: 4px !important;
+  font-size: 0.94em !important;
+  font-weight: 400 !important;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.document-canvas.nf-prose-refined .note-content .code-block,
+.document-canvas.nf-prose-refined .note-content pre {
+  margin: 16px 0 !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: var(--prose-code) !important;
+  box-shadow: none !important;
+}
+
+.document-canvas.nf-prose-refined .note-content .code-block pre,
+.document-canvas.nf-prose-refined .note-content pre.code-pre,
+.document-canvas.nf-prose-refined .note-content > pre {
+  margin: 0 !important;
+  /* The real language/copy controls need a stable row above the first line.
+     Unlike the static study, do not remove controls or let hover obscure code. */
+  padding: 44px 22px 22px !important;
+  overflow: auto !important;
+  scrollbar-width: thin;
+  scrollbar-color: var(--prose-line) transparent;
+}
+
+.document-canvas.nf-prose-refined .note-content .code-block pre code,
+.document-canvas.nf-prose-refined .note-content pre code {
+  background: transparent !important;
+  color: var(--prose-ink) !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-size: 13.5px !important;
+  font-weight: 400 !important;
+  line-height: 1.7 !important;
+  white-space: pre !important;
+}
+
+.document-canvas.nf-prose-refined .note-content .token-keyword { color: var(--prose-blue) !important; font-weight: 400 !important; }
+.document-canvas.nf-prose-refined .note-content .token-string { color: var(--prose-green) !important; }
+.document-canvas.nf-prose-refined .note-content .token-number { color: var(--prose-number) !important; }
+.document-canvas.nf-prose-refined .note-content .token-comment { color: var(--prose-comment) !important; }
+.document-canvas.nf-prose-refined .note-content .token-function { color: var(--prose-pink) !important; font-weight: 400 !important; }
+.document-canvas.nf-prose-refined .note-content :is(.token-operator, .token-property, .token-key) { color: var(--prose-operator) !important; font-weight: 400 !important; }
+
+.document-canvas.nf-prose-refined .note-content blockquote {
+  margin: 18px 0 !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: var(--prose-mint) !important;
+  color: var(--prose-ink) !important;
+  padding: 17px 19px 17px 53px !important;
+  line-height: 1.8 !important;
+}
+
+.document-canvas.nf-prose-refined .note-content blockquote::before {
+  top: 17px;
+  left: 19px;
+  font-size: 19px;
+  line-height: 1.6;
+}
+
+.document-canvas.nf-prose-refined .note-content blockquote p {
+  margin: 0 !important;
+  color: inherit !important;
+  line-height: inherit !important;
+}
+
+@media (max-width: 480px) {
+  .document-canvas.nf-prose-refined .note-content h1 { font-size: 25px !important; }
+  .document-canvas.nf-prose-refined .note-content h2 { font-size: 19px !important; }
+  .document-canvas.nf-prose-refined .note-content .code-block pre,
+  .document-canvas.nf-prose-refined .note-content pre.code-pre,
+  .document-canvas.nf-prose-refined .note-content > pre { padding-inline: 16px !important; }
+  .document-canvas.nf-prose-refined .note-content blockquote { padding: 16px 16px 16px 47px !important; }
+  .document-canvas.nf-prose-refined .note-content blockquote::before { top: 16px; left: 16px; }
+}
+
+@media (forced-colors: active) {
+  .document-canvas.nf-prose-refined .note-content,
+  .theme-dark .document-canvas.nf-prose-refined .note-content {
+    --prose-ink: CanvasText;
+    --prose-code: Canvas;
+    --prose-inline: Canvas;
+    --prose-mint: Canvas;
+    --prose-line: GrayText;
+    --prose-blue: CanvasText;
+    --prose-green: CanvasText;
+    --prose-pink: CanvasText;
+    --prose-number: CanvasText;
+    --prose-comment: CanvasText;
+    --prose-operator: CanvasText;
+    --prose-inline-ink: CanvasText;
+  }
+  .document-canvas.nf-prose-refined .note-content :is(.code-block, blockquote) { border: 1px solid GrayText !important; }
+}

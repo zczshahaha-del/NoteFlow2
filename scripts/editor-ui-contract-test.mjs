@@ -20,6 +20,18 @@ const sidebarToggleIcon = readFileSync(new URL("../src/components/SidebarToggleI
 const styles = readFileSync(new URL("../src/index.css", import.meta.url), "utf8");
 const menuStyles = readFileSync(new URL("../src/components/menu-ui.css", import.meta.url), "utf8");
 const softMenu = readFileSync(new URL("../src/components/SoftMenu.tsx", import.meta.url), "utf8");
+const proseStyles = readFileSync(new URL("../src/components/document-prose.css", import.meta.url), "utf8");
+
+assert.match(editor, /import "\.\/document-prose\.css"/);
+assert.match(editor, /document-canvas nf-prose-refined/);
+assert.match(proseStyles, /\.document-canvas\.nf-prose-refined \.note-content/);
+assert.match(proseStyles, /font-size: 16px !important;[\s\S]*?font-weight: 400;[\s\S]*?line-height: 1\.8 !important/);
+assert.match(proseStyles, /padding: 44px 22px 22px !important/);
+assert.match(proseStyles, /font-size: 13\.5px !important/);
+assert.match(proseStyles, /white-space: pre !important/);
+assert.match(proseStyles, /\.theme-dark \.document-canvas\.nf-prose-refined/);
+assert.match(proseStyles, /@media \(forced-colors: active\)/);
+assert.doesNotMatch(proseStyles, /\.code-toolbar|\.code-copy-button|\.code-language-trigger|--document-page-width|\.note-page|\.document-scroll|animation:|transition:/);
 
 assert.match(directoryTree, /<SoftMenu open=\{menuOpen\}/);
 assert.match(directoryTree, /<SoftMenu open=\{newMenuOpen\}/);
