@@ -5,9 +5,6 @@
   border-radius: 12px;
   box-shadow: 0 6px 20px rgb(36 44 55 / 8%);
 }
-.nf-settings-system.account-menu-root[data-compact="true"] .nf-account-popover {
-  width: 224px;
-}
 .nf-settings-system.account-menu-root[data-theme="dark"][data-compact] .nf-account-popover {
   box-shadow: 0 6px 20px rgb(0 0 0 / 24%);
 }

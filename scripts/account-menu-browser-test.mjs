@@ -40,6 +40,8 @@ try{
   const geometry=await panel.evaluate(n=>({box:n.getBoundingClientRect().toJSON(),radius:getComputedStyle(n).borderRadius,avatar:n.querySelector('.nf-avatar').getBoundingClientRect().width,footer:document.querySelector('.nf-account-trigger .nf-avatar').getBoundingClientRect().width,rows:[...n.querySelectorAll('.nf-menu-item')].map(b=>b.getBoundingClientRect().height)}));
   assert.equal(geometry.box.width,224);assert.equal(geometry.radius,'12px');assert.equal(geometry.avatar,28);assert.equal(geometry.footer,34);
   assert(geometry.box.x>=0&&geometry.box.right<=width);assert(geometry.box.y>=0&&geometry.box.bottom<=720);
+  assert.equal(geometry.box.x,triggerBefore.x+54,'Open to the right of the avatar launcher');
+  assert.equal(geometry.box.bottom,triggerBefore.y+triggerBefore.height,'Align menu bottom with launcher');
   assert(geometry.rows.every(h=>h===(width===320?44:36)));
   assert.deepEqual(await page.locator('.nf-account-trigger').boundingBox(),triggerBefore,'Launcher must not change');
   assert.equal(await panel.locator('button').count(),3);assert.equal(await panel.getByText('13',{exact:true}).count(),1);
@@ -59,7 +61,11 @@ try{
   await page.evaluate(()=>window.accountTest.update({userName:'很长的名字'.repeat(8),compact:false}));await open(page);
   assert.equal(await panel.locator('.nf-username').textContent(),'很长的名字'.repeat(8));
   assert.equal(await panel.evaluate(n=>n.scrollWidth<=n.clientWidth),true);
-  assert.equal(await panel.evaluate(n=>n.getBoundingClientRect().width),236);
+  assert.equal(await panel.evaluate(n=>n.getBoundingClientRect().width),224);
+  const fullTrigger=await page.locator('.nf-account-trigger').boundingBox();
+  assert.equal(await panel.evaluate(n=>n.getBoundingClientRect().left),fullTrigger.x+54);
+  assert.equal(await panel.evaluate(n=>n.getBoundingClientRect().bottom),fullTrigger.y+fullTrigger.height);
+  assert(await panel.evaluate(n=>n.getBoundingClientRect().right)<=width);
   await panel.getByRole('button',{name:'设置',exact:true}).press('Escape');await settled(page);
   await page.evaluate(()=>window.accountTest.update({userName:'示例用户',compact:true,themeMode:'dark'}));await open(page);
   assert.equal(await panel.evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(37, 43, 51)');
@@ -73,7 +79,7 @@ try{
   await page.emulateMedia({forcedColors:'active'});
   assert.equal(await panel.evaluate(n=>getComputedStyle(n).outlineStyle),'solid');
   assert.deepEqual(requests,[]);assert.deepEqual(errors,[]);
-  reports.push({width,compactWidth:224,avatar:28,launcherUnchanged:true,rows:geometry.rows,settingsAndTrash:true,longName:true,dark:true,reducedMotion:true,shortViewport:true,requests,errors});await context.close();
+  reports.push({width,compactWidth:224,rightOfAvatar:true,bottomAligned:true,avatar:28,launcherUnchanged:true,rows:geometry.rows,settingsAndTrash:true,longName:true,dark:true,reducedMotion:true,shortViewport:true,requests,errors});await context.close();
  }
  console.log(JSON.stringify({actualAccountMenu:true,syntheticOnly:true,output,reports},null,2));
 }finally{await browser.close();}

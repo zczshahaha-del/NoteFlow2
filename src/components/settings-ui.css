@@ -53,15 +53,16 @@
 .nf-settings-system[data-compact="true"] { width: 44px; }
 .nf-settings-system[data-compact="true"] .nf-account-trigger { width: 44px; padding: 5px; }
 .nf-settings-system .nf-account-popover {
-  position: absolute; z-index: 50; bottom: calc(100% + 10px); left: 0; right: 0;
-  box-sizing: border-box; width: 100%; max-width: 100%;
-  max-height: calc(100dvh - 96px); overflow: auto; overscroll-behavior: contain;
+  position: absolute; z-index: 50; bottom: 0; left: 54px; right: auto;
+  box-sizing: border-box; width: 224px; max-width: calc(100vw - 80px);
+  max-height: calc(100dvh - 24px); overflow: auto; overscroll-behavior: contain;
   padding: 10px; border: 0; border-radius: 20px;
   background: var(--nf-surface); box-shadow: 0 7px 22px var(--nf-shadow);
 }
-.nf-settings-system[data-compact="true"] .nf-account-popover { right: auto; width: 248px; max-width: calc(100vw - 32px); }
-.nf-settings-system .nf-account-popover[data-open="true"] { animation: nf-rise-in 180ms ease both; }
-.nf-settings-system .nf-account-popover[data-open="false"] { pointer-events: none; animation: nf-rise-out 180ms ease both; }
+.nf-settings-system .nf-account-popover[data-open="true"] { animation: nf-account-side-in 180ms cubic-bezier(.2, .7, .2, 1) both; }
+.nf-settings-system .nf-account-popover[data-open="false"] { pointer-events: none; animation: nf-account-side-out 180ms ease both; }
+@keyframes nf-account-side-in { from { opacity: 0; transform: translateX(-4px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes nf-account-side-out { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(-4px); } }
 .nf-settings-system .nf-account-heading { display: flex; align-items: center; gap: 10px; padding: 4px 8px 12px; margin-bottom: 5px; }
 .nf-settings-system .nf-account-heading .nf-username, .nf-settings-system .nf-identity .nf-username { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 .nf-settings-system .nf-menu-item { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 40px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; text-align: left; }
