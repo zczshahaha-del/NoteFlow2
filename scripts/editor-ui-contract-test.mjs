@@ -15,6 +15,7 @@ const librarySearch = readFileSync(new URL("../src/components/LibrarySearchDialo
 const searchStyles = readFileSync(new URL("../src/components/library-search.css", import.meta.url), "utf8");
 const accountMenu = readFileSync(new URL("../src/components/AppNav.tsx", import.meta.url), "utf8");
 const settingsStyles = readFileSync(new URL("../src/components/settings-ui.css", import.meta.url), "utf8");
+const accountStyles = readFileSync(new URL("../src/components/account-menu.css", import.meta.url), "utf8");
 const overlayDialog = readFileSync(new URL("../src/components/OverlayDialog.tsx", import.meta.url), "utf8");
 const sidebarToggleIcon = readFileSync(new URL("../src/components/SidebarToggleIcon.tsx", import.meta.url), "utf8");
 const libraryNavigationStyles = readFileSync(new URL("../src/components/library-navigation.css", import.meta.url), "utf8");
@@ -405,6 +406,10 @@ assert.match(accountMenu, /aria-haspopup="dialog"/);
 assert.match(accountMenu, /aria-label="账号操作"/);
 assert.doesNotMatch(accountMenu, /title=\{accountPrimary\}/);
 assert.doesNotMatch(accountMenu, /nf-divider/);
+assert.equal((accountMenu.match(/className="nf-account-separator"/g) ?? []).length, 2);
+assert.match(accountStyles, /\[data-compact="true"\] \.nf-account-popover \{\s*width: 224px;/);
+assert.match(accountStyles, /\.nf-account-heading \.nf-avatar \{\s*width: 28px;\s*height: 28px;/);
+assert.match(accountStyles, /@media \(pointer: coarse\)[\s\S]*?min-height: 44px;/);
 assert.match(directoryTree, /<div data-account-footer className=\{expanded \? "px-3 py-2" : "flex justify-center py-2"\}>/);
 assert.doesNotMatch(accountMenu, /bottom-0 left-full/);
 assert.match(settingsStyles, /\.nf-account-popover \{[\s\S]*?bottom: calc\(100% \+ 10px\);/);

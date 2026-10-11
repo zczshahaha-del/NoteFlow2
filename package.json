@@ -18,6 +18,7 @@
     "test:editor-performance": "node scripts/editor-performance-browser-test.mjs",
     "test:note-entry": "node scripts/note-entry-browser-test.mjs",
     "test:library-navigation": "node scripts/library-navigation-browser-test.mjs",
+    "test:account-menu": "node scripts/account-menu-browser-test.mjs",
     "test:highlight-geometry": "node scripts/selection-highlight-diagnostic.mjs",
     "test:editor-document-cache": "node --experimental-strip-types scripts/editor-document-cache-test.ts",
     "test:wiki-links": "node --experimental-strip-types scripts/wiki-links-test.ts",

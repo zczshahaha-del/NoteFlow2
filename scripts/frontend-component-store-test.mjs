@@ -911,6 +911,9 @@ try {
   assert.equal(accountPanel().querySelectorAll("button").length, 3);
   assert.equal(accountPanel().querySelector('[title]'), null);
   assert.equal(accountPanel().querySelector('.nf-divider'), null);
+  assert.equal(accountPanel().querySelectorAll('.nf-account-separator[aria-hidden="true"]').length, 2);
+  assert.ok(accountPanel().querySelector('.nf-account-heading').nextElementSibling.classList.contains('nf-account-separator'));
+  assert.ok(action(accountPanel(), "退出登录").previousElementSibling.classList.contains('nf-account-separator'));
   assert.ok(action(accountPanel(), "退出登录").classList.contains("nf-account-signout"));
   assert.doesNotMatch(accountPanel().textContent, /登录邮箱|登录设备|test@example.com/);
   await act(async () => document.body.dispatchEvent(new dom.window.FocusEvent("focusin", { bubbles: true })));

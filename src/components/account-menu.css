@@ -1,0 +1,59 @@
+/* Refine only the account popover; leave its launcher and settings dialog unchanged.
+   [data-compact] also makes this independent of the shared menu CSS import order. */
+.nf-settings-system.account-menu-root[data-compact] .nf-account-popover {
+  padding: 6px;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgb(36 44 55 / 8%);
+}
+.nf-settings-system.account-menu-root[data-compact="true"] .nf-account-popover {
+  width: 224px;
+}
+.nf-settings-system.account-menu-root[data-theme="dark"][data-compact] .nf-account-popover {
+  box-shadow: 0 6px 20px rgb(0 0 0 / 24%);
+}
+.nf-settings-system.account-menu-root[data-compact] .nf-account-heading {
+  gap: 9px;
+  padding: 4px 10px 6px;
+  margin: 0;
+  min-height: 38px;
+}
+.nf-settings-system.account-menu-root[data-compact] .nf-account-heading .nf-avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+}
+.nf-settings-system.account-menu-root[data-compact] .nf-account-heading .nf-avatar svg {
+  width: 15px;
+  height: 15px;
+}
+.nf-settings-system.account-menu-root[data-compact] .nf-account-heading .nf-username {
+  font-size: 14px;
+  line-height: 20px;
+}
+.nf-settings-system.account-menu-root[data-compact] .nf-account-popover .nf-menu-item {
+  min-height: 36px;
+  padding: 7px 10px;
+  gap: 10px;
+  border-radius: 7px;
+  margin: 0;
+}
+.nf-settings-system.account-menu-root[data-compact] .nf-account-popover .nf-menu-item:active {
+  transform: none;
+}
+.nf-settings-system.account-menu-root .nf-account-separator {
+  height: 1px;
+  margin: 3px 10px;
+  background: var(--nf-line);
+}
+@media (pointer: coarse) {
+  .nf-settings-system.account-menu-root[data-compact] .nf-account-popover .nf-menu-item {
+    min-height: 44px;
+  }
+}
+@media (forced-colors: active) {
+  .nf-settings-system.account-menu-root[data-compact] .nf-account-popover {
+    outline: 1px solid CanvasText;
+    box-shadow: none;
+  }
+  .nf-settings-system.account-menu-root .nf-account-separator { background: CanvasText; }
+}

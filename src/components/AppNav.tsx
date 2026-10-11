@@ -52,6 +52,7 @@ import {
   type UserSessionRecord,
 } from "../services/auth";
 import OverlayDialog, { useSurfacePresence } from "./OverlayDialog";
+import "./account-menu.css";
 
 export type AppView = "knowledge";
 type ThemeMode = "light" | "dark";
@@ -453,8 +454,10 @@ export default function AccountMenu({
         <div ref={accountPanelRef} id={accountPanelId} role="dialog" aria-label="账号操作"
           className="nf-account-popover" data-open={accountOpen} inert={!accountOpen} aria-hidden={!accountOpen || undefined}>
           <div className="nf-account-heading"><span className="nf-avatar" aria-hidden="true">{avatar}</span><span className="nf-username">{accountPrimary}</span></div>
+          <div className="nf-account-separator" aria-hidden="true" />
           <button type="button" className="nf-menu-item" onClick={() => openSettings("account")}><Settings size={17} strokeWidth={1.6} />设置</button>
           <button type="button" className="nf-menu-item" onClick={() => openSettings("trash")}><Trash size={17} strokeWidth={1.6} />回收站{trashCount > 0 && <span className="nf-row-end ml-auto">{trashCount}</span>}</button>
+          <div className="nf-account-separator" aria-hidden="true" />
           <button type="button" className="nf-menu-item nf-account-signout" onClick={() => { setAccountOpen(false); void onSignOut(); }}><LogOut size={17} strokeWidth={1.6} />退出登录</button>
         </div>
       )}
