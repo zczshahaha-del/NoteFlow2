@@ -16,7 +16,7 @@
 
 当前归档任务中没有属于该 NoteFlow 工作区的对话。问题按主题去重归并；用户针对同一问题的多次反馈会合并为一项，但会保留方案反复、失败重试和方向纠偏等关键过程。
 
-初次归并出 69 项问题与决策记录，后续按相同口径持续追加；当前共 103 项，覆盖认证、账号信息架构、主工作台、AI 草稿、开发测试、阿里云运维、Git/交付与安全八个类别。
+初次归并出 69 项问题与决策记录，后续按相同口径持续追加；当前共 104 项，覆盖认证、账号信息架构、主工作台、AI 草稿、开发测试、阿里云运维、Git/交付与安全八个类别。
 
 状态说明：
 
@@ -176,6 +176,16 @@ IA-04 / IA-05、UI-02 / UI-17 仍部分解决；真实写入 E2E、深色视觉�
 处理：本轮只记录，不混入已完成的搜索外观修复 `de8d7ea`，未更改任何关闭逻辑。下一步需单独统一历史层的输入法 Escape 保护，并验证菜单内 / 外焦点、普通 Esc 返回、重命名、退出动效与搜索草稿。当前状态：🔴 未解决。
 
 验证证据：`test:chat-ui` 的正式 AIPanel / 生产 CSS、全新全网络阻断 StrictMode 浏览器在 600px / 320px 均报告 `historyImeEscapeCloses=true`；该字段是缺陷诊断，不是通过的 IME 防护断言。重开后普通 Esc 关闭 / 焦点返回通过，搜索外观 / 过滤回归也通过，不据此提高本问题状态。未操作真实会话或实体输入法；源码关联 src/components/AIPanel.tsx 的历史菜单 document keydown effect、src/components/SoftMenu.tsx 与 scripts/chat-presentation-browser-test.mjs。随 `docs: 记录历史菜单输入法 Escape 误关问题`，累计总数由 99 增至 100；UI-23 原焦点显现条目保持原状态。
+
+### UI-26：新建代码块的语言识别与高亮不完整（未解决）
+
+现象：2026-10-11 用户质疑展示的彩色代码是否只在示例中手工上色，并指出新建代码框粘贴代码可能都是黑色。只读源码确认：独立设计稿是静态语法标记；正式编辑器则使用真实 codeHighlightPlugin，遍历所有 codeBlock，并根据每次当前内容生成 token 装饰，document-prose.css 仅定义各类 token 的统一配色，并不识别特定笔记或示例。因此新建代码块并非天然无高亮，但上一轮正文实施只检查带 Go 标记的既有合成代码块，未覆盖空块新建 / 粘贴。
+
+根因中已确认的部分：inferCodeLanguage 仅用少数模式猜测 Bash / Go / SQL / JSON，JavaScript / Python 等虽有手动选项与关键词表，未标语言时仍可能落到 plaintext；不支持的语言也归一为 plaintext。另在 codeTokenRanges 中，无关键词表时使用不含捕获组的 `(?!)`，而有关键词时含捕获组，导致后续函数 / 属性 / 运算符的固定组号分类错位。纯文本并非绝对没有 token，数字 / 字符串 / 部分符号仍可能有颜色，不能宣称所有新粘贴内容必然全黑。用户实际全黑代码块的内容、语言属性及 DOM 类型尚未读取，不能把上述合成结果当作其唯一根因。
+
+验证证据：真实 createNoteFlowTiptapExtensions + Tiptap / ProseMirror，在独立 JSDOM 中逐次创建全新空编辑器，用 toggleCodeBlock 建空代码块，再经 EditorView.pasteText 走文本粘贴路径，未手工注入 token。Go 示例自动识别为 go，var / 字符串 / 函数等生成 token；JavaScript 的 class / const 和 Python 的 def / return / True 自动识别为 plaintext，关键字未生成 token，更新语言属性为 javascript / python 后正确生成对应关键词 token；不支持的 rust 属性仍归一为 plaintext。未选语言的 example 函数名被误标为 token-keyword、符号为 token-property，也确认组号错位。四个合成用例通过原文不变和上述诊断断言；这不是系统剪贴板、原生键盘 / 鼠标、正式页面实屏或全语言质量验收。首次探针缺少 Node 全局 ClipboardEvent 在粘贴前失败，改为传入隔离 DOM 的 paste Event 后才取得证据，不算产品错误或通过。
+
+处理与状态：本轮按用户提问只检查与记录，不修改业务代码或用户笔记。暂可在代码块已有语言菜单选对应受支持语言；需要另行完善语言识别 / token 分类，并补新建、粘贴、编辑、手动切换、保存重开及不支持语言回归。🔴 未解决，不提高正文审美或可访问性状态。相关源码 src/editor/tiptapExtensions.ts 的 inferCodeLanguage / codeTokenRanges / codeHighlightPlugin；上轮 a76ab98 的局部配色未改变此识别逻辑。随 `docs: 记录新建代码块高亮识别缺口`，问题总数由 103 增至 104。
 
 ### 2026-10-10：消息时间 / 复制与圆形返回底部（UI-17 局部实施）
 
@@ -705,4 +715,4 @@ DEV-14 后续取图证据：圆润无箭头局部稿使用普通 `clip`，按外
 
 ---
 
-本文初始基线为 2026-09-13，最后更新于 2026-10-11，当前共 103 项问题与决策记录。后续遇到新问题时，应继续沿用现有 ID 分类追加，并在状态变化时同时补充提交号或提交说明和验证证据。
+本文初始基线为 2026-09-13，最后更新于 2026-10-11，当前共 104 项问题与决策记录。后续遇到新问题时，应继续沿用现有 ID 分类追加，并在状态变化时同时补充提交号或提交说明和验证证据。
