@@ -21,15 +21,15 @@ const note=id=>({id,title:id+'.md',categoryId:null,summary:null,tags:[],content:
 const pending=new Map();const calls=[];
 const response=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json'}});
 window.fetch=async(input)=>{const url=String(input);calls.push(url);
-  if(url.endsWith('/outline'))return response({sections:[]});
+  if(url.endsWith('/outline')){const id=url.match(/\\/notes\\/([^/]+)\\/outline$/)[1];return response({sections:[{id:'section-'+id,title:id+' 标题'}]});}
   const id=url.match(/\\/api\\/notes\\/([^/]+)$/)?.[1];
-  if(id){if(['missing','failed','late'].includes(id))return new Promise(resolve=>{pending.set(id,resolve)});return response({note:note(id)});}
+  if(id){if(['missing','failed','late','race'].includes(id))return new Promise(resolve=>{pending.set(id,resolve)});return response({note:note(id)});}
   if(url.endsWith('/api/auth/sessions'))return response([]);
   if(url.endsWith('/api/settings'))return response({settings:{memoryEnabled:true,preferences:{}}});
   throw Error('Unexpected synthetic API: '+url);
 };
-const nodes=['A','B','C','missing','failed','late'].map(id=>({id,type:'file',name:id+'.md',indexStatus:'indexed'}));
-useAppStore.setState({treeData:[{id:'folder',type:'folder',name:'合成目录',children:nodes}],selectedFileId:'A',expandedFolderIds:new Set(['folder']),fileContents:{A:content('A'),B:content('B'),C:content('C')},serverSyncReady:false,hydratedUserId:null});
+const nodes=['A','B','C','missing','failed','late','race'].map(id=>({id,type:'file',name:id+'.md',indexStatus:'indexed'}));
+useAppStore.setState({treeData:[{id:'folder',type:'folder',name:'合成目录',children:nodes}],selectedFileId:'A',expandedFolderIds:new Set(['folder']),fileContents:{A:content('A'),B:content('B'),C:content('C'),race:content('race')},serverSyncReady:false,hydratedUserId:null});
 window.noteEntryTest={store:useAppStore,editor:null,calls,content,select:id=>useAppStore.getState().setSelectedFileId(id),
   reply(id,ok=true){const resolve=pending.get(id);if(!resolve)throw Error('No pending '+id);pending.delete(id);resolve(ok?response({note:note(id)}):response({error:'synthetic unavailable'},503));}};
 const noop=()=>{};
@@ -105,9 +105,21 @@ try {
   assert.equal(await page.getByRole('alert').count(),0);
   assert.equal(await page.getByRole('textbox',{name:'文档标题',exact:true}).inputValue(),'C');
   assert.equal(await page.locator('.note-entry-content').evaluate(n=>n.hasAttribute('inert')),false);
+  await page.waitForFunction(()=>window.noteEntryTest.store.getState().activeEditorSectionId==='section-C');
+  const outlineReads=await page.evaluate(()=>window.noteEntryTest.calls.filter(url=>url.endsWith('/C/outline')).length);
+  for(const status of ['unsaved','saving','offline','error','saved']) {
+    await page.evaluate(status=>window.noteEntryTest.store.setState({noteSaveState:{status}}),status);
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    assert.equal(await page.evaluate(()=>window.noteEntryTest.calls.filter(url=>url.endsWith('/C/outline')).length),outlineReads,'Save feedback must not refetch the outline');
+    assert.equal(await page.evaluate(()=>window.noteEntryTest.store.getState().activeEditorSectionId),'section-C','Saving must keep the current section context');
+  }
   const editor=page.locator('.note-content');await editor.click();await page.keyboard.press('ControlOrMeta+End');await page.keyboard.type('stable-edit');
   assert((await editor.textContent()).endsWith('stable-edit'));
   assert((await page.evaluate(()=>window.noteEntryTest.store.getState().fileContents.C)).includes('stable-edit'));
+  assert.equal(await page.evaluate(()=>window.noteEntryTest.calls.filter(url=>url.endsWith('/C/outline')).length),outlineReads,'Local input does not read an outdated outline');
+  await page.evaluate(()=>{const store=window.noteEntryTest.store;store.setState({treeData:store.getState().treeData.map(folder=>({...folder,children:folder.children.map(node=>node.id==='C'?{...node,indexStatus:'indexed',updatedAt:'2026-10-12T00:00:00Z'}:node)}))});});
+  await page.waitForFunction(before=>window.noteEntryTest.calls.filter(url=>url.endsWith('/C/outline')).length===before+1,outlineReads);
+  await page.waitForFunction(()=>window.noteEntryTest.store.getState().activeEditorSectionId==='section-C');
   assert.equal(await page.evaluate(()=>document.getAnimations().filter(a=>a.animationName==='note-entry-reveal' && a.playState==='running').length),0,'Editing cannot replay the entry animation');
   await page.evaluate(()=>window.noteEntryTest.select('failed'));await ready(page,'failed');
   await page.evaluate(()=>window.noteEntryTest.reply('failed',false));await ready(page,'failed');
@@ -126,8 +138,17 @@ try {
   const background=await page.locator('.note-entry').evaluate(n=>getComputedStyle(n).backgroundColor);
   assert.equal(background,'rgb(17, 24, 32)');
   assert.equal(background,await page.locator('.document-scroll').evaluate(n=>getComputedStyle(n).backgroundColor),'Opening and visible reading surfaces must match');
+  // Type in an already cached note while its background GET is still pending.
+  await page.evaluate(()=>window.noteEntryTest.select('race'));await ready(page,'race');
+  await editor.click();await page.keyboard.press('ControlOrMeta+End');await page.keyboard.type('local-race-input');
+  await page.evaluate(()=>window.noteEntryTest.reply('race'));await ready(page,'race');
+  assert((await editor.textContent()).endsWith('local-race-input'),'Late server read must not replace the visible local editor');
+  assert((await page.evaluate(()=>window.noteEntryTest.store.getState().fileContents.race)).includes('local-race-input'));
+  assert.equal(await editor.evaluate(n=>n.contains(document.activeElement)),true);
+  await page.keyboard.press('ControlOrMeta+z');
+  assert(!(await editor.textContent()).endsWith('local-race-input'),'Undo history survives the ignored server response');
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
-  reports.push({width,mouseFocusDoesNotSelect:width===1280?true:null,latestNoteOnly:true,loadingAndRetry:true,revealIntermediateFrames:frames.filter(n=>n>0&&n<1).length,codeColors:true,inputSavedWithoutReanimation:true,reducedMotion:true,dark:true,requests,errors});await context.close();
+  reports.push({width,mouseFocusDoesNotSelect:width===1280?true:null,latestNoteOnly:true,loadingAndRetry:true,revealIntermediateFrames:frames.filter(n=>n>0&&n<1).length,codeColors:true,inputSavedWithoutReanimation:true,saveFeedbackDoesNotRefetch:true,indexedOutlineRefreshes:true,lateReadKeepsTypingAndUndo:true,reducedMotion:true,dark:true,requests,errors});await context.close();
  }
  console.log(JSON.stringify({actualComponentsAndStore:true,syntheticOnly:true,output,reports},null,2));
 } finally { await browser.close(); }

@@ -37,7 +37,7 @@ const entry = `import React, {StrictMode} from 'react'; import {createRoot} from
 import NoteEditor from ${JSON.stringify(component)};
 const root=createRoot(document.getElementById('root'));
 const api={updates:[],copied:[],render(){root.render(React.createElement(StrictMode,null,React.createElement(NoteEditor)))}};
-const slice={selectedFileId:'synthetic-prose',treeData:[{id:'synthetic-prose',name:'GORM 学习笔记.md',type:'file',indexStatus:'indexed'}],fileContents:{'synthetic-prose':${JSON.stringify(markdown)}},noteSaveState:{status:'saved'},pendingEditorSelection:null,pendingSourceFocus:null,
+const slice={selectedFileId:'synthetic-prose',treeData:[{id:'synthetic-prose',name:'GORM 学习笔记.md',type:'file',indexStatus:'indexed',createdAt:'2026-07-22T15:50:00+08:00',updatedAt:'2026-08-18T09:14:00+08:00'}],fileContents:{'synthetic-prose':${JSON.stringify(markdown)}},noteSaveState:{status:'saved'},pendingEditorSelection:null,pendingSourceFocus:null,
 updateFileContent(id,content){api.updates.push({id,content});slice.fileContents[id]=content;api.render()},updateNodeName(){throw new Error('Unexpected rename')},reindexNote(){throw new Error('Unexpected reindex')},addSelectionToChat(){throw new Error('Unexpected chat')},clearPendingEditorSelection(){},clearPendingSourceFocus(){},setActiveEditorSectionId(){}};
 window.proseTest={api,slice}; Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>api.copied.push(text)}});
 api.render();`;
@@ -175,7 +175,20 @@ try {
     const editor = page.locator('.tiptap.note-content');
     await editor.waitFor();
     await page.waitForFunction(() => document.querySelectorAll('.note-content pre').length === 3);
+    await page.waitForFunction(() => document.querySelector('.note-entry')?.dataset.ready === 'true');
+    await page.evaluate(async () => { await Promise.all(document.getAnimations().filter(a=>a.effect?.getComputedTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{}))); });
     await page.evaluate(() => document.fonts.ready);
+    const dates=page.locator('.document-meta-date');assert.equal(await dates.count(),2);
+    const dateGeometry=await dates.evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().toJSON()));
+    assert(dateGeometry.every(n=>n.x>=0 && n.x+n.width<=width),'Each full date stays inside the reading surface');
+    if(width<768)assert(dateGeometry[1].y>=dateGeometry[0].y+dateGeometry[0].height,'Mobile dates use intentional separate rows');
+    const settings=page.getByRole('button',{name:'文档显示设置',exact:true});
+    const menuPosition=await settings.boundingBox();
+    for(const count of [1,0,2]) {
+      await page.evaluate(count=>{const {slice,api}=window.proseTest;const node=slice.treeData[0];node.createdAt=count?'2026-07-22T15:50:00+08:00':null;node.updatedAt=count===2?'2026-08-18T09:14:00+08:00':null;api.render();},count);
+      await page.waitForFunction(count=>document.querySelectorAll('.document-meta-date').length===count,count);
+      const position=await settings.boundingBox();assert.equal(position.x,menuPosition.x);assert.equal(position.y,menuPosition.y,'Metadata availability must not move the settings target');
+    }
     if (width < 768) {
       const header = await page.getByRole('toolbar', {name:'笔记导航'}).boundingBox();
       const title = await page.locator('.document-title').boundingBox();

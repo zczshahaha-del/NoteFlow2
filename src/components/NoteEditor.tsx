@@ -26,6 +26,7 @@ import NoteOpeningStatus from "./NoteOpeningStatus";
 import "./document-prose.css";
 import "./selection-toolbar.css";
 import "./mobile-note-navigation.css";
+import "./document-metadata.css";
 import { findFileById } from "../workspaceTree";
 import { createNoteFlowTiptapExtensions } from "../editor/tiptapExtensions";
 import { findTiptapTextRange } from "../utils/tiptapSelection";
@@ -498,15 +499,20 @@ function NoteEditorDocument({ onReady, presented = true }: {
     setHeadingNumbering(editor, showHeadingNumbers);
   }, [editor, showHeadingNumbers]);
   useEffect(() => {
-    let alive = true;
     setBackendSections([]);
     setActiveEditorSectionId(null);
+  }, [selectedFileId, setActiveEditorSectionId]);
+  useEffect(() => {
+    let alive = true;
     if (!selectedFileId) return;
+    // Saving/typing does not create a new indexed outline. Keep the current
+    // section context until the note changes or a fresh index becomes available.
+    if (selectedFile?.indexStatus === "outdated" || selectedFile?.indexStatus === "indexing") return;
     void getNoteOutline(selectedFileId)
       .then((outline) => { if (alive) setBackendSections(outline.sections); })
       .catch(() => { if (alive) setBackendSections([]); });
     return () => { alive = false; };
-  }, [noteSaveState.status, selectedFile?.indexStatus, selectedFileId, setActiveEditorSectionId]);
+  }, [selectedFile?.indexStatus, selectedFile?.updatedAt, selectedFileId]);
 
   useEffect(() => {
     const heading = headings.find((item) => item.id === activeId);
@@ -667,14 +673,11 @@ function NoteEditorDocument({ onReady, presented = true }: {
                   aria-label="文档标题"
                 />
                 <div className="document-meta-row relative mb-8 mt-4 flex min-h-8 flex-wrap items-center gap-2 text-[13px] text-jelly-text-muted">
-                  {createdAtLabel && (
-                    <>
-                      <span>创建于 {createdAtLabel}</span>
-                      {updatedAtLabel && <span>·</span>}
-                    </>
-                  )}
-                  {updatedAtLabel && <span>更新于 {updatedAtLabel}</span>}
-                  <div ref={documentMenuRef} className="relative ml-auto">
+                  <div className="document-meta-dates">
+                    {createdAtLabel && <span className="document-meta-date">创建于 {createdAtLabel}</span>}
+                    {updatedAtLabel && <span className="document-meta-date">更新于 {updatedAtLabel}</span>}
+                  </div>
+                  <div ref={documentMenuRef} className="document-meta-menu relative ml-auto">
                     <button
                       type="button"
                       className="document-view-menu-trigger flex h-8 w-8 items-center justify-center rounded-lg text-jelly-text-muted transition-colors hover:bg-[#f1f3f4] hover:text-jelly-text"

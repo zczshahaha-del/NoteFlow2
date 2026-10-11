@@ -1,0 +1,13 @@
+/* Keep dates together; never strand a separator or move the display-menu target. */
+.document-meta-dates {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.document-meta-date { white-space: nowrap; }
+.document-meta-menu { flex-shrink: 0; align-self: flex-start; }
+@media (max-width: 767px) {
+  .document-meta-dates { flex-direction: column; align-items: flex-start; }
+}
