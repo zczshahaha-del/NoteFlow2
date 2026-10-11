@@ -3185,42 +3185,63 @@ body,
   color: #c7d2dc;
 }
 
-/* Super-long technical notes: a quiet edge rail that expands only on intent. */
+/* A fixed layout behind a narrow hit-test mask: opening never resizes the
+ * rows or changes the scroll range of a long outline. */
 .chapter-rail {
   position: absolute;
   z-index: 34;
   top: 50%;
   right: 10px;
   display: flex;
-  width: 34px;
+  width: 222px;
   max-height: min(68vh, 620px);
   transform: translateY(-50%);
   flex-direction: column;
   align-items: stretch;
-  overflow: hidden;
+  clip-path: inset(0 0 0 188px round 14px);
   border-radius: 14px;
-  padding: 6px;
+  padding: 10px;
   color: var(--color-jelly-text-muted);
-  transition: width 180ms ease, padding 180ms ease, background-color 180ms ease,
-    box-shadow 180ms ease;
+  isolation: isolate;
+  transition: clip-path 200ms cubic-bezier(0.22, 1, 0.36, 1) 100ms;
+}
+
+.chapter-rail::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+  opacity: 0;
+  transition: opacity 160ms ease 100ms;
+  pointer-events: none;
 }
 
 .chapter-rail:hover,
-.chapter-rail:focus-within {
-  width: 222px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.1), 0 0 0 1px rgba(148, 163, 184, 0.18);
-  backdrop-filter: blur(16px);
+.chapter-rail:has(:focus-visible) {
+  clip-path: inset(-24px round 14px);
+  transition-delay: 0ms;
+}
+
+.chapter-rail:hover::before,
+.chapter-rail:has(:focus-visible)::before {
+  opacity: 1;
+  transition-delay: 0ms;
 }
 
 .chapter-rail-item {
+  position: relative;
   display: flex;
   width: 100%;
   min-width: 0;
   align-items: center;
   justify-content: flex-start;
-  gap: 9px;
+  flex: 0 0 23px;
+  min-height: 23px;
+  padding-left: var(--chapter-indent, 0px);
   border: 0;
   background: transparent;
   color: inherit;
@@ -3232,17 +3253,21 @@ body,
 }
 
 .chapter-rail-label {
-  width: 0;
+  flex: 1;
+  min-width: 0;
+  padding-left: 24px;
   overflow: hidden;
   white-space: nowrap;
   opacity: 0;
-  transition: width 160ms ease, opacity 120ms ease;
+  transform: translateX(6px);
+  transition: opacity 140ms ease 100ms, transform 180ms cubic-bezier(0.22, 1, 0.36, 1) 100ms;
 }
 
 .chapter-rail:hover .chapter-rail-label,
-.chapter-rail:focus-within .chapter-rail-label {
-  width: 178px;
+.chapter-rail:has(:focus-visible) .chapter-rail-label {
   opacity: 1;
+  transform: translateX(0);
+  transition-delay: 30ms;
 }
 
 .chapter-rail-track {
@@ -3253,6 +3278,7 @@ body,
   gap: 2px;
   overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
   scrollbar-width: none;
 }
 
@@ -3266,13 +3292,6 @@ body,
   line-height: 1.35;
 }
 
-.chapter-rail:not(:hover):not(:focus-within) .chapter-rail-item {
-  gap: 0;
-  justify-content: center;
-  min-height: 16px;
-  padding-left: 0 !important;
-}
-
 .chapter-rail-label {
   overflow: hidden;
   text-align: left;
@@ -3280,12 +3299,20 @@ body,
 }
 
 .chapter-rail-mark {
+  position: absolute;
+  right: 6px;
   width: 10px;
   height: 2px;
   flex: 0 0 auto;
   border-radius: 999px;
   background: #d5d9dc;
-  transition: width 140ms ease, background-color 140ms ease;
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1) 100ms, background-color 140ms ease;
+}
+
+.chapter-rail:hover .chapter-rail-mark,
+.chapter-rail:has(:focus-visible) .chapter-rail-mark {
+  transform: translateX(calc(-181px + var(--chapter-indent, 0px)));
+  transition-delay: 0ms;
 }
 
 .chapter-rail-item.is-active .chapter-rail-mark {
@@ -3296,6 +3323,28 @@ body,
 .chapter-rail-item.is-active {
   color: var(--color-jelly-blue-deep);
   font-weight: 620;
+}
+
+.chapter-rail-item:focus-visible .chapter-rail-label {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.theme-dark .chapter-rail::before {
+  background: rgba(36, 43, 53, 0.97);
+  border-color: rgba(171, 184, 201, 0.22);
+}
+.theme-dark .chapter-rail-mark { background: #687584; }
+.theme-dark .chapter-rail-item.is-active .chapter-rail-mark { background: var(--color-jelly-blue); }
+
+@media (prefers-reduced-motion: reduce) {
+  .chapter-rail, .chapter-rail::before, .chapter-rail-label, .chapter-rail-mark { transition: none; }
+}
+@media (forced-colors: active) {
+  .chapter-rail::before { background: Canvas; border: 1px solid CanvasText; box-shadow: none; }
+  .chapter-rail-mark { background: CanvasText; forced-color-adjust: none; }
+  .chapter-rail-item.is-active .chapter-rail-mark { background: Highlight; }
 }
 
 .continue-reading-button {

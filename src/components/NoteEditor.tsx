@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import {
@@ -778,7 +778,7 @@ function NoteEditorDocument({ onReady, presented = true }: {
                 className={`chapter-rail-item ${activeId === heading.id ? "is-active" : ""}`}
                 onClick={() => scrollToHeading(heading.id)}
                 title={`${heading.displayNumber ? `${heading.displayNumber} ` : ""}${heading.text}`}
-                style={{ paddingLeft: `${Math.min(heading.hierarchyDepth, 3) * 12}px` }}
+                style={{ "--chapter-indent": `${Math.min(heading.hierarchyDepth, 3) * 12}px` } as CSSProperties}
               >
                 <span className="chapter-rail-mark" />
                 <span className="chapter-rail-label">
