@@ -2,9 +2,19 @@
 
 > 更新：2026-10-11。设计稿不是正式应用；业务界面仍以 `src/` 为准。下述组件合成标本也不等于用户实屏。
 
-## 选中文字工具条 · 新候选，未应用
+## 选中文字工具条 · 轻盈精修已局部实施
 
-用户要求先看效果图；以现有 12 个动作 / 顺序为基线，只比较轻阴影、短分隔线、统一图标笔画与柔和状态，不改正式编辑器或删除历史代码。合成对照不是用户实屏；窄屏重排仅用于预览，正式行为待另行确认。
+用户批准「轻盈精修」后，正式 NoteEditor 已导入独立局部样式；全部 12 个动作与顺序、正文 / 代码颜色和业务回调保留。桌面按钮 31px，触屏 44px，窄屏不隐藏功能。没有删除旧草稿或历史代码。
+
+- [实施、验证与回退边界](noteflow-selection-toolbar-implemented-notes.md)
+- [正式组件桌面标本](noteflow-selection-toolbar-component-desktop.png) / [窄屏标本](noteflow-selection-toolbar-component-mobile.png)
+- [深色桌面](noteflow-selection-toolbar-component-dark.png) / [深色窄屏](noteflow-selection-toolbar-component-mobile-dark.png)
+
+构建、前端 / 选区回归、工具条外观和保留操作、正文三种宽度及新建代码自动高亮、既有性能保护检查通过。单列诊断发现原有滚动定位未跟随（UI-28），尚未修复，不能据此说完整编辑体验已验收。实屏审美 / 实体设备仍待反馈。
+
+### 设计阶段对照
+
+当时用户要求先看效果图；以现有 12 个动作 / 顺序为基线，只比较轻阴影、短分隔线、统一图标笔画与柔和状态。以下独立合成稿仅作过程证据，正式实施及边界以上方说明为准。
 
 - [上下对照图](noteflow-selection-toolbar-study-comparison.png) / [触屏窄屏图](noteflow-selection-toolbar-study-mobile.png)
 - [源稿](noteflow-selection-toolbar-study.source.html) / [离线预览](noteflow-selection-toolbar-study.preview.html)

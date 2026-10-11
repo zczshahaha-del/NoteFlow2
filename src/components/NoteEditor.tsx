@@ -32,6 +32,7 @@ import {
 import { useEditorSlice } from "../store/selectors";
 import SoftMenu from "./SoftMenu";
 import "./document-prose.css";
+import "./selection-toolbar.css";
 import { findFileById } from "../workspaceTree";
 import { createNoteFlowTiptapExtensions } from "../editor/tiptapExtensions";
 import { findTiptapTextRange } from "../utils/tiptapSelection";

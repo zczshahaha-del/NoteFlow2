@@ -1,0 +1,98 @@
+/* Approved local refinement; never styles the dormant permanent toolbar. */
+.selection-toolbar.tiptap-selection-toolbar,
+.theme-dark .selection-toolbar.tiptap-selection-toolbar {
+  --nf-selection-surface: #fff;
+  --nf-selection-icon: #303945;
+  --nf-selection-border: rgba(32, 40, 50, .085);
+  --nf-selection-divider: rgba(32, 40, 50, .084);
+  --nf-selection-hover: #f0f3f6;
+  --nf-selection-active: #e8f1f8;
+  --nf-selection-blue: #436f91;
+  --nf-selection-shadow: rgba(28, 38, 49, .09);
+  --nf-selection-shadow-near: rgba(28, 38, 49, .04);
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 5px 6px;
+  border-color: var(--nf-selection-border);
+  border-radius: 12px;
+  background: var(--nf-selection-surface);
+  box-shadow: 0 8px 24px var(--nf-selection-shadow), 0 1px 3px var(--nf-selection-shadow-near);
+  backdrop-filter: none;
+}
+.theme-dark .selection-toolbar.tiptap-selection-toolbar {
+  --nf-selection-surface: #2b323b;
+  --nf-selection-icon: #dce4ed;
+  --nf-selection-border: rgba(225, 233, 242, .12);
+  --nf-selection-divider: rgba(225, 233, 242, .112);
+  --nf-selection-hover: #37414d;
+  --nf-selection-active: #304c65;
+  --nf-selection-blue: #a1c6e2;
+  --nf-selection-shadow: rgba(0, 0, 0, .26);
+  --nf-selection-shadow-near: rgba(0, 0, 0, .15);
+}
+.selection-toolbar.tiptap-selection-toolbar::after,
+.theme-dark .selection-toolbar.tiptap-selection-toolbar::after {
+  width: 6px;
+  height: 6px;
+  bottom: -4px;
+  border-color: var(--nf-selection-border);
+  background: var(--nf-selection-surface);
+}
+.tiptap-selection-toolbar .selection-toolbar-divider,
+.theme-dark .tiptap-selection-toolbar .selection-toolbar-divider {
+  height: 15px;
+  margin: 0 5px;
+  background: var(--nf-selection-divider);
+}
+.tiptap-selection-toolbar .selection-toolbar-button,
+.theme-dark .tiptap-selection-toolbar .selection-toolbar-button {
+  color: var(--nf-selection-icon);
+  background: transparent;
+  box-shadow: none;
+}
+.tiptap-selection-toolbar .selection-toolbar-button > svg {
+  stroke-width: 1.7;
+}
+.tiptap-selection-toolbar .selection-toolbar-button:hover,
+.tiptap-selection-toolbar .selection-toolbar-button:focus-visible,
+.theme-dark .tiptap-selection-toolbar .selection-toolbar-button:hover,
+.theme-dark .tiptap-selection-toolbar .selection-toolbar-button:focus-visible {
+  color: var(--nf-selection-icon);
+  background: var(--nf-selection-hover);
+  box-shadow: none;
+}
+.tiptap-selection-toolbar .selection-toolbar-button:active,
+.tiptap-selection-toolbar .selection-toolbar-button.is-active,
+.theme-dark .tiptap-selection-toolbar .selection-toolbar-button:active,
+.theme-dark .tiptap-selection-toolbar .selection-toolbar-button.is-active {
+  color: var(--nf-selection-blue);
+  background: var(--nf-selection-active);
+  box-shadow: none;
+}
+.tiptap-selection-toolbar .selection-toolbar-button:focus-visible {
+  outline: 2px solid var(--nf-selection-blue);
+  outline-offset: 1px;
+}
+@media (max-width: 520px) {
+  .tiptap-selection-toolbar .selection-toolbar-divider { display: none; }
+}
+@media (pointer: coarse) {
+  .tiptap-selection-toolbar .selection-toolbar-button { width: 44px; height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tiptap-selection-toolbar .selection-toolbar-button { transition: none; }
+}
+@media (forced-colors: active) {
+  .selection-toolbar.tiptap-selection-toolbar,
+  .theme-dark .selection-toolbar.tiptap-selection-toolbar {
+    --nf-selection-surface: Canvas;
+    --nf-selection-icon: ButtonText;
+    --nf-selection-border: ButtonText;
+    --nf-selection-divider: ButtonText;
+    --nf-selection-hover: Canvas;
+    --nf-selection-active: Highlight;
+    --nf-selection-blue: HighlightText;
+    box-shadow: none;
+  }
+  .tiptap-selection-toolbar .selection-toolbar-button:focus-visible { outline-color: Highlight; }
+}

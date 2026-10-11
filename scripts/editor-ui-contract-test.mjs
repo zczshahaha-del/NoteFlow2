@@ -21,8 +21,18 @@ const styles = readFileSync(new URL("../src/index.css", import.meta.url), "utf8"
 const menuStyles = readFileSync(new URL("../src/components/menu-ui.css", import.meta.url), "utf8");
 const softMenu = readFileSync(new URL("../src/components/SoftMenu.tsx", import.meta.url), "utf8");
 const proseStyles = readFileSync(new URL("../src/components/document-prose.css", import.meta.url), "utf8");
+const selectionStyles = readFileSync(new URL("../src/components/selection-toolbar.css", import.meta.url), "utf8");
 
 assert.match(editor, /import "\.\/document-prose\.css"/);
+assert.match(editor, /import "\.\/selection-toolbar\.css"/);
+assert.match(selectionStyles, /\.selection-toolbar\.tiptap-selection-toolbar,/);
+assert.match(selectionStyles, /border-radius: 12px;/);
+assert.match(selectionStyles, /stroke-width: 1\.7;/);
+assert.match(selectionStyles, /height: 15px;/);
+assert.match(selectionStyles, /\.theme-dark \.selection-toolbar\.tiptap-selection-toolbar/);
+assert.match(selectionStyles, /@media \(prefers-reduced-motion: reduce\)/);
+assert.match(selectionStyles, /@media \(forced-colors: active\)/);
+assert.doesNotMatch(selectionStyles, /\.note-content|\.document-scroll|\.selection-toolbar-menu|animation:|inset 0 -2px/);
 assert.match(editor, /document-canvas nf-prose-refined/);
 assert.match(proseStyles, /\.document-canvas\.nf-prose-refined \.note-content/);
 assert.match(proseStyles, /font-size: 16px !important;[\s\S]*?font-weight: 400;[\s\S]*?line-height: 1\.8 !important/);
