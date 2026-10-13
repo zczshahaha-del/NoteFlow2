@@ -37,6 +37,12 @@ const browser=await chromium.launch({executablePath:process.env.NOTEFLOW_BROWSER
 const output=mkdtempSync(join(tmpdir(),'noteflow-library-navigation-')), reports=[];
 async function settled(page){await page.evaluate(async()=>{await Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{})));});}
 async function open(page){const button=page.getByRole('button',{name:/^(展开目录|打开知识库)$/});await button.click();await page.locator('.library-drawer[data-open="true"]').waitFor();await settled(page);}
+async function headerCheck(page){
+ const title=page.getByRole('heading',{name:'知识库',exact:true});
+ assert.equal(await title.count(),1);
+ assert.equal(await title.evaluate(n=>n.parentElement.textContent.trim()),'知识库','Library header has no note count');
+ assert.equal(await title.evaluate(n=>n.parentElement.querySelector('svg')?.getAttribute('width')),'16','Book icon is retained');
+}
 async function resizeChecks(page, panel, width) {
  const handle=page.getByRole('separator',{name:'调整目录宽度'});
  assert.equal(await handle.count(),1);
@@ -80,6 +86,7 @@ try {
   try { await page.getByRole('heading',{name:'Git 入门学习笔记'}).waitFor(); }
   catch(error){console.error(JSON.stringify({width,errors,requests,body:await page.locator('body').innerText()}));throw error;}
   if(width===1440){
+   await headerCheck(page);
    await resizeChecks(page,page.locator('.library-navigation'),width);
    await page.reload();await page.getByRole('heading',{name:'Git 入门学习笔记'}).waitFor();
    assert.equal((await page.locator('.library-navigation').boundingBox()).width,236,'Saved width after reload');
@@ -98,6 +105,7 @@ try {
    const body=await page.locator('.document-editor').boundingBox();
    await page.evaluate(()=>{window.motionFrames=[];window.sampleMotion=true;const sample=()=>{const n=document.querySelector('.library-drawer-surface');window.motionFrames.push(n?Number(getComputedStyle(n).transform.split(',')[4]):null);if(window.sampleMotion)requestAnimationFrame(sample);};requestAnimationFrame(sample);});
    await open(page);
+   await headerCheck(page);
    const frames=await page.evaluate(()=>{window.sampleMotion=false;return window.motionFrames;});
    assert(frames.some(n=>n<0&&n>-279),'Opening must render intermediate translation frames');
    assert.deepEqual(await page.locator('.document-editor').boundingBox(),body,'Drawer must not reflow body');

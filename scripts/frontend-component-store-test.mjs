@@ -684,7 +684,8 @@ try {
   assert.equal(activeFileButton.querySelector("span[aria-hidden]"), null);
   assert.ok(activeFileButton.closest(".directory-node-row")
     .querySelector(".file-node-menu-button").classList.contains("opacity-100"));
-  assert.match(directoryContainer.textContent ?? "", /目录1 篇/);
+  assert.equal(directoryContainer.querySelector("h1").textContent, "知识库");
+  assert.equal(directoryContainer.querySelector("h1").parentElement.textContent.trim(), "知识库");
   assert.doesNotMatch(directoryContainer.textContent ?? "", /\d+\s*个文件夹/);
   const accountFooter = directoryContainer.querySelector('[data-account-footer]');
   assert.ok(accountFooter);

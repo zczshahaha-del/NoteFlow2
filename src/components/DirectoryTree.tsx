@@ -29,13 +29,6 @@ import SidebarToggleIcon from "./SidebarToggleIcon";
 import OverlayDialog from "./OverlayDialog";
 import SoftMenu from "./SoftMenu";
 
-function countFiles(nodes: FileNode[]): number {
-  return nodes.reduce((total, node) => {
-    if (node.type === "file") return total + 1;
-    return total + countFiles(node.children ?? []);
-  }, 0);
-}
-
 function sortPinnedFirst(nodes: FileNode[]): FileNode[] {
   return [...nodes]
     .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)))
@@ -533,7 +526,6 @@ export default function DirectoryTree({
     () => sortPinnedFirst(treeData),
     [treeData]
   );
-  const fileCount = useMemo(() => countFiles(treeData), [treeData]);
   const moveTargets = useMemo(() => {
     const excludeIds =
       movingNode?.type === "folder" ? collectFolderIds(movingNode) : new Set<string>();
@@ -808,10 +800,7 @@ export default function DirectoryTree({
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="flex min-w-0 flex-1 items-center gap-2 text-jelly-text">
                 <BookOpen size={16} className="shrink-0 text-jelly-text-muted" strokeWidth={1.8} />
-                <h1 className="shrink-0 text-[15px] font-semibold">目录</h1>
-                <p className="min-w-0 truncate text-[11px] text-jelly-text-muted">
-                  {fileCount} 篇
-                </p>
+                <h1 className="shrink-0 text-[15px] font-semibold">知识库</h1>
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <button
