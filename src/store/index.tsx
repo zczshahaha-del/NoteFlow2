@@ -198,6 +198,8 @@ interface AppState {
   fileContents: Record<string, string>;
   updateFileContent: (id: string, content: string) => void;
   noteSaveState: NoteSaveState;
+  noteSaveStates: Record<string, NoteSaveState>;
+  retryNoteSave: (noteId: string) => void;
   deletedNotes: DeletedNoteItem[];
   restoreDeletedNote: (id: string) => void;
   reindexNote: (id: string) => void;
@@ -250,9 +252,10 @@ function newChatMessageMetadata(): Pick<ChatMessage, "id" | "createdAt"> {
 }
 let nodeCounter = 0;
 let generationAbortController: AbortController | null = null;
-let noteSaveTimer: ReturnType<typeof window.setTimeout> | null = null;
+const noteSaveTimers = new Map<string, ReturnType<typeof window.setTimeout>>();
 const indexJobPollTimers = new Map<string, ReturnType<typeof window.setTimeout>>();
-let noteSaveInFlight: Promise<void> | null = null;
+const noteSavesInFlight = new Map<string, Promise<void>>();
+let workspaceEpoch = 0;
 const noteMutationQueues = new Map<string, Promise<void>>();
 const noteOpenRequests = new Map<string, object>();
 const localNoteEdits = new Map<string, { userId: string | null; content: string }>();
@@ -459,41 +462,49 @@ function persistLocalCurrentState() {
   }
 }
 
-function clearScheduledNoteSave() {
-  if (noteSaveTimer) {
-    window.clearTimeout(noteSaveTimer);
-    noteSaveTimer = null;
+function clearScheduledNoteSave(noteId?: string) {
+  for (const [id, timer] of noteSaveTimers) if (!noteId || id === noteId) {
+    window.clearTimeout(timer); noteSaveTimers.delete(id);
   }
+}
+
+function setNoteSaveState(noteId: string, value: NoteSaveState) {
+  useAppStore.setState(state => ({
+    noteSaveStates: { ...state.noteSaveStates, [noteId]: value },
+    ...(state.selectedFileId === noteId ? { noteSaveState: value } : {}),
+  }));
 }
 
 function startPersistNoteContent(noteId: string, content: string) {
   const promise = persistNoteContent(noteId, content);
-  noteSaveInFlight = promise;
+  noteSavesInFlight.set(noteId, promise);
   void promise.finally(() => {
-    if (noteSaveInFlight === promise) {
-      noteSaveInFlight = null;
-    }
+    if (noteSavesInFlight.get(noteId) === promise) noteSavesInFlight.delete(noteId);
   });
 }
 
 function scheduleNoteSave(noteId: string, content: string) {
-  clearScheduledNoteSave();
-  noteSaveTimer = window.setTimeout(() => {
-    noteSaveTimer = null;
+  clearScheduledNoteSave(noteId);
+  const ownerId = useAppStore.getState().hydratedUserId, epoch = workspaceEpoch;
+  noteSaveTimers.set(noteId, window.setTimeout(() => {
+    noteSaveTimers.delete(noteId);
+    if (useAppStore.getState().hydratedUserId !== ownerId || workspaceEpoch !== epoch || !findFileById(useAppStore.getState().treeData, noteId)) return;
     startPersistNoteContent(noteId, content);
-  }, 700);
+  }, 700));
 }
 
 async function persistNoteContent(noteId: string, content: string) {
-  if (useAppStore.getState().fileContents[noteId] !== content) return;
+  const ownerId = useAppStore.getState().hydratedUserId, epoch = workspaceEpoch;
+  const ownsNote = () => useAppStore.getState().hydratedUserId === ownerId && workspaceEpoch === epoch && Boolean(findFileById(useAppStore.getState().treeData, noteId));
+  if (!ownsNote() || useAppStore.getState().fileContents[noteId] !== content) return;
   const editOwner = localNoteEdits.get(noteId);
   let baseUpdatedAt: string | null = null;
   let baseContentHash: string | null = null;
-  useAppStore.setState({ noteSaveState: noteSaveState("saving") });
+  setNoteSaveState(noteId, noteSaveState("saving"));
   try {
     const note = await enqueueNoteMutation(noteId, async () => {
       const beforeSave = useAppStore.getState();
-      if (beforeSave.fileContents[noteId] !== content) return null;
+      if (!ownsNote() || beforeSave.fileContents[noteId] !== content) return null;
       const beforeSaveNote = findFileById(beforeSave.treeData, noteId);
       baseUpdatedAt = beforeSaveNote?.updatedAt ?? null;
       baseContentHash = beforeSaveNote?.contentHash ?? null;
@@ -505,12 +516,12 @@ async function persistNoteContent(noteId: string, content: string) {
         expectedContentHash: baseContentHash,
       });
     });
-    if (!note) return;
+    if (!note || !ownsNote() || note.id !== noteId) return;
     const current = useAppStore.getState();
-    if (current.fileContents[noteId] !== content) {
+    if (current.fileContents[noteId] !== content || localNoteEdits.get(noteId) !== editOwner) {
       const latestLocalContent = current.fileContents[note.id] ?? note.content;
       useAppStore.setState({
-        treeData: reconcilePersistedNoteRecord(current.treeData, note, latestLocalContent),
+        treeData: updateNodeIndexStatus(reconcilePersistedNoteRecord(current.treeData, note, latestLocalContent), noteId, 'outdated'),
       });
       persistLocalCurrentState();
       return;
@@ -518,11 +529,12 @@ async function persistNoteContent(noteId: string, content: string) {
     useAppStore.setState({
       fileContents: { ...current.fileContents, [note.id]: note.content },
       treeData: replaceNoteRecordInTree(current.treeData, note),
-      noteSaveState: noteSaveState("saved"),
     });
+    setNoteSaveState(noteId, noteSaveState("saved"));
     if (localNoteEdits.get(noteId) === editOwner) localNoteEdits.delete(noteId);
     persistLocalCurrentState();
   } catch (error) {
+    if (!ownsNote() || useAppStore.getState().fileContents[noteId] !== content || localNoteEdits.get(noteId) !== editOwner) return;
     const current = useAppStore.getState();
     const message = error instanceof Error ? error.message : "保存失败";
     const isNetworkFailure =
@@ -538,9 +550,8 @@ async function persistNoteContent(noteId: string, content: string) {
           baseUpdatedAt,
           baseContentHash,
         });
-        useAppStore.setState({
-          noteSaveState: noteSaveState("offline", "已离线保存在本机，联网后会自动同步。"),
-        });
+        if (!ownsNote() || useAppStore.getState().fileContents[noteId] !== content || localNoteEdits.get(noteId) !== editOwner) return;
+        setNoteSaveState(noteId, noteSaveState("offline", "已离线保存在本机，联网后会自动同步。"));
         persistLocalCurrentState();
         return;
       } catch {}
@@ -551,9 +562,7 @@ async function persistNoteContent(noteId: string, content: string) {
         return;
       } catch {}
     }
-    useAppStore.setState({
-      noteSaveState: noteSaveState("error", message),
-    });
+    if (ownsNote() && useAppStore.getState().fileContents[noteId] === content && localNoteEdits.get(noteId) === editOwner) setNoteSaveState(noteId, noteSaveState("error", message));
   }
 }
 
@@ -572,13 +581,18 @@ async function contentFingerprint(value: string): Promise<string> {
 
 async function preserveConflictCopy(userId: string, noteId: string, localContent: string) {
   const remote = await getNote(noteId);
+  if (useAppStore.getState().hydratedUserId !== userId || !findFileById(useAppStore.getState().treeData, noteId)) return;
   if (remote.content === localContent) {
     const current = useAppStore.getState();
+    if (current.fileContents[noteId] !== localContent) return;
     useAppStore.setState({
       fileContents: { ...current.fileContents, [remote.id]: remote.content },
       treeData: replaceNoteRecordInTree(current.treeData, remote),
-      noteSaveState: noteSaveState("saved", "内容已经同步，无需创建冲突副本。"),
     });
+    if (current.fileContents[noteId] === localContent) {
+      localNoteEdits.delete(noteId);
+      setNoteSaveState(noteId, noteSaveState("saved", "内容已经同步，无需创建冲突副本。"));
+    }
     await removeOfflineNoteEdit(userId, noteId).catch(() => undefined);
     persistLocalCurrentState();
     return;
@@ -600,11 +614,14 @@ async function preserveConflictCopy(userId: string, noteId: string, localContent
     content: localContent,
     idempotencyKey: `sync-conflict:${conflictFingerprint}`,
   });
+  if (useAppStore.getState().hydratedUserId !== userId) return;
+  if (useAppStore.getState().fileContents[noteId] === localContent) {
+    localNoteEdits.delete(noteId);
+    setNoteSaveState(noteId, noteSaveState("saved", "离线内容已保留为同步冲突副本。"));
+  }
   await removeOfflineNoteEdit(userId, noteId).catch(() => undefined);
   await loadStructuredWorkspace(userId, conflict.id);
-  useAppStore.setState({
-    noteSaveState: noteSaveState("saved", "检测到其他设备的更新，离线内容已保留为“同步冲突”副本。"),
-  });
+  if (useAppStore.getState().hydratedUserId === userId) setNoteSaveState(conflict.id, noteSaveState("saved", "检测到其他设备的更新，离线内容已保留为“同步冲突”副本。"));
 }
 
 async function flushOfflineNoteQueue(userId: string) {
@@ -613,10 +630,14 @@ async function flushOfflineNoteQueue(userId: string) {
   if (!edits.length) return;
   let changed = false;
   for (const edit of edits) {
+    if (useAppStore.getState().hydratedUserId !== userId) return;
     try {
       const remote = await getNote(edit.noteId);
       if (remote.content === edit.content) {
         await removeOfflineNoteEdit(userId, edit.noteId);
+        if (useAppStore.getState().hydratedUserId === userId && useAppStore.getState().fileContents[edit.noteId] === edit.content) {
+          localNoteEdits.delete(edit.noteId); setNoteSaveState(edit.noteId, noteSaveState('saved'));
+        }
         changed = true;
         continue;
       }
@@ -640,54 +661,38 @@ async function flushOfflineNoteQueue(userId: string) {
         expectedContentHash: remote.contentHash,
       });
       await removeOfflineNoteEdit(userId, edit.noteId);
+      if (useAppStore.getState().hydratedUserId === userId && useAppStore.getState().fileContents[edit.noteId] === edit.content) {
+        localNoteEdits.delete(edit.noteId); setNoteSaveState(edit.noteId, noteSaveState('saved'));
+      }
       changed = true;
     } catch {
       if (typeof navigator !== "undefined" && !navigator.onLine) break;
     }
   }
-  if (changed) {
+  if (changed && useAppStore.getState().hydratedUserId === userId) {
     const selectedFileId = useAppStore.getState().selectedFileId;
     await loadStructuredWorkspace(userId, selectedFileId);
-    useAppStore.setState({
-      noteSaveState: noteSaveState("saved", "离线修改已同步完成。"),
-    });
   }
 }
 
 async function syncNoteContentBeforeAiEdit(noteId: string) {
-  const hadScheduledSave = Boolean(noteSaveTimer);
-  clearScheduledNoteSave();
-  if (noteSaveInFlight) {
-    await noteSaveInFlight.catch(() => null);
-  }
+  const hadScheduledSave = noteSaveTimers.has(noteId);
+  clearScheduledNoteSave(noteId);
+  await noteSavesInFlight.get(noteId)?.catch(() => null);
 
   const current = useAppStore.getState();
   const shouldPersist =
     hadScheduledSave ||
-    current.noteSaveState.status === "unsaved" ||
-    current.noteSaveState.status === "saving" ||
-    current.noteSaveState.status === "offline" ||
-    current.noteSaveState.status === "error";
+    ['unsaved', 'saving', 'offline', 'error'].includes((current.noteSaveStates[noteId] ?? current.noteSaveState).status);
   if (!shouldPersist) return;
 
   const content = current.fileContents[noteId];
   if (content === undefined) return;
 
-  useAppStore.setState({ noteSaveState: noteSaveState("saving") });
-  const note = await updateNote(noteId, {
-    content,
-    source: "auto_save",
-    changeSummary: "AI 修改前同步正文",
-  });
+  await persistNoteContent(noteId, content);
   const latest = useAppStore.getState();
-  useAppStore.setState({
-    fileContents: { ...latest.fileContents, [note.id]: note.content },
-    treeData: replaceNoteRecordInTree(latest.treeData, note),
-    noteSaveState: noteSaveState("saved"),
-  });
-  const localEdit = localNoteEdits.get(noteId);
-  if (localEdit?.userId === latest.hydratedUserId && localEdit.content === content) localNoteEdits.delete(noteId);
-  persistLocalCurrentState();
+  if (latest.hydratedUserId !== current.hydratedUserId || latest.fileContents[noteId] !== content ||
+    (latest.noteSaveStates[noteId]?.status ?? latest.noteSaveState.status) !== 'saved') throw new Error('正文尚未同步完成，请重试后再应用 AI 修改。');
 }
 
 export const useAppStore = create<InternalAppState>((set, get) => ({
@@ -709,6 +714,12 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   expandedFolderIds: new Set(),
   fileContents: {},
   noteSaveState: noteSaveState("idle"),
+  noteSaveStates: {},
+  retryNoteSave: (noteId) => {
+    const content = get().fileContents[noteId];
+    if (content === undefined || !findFileById(get().treeData, noteId)) return;
+    clearScheduledNoteSave(noteId); startPersistNoteContent(noteId, content);
+  },
   deletedNotes: [],
   workspaceLoading: false,
   workspaceError: null,
@@ -1052,6 +1063,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         fileContents: { ...current.fileContents, [result.note.id]: result.note.content },
         treeData: replaceNoteRecordInTree(current.treeData, result.note),
         noteSaveState: noteSaveState("saved"),
+        noteSaveStates: { ...current.noteSaveStates, [result.note.id]: noteSaveState('saved') },
         pendingEditorSelection: {
           id: `editor-selection-${Date.now()}`,
           noteId: result.note.id,
@@ -1395,6 +1407,9 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   },
 
   hydrate: (userId) => {
+    workspaceEpoch += 1;
+    clearScheduledNoteSave();
+    noteSavesInFlight.clear();
     workspaceLoadRequest = null;
     noteCreationRequests.clear();
     noteOpenRequests.clear();
@@ -1415,6 +1430,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       expandedFolderIds: new Set(),
       fileContents: snapshot.fileContents,
       noteSaveState: noteSaveState("idle"),
+      noteSaveStates: {},
       deletedNotes: [],
       workspaceLoading: true,
       workspaceError: null,
@@ -1465,8 +1481,9 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     void loadStructuredWorkspace(userId, preferredSelectedFileId ?? null).then(() => {
       if (!successMessage) return;
       const current = get();
-      if (!preferredSelectedFileId || current.selectedFileId === preferredSelectedFileId) {
-        set({ noteSaveState: noteSaveState("saved", successMessage) });
+      if (current.hydratedUserId === userId && !current.workspaceError && current.selectedFileId &&
+        (!preferredSelectedFileId || current.selectedFileId === preferredSelectedFileId) && !localNoteEdits.has(current.selectedFileId)) {
+        setNoteSaveState(current.selectedFileId, noteSaveState("saved", successMessage));
       }
     });
   },
@@ -1493,7 +1510,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           : taskWithCheckpoint(state.agentTask, null),
         pendingSourceFocus: null,
         pendingEditorSelection: null,
-        noteSaveState: noteSaveState("idle"),
+        noteSaveState: id ? state.noteSaveStates[id] ?? noteSaveState("idle") : noteSaveState("idle"),
       };
     });
     persistLocalCurrentState();
@@ -1538,10 +1555,12 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     }),
 
   updateFileContent: (id, content) => {
+    const unsaved = noteSaveState("unsaved");
     set((state) => ({
       fileContents: { ...state.fileContents, [id]: content },
       treeData: updateFileContentInTree(state.treeData, id, content),
-      noteSaveState: noteSaveState("unsaved"),
+      noteSaveStates: { ...state.noteSaveStates, [id]: unsaved },
+      ...(state.selectedFileId === id ? { noteSaveState: unsaved } : {}),
     }));
     const userId = get().hydratedUserId;
     localNoteEdits.set(id, { userId, content });
@@ -1735,6 +1754,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
               fileContents: { ...current.fileContents, [result.note.id]: result.note.content },
               treeData: replaceNoteRecordInTree(current.treeData, result.note),
               noteSaveState: noteSaveState("saved"),
+              noteSaveStates: { ...current.noteSaveStates, [result.note.id]: noteSaveState('saved') },
               pendingEditorSelection: {
                 id: `editor-selection-${Date.now()}`,
                 noteId: result.note.id,
@@ -2301,16 +2321,21 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       const nextTree = removeNode(state.treeData, id);
       const deletedFileIds = new Set(collectFileIds(nodeToDelete));
       const nextContents = { ...state.fileContents };
+      const nextSaveStates = { ...state.noteSaveStates };
       deletedFileIds.forEach((fileId) => {
         delete nextContents[fileId];
+        delete nextSaveStates[fileId];
         localNoteEdits.delete(fileId);
         noteOpenRequests.delete(fileId);
         noteCreationRequests.delete(fileId);
+        clearScheduledNoteSave(fileId);
       });
 
       return {
         treeData: nextTree,
         fileContents: nextContents,
+        noteSaveStates: nextSaveStates,
+        noteSaveState: nextSaveStates[state.selectedFileId && !deletedFileIds.has(state.selectedFileId) ? state.selectedFileId : resolveSelectedFileId(nextTree, null) ?? ''] ?? noteSaveState('idle'),
         deletedNotes:
           nodeToDelete.type === "file"
             ? [
@@ -2630,10 +2655,7 @@ export function AppProvider({
     return () => {
       generationAbortController?.abort();
       generationAbortController = null;
-      if (noteSaveTimer) {
-        window.clearTimeout(noteSaveTimer);
-        noteSaveTimer = null;
-      }
+      clearScheduledNoteSave();
     };
   }, [userId]);
 
