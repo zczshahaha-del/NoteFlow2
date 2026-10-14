@@ -256,6 +256,50 @@ let noteSaveInFlight: Promise<void> | null = null;
 const noteMutationQueues = new Map<string, Promise<void>>();
 const noteOpenRequests = new Map<string, object>();
 const localNoteEdits = new Map<string, { userId: string | null; content: string }>();
+const noteCreationRequests = new Map<string, object>();
+let workspaceLoadRequest: object | null = null;
+
+function mergeWorkspaceRefresh(remote: KnowledgeBaseSnapshot, started: KnowledgeBaseSnapshot, current: KnowledgeBaseSnapshot, userId: string) {
+  const flatten = (nodes: FileNode[], parentId: string | null = null, result = new Map<string, { node: FileNode; parentId: string | null }>()) => {
+    for (const node of nodes) { result.set(node.id, { node, parentId }); if (node.children) flatten(node.children, node.id, result); }
+    return result;
+  };
+  const before = flatten(started.treeData), local = flatten(current.treeData), next = flatten(remote.treeData);
+  const dirty = (id: string) => localNoteEdits.get(id)?.userId === userId ||
+    current.fileContents[id] !== started.fileContents[id];
+  for (const [id, entry] of next) {
+    const previous = before.get(id), latest = local.get(id);
+    if (previous && !latest) { next.delete(id); delete remote.fileContents[id]; continue; }
+    if (!latest) continue;
+    const node = { ...entry.node };
+    if (latest.node.type === 'file' && dirty(id)) {
+      node.content = current.fileContents[id] ?? latest.node.content ?? '';
+      node.indexStatus = 'outdated';
+      remote.fileContents[id] = node.content;
+    }
+    for (const field of ['name', 'pinned', 'favorite', 'tags'] as const) {
+      if (previous && latest.node[field] !== previous.node[field]) Object.assign(node, { [field]: latest.node[field] });
+    }
+    next.set(id, { node, parentId: previous && latest.parentId !== previous.parentId ? latest.parentId : entry.parentId });
+  }
+  const keepLocal = (id: string) => {
+    if (next.has(id)) return;
+    const entry = local.get(id); if (!entry) return;
+    next.set(id, { node: { ...entry.node }, parentId: entry.parentId });
+    if (entry.node.type === 'file') remote.fileContents[id] = current.fileContents[id] ?? entry.node.content ?? '';
+    if (entry.parentId) keepLocal(entry.parentId);
+  };
+  for (const [id, entry] of local) {
+    if (!before.has(id) || noteCreationRequests.has(id) || (entry.node.type === 'file' && dirty(id))) keepLocal(id);
+  }
+  const roots: FileNode[] = [];
+  for (const entry of next.values()) if (entry.node.type === 'folder') entry.node.children = [];
+  for (const entry of next.values()) {
+    const parent = entry.parentId ? next.get(entry.parentId)?.node : null;
+    if (parent?.type === 'folder') parent.children!.push(entry.node); else roots.push(entry.node);
+  }
+  return { ...remote, treeData: roots };
+}
 
 function enqueueNoteMutation<T>(noteId: string, operation: () => Promise<T>): Promise<T> {
   const previous = noteMutationQueues.get(noteId) ?? Promise.resolve();
@@ -1351,6 +1395,8 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   },
 
   hydrate: (userId) => {
+    workspaceLoadRequest = null;
+    noteCreationRequests.clear();
     noteOpenRequests.clear();
     localNoteEdits.clear();
     const snapshot = loadLocalSnapshot(userId);
@@ -2130,6 +2176,10 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   },
 
   addNode: (parentId, node) => {
+    const ownerId = get().hydratedUserId;
+    const creation = {};
+    if (node.type === 'file') noteCreationRequests.set(node.id, creation);
+    const ownsCreation = () => get().hydratedUserId === ownerId && noteCreationRequests.get(node.id) === creation && Boolean(findFileById(get().treeData, node.id));
     set((state) => {
       const now = new Date().toISOString();
       const nextNode = node.type === "file"
@@ -2169,7 +2219,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       return;
     }
 
-    void createNote({
+    void enqueueNoteMutation(node.id, () => ownsCreation() ? createNote({
       id: node.id,
       title: titleFromNodeName(node.name),
       categoryId: parentId,
@@ -2178,16 +2228,27 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       isPinned: Boolean(node.pinned),
       isFavorite: Boolean(node.favorite),
       tags: node.tags ?? [],
-    })
+    }) : Promise.resolve(null))
       .then((note) => {
+        if (!note || !ownsCreation() || note.id !== node.id) return;
         const current = get();
+        const currentNode = findFileById(current.treeData, node.id)!;
+        const content = current.fileContents[node.id] ?? note.content;
+        const merged = { ...note, content,
+          title: currentNode.name !== node.name ? titleFromNodeName(currentNode.name) : note.title,
+          indexStatus: content !== note.content ? 'outdated' : note.indexStatus };
         set({
-          fileContents: { ...current.fileContents, [note.id]: note.content },
-          treeData: replaceNoteRecordInTree(current.treeData, note),
+          fileContents: { ...current.fileContents, [note.id]: content },
+          treeData: replaceNoteRecordInTree(current.treeData, merged),
         });
+        persistLocalCurrentState();
       })
       .catch((error) => {
+        if (!ownsCreation()) return;
         set({ workspaceError: error instanceof Error ? error.message : "创建笔记失败" });
+      })
+      .finally(() => {
+        if (noteCreationRequests.get(node.id) === creation) noteCreationRequests.delete(node.id);
       });
   },
 
@@ -2244,6 +2305,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         delete nextContents[fileId];
         localNoteEdits.delete(fileId);
         noteOpenRequests.delete(fileId);
+        noteCreationRequests.delete(fileId);
       });
 
       return {
@@ -2465,16 +2527,23 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
 }));
 
 async function loadStructuredWorkspace(userId: string, preferredSelectedFileId?: string | null) {
+  const request = {};
+  workspaceLoadRequest = request;
+  const started = snapshotFromState(useAppStore.getState());
+  const ownsRequest = () => workspaceLoadRequest === request && useAppStore.getState().hydratedUserId === userId;
   useAppStore.getState().setWorkspaceLoading(true);
   useAppStore.getState().setWorkspaceError(null);
 
   try {
     let categories = await listCategories();
+    if (!ownsRequest()) return;
     let allNotes = await listNotes(true);
+    if (!ownsRequest()) return;
     let notes = allNotes.filter((note) => !note.deletedAt);
 
     if (categories.length === 0 && notes.length === 0) {
       const legacySnapshot = await loadKnowledgeBase(userId);
+      if (!ownsRequest()) return;
       if (legacySnapshot && legacySnapshot.treeData.length > 0) {
         if (isBundledDemoSnapshot(legacySnapshot)) {
           await clearKnowledgeBase().catch(() => {});
@@ -2482,16 +2551,19 @@ async function loadStructuredWorkspace(userId: string, preferredSelectedFileId?:
           await migrateKnowledgeBase();
           categories = await listCategories();
           allNotes = await listNotes(true);
+          if (!ownsRequest()) return;
           notes = allNotes.filter((note) => !note.deletedAt);
         }
       }
     }
 
+    if (!ownsRequest()) return;
     if (categories.length > 0 || notes.length > 0) {
-      const snapshot = buildTreeFromRecords(categories, notes);
+      const current = snapshotFromState(useAppStore.getState());
+      const snapshot = mergeWorkspaceRefresh(buildTreeFromRecords(categories, notes), started, current, userId);
       snapshot.selectedFileId = resolveSelectedFileId(
         snapshot.treeData,
-        preferredSelectedFileId ?? useAppStore.getState().selectedFileId
+        current.selectedFileId !== started.selectedFileId ? current.selectedFileId : preferredSelectedFileId ?? current.selectedFileId
       );
       useAppStore.getState().replaceSnapshot(snapshot);
       useAppStore.setState({
@@ -2505,11 +2577,13 @@ async function loadStructuredWorkspace(userId: string, preferredSelectedFileId?:
       });
       await clearKnowledgeBase().catch(() => {});
     } else {
-      const emptySnapshot: KnowledgeBaseSnapshot = {
+      const current = snapshotFromState(useAppStore.getState());
+      const emptySnapshot = mergeWorkspaceRefresh({
         treeData: [],
         fileContents: {},
         selectedFileId: null,
-      };
+      }, started, current, userId);
+      emptySnapshot.selectedFileId = resolveSelectedFileId(emptySnapshot.treeData, current.selectedFileId);
       useAppStore.getState().replaceSnapshot(emptySnapshot);
       useAppStore.setState({
         deletedNotes: allNotes
@@ -2522,8 +2596,9 @@ async function loadStructuredWorkspace(userId: string, preferredSelectedFileId?:
       });
     }
 
-    useAppStore.getState().setServerSyncReady(true);
+    if (ownsRequest()) useAppStore.getState().setServerSyncReady(true);
   } catch (error) {
+    if (!ownsRequest()) return;
     const message = error instanceof Error ? error.message : "结构化笔记加载失败";
     const isOffline =
       (typeof navigator !== "undefined" && !navigator.onLine) ||
@@ -2537,7 +2612,7 @@ async function loadStructuredWorkspace(userId: string, preferredSelectedFileId?:
           : message
       );
   } finally {
-    useAppStore.getState().setWorkspaceLoading(false);
+    if (ownsRequest()) useAppStore.getState().setWorkspaceLoading(false);
   }
 }
 
