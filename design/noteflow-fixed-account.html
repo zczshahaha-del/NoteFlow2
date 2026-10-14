@@ -1,0 +1,85 @@
+<style>
+#nf-fixed-account { color-scheme:light dark;--fa-paper:light-dark(#fdfdfc,#111820);--fa-ink:light-dark(#29313a,#e6edf3);--fa-muted:light-dark(#687a89,#a5b5c2);--fa-line:light-dark(#e4e8eb,#34424e);--fa-hover:light-dark(#eff2f4,#24313d);--fa-avatar:light-dark(#c37870,#be7c70);--fa-selected:light-dark(#e8f0f5,#233e4c);--fa-panel:light-dark(#ffffff,#17212b);--fa-panel-width:210px;--fa-avatar-size:34px;color:var(--fa-ink);font:400 14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif; }
+#nf-fixed-account .fa-pair { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;padding:18px 14px; }
+#nf-fixed-account .fa-caption { margin:0 0 10px 2px;font-size:13px;font-weight:500; }
+#nf-fixed-account .fa-stage { position:relative;min-width:0;height:350px;background:var(--fa-paper);border-radius:12px;overflow:hidden; }
+#nf-fixed-account :where(.fa-stage) * { box-sizing:border-box; }
+#nf-fixed-account :where(.fa-stage) button { font:inherit;border:0;background:transparent;color:inherit; }
+#nf-fixed-account .fa-stage [hidden] { display:none!important; }
+#nf-fixed-account .fa-library { position:absolute;inset:0 auto 0 0;width:52px;background:transparent; }
+#nf-fixed-account .fa-stage[data-expanded="true"] .fa-library { width:var(--fa-panel-width);background:var(--fa-panel);border-right:1px solid var(--fa-line); }
+#nf-fixed-account .fa-library-content { position:absolute;top:20px;left:12px;right:12px;opacity:0;visibility:hidden; }
+#nf-fixed-account .fa-stage[data-expanded="true"] .fa-library-content { opacity:1;visibility:visible; }
+#nf-fixed-account .fa-header { display:flex;align-items:center;gap:8px;font-weight:500;margin:0 0 29px 4px;padding-right:34px;white-space:nowrap; }
+#nf-fixed-account .fa-header svg { width:16px;height:16px;color:var(--fa-muted);flex:none; }
+#nf-fixed-account .fa-file { display:flex;align-items:center;gap:8px;height:37px;padding:0 10px;margin-bottom:3px;border-radius:8px;font-size:13px;white-space:nowrap; }
+#nf-fixed-account .fa-file svg { width:15px;height:15px;color:var(--fa-muted);flex:none; }
+#nf-fixed-account .fa-file[data-selected] { background:var(--fa-selected); }
+#nf-fixed-account .fa-toggle { position:absolute;top:10px;left:4px;width:44px;height:44px;display:grid;place-items:center;color:var(--fa-muted);border-radius:8px; }
+#nf-fixed-account .fa-stage[data-expanded="true"] .fa-toggle { left:calc(var(--fa-panel-width) - 48px); }
+#nf-fixed-account .fa-toggle svg { width:17px;height:17px;stroke-width:1.6; }
+#nf-fixed-account .fa-toggle:hover { background:var(--fa-hover); }
+#nf-fixed-account .fa-account { position:absolute;left:4px;bottom:8px;z-index:4;display:grid;place-items:center;width:44px;height:44px;border-radius:50%; }
+#nf-fixed-account .fa-circle { display:grid;place-items:center;width:var(--fa-avatar-size);height:var(--fa-avatar-size);border-radius:50%;background:var(--fa-avatar);color:light-dark(#fff,#fff); }
+#nf-fixed-account .fa-circle svg { width:17px;height:17px;stroke-width:1.6; }
+#nf-fixed-account .fa-account[aria-expanded="true"] .fa-circle { box-shadow:0 0 0 3px var(--fa-hover); }
+#nf-fixed-account .fa-paper { margin-left:52px;padding:69px 16px 0 18px; }
+#nf-fixed-account .fa-stage[data-expanded="true"] .fa-paper { margin-left:var(--fa-panel-width); }
+#nf-fixed-account .fa-paper h2 { font-size:17px;font-weight:500;margin:0 0 23px;white-space:nowrap; }
+#nf-fixed-account .fa-paper p { color:var(--fa-muted);margin:0;white-space:nowrap; }
+#nf-fixed-account .fa-menu { position:absolute;left:58px;bottom:8px;z-index:5;width:min(224px,calc(100% - 70px));background:var(--fa-panel);border:1px solid var(--fa-line);border-radius:12px;padding:6px;box-shadow:0 6px 20px light-dark(#24354414,#00000038); }
+#nf-fixed-account .fa-identity { display:flex;align-items:center;gap:9px;min-height:40px;padding:3px 9px 6px;font-weight:500; }
+#nf-fixed-account .fa-identity .fa-circle { width:28px;height:28px;flex:none; }
+#nf-fixed-account .fa-identity .fa-circle svg { width:15px;height:15px; }
+#nf-fixed-account .fa-close { margin-left:auto;width:28px;height:28px;border-radius:6px;display:grid;place-items:center; }
+#nf-fixed-account .fa-close svg { width:14px;height:14px;color:var(--fa-muted); }
+#nf-fixed-account .fa-close:hover { background:var(--fa-hover); }
+#nf-fixed-account .fa-menu-row { display:flex;align-items:center;gap:10px;min-height:36px;padding:7px 10px; }
+#nf-fixed-account .fa-menu-row svg { width:17px;height:17px;color:var(--fa-muted); }
+#nf-fixed-account .fa-separator { height:1px;background:var(--fa-line);margin:3px 10px; }
+@media(hover:hover) { #nf-fixed-account .fa-account:hover .fa-circle { box-shadow:0 0 0 3px var(--fa-hover); } }
+@media(max-width:520px) { #nf-fixed-account .fa-pair { grid-template-columns:minmax(0,1fr);padding:12px; } #nf-fixed-account { --fa-panel-width:180px; } }
+@media(pointer:coarse) { #nf-fixed-account .fa-close { width:44px;height:44px; } #nf-fixed-account .fa-menu-row { min-height:44px; } }
+@media(prefers-reduced-motion:no-preference) { #nf-fixed-account .fa-library { transition:width 220ms cubic-bezier(.22,1,.36,1); } #nf-fixed-account .fa-library-content { transition:opacity 160ms ease; } #nf-fixed-account .fa-toggle { transition:left 220ms cubic-bezier(.22,1,.36,1),background-color 140ms ease; } #nf-fixed-account .fa-paper { transition:margin-left 220ms cubic-bezier(.22,1,.36,1); } #nf-fixed-account .fa-circle { transition:box-shadow 140ms ease; } }
+</style>
+<div id="nf-fixed-account" aria-label="固定头像入口的展开与收起对照">
+  <div class="fa-pair viz-dotted-background">
+    <section aria-label="目录展开状态">
+      <p class="fa-caption">目录展开</p>
+      <div class="fa-stage" data-stage="expanded" data-expanded="true">
+        <aside class="fa-library" aria-label="知识库"><div class="fa-library-content"><div class="fa-header"><i data-lucide="book-open" aria-hidden="true"></i>知识库</div><div class="fa-file" data-selected><i data-lucide="file-text" aria-hidden="true"></i>Go 语言</div><div class="fa-file"><i data-lucide="file-text" aria-hidden="true"></i>Git 学习笔记</div><div class="fa-file"><i data-lucide="file-text" aria-hidden="true"></i>Redis</div></div></aside>
+        <button class="fa-toggle cursor-interaction" type="button" data-action="toggle" aria-label="收起知识库" aria-expanded="true"><i data-lucide="panel-left" aria-hidden="true"></i></button>
+        <div class="fa-paper"><h2>Go 语言</h2><p>变量</p></div>
+        <button class="fa-account cursor-interaction" type="button" data-action="account" aria-label="我的账号菜单" aria-expanded="false" aria-controls="fa-menu-expanded" aria-haspopup="dialog"><span class="fa-circle"><i data-lucide="user-round" aria-hidden="true"></i></span></button>
+        <div class="fa-menu" id="fa-menu-expanded" role="dialog" aria-label="我的账号" hidden><div class="fa-identity"><span class="fa-circle"><i data-lucide="user-round" aria-hidden="true"></i></span><span>我的账号</span><button class="fa-close cursor-interaction" type="button" data-action="close" aria-label="关闭账号菜单"><i data-lucide="x" aria-hidden="true"></i></button></div><div class="fa-separator"></div><div class="fa-menu-row"><i data-lucide="settings" aria-hidden="true"></i>设置</div><div class="fa-menu-row"><i data-lucide="trash-2" aria-hidden="true"></i>回收站</div><div class="fa-separator"></div><div class="fa-menu-row"><i data-lucide="log-out" aria-hidden="true"></i>退出登录</div></div>
+      </div>
+    </section>
+    <section aria-label="目录收起状态">
+      <p class="fa-caption">目录收起</p>
+      <div class="fa-stage" data-stage="collapsed" data-expanded="false">
+        <aside class="fa-library" aria-label="知识库"><div class="fa-library-content"><div class="fa-header"><i data-lucide="book-open" aria-hidden="true"></i>知识库</div><div class="fa-file" data-selected><i data-lucide="file-text" aria-hidden="true"></i>Go 语言</div><div class="fa-file"><i data-lucide="file-text" aria-hidden="true"></i>Git 学习笔记</div><div class="fa-file"><i data-lucide="file-text" aria-hidden="true"></i>Redis</div></div></aside>
+        <button class="fa-toggle cursor-interaction" type="button" data-action="toggle" aria-label="展开知识库" aria-expanded="false"><i data-lucide="panel-left" aria-hidden="true"></i></button>
+        <div class="fa-paper"><h2>Go 语言</h2><p>变量</p></div>
+        <button class="fa-account cursor-interaction" type="button" data-action="account" aria-label="我的账号菜单" aria-expanded="false" aria-controls="fa-menu-collapsed" aria-haspopup="dialog"><span class="fa-circle"><i data-lucide="user-round" aria-hidden="true"></i></span></button>
+        <div class="fa-menu" id="fa-menu-collapsed" role="dialog" aria-label="我的账号" hidden><div class="fa-identity"><span class="fa-circle"><i data-lucide="user-round" aria-hidden="true"></i></span><span>我的账号</span><button class="fa-close cursor-interaction" type="button" data-action="close" aria-label="关闭账号菜单"><i data-lucide="x" aria-hidden="true"></i></button></div><div class="fa-separator"></div><div class="fa-menu-row"><i data-lucide="settings" aria-hidden="true"></i>设置</div><div class="fa-menu-row"><i data-lucide="trash-2" aria-hidden="true"></i>回收站</div><div class="fa-separator"></div><div class="fa-menu-row"><i data-lucide="log-out" aria-hidden="true"></i>退出登录</div></div>
+      </div>
+    </section>
+  </div>
+</div>
+<script>
+(() => {
+  const root=document.getElementById('nf-fixed-account');
+  const stages=[...root.querySelectorAll('.fa-stage')];
+  let revision=0;
+  function expanded(stage,value){stage.dataset.expanded=String(value);const button=stage.querySelector('[data-action="toggle"]');button.setAttribute('aria-expanded',String(value));button.setAttribute('aria-label',value?'收起知识库':'展开知识库');stage.querySelector('.fa-library-content').inert=!value;}
+  function menu(stage,value){stage.querySelector('.fa-menu').hidden=!value;stage.querySelector('[data-action="account"]').setAttribute('aria-expanded',String(value));}
+  function apply(snapshot){if(snapshot?.modelContent?.design!=='noteflow-fixed-account'||!snapshot.privateContent)return;const data=snapshot.privateContent;if(Number(data.revision||0)<revision)return;revision=Number(data.revision||0);stages.forEach(stage=>{const view=data.views?.[stage.dataset.stage];if(view){expanded(stage,Boolean(view.expanded));menu(stage,Boolean(view.menu));}});}
+  function persist(){revision++;const views=Object.fromEntries(stages.map(stage=>[stage.dataset.stage,{expanded:stage.dataset.expanded==='true',menu:!stage.querySelector('.fa-menu').hidden}]));window.openai?.setWidgetState?.({modelContent:{design:'noteflow-fixed-account',proposal:'固定头像，身份信息仅在账号菜单中展示',views},privateContent:{revision,views}}).catch(()=>{});}
+  stages.forEach(stage=>expanded(stage,stage.dataset.expanded==='true'));
+  apply(window.openai?.widgetState);
+  root.addEventListener('click',event=>{const stage=event.target.closest('.fa-stage');if(!stage)return;const action=event.target.closest('button')?.dataset.action;if(action==='toggle')expanded(stage,stage.dataset.expanded!=='true');else if(action==='account'){const opening=stage.querySelector('.fa-menu').hidden;menu(stage,opening);if(opening)stage.querySelector('[data-action="close"]').focus();}else if(action==='close'){menu(stage,false);stage.querySelector('[data-action="account"]').focus();}else if(!event.target.closest('.fa-menu'))menu(stage,false);persist();});
+  root.addEventListener('keydown',event=>{if(event.key!=='Escape'||event.isComposing)return;const stage=event.target.closest('.fa-stage');if(!stage||stage.querySelector('.fa-menu').hidden)return;menu(stage,false);stage.querySelector('[data-action="account"]').focus();persist();});
+  window.addEventListener('openai:set_globals',event=>apply(event.detail?.globals?.widgetState));
+  if(globalThis.Tweak){const options={avatar:34};const render=()=>root.style.setProperty('--fa-avatar-size',options.avatar+'px');const tweak=new Tweak({container:root,onChange:render});tweak.addSlider(options,'avatar',{label:'头像大小',min:30,max:36,step:2,unit:'px'});}
+})();
+</script>
