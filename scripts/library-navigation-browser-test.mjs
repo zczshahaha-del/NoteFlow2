@@ -50,11 +50,12 @@ async function motionStress(page) {
  await page.evaluate(()=>{
   const editor=window.navigationTest.editor, scroll=document.querySelector('.document-scroll');
   if(scroll)scroll.scrollTop=1700;
-  window.motionBefore={editor,doc:editor?.state.doc,scroll:scroll?.scrollTop};
+  const toggle=document.querySelector('.library-launcher');
+  window.motionBefore={editor,doc:editor?.state.doc,scroll:scroll?.scrollTop,toggle,toggleOpenX:toggle.getBoundingClientRect().x,toggleClosedX:toggle.offsetLeft};
   window.stressFrames=[];window.stressSampling=true;
   window.motionLongTasks=[];
   if(PerformanceObserver.supportedEntryTypes.includes('longtask')){window.motionObserver=new PerformanceObserver(list=>window.motionLongTasks.push(...list.getEntries().map(e=>e.duration)));window.motionObserver.observe({type:'longtask'});}
-  const sample=()=>{const n=document.querySelector('.library-navigation'), b=document.querySelector('.workspace-center-layer'),s=document.querySelector('.library-navigation-surface');window.stressFrames.push({t:performance.now(),width:n.getBoundingClientRect().width,edge:n.getBoundingClientRect().right,body:b.getBoundingClientRect().left,surface:s.getBoundingClientRect().right,phase:n.dataset.motion,launcher:!!document.querySelector('.library-launcher'),resize:!!n.querySelector('.library-resize-handle')});if(window.stressSampling)requestAnimationFrame(sample)};requestAnimationFrame(sample);
+  const sample=()=>{const n=document.querySelector('.library-navigation'), b=document.querySelector('.workspace-center-layer'),s=document.querySelector('.library-navigation-surface'),toggle=document.querySelector('.library-launcher'),style=toggle&&getComputedStyle(toggle);window.stressFrames.push({t:performance.now(),width:n.getBoundingClientRect().width,edge:n.getBoundingClientRect().right,body:b.getBoundingClientRect().left,surface:s.getBoundingClientRect().right,phase:n.dataset.motion,toggleStable:toggle===window.motionBefore.toggle,toggleVisible:style?.visibility==='visible'&&Number(style.opacity)===1,toggleX:toggle?.getBoundingClientRect().x,resize:!!n.querySelector('.library-resize-handle')});if(window.stressSampling)requestAnimationFrame(sample)};requestAnimationFrame(sample);
  });
  // Engine interruption test through the same React setter, not a fake native click.
  await page.evaluate(async()=>{for(let i=0;i<16;i++){window.navigationTest.toggleLibrary(i%2===1);await new Promise(r=>setTimeout(r,25));}window.navigationTest.toggleLibrary(true);});
@@ -62,16 +63,23 @@ async function motionStress(page) {
  const result=await page.evaluate(()=>{
   window.stressSampling=false;window.motionObserver?.disconnect();
   const frames=window.stressFrames, gaps=frames.slice(1).map((n,i)=>n.t-frames[i].t), scroll=document.querySelector('.document-scroll');
-  return {frames,gaps,longTasks:window.motionLongTasks,editorStable:window.motionBefore.editor===window.navigationTest.editor,docStable:window.motionBefore.doc===window.navigationTest.editor?.state.doc,scrollBefore:window.motionBefore.scroll,scrollAfter:scroll?.scrollTop,tokenCount:document.querySelectorAll('.note-content .token-keyword,.note-content .token-string,.note-content .token-function').length};
+  return {frames,gaps,toggleOpenX:window.motionBefore.toggleOpenX,toggleClosedX:window.motionBefore.toggleClosedX,longTasks:window.motionLongTasks,editorStable:window.motionBefore.editor===window.navigationTest.editor,docStable:window.motionBefore.doc===window.navigationTest.editor?.state.doc,scrollBefore:window.motionBefore.scroll,scrollAfter:scroll?.scrollTop,tokenCount:document.querySelectorAll('.note-content .token-keyword,.note-content .token-string,.note-content .token-function').length};
  });
  assert(result.frames.some(n=>n.phase==='opening')&&result.frames.some(n=>n.phase==='closing'),'Both reversal directions really run');
  assert(result.frames.every(n=>n.width>=0&&n.width<=260.1&&Math.abs(n.edge-n.body)<1&&n.surface<=n.edge+1),'Reversals keep geometry in bounds and never overlay the body');
- assert(result.frames.every(n=>!n.launcher || n.phase==='closed'),'Launcher is controlled by actual completion, not a fixed delay');
+ assert(result.frames.every(n=>n.toggleStable&&n.toggleVisible),'The same toggle stays mounted and fully visible, including every reversal frame');
+ assert(result.frames.every(n=>Math.abs(n.toggleX-(result.toggleClosedX+(result.toggleOpenX-result.toggleClosedX)*n.width/260))<1),'Toggle and sidebar share continuous progress instead of swapping controls');
  assert(result.frames.every(n=>!n.resize || n.phase==='open'),'A moving edge cannot start a competing drag');
  assert.equal(await page.locator('.library-navigation').getAttribute('data-motion'),'open');
  if(realEditor){assert(result.editorStable&&result.docStable,'Motion must not recreate the editor or replace its document');assert(result.tokenCount>1000,'Production highlighter renders the long code note');assert(result.scrollAfter>0,'Motion does not reset reading to the top');}
  // Separate normal mouse/keyboard cycles from the synthetic reversal stress.
  for(let i=0;i<3;i++){await page.getByRole('button',{name:'收起目录',exact:true}).click();await settled(page);await page.getByRole('button',{name:'展开目录',exact:true}).press('Enter');await settled(page);}
+ // The moving button is still reachable: repeated real key events reverse it
+ // without waiting for an old entry to disappear and a new one to mount.
+ for(let i=0;i<6;i++){await page.locator('.library-launcher').press('Enter');await page.waitForTimeout(30);}
+ await settled(page);
+ assert.equal(await page.locator('.library-navigation').getAttribute('data-motion'),'open');
+ assert(await page.locator('.library-launcher').evaluate(n=>n===window.motionBefore.toggle),'Native mid-motion activation preserves the same DOM button and focus');
  // Close while pointer capture is active: cleanup must not resurrect old width.
  const edge=await page.getByRole('separator',{name:'调整目录宽度'}).boundingBox();
  await page.mouse.move(edge.x+5,210);await page.mouse.down();await page.mouse.move(edge.x+40,210,{steps:4});
@@ -86,7 +94,7 @@ async function motionStress(page) {
  await page.emulateMedia({reducedMotion:'reduce'});await settled(page);await collapsedSurfaceCheck(page);
  await page.getByRole('button',{name:'展开目录',exact:true}).press('Enter');await settled(page);
  await page.emulateMedia({reducedMotion:'no-preference'});
- return {reversals:16,nativeCycles:3,frames:result.frames.length,maxFrameGapMs:Math.round(Math.max(...result.gaps)),longTasksOver50ms:result.longTasks.length,editorStable:result.editorStable,documentStable:result.docStable,codeTokens:result.tokenCount,scrollBefore:result.scrollBefore,scrollAfter:result.scrollAfter};
+ return {reversals:16,nativeCycles:3,nativeMidMotionKeys:6,persistentVisibleToggle:true,sharedToggleProgress:true,frames:result.frames.length,maxFrameGapMs:Math.round(Math.max(...result.gaps)),longTasksOver50ms:result.longTasks.length,editorStable:result.editorStable,documentStable:result.docStable,codeTokens:result.tokenCount,scrollBefore:result.scrollBefore,scrollAfter:result.scrollAfter};
 }
 async function open(page){await page.locator('.library-launcher').click();await page.locator('.library-drawer[data-open="true"]').waitFor();await settled(page);}
 async function headerCheck(page){
@@ -94,10 +102,11 @@ async function headerCheck(page){
  assert.equal(await title.count(),1);
  assert.equal(await title.evaluate(n=>n.parentElement.textContent.trim()),'知识库','Library header has no note count');
  assert.equal(await title.evaluate(n=>n.parentElement.querySelector('svg')?.getAttribute('width')),'16','Book icon is retained');
- const controls=await page.evaluate(()=>['搜索全部笔记','新建','收起目录'].map(label=>{const n=document.querySelector(`.directory-tree button[aria-label="${label}"]`);const r=n.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};}));
+ const controls=await page.evaluate(()=>['搜索全部笔记','新建','收起目录'].map(label=>{const n=document.querySelector(`button[aria-label="${label}"]`);const r=n.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};}));
  assert(controls[0].x<controls[1].x && controls[1].x<controls[2].x,'Collapse stays after search and new, at the right of the header');
  assert(controls.every(n=>Math.abs(n.y+n.height/2-controls[0].y-controls[0].height/2)<1),'All three header controls share a center line, including larger touch targets');
- assert.equal(await page.locator('.library-launcher').count(),0,'Expanded library has no separate top-left toggle');
+ assert.equal(await page.getByRole('button',{name:'收起目录',exact:true}).count(),1,'Only one collapse control exists');
+ if(await page.locator('.library-navigation').count())assert.equal(await page.locator('.library-launcher').count(),1,'Docked library reuses its persistent toggle in the right header slot');
 }
 async function collapsedSurfaceCheck(page) {
  const state=await page.locator('.library-navigation').evaluate(n=>({
@@ -140,8 +149,8 @@ async function resizeChecks(page, panel, width) {
  assert.equal(await page.evaluate(()=>document.body.style.cursor),'');assert.equal(await page.evaluate(()=>document.body.style.userSelect),'');
 }
 try {
- for(const width of [1440,1277,768,320]){
-  const context=await browser.newContext({viewport:{width,height:900},hasTouch:width===320});
+ for(const {width,touch} of [{width:1440,touch:false},{width:1277,touch:false},{width:768,touch:false},{width:768,touch:true},{width:320,touch:true}]){
+  const context=await browser.newContext({viewport:{width,height:900},hasTouch:touch});
   const html='<html><head><style>'+css+' html,body,#root{height:100%;margin:0}</style></head><body><div id="root"></div><script type="module">'+script+'</script></body></html>';
   const requests=[],errors=[];await context.route('**/*',r=>{
    if(r.request().url()==='http://noteflow.test/')return r.fulfill({contentType:'text/html; charset=utf-8',body:html});
@@ -197,8 +206,8 @@ try {
    assert.equal(await page.getByRole('separator',{name:'调整目录宽度'}).count(),0);
    await page.evaluate(()=>{window.openingFrames=[];window.openingSampling=true;const sample=()=>{const nav=document.querySelector('.library-navigation').getBoundingClientRect(),body=document.querySelector('.workspace-center-layer').getBoundingClientRect(),text=document.querySelector('.note-page').getBoundingClientRect();window.openingFrames.push({width:nav.width,edge:nav.right,body:body.x,text:text.x});if(window.openingSampling)requestAnimationFrame(sample)};requestAnimationFrame(sample)});
    await page.getByRole('button',{name:'展开目录',exact:true}).press('Enter');await settled(page);
-   await page.waitForFunction(()=>document.activeElement===document.querySelector('.directory-tree button[aria-label="收起目录"]'));
-   assert(await page.getByRole('button',{name:'收起目录',exact:true}).evaluate(n=>n===document.activeElement),'Opening transfers focus to the restored header control');
+   await page.waitForFunction(()=>document.activeElement===document.querySelector('.library-launcher'));
+   assert(await page.getByRole('button',{name:'收起目录',exact:true}).evaluate(n=>n===document.activeElement),'The persistent header control keeps keyboard focus after opening');
    const openingFrames=await page.evaluate(()=>{window.openingSampling=false;return window.openingFrames});
    assert(openingFrames.some(n=>n.width>0&&n.width<236),'Opening has intermediate normal-flow widths');
    assert(openingFrames.every(n=>Math.abs(n.edge-n.body)<1&&n.text>=n.edge),'No overlap during opening either');

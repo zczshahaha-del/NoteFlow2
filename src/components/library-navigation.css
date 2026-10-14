@@ -18,14 +18,11 @@
   border-radius: 9px;
   transition: background-color 140ms ease, color 140ms ease;
 }
-/* Mounted only after the actual owned exit completes, never a guessed delay. */
-.app-frame.stable-workspace-layout .library-launcher {
-  animation: library-launcher-reveal 80ms ease-out both;
-}
-@keyframes library-launcher-reveal {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+/* One persistent toggle travels with the owned clock; it never fades or remounts. */
+.library-launcher[data-motion="opening"] .library-toggle-tooltip,
+.library-launcher[data-motion="closing"] .library-toggle-tooltip { visibility: hidden; }
+.library-launcher:focus-visible .library-toggle-tooltip { opacity: 1; }
+.library-launcher[data-motion="closed"] .library-toggle-tooltip { left: 0; right: auto; }
 .library-navigation[data-open="false"] .directory-toggle-tooltip {
   visibility: hidden;
 }
@@ -64,6 +61,7 @@
     opacity: 1;
     transition-delay: 300ms;
   }
+  .library-launcher:hover .library-toggle-tooltip { opacity: 1; transition-delay: 300ms; }
 }
 .library-drawer {
   position: absolute;
@@ -149,7 +147,6 @@
   .directory-tree[data-expanded="false"] > div:first-child { padding-inline: 4px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .app-frame.stable-workspace-layout .library-launcher { animation: none !important; }
   .library-navigation, .library-navigation-surface, .library-launcher, .ai-navigation, .ai-navigation-content, .library-drawer-surface, .library-drawer-veil,
   .directory-toggle, .directory-toggle .sidebar-toggle-icon, .directory-toggle-tooltip,
   .library-resize-handle > span {

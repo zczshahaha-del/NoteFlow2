@@ -479,6 +479,7 @@ type DirectoryTreeProps = {
   searchShortcutEnabled?: boolean;
   active?: boolean;
   hideCollapseControl?: boolean;
+  collapseControlSlot?: React.ReactNode;
 } & Pick<AccountMenuProps, "themeMode" | "onThemeModeChange" | "userEmail" | "userEmailVerified" | "userName" | "onEmailChanged" | "onSignOut">;
 
 export default function DirectoryTree({
@@ -495,6 +496,7 @@ export default function DirectoryTree({
   searchShortcutEnabled = true,
   active = true,
   hideCollapseControl = false,
+  collapseControlSlot,
 }: DirectoryTreeProps) {
   const {
     treeData,
@@ -870,7 +872,7 @@ export default function DirectoryTree({
                     </button>
                   </SoftMenu>
                 </div>
-                {!hideCollapseControl && <div className="group/collapse-directory relative ml-1">
+                {collapseControlSlot ?? (!hideCollapseControl && <div className="group/collapse-directory relative ml-1">
                   <button
                     type="button"
                     className="directory-toggle flex h-8 w-8 items-center justify-center text-jelly-text-muted"
@@ -888,7 +890,7 @@ export default function DirectoryTree({
                   >
                     收起目录
                   </span>
-                </div>}
+                </div>)}
               </div>
             </div>
           </>

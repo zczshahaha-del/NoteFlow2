@@ -75,6 +75,7 @@ export default function App() {
   const libraryLauncherRef = useRef<HTMLButtonElement>(null);
   const libraryNavigationRef = useRef<HTMLDivElement>(null);
   const librarySurfaceRef = useRef<HTMLDivElement>(null);
+  const libraryToggleSlotRef = useRef<HTMLSpanElement>(null);
   const libraryFocusPending = useRef(false);
   const [libraryWidth, setLibraryWidth] = useState(loadLibraryWidth);
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
@@ -110,6 +111,7 @@ export default function App() {
   const effectiveLibraryWidth = Math.min(libraryWidth ?? (isTabletUp ? 260 : 280), libraryMaxWidth);
   const { phase: libraryPhase, previewWidth: previewLibraryMotionWidth } = useDockedLibraryMotion({
     navigationRef: libraryNavigationRef, surfaceRef: librarySurfaceRef,
+    toggleRef: libraryLauncherRef, toggleSlotRef: libraryToggleSlotRef,
     open: filePanelPinned, width: effectiveLibraryWidth,
     enabled: isTabletUp && !focusedWorkspace && !authLoading && Boolean(session),
   });
@@ -178,12 +180,9 @@ export default function App() {
     if (!isTabletUp || focusedWorkspace) { libraryFocusPending.current = false; return; }
     if (!libraryFocusPending.current || libraryPhase !== (filePanelPinned ? 'open' : 'closed')) return;
     libraryFocusPending.current = false;
-    const target = filePanelPinned
-      ? workspaceRef.current?.querySelector<HTMLButtonElement>('#desktop-library button[aria-label="收起目录"]')
-      : libraryLauncherRef.current;
+    const target = libraryLauncherRef.current;
     const frame = requestAnimationFrame(() => {
       if (document.activeElement === document.body ||
-          document.activeElement === libraryLauncherRef.current ||
           document.activeElement === target) {
         target?.focus({ preventScroll: true });
       }
@@ -219,17 +218,28 @@ export default function App() {
           }`}
           style={workspaceLayoutStyle}
         >
-          {!focusedWorkspace && (isTabletUp ? !filePanelPinned && libraryPhase === 'closed' : !libraryDrawerOpen) && (
+          {!focusedWorkspace && (isTabletUp || !libraryDrawerOpen) && (
             <button ref={libraryLauncherRef} type="button"
               className="library-launcher directory-toggle absolute left-3 top-3 z-50 flex h-8 w-8 items-center justify-center text-jelly-text-muted"
               onClick={() => {
                 if (isTabletUp) setFilePanelPinned((open) => !open);
                 else { setAiOpen(false); setLibraryDrawerOpen(true); }
               }}
-              aria-label={isTabletUp ? "展开目录" : "打开知识库"}
+              onKeyDown={(event) => {
+                if (isTabletUp && filePanelPinned && event.key === "Escape" && !event.defaultPrevented && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) {
+                  event.preventDefault(); setFilePanelPinned(false);
+                }
+              }}
+              data-motion={isTabletUp ? libraryPhase : undefined}
+              aria-label={isTabletUp ? (filePanelPinned ? "收起目录" : "展开目录") : "打开知识库"}
               aria-expanded={isTabletUp ? filePanelPinned : libraryDrawerOpen}
+              aria-describedby={isTabletUp ? "library-toggle-tooltip" : undefined}
               aria-controls={isTabletUp ? "desktop-library" : undefined}>
               <SidebarToggleIcon />
+              {isTabletUp && <span id="library-toggle-tooltip" role="tooltip"
+                className="library-toggle-tooltip directory-toggle-tooltip pointer-events-none absolute right-0 top-full z-50 mt-1.5 whitespace-nowrap rounded-md border border-jelly-border bg-white px-2.5 py-1 text-[12px] font-medium text-jelly-text-soft opacity-0 shadow-[0_6px_18px_rgba(30,44,56,0.08)]">
+                {filePanelPinned ? "收起目录" : "展开目录"}
+              </span>}
             </button>
           )}
 
@@ -253,6 +263,8 @@ export default function App() {
                   pinned
                   active={filePanelPinned}
                   onPinnedChange={setFilePanelPinned}
+                  collapseControlSlot={<span ref={libraryToggleSlotRef} aria-hidden="true"
+                    className="library-toggle-slot directory-toggle ml-1 flex h-8 w-8 shrink-0" />}
                   themeMode={themeMode}
                   onThemeModeChange={setThemeMode}
                   userEmail={session.user.email}
