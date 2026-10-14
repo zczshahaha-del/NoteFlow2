@@ -965,6 +965,14 @@ try {
   assert.equal(accountContainer.querySelector(".nf-account-popover").hasAttribute("inert"), true);
   await waitExit();
   assert.equal(accountContainer.querySelector(".nf-account-popover"), null);
+  const previousAccountMedia = window.matchMedia;
+  window.matchMedia = () => ({ matches: true });
+  await clickAccount(accountTrigger);
+  assert.ok(accountPanel());
+  await act(async () => document.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  assert.equal(accountContainer.querySelector(".nf-account-popover"), null, "Reduced motion removes the account surface immediately, not after its normal exit timer");
+  assert.equal(document.activeElement, accountTrigger);
+  window.matchMedia = previousAccountMedia;
   await clickAccount(accountTrigger);
   await act(async () => document.body.dispatchEvent(new dom.window.MouseEvent("pointerdown", { bubbles: true })));
   assert.equal(accountPanel(), null);

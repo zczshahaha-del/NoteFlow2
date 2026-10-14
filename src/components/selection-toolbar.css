@@ -1,11 +1,11 @@
 /* Approved local refinement; never styles the dormant permanent toolbar. */
 .selection-toolbar.tiptap-selection-toolbar,
 .theme-dark .selection-toolbar.tiptap-selection-toolbar {
-  --nf-selection-surface: #fff;
-  --nf-selection-icon: #303945;
+  --nf-selection-surface: var(--nf-ui-surface, #fcfcfd);
+  --nf-selection-icon: var(--nf-ui-text, #30353c);
   --nf-selection-border: rgba(32, 40, 50, .085);
   --nf-selection-divider: rgba(32, 40, 50, .084);
-  --nf-selection-hover: #f0f3f6;
+  --nf-selection-hover: var(--nf-ui-soft, #f3f4f6);
   --nf-selection-active: #e8f1f8;
   --nf-selection-blue: #436f91;
   --nf-selection-shadow: rgba(28, 38, 49, .09);
@@ -14,17 +14,17 @@
   gap: 3px;
   padding: 5px 6px;
   border-color: var(--nf-selection-border);
-  border-radius: 12px;
+  border-radius: var(--nf-radius-compact-surface, 12px);
   background: var(--nf-selection-surface);
   box-shadow: 0 8px 24px var(--nf-selection-shadow), 0 1px 3px var(--nf-selection-shadow-near);
   backdrop-filter: none;
 }
 .theme-dark .selection-toolbar.tiptap-selection-toolbar {
-  --nf-selection-surface: #2b323b;
-  --nf-selection-icon: #dce4ed;
+  --nf-selection-surface: var(--nf-ui-surface, #252b33);
+  --nf-selection-icon: var(--nf-ui-text, #e9edf2);
   --nf-selection-border: rgba(225, 233, 242, .12);
   --nf-selection-divider: rgba(225, 233, 242, .112);
-  --nf-selection-hover: #37414d;
+  --nf-selection-hover: var(--nf-ui-selected, #363f4a);
   --nf-selection-active: #304c65;
   --nf-selection-blue: #a1c6e2;
   --nf-selection-shadow: rgba(0, 0, 0, .26);

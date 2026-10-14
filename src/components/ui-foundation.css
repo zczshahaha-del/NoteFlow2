@@ -1,0 +1,82 @@
+/* Shared auxiliary UI grammar. Prose, syntax colors, selection marks and layout
+   budgets are intentionally outside this foundation. Compact roles stay compact. */
+:root {
+  --nf-font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --nf-font-control: 13px;
+  --nf-font-menu: 14px;
+  --nf-font-caption: 12px;
+  --nf-control-height: 36px;
+  --nf-icon-size: 32px;
+  --nf-menu-row-height: 38px;
+  --nf-touch-target: 44px;
+  --nf-gap-control: 10px;
+  --nf-radius-control: 9px;
+  --nf-radius-icon: 8px;
+  --nf-radius-menu: 14px;
+  --nf-radius-compact-surface: 12px;
+  --nf-radius-search: 18px;
+  --nf-radius-dialog: 20px;
+  --nf-motion-feedback: 140ms;
+  --nf-motion-enter: 180ms;
+  --nf-motion-menu-exit: 130ms;
+  --nf-motion-dialog: 180ms;
+  --nf-ease-surface: cubic-bezier(.2, .8, .2, 1);
+}
+:root, .nf-settings-system[data-theme="light"] {
+  --nf-ui-surface: #fcfcfd;
+  --nf-ui-canvas: #ffffff;
+  --nf-ui-soft: #f3f4f6;
+  --nf-ui-selected: #eceff2;
+  --nf-ui-text: #30353c;
+  --nf-ui-muted: #66717d;
+  --nf-ui-icon: #7e8791;
+  --nf-ui-line: #e8eaee;
+  --nf-ui-focus: #8090a5;
+  --nf-ui-danger: #b34c49;
+  --nf-ui-danger-soft: #faeeee;
+  --nf-ui-shadow-color: rgba(36, 44, 55, .10);
+  --nf-ui-shadow-menu: 0 10px 26px rgba(36, 44, 55, .10), 0 1px 3px rgba(36, 44, 55, .10);
+  --nf-ui-shadow-dialog: 0 12px 44px rgba(36, 44, 55, .12);
+  --nf-ui-shadow-compact: 0 6px 20px rgb(36 44 55 / 8%);
+}
+.theme-dark, .nf-settings-system[data-theme="dark"] {
+  --nf-ui-surface: #252b33;
+  --nf-ui-canvas: #1c252e;
+  --nf-ui-soft: #2d3540;
+  --nf-ui-selected: #363f4a;
+  --nf-ui-text: #e9edf2;
+  --nf-ui-muted: #a7b0bc;
+  --nf-ui-icon: #a8b1be;
+  --nf-ui-line: #3a424d;
+  --nf-ui-focus: #9aa9bf;
+  --nf-ui-danger: #ee9e97;
+  --nf-ui-danger-soft: #482e30;
+  --nf-ui-shadow-color: rgba(0, 0, 0, .30);
+  --nf-ui-shadow-menu: 0 10px 26px rgba(0, 0, 0, .30), 0 1px 3px rgba(0, 0, 0, .30);
+  --nf-ui-shadow-dialog: 0 12px 44px rgba(0, 0, 0, .30);
+  --nf-ui-shadow-compact: 0 6px 20px rgb(0 0 0 / 24%);
+}
+
+/* Utility declarations must beat inheritance. Keep resets in Tailwind's base
+   layer rather than overriding every text-[…], leading-… and font-… control. */
+@layer base {
+  button, input, select, textarea { font: inherit; }
+  :where(button, [role="button"]) { cursor: pointer; }
+  :where(button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--nf-ui-focus);
+    outline-offset: 2px;
+  }
+  :where(button, [role="button"]):disabled { cursor: not-allowed; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --nf-motion-feedback: 0ms; --nf-motion-enter: 0ms; --nf-motion-menu-exit: 0ms; --nf-motion-dialog: 0ms; }
+}
+@media (pointer: coarse) {
+  /* This imported foundation precedes legacy desktop rules. Specificity keeps
+     their 36px defaults from shrinking touch targets back down. */
+  .ui-button.ui-button, .ui-input.ui-input { min-height: var(--nf-touch-target); }
+  .ui-input input { font-size: 16px; }
+}
+@media (forced-colors: active) {
+  :root, .theme-dark, .nf-settings-system[data-theme] { --nf-ui-focus: Highlight; }
+}

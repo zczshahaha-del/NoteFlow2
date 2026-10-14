@@ -10,6 +10,10 @@ export function useSurfacePresence(open: boolean) {
       setPresent(true);
       return;
     }
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      setPresent(false);
+      return;
+    }
     const timer = window.setTimeout(() => setPresent(false), 180);
     return () => window.clearTimeout(timer);
   }, [open]);

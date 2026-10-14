@@ -100,7 +100,7 @@ try {
     await page.mouse.move(mobile?319:1439,mobile?799:999);await page.waitForTimeout(550);
     if(process.env.NOTEFLOW_DRAFT_SCREENSHOT_DIR)await page.screenshot({path:process.env.NOTEFLOW_DRAFT_SCREENSHOT_DIR+'/noteflow-draft-soft-component-'+(mobile?'mobile':'desktop')+'.png'});
     await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));await page.waitForTimeout(180);assert.equal((await measure()).background,'rgb(37, 43, 51)');
-    assert.equal(await shell.locator('.nf-draft-chapter[aria-current]').evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(53, 62, 73)');
+    assert.equal(await shell.locator('.nf-draft-chapter[aria-current]').evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(54, 63, 74)','Draft selection consumes the shared dark selected surface');
     if(process.env.NOTEFLOW_DRAFT_SCREENSHOT_DIR)await page.screenshot({path:process.env.NOTEFLOW_DRAFT_SCREENSHOT_DIR+'/noteflow-draft-soft-component-'+(mobile?'mobile':'desktop')+'-dark.png'});
     await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await shell.evaluate(n=>getComputedStyle(n).animationName),'none');
     await page.evaluate(()=>window.draftTest.api.show('assembled'));await shell.locator('.nf-draft-revision').waitFor();await page.waitForTimeout(50);

@@ -28,6 +28,7 @@
     "test:workspace-layout": "node --experimental-strip-types scripts/workspace-layout-test.ts",
     "test:workspace-layout-ui": "node scripts/workspace-layout-browser-test.mjs",
     "test:resize-release": "node scripts/resize-pointer-release-test.mjs",
+    "test:ui-foundation": "node scripts/ui-foundation-browser-test.mjs",
     "test:account-menu": "node scripts/account-menu-browser-test.mjs",
     "test:highlight-geometry": "node scripts/selection-highlight-diagnostic.mjs",
     "test:editor-document-cache": "node --experimental-strip-types scripts/editor-document-cache-test.ts",

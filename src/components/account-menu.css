@@ -6,7 +6,7 @@
   transform: none;
 }
 .nf-settings-system.account-menu-root[data-compact="true"] .nf-account-trigger .nf-avatar {
-  transition: box-shadow 150ms ease;
+  transition: box-shadow var(--nf-motion-feedback, 140ms) ease;
 }
 .nf-settings-system.account-menu-root[data-compact="true"] .nf-account-trigger[aria-expanded="true"] .nf-avatar {
   box-shadow: 0 0 0 3px var(--nf-soft);
@@ -23,7 +23,7 @@
 }
 .nf-settings-system.account-menu-root[data-compact] .nf-account-popover {
   padding: 6px;
-  border-radius: 12px;
+  border-radius: var(--nf-radius-compact-surface, 12px);
   box-shadow: 0 6px 20px rgb(36 44 55 / 8%);
 }
 .nf-settings-system.account-menu-root[data-theme="dark"][data-compact] .nf-account-popover {
@@ -38,7 +38,7 @@
 .nf-settings-system.account-menu-root[data-compact] .nf-account-heading .nf-avatar {
   width: 28px;
   height: 28px;
-  font-size: 12px;
+  font-size: var(--nf-font-caption, 12px);
 }
 .nf-settings-system.account-menu-root[data-compact] .nf-account-heading .nf-avatar svg {
   width: 15px;
@@ -49,7 +49,7 @@
   line-height: 20px;
 }
 .nf-settings-system.account-menu-root[data-compact] .nf-account-popover .nf-menu-item {
-  min-height: 36px;
+  min-height: var(--nf-control-height, 36px);
   padding: 7px 10px;
   gap: 10px;
   border-radius: 7px;

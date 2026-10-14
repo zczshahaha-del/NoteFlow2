@@ -1,57 +1,57 @@
 /* Approved “柔和留白”: scoped to existing menu surfaces, never the workspace. */
 .nf-soft-menu,
 .nf-settings-system.account-menu-root .nf-account-popover {
-  --nf-menu-surface: #fcfcfd;
-  --nf-menu-text: #30353c;
-  --nf-menu-muted: #727b86;
-  --nf-menu-icon: #7e8791;
-  --nf-menu-hover: #eceff2;
+  --nf-menu-surface: var(--nf-ui-surface, #fcfcfd);
+  --nf-menu-text: var(--nf-ui-text, #30353c);
+  --nf-menu-muted: var(--nf-ui-muted, #66717d);
+  --nf-menu-icon: var(--nf-ui-icon, #7e8791);
+  --nf-menu-hover: var(--nf-ui-selected, #eceff2);
   --nf-menu-search-focus: #e3e8ee;
-  --nf-menu-danger: #b34c49;
-  --nf-menu-danger-hover: #f9eeec;
+  --nf-menu-danger: var(--nf-ui-danger, #b34c49);
+  --nf-menu-danger-hover: var(--nf-ui-danger-soft, #faeeee);
   --nf-menu-shadow: rgba(36, 44, 55, .10);
   box-sizing: border-box;
   padding: 6px;
   border: 0;
-  border-radius: 14px;
+  border-radius: var(--nf-radius-menu, 14px);
   background: var(--nf-menu-surface);
   color: var(--nf-menu-text);
-  box-shadow: 0 10px 26px var(--nf-menu-shadow), 0 1px 3px var(--nf-menu-shadow);
-  font: 400 14px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+  box-shadow: var(--nf-ui-shadow-menu, 0 10px 26px var(--nf-menu-shadow));
+  font: 400 14px/1.5 var(--nf-font-ui, system-ui, sans-serif);
 }
 .theme-dark .nf-soft-menu,
 .nf-settings-system.account-menu-root[data-theme="dark"] .nf-account-popover {
-  --nf-menu-surface: #252b33;
-  --nf-menu-text: #e9edf2;
-  --nf-menu-muted: #a7b0bc;
-  --nf-menu-icon: #a8b1be;
-  --nf-menu-hover: #363f4a;
+  --nf-menu-surface: var(--nf-ui-surface, #252b33);
+  --nf-menu-text: var(--nf-ui-text, #e9edf2);
+  --nf-menu-muted: var(--nf-ui-muted, #a7b0bc);
+  --nf-menu-icon: var(--nf-ui-icon, #a8b1be);
+  --nf-menu-hover: var(--nf-ui-selected, #363f4a);
   --nf-menu-search-focus: #414b58;
   --nf-menu-danger: #ee9e97;
   --nf-menu-danger-hover: #482e30;
   --nf-menu-shadow: rgba(0, 0, 0, .32);
   color-scheme: dark;
 }
-.nf-soft-menu[data-open="true"] { animation: nf-soft-menu-in 170ms ease both; }
-.nf-soft-menu[data-open="false"] { pointer-events: none; animation: nf-soft-menu-out 130ms ease both; }
+.nf-soft-menu[data-open="true"] { animation: nf-soft-menu-in var(--nf-motion-enter, 180ms) var(--nf-ease-surface, ease) both; }
+.nf-soft-menu[data-open="false"] { pointer-events: none; animation: nf-soft-menu-out var(--nf-motion-menu-exit, 130ms) ease both; }
 .nf-soft-menu.nf-action-menu { width: 216px; max-width: calc(100vw - 32px); }
 .nf-soft-menu.nf-new-menu { width: 184px; }
 .nf-soft-menu .nf-soft-menu-item,
 .nf-settings-system .nf-account-popover .nf-menu-item {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: var(--nf-gap-control, 10px);
   width: 100%;
-  min-height: 38px;
+  min-height: var(--nf-menu-row-height, 38px);
   padding: 8px 11px;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--nf-radius-control, 9px);
   background: transparent;
   color: var(--nf-menu-text);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background-color 150ms ease, color 150ms ease;
+  transition: background-color var(--nf-motion-feedback, 140ms) ease, color var(--nf-motion-feedback, 140ms) ease;
 }
 .nf-soft-menu .nf-soft-menu-item:hover,
 .nf-settings-system .nf-account-popover .nf-menu-item:hover { background: var(--nf-menu-hover); }
@@ -71,22 +71,22 @@
   outline-offset: -2px;
 }
 .nf-soft-menu .nf-menu-label { display: block; color: var(--nf-menu-text); font-size: 14px; font-weight: 500; }
-.nf-soft-menu .nf-menu-description { display: block; margin-top: 2px; color: var(--nf-menu-muted); font-size: 12px; line-height: 1.5; }
+.nf-soft-menu .nf-menu-description { display: block; margin-top: 2px; color: var(--nf-menu-muted); font-size: var(--nf-font-caption, 12px); line-height: 1.5; }
 .nf-soft-menu .nf-menu-checkbox {
   display: grid; place-items: center; flex-shrink: 0;
   width: 17px; height: 17px; border: 1px solid var(--nf-menu-icon); border-radius: 5px;
-  color: var(--nf-menu-text); background: transparent; font-size: 12px;
+  color: var(--nf-menu-text); background: transparent; font-size: var(--nf-font-caption, 12px);
 }
 .nf-soft-menu [aria-checked="true"] .nf-menu-checkbox { background: var(--nf-menu-hover); }
 .nf-soft-menu.nf-history-menu { max-height: calc(100dvh - 96px); overflow-y: auto; }
 .nf-soft-menu .nf-history-search {
   background: var(--nf-menu-hover);
-  border-radius: 9px;
-  transition: background-color 150ms ease;
+  border-radius: var(--nf-radius-control, 9px);
+  transition: background-color var(--nf-motion-feedback, 140ms) ease;
 }
 .nf-soft-menu .nf-history-search > svg {
   color: var(--nf-menu-icon);
-  transition: color 150ms ease;
+  transition: color var(--nf-motion-feedback, 140ms) ease;
 }
 /* Focus belongs to the whole soft field, not a line or nested input frame. */
 .nf-soft-menu .nf-history-search:focus-within { background: var(--nf-menu-search-focus); }
@@ -96,7 +96,7 @@
 .nf-soft-menu .nf-history-search input { outline: none; box-shadow: none; }
 .nf-soft-menu .nf-history-search input::placeholder { color: var(--nf-menu-muted); }
 .nf-soft-menu .nf-history-group { color: var(--nf-menu-muted); font-size: 11px; font-weight: 400; }
-.nf-soft-menu .nf-history-row { min-height: 38px; border-radius: 9px; }
+.nf-soft-menu .nf-history-row { min-height: 38px; border-radius: var(--nf-radius-control, 9px); }
 .nf-soft-menu .nf-history-row:hover,
 .nf-soft-menu .nf-history-row:focus-within,
 .nf-soft-menu .nf-history-row[data-selected="true"] { background: var(--nf-menu-hover); }
@@ -107,7 +107,7 @@
   display: grid; place-items: center; flex-shrink: 0;
   width: 28px; height: 28px; border: 0; border-radius: 7px;
   color: var(--nf-menu-icon); background: transparent; opacity: 0;
-  transition: opacity 150ms ease, background-color 150ms ease;
+  transition: opacity 150ms ease, background-color var(--nf-motion-feedback, 140ms) ease;
 }
 .nf-soft-menu .nf-history-action > svg { width: 15px; height: 15px; stroke-width: 1.65; }
 .nf-soft-menu .nf-history-row:hover .nf-history-action,

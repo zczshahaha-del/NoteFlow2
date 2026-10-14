@@ -25,11 +25,16 @@ const menuStyles = readFileSync(new URL("../src/components/menu-ui.css", import.
 const softMenu = readFileSync(new URL("../src/components/SoftMenu.tsx", import.meta.url), "utf8");
 const proseStyles = readFileSync(new URL("../src/components/document-prose.css", import.meta.url), "utf8");
 const selectionStyles = readFileSync(new URL("../src/components/selection-toolbar.css", import.meta.url), "utf8");
+const foundationStyles = readFileSync(new URL("../src/components/ui-foundation.css", import.meta.url), "utf8");
+assert.match(styles, /@import "\.\/components\/ui-foundation\.css"/);
+assert.match(foundationStyles, /@layer base[\s\S]*?button, input, select, textarea \{ font: inherit; \}/);
+assert.match(foundationStyles, /--nf-radius-menu: 14px;/);
+assert.match(foundationStyles, /--nf-touch-target: 44px;/);
 
 assert.match(editor, /import "\.\/document-prose\.css"/);
 assert.match(editor, /import "\.\/selection-toolbar\.css"/);
 assert.match(selectionStyles, /\.selection-toolbar\.tiptap-selection-toolbar,/);
-assert.match(selectionStyles, /border-radius: 12px;/);
+assert.match(selectionStyles, /border-radius: var\(--nf-radius-compact-surface, 12px\);/);
 assert.match(selectionStyles, /stroke-width: 1\.7;/);
 assert.match(selectionStyles, /height: 15px;/);
 assert.match(selectionStyles, /\.theme-dark \.selection-toolbar\.tiptap-selection-toolbar/);
@@ -51,12 +56,12 @@ assert.match(directoryTree, /<SoftMenu open=\{newMenuOpen\}/);
 assert.match(editor, /<SoftMenu open=\{documentMenuOpen\}/);
 assert.match(aiPanel, /<SoftMenu open=\{historyOpen\}/);
 assert.match(menuStyles, /font: 400 14px\/1\.5/);
-assert.match(menuStyles, /border: 0;\s*border-radius: 14px;/);
-assert.match(menuStyles, /min-height: 38px;/);
-assert.match(menuStyles, /gap: 11px;/);
+assert.match(menuStyles, /border: 0;\s*border-radius: var\(--nf-radius-menu, 14px\);/);
+assert.match(menuStyles, /min-height: var\(--nf-menu-row-height, 38px\);/);
+assert.match(menuStyles, /gap: var\(--nf-gap-control, 10px\);/);
 assert.match(menuStyles, /stroke-width: 1\.65;/);
 assert.match(menuStyles, /\.theme-dark \.nf-soft-menu/);
-assert.match(menuStyles, /--nf-menu-surface: #252b33;/);
+assert.match(menuStyles, /--nf-menu-surface: var\(--nf-ui-surface, #252b33\);/);
 assert.match(menuStyles, /\.nf-history-row:focus-within \.nf-history-action/);
 assert.match(menuStyles, /@media \(pointer: coarse\)[\s\S]*?min-height: 44px;[\s\S]*?width: 44px; height: 44px; opacity: 1;/);
 assert.match(menuStyles, /@media \(prefers-reduced-motion: reduce\)/);
@@ -352,7 +357,7 @@ assert.match(librarySearch, /role="status">继续完成输入/);
 assert.match(librarySearch, /role="alert"/);
 assert.match(librarySearch, /重新搜索/);
 assert.match(searchStyles, /width: 610px;/);
-assert.match(searchStyles, /border: 0;\s*border-radius: 18px;/);
+assert.match(searchStyles, /border: 0;\s*border-radius: var\(--nf-radius-search, 18px\);/);
 assert.match(searchStyles, /height 210ms/);
 assert.match(searchStyles, /\.theme-dark \.nf-library-search/);
 assert.match(searchStyles, /\.nf-search-viewport[\s\S]*?min-height: 0;[\s\S]*?overflow-y: auto;/);
@@ -428,14 +433,14 @@ assert.doesNotMatch(accountMenu, /bottom-0 left-full/);
 assert.match(settingsStyles, /\.nf-account-popover \{[^}]*bottom: 0; left: 54px; right: auto;/);
 assert.match(settingsStyles, /\.nf-account-trigger \{[^}]*width: 100%;[^}]*min-width: 0;/);
 assert.match(settingsStyles, /\.nf-account-popover \{[^}]*width: 224px; max-width: calc\(100vw - 80px\);[^}]*border: 0;/);
-assert.match(settingsStyles, /nf-account-side-in 180ms/);
-assert.match(settingsStyles, /nf-account-side-out 180ms/);
+assert.match(settingsStyles, /nf-account-side-in var\(--nf-motion-dialog, 180ms\)/);
+assert.match(settingsStyles, /nf-account-side-out var\(--nf-motion-dialog, 180ms\)/);
 assert.doesNotMatch(settingsStyles, /\.nf-account-popover[^}]*bottom: calc\(100%/);
 assert.doesNotMatch(settingsStyles, /\.nf-account-heading \{[^}]*border/);
 assert.match(settingsStyles, /\.nf-account-heading \.nf-username[^}]*white-space: normal; overflow-wrap: anywhere;/);
 assert.match(settingsStyles, /background: var\(--nf-surface\)/);
 assert.match(settingsStyles, /prefers-reduced-motion: reduce/);
-assert.match(settingsStyles, /nf-rise-out 180ms/);
+assert.match(settingsStyles, /nf-rise-out var\(--nf-motion-dialog, 180ms\)/);
 assert.match(styles, /\.directory-tree :where\(button, input, select, textarea, \[tabindex\]\):focus-visible[\s\S]*?outline: none !important;/);
 assert.match(
   styles,
@@ -491,11 +496,10 @@ assert.equal(aiPanel.includes("source.snippet &&"), false);
 assert.match(aiPanel, /onClick=\{\(\) => focusChatSource\(source\)\}/);
 assert.match(styles, /\.ai-chat-composer :where\(input, textarea, button\):focus[\s\S]*box-shadow: none !important/);
 assert.equal(styles.includes(".ai-chat-composer button:focus-visible"), false);
-assert.match(
-  styles,
-  /:where\(button, input, select, textarea, \[contenteditable="true"\], \[tabindex\]\):focus-visible \{[\s\S]*?outline: none;/,
-  "global controls must not show the heavy blue focus frame"
-);
+assert.match(foundationStyles, /:where\(button, input, select, textarea, \[tabindex\]\):focus-visible \{\s*outline: 2px solid var\(--nf-ui-focus\);/,
+  "unscoped keyboard controls need a quiet visible focus fallback");
+assert.doesNotMatch(styles, /:where\(button, input, select, textarea, \[contenteditable="true"\], \[tabindex\]\):focus-visible/,
+  "a blanket reset must not hide every keyboard focus indicator");
 assert.equal(aiDraftWorkspace.includes("focus:ring-"), false, "draft inputs must not add blue focus rings");
 for (const badCodeIcon of ["▣", "•••", "⠿"]) {
   assert.equal(styles.includes(badCodeIcon), false, `code toolbar must not use glyph icon: ${badCodeIcon}`);

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./components/ui-foundation.css";
 
 @theme {
   --color-jelly-bg: #f3f6f8;
@@ -43,12 +44,12 @@
 }
 
 :root {
-  --radius-control: 0.5rem;
-  --radius-panel: 0.75rem;
+  --radius-control: var(--nf-radius-control);
+  --radius-panel: var(--nf-radius-compact-surface);
   --radius-app: 1rem;
   --shadow-app: 0 24px 70px rgba(19, 32, 44, 0.12), 0 2px 10px rgba(19, 32, 44, 0.04);
   --shadow-panel: 0 18px 50px rgba(19, 32, 44, 0.16), 0 2px 8px rgba(19, 32, 44, 0.06);
-  --motion-fast: 150ms;
+  --motion-fast: var(--nf-motion-feedback);
   --motion-normal: 220ms;
 }
 
@@ -114,20 +115,8 @@ textarea,
 }
 
 button,
-input,
-select,
-textarea {
-  font: inherit;
-}
-
-button,
 [role="button"] {
   touch-action: manipulation;
-}
-
-:where(button, input, select, textarea, [contenteditable="true"], [tabindex]):focus-visible {
-  outline: none;
-  outline-offset: 0;
 }
 
 /* The editor already has a visible caret; a focus ring around the whole document looks like a stray box. */
@@ -138,8 +127,8 @@ button,
 }
 
 /* The document canvas should feel like paper: focus is shown by the caret or a thin baseline, never a box. */
-.document-editor :where(button, input, select, textarea, [contenteditable="true"], [tabindex]):focus,
-.document-editor :where(button, input, select, textarea, [contenteditable="true"], [tabindex]):focus-visible {
+.document-editor :where(input, textarea, [contenteditable="true"]):focus,
+.document-editor :where(input, textarea, [contenteditable="true"]):focus-visible {
   outline: none !important;
 }
 
@@ -472,7 +461,7 @@ button,
 }
 
 .ui-input {
-  min-height: 2.5rem;
+  min-height: var(--nf-control-height);
   border: 1px solid var(--color-jelly-border);
   border-radius: var(--radius-control);
   background: var(--color-jelly-card);
@@ -493,24 +482,25 @@ button,
 
 .ui-button {
   display: inline-flex;
-  min-height: 2.25rem;
+  min-height: var(--nf-control-height);
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
   border-radius: var(--radius-control);
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: var(--nf-font-control);
+  font-weight: 500;
+  line-height: 20px;
   transition: border-color var(--motion-fast) ease, background-color var(--motion-fast) ease,
     color var(--motion-fast) ease, transform var(--motion-fast) ease, opacity var(--motion-fast) ease;
 }
 
 .ui-button:not(:disabled):active {
-  transform: translateY(1px);
+  transform: none;
 }
 
 .ui-button:disabled {
   cursor: not-allowed;
-  opacity: 0.52;
+  opacity: 0.55;
 }
 
 .ui-button-primary {

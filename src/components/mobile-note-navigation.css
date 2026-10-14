@@ -10,7 +10,7 @@
 }
 .mobile-note-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
 .mobile-note-outline, .mobile-note-outline-space { width: 44px; height: 44px; flex-shrink: 0; }
-.mobile-note-outline { display: flex; align-items: center; justify-content: center; border: 0; border-radius: 9px; background: transparent; color: inherit; }
+.mobile-note-outline { display: flex; align-items: center; justify-content: center; border: 0; border-radius: var(--nf-radius-control, 9px); background: transparent; color: inherit; }
 .mobile-note-outline:focus-visible { outline: 2px solid var(--color-jelly-text-muted); outline-offset: 2px; }
 @media (max-width: 767px) {
   .document-canvas .document-scroll { padding-top: 24px; }
@@ -18,7 +18,7 @@
 @media (max-width: 767px) {
   .app-frame > .floating-launcher {
     top: 10px; left: 10px; width: 44px; height: 44px; padding: 0;
-    border: 0; border-radius: 9px; background: transparent;
+    border: 0; border-radius: var(--nf-radius-control, 9px); background: transparent;
     box-shadow: none; backdrop-filter: none;
   }
   .app-frame > .floating-launcher span { display: none; }

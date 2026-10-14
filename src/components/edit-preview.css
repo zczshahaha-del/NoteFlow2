@@ -3,10 +3,10 @@
 .edit-preview-workspace .bg-white { background: var(--color-jelly-card); }
 .edit-preview-workspace button,
 .edit-preview-workspace textarea,
-.edit-preview-workspace select { border-radius: 9px; }
+.edit-preview-workspace select { border-radius: var(--nf-radius-control, 9px); }
 .edit-preview-workspace button {
-  transition: background-color 140ms ease, color 140ms ease;
-  min-height: 36px;
+  transition: background-color var(--nf-motion-feedback, 140ms) ease, color var(--nf-motion-feedback, 140ms) ease;
+  min-height: var(--nf-control-height, 36px);
 }
 .edit-preview-workspace :is(button, textarea, select):focus-visible {
   outline: 2px solid var(--color-jelly-text-muted);
@@ -16,7 +16,7 @@
   width: min(100%, 780px);
   margin-inline: auto;
   padding: 12px 0 28px;
-  animation: edit-preview-enter 180ms ease;
+  animation: edit-preview-enter var(--nf-motion-enter, 180ms) ease;
 }
 .edit-preview-workspace textarea { resize: none; }
 @keyframes edit-preview-enter { from { opacity: 0; } to { opacity: 1; } }
