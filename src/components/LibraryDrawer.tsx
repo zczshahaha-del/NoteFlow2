@@ -1,19 +1,24 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /** Keep the same surface alive through exit and interrupted / reversed transitions. */
-export default function LibraryDrawer({ open, onClose, children, resizeHandle, side = "left" }: {
+export default function LibraryDrawer({ open, onClose, children, resizeHandle, side = "left", docked = false, keepMounted = false }: {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
   resizeHandle?: ReactNode;
   side?: "left" | "right";
+  docked?: boolean;
+  keepMounted?: boolean;
 }) {
   const [present, setPresent] = useState(open);
   const [shown, setShown] = useState(false);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const dockedRef = useRef(docked);
+  dockedRef.current = docked;
 
   useEffect(() => {
+    if (docked) { setPresent(true); setShown(open); return; }
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let firstFrame = 0;
     let secondFrame = 0;
@@ -33,10 +38,10 @@ export default function LibraryDrawer({ open, onClose, children, resizeHandle, s
       cancelAnimationFrame(secondFrame);
       clearTimeout(timer);
     };
-  }, [open]);
+  }, [open, docked]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || docked) return;
     const active = document.activeElement;
     const trigger = active instanceof HTMLElement && active !== document.body && active !== document.documentElement ? active : null;
     const overlay = overlayRef.current;
@@ -45,6 +50,7 @@ export default function LibraryDrawer({ open, onClose, children, resizeHandle, s
       .map(node => ({ node, inert: node.inert }));
     for (const { node } of background) node.inert = true;
     const frame = requestAnimationFrame(() => {
+      if (surfaceRef.current?.contains(document.activeElement)) return;
       surfaceRef.current?.querySelector<HTMLButtonElement>(side === "left" ? 'button[aria-label="收起目录"]' : 'button[aria-label="收起 AI 助手"]')?.focus({ preventScroll: true });
     });
     return () => {
@@ -53,15 +59,17 @@ export default function LibraryDrawer({ open, onClose, children, resizeHandle, s
       // The phone launcher is replaced while the drawer is open; return to its new node.
       const returnTarget = trigger?.isConnected ? trigger :
         document.querySelector<HTMLButtonElement>(side === "left" ? 'button[aria-label="打开知识库"], button[aria-label="展开目录"]' : 'button[aria-label="展开 AI 助手"]');
-      returnTarget?.focus({ preventScroll: true });
+      if (!dockedRef.current) returnTarget?.focus({ preventScroll: true });
     };
-  }, [open, side]);
+  }, [open, side, docked]);
 
-  if (!open && !present) return null;
+  if (!open && !present && !keepMounted && !docked) return null;
   return (
-    <div ref={overlayRef} className={`library-drawer ${side === "right" ? "ai-drawer" : ""}`} data-open={open && shown} role="dialog" aria-modal="true"
+    <div ref={overlayRef} className={docked ? "ai-navigation relative z-40 ml-auto h-full shrink-0" : `library-drawer ${side === "right" ? "ai-drawer" : ""}`} data-open={open && (docked || shown)} role={docked ? "complementary" : "dialog"} aria-modal={docked ? undefined : true}
+      style={{ display: !docked && !open && !present ? 'none' : undefined }}
       aria-label={side === "left" ? "知识库" : "AI 助手"} aria-hidden={!open || undefined} inert={!open}
       onKeyDown={(event) => {
+        if (docked) return;
         if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || !event.currentTarget.contains(event.target as Node)) return;
         if (event.key === "Escape" && (event.target as HTMLElement).closest('[role="dialog"], [role="alertdialog"]') !== event.currentTarget) return;
         if (event.key === "Escape") {
@@ -75,8 +83,12 @@ export default function LibraryDrawer({ open, onClose, children, resizeHandle, s
           else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
         }
       }}>
-      <button type="button" className="library-drawer-veil" onClick={onClose} aria-label={side === "left" ? "关闭知识库" : "关闭 AI 助手"} tabIndex={-1} />
-      <div ref={surfaceRef} className="library-drawer-surface">{children}{open && resizeHandle}</div>
+      {!docked && <button type="button" className="library-drawer-veil" onClick={onClose} aria-label={side === "left" ? "关闭知识库" : "关闭 AI 助手"} tabIndex={-1} />}
+      <div key="surface" ref={surfaceRef} className={docked ? "ai-navigation-surface h-full" : "library-drawer-surface"}>
+        {side === 'right' ? <div className="ai-navigation-content h-full">{children}</div> : children}
+        {!docked && open && resizeHandle}
+      </div>
+      {docked && open && resizeHandle}
     </div>
   );
 }

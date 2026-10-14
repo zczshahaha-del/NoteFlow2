@@ -59,7 +59,7 @@ export function useDockedLibraryMotion({ navigationRef, surfaceRef, toggleRef, t
 
   // Pointer previews remain DOM-only: no React update on every drag frame.
   const previewWidth = useCallback((value: number) => {
-    if (!openRef.current || !navigationRef.current) return;
+    if (!openRef.current || phaseRef.current !== 'open' || !navigationRef.current) return;
     cancel();
     paint(value);
     publish('open');

@@ -9,6 +9,7 @@ import { build } from 'vite';
 const { chromium } = createRequire(import.meta.url)(process.env.NOTEFLOW_PLAYWRIGHT_MODULE || 'playwright');
 const path = name => fileURLToPath(new URL('../src/' + name, import.meta.url));
 const realEditor = process.env.NOTEFLOW_MOTION_REAL_EDITOR === '1';
+const layoutAudit = process.env.NOTEFLOW_LAYOUT_AUDIT === '1';
 const longContent = '# Git 入门学习笔记\n\n' + Array.from({length:150},(_,i)=>`## 第 ${i+1} 节：长篇笔记\n\n${'正文流畅性验证，保留排版、彩色代码与阅读位置。'.repeat(12)}\n\n${'连续伸缩不能丢失输入、重建编辑器或产生重叠。'.repeat(8)}\n\n\`\`\`go\n${'func demo() { println("彩色代码") }\n'.repeat(8)}\`\`\`\n\n`).join('');
 const fixtureContent = realEditor ? longContent : '合成正文';
 const assets = new URL('../dist/assets/', import.meta.url);
@@ -27,7 +28,7 @@ const result=await build({configFile:false,logLevel:'silent',plugins:[{
  resolveId(id){if(id==='virtual:entry')return '\0entry';},
  load(id){
   if(id==='\0entry')return entry;
-  if(id===path('components/AIPanel.tsx'))return `import React from 'react';export default function AI({onCollapse}){return <div><button aria-label="收起 AI 助手" onClick={onCollapse}>收起</button><textarea aria-label="合成对话输入" /></div>}`;
+  if(id===path('components/AIPanel.tsx'))return layoutAudit ? readFileSync(id,'utf8') : `import React from 'react';export default function AI({onCollapse}){return <div><button aria-label="收起 AI 助手" onClick={onCollapse}>收起</button><textarea aria-label="合成对话输入" /></div>}`;
   if(stubs.has(id))return 'export default function Stub(){return null}';
   if(id===path('components/NoteEditor.tsx'))return realEditor ? readFileSync(id,'utf8')
    .replace('export default function NoteEditor() {','export default function NoteEditor() { window.bodyRenderCount=(window.bodyRenderCount||0)+1;')
@@ -43,8 +44,76 @@ const chunks=result.output.filter(n=>n.type==='chunk');assert.equal(chunks.lengt
 const script=chunks[0].code.replaceAll('</script','<\\/script');
 const browser=await chromium.launch({executablePath:process.env.NOTEFLOW_BROWSER_EXECUTABLE||undefined,headless:true});
 const output=mkdtempSync(join(tmpdir(),'noteflow-library-navigation-')), reports=[];
-async function settled(page){await page.evaluate(async()=>{await Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{})));});await page.waitForFunction(()=>{const n=document.querySelector('.library-navigation');return !n || n.dataset.motion===(n.dataset.open==='true'?'open':'closed');});await page.evaluate(()=>new Promise(r=>requestAnimationFrame(r)));}
+async function settled(page){await page.evaluate(async()=>{
+ // Resize events and effect commits may create transitions after the first
+ // snapshot. Drain actual finite animations, rather than sample their last frame.
+ for(let i=0;i<8;i++){
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  const running=document.getAnimations().filter(a=>a.playState==='running'&&a.effect?.getTiming().iterations!==Infinity);
+  if(!running.length)return;
+  await Promise.all(running.map(a=>a.finished.catch(()=>{})));
+ }
+});await page.waitForFunction(()=>{const n=document.querySelector('.library-navigation');return !n || n.dataset.motion===(n.dataset.open==='true'?'open':'closed');});}
 async function bodyAction(page){await page.getByRole(realEditor?'textbox':'button',{name:realEditor?'文档标题':'正文操作',exact:true}).click();}
+async function adaptiveLayoutCheck(page) {
+ await settled(page);
+ await page.getByRole('button',{name:'展开 AI 助手',exact:true}).click();await settled(page);
+ const input=page.getByRole('textbox',{name:'消息输入框',exact:true});
+ await input.fill('窗口调整时保留这份未发送草稿');
+ await page.evaluate(()=>{window.layoutInput=document.querySelector('textarea[aria-label="消息输入框"]');window.layoutInput.setSelectionRange(2,6);window.layoutEditor=window.navigationTest.editor;window.layoutDoc=window.layoutEditor.state.doc;document.querySelector('.document-scroll').scrollTop=1200;});
+ const states=[];
+ for(const width of [1280,1277,1180,1179,1100,1000,960,959,768,736,320,1277,1440]){
+  await page.setViewportSize({width,height:900});await settled(page);
+  const state=await page.evaluate(()=>{
+   const input=document.querySelector('textarea[aria-label="消息输入框"]'),body=document.querySelector('.workspace-center-layer'),nav=document.querySelector('.library-navigation'),ai=document.querySelector('.ai-navigation'),overlay=document.querySelector('.ai-drawer');
+   return {
+    viewport:innerWidth,bodyWidth:body.getBoundingClientRect().width,
+    bodyLeft:body.getBoundingClientRect().left,bodyRight:body.getBoundingClientRect().right,bodyInert:body.inert,
+    libraryWidth:nav?.getBoundingClientRect().width??0,aiWidth:ai?.getBoundingClientRect().width??0,aiLeft:ai?.getBoundingClientRect().left,
+    docked:!!ai,overlayOpen:Boolean(overlay&&overlay.getAttribute('aria-hidden')!=='true'),
+    sameInput:input===window.layoutInput,draft:input.value,focused:input===document.activeElement,
+    sameEditor:window.navigationTest.editor===window.layoutEditor,sameDoc:window.layoutEditor.state.doc===window.layoutDoc,
+    scroll:document.querySelector('.document-scroll').scrollTop,
+    tokens:document.querySelectorAll('.note-content .token-keyword,.note-content .token-string').length,
+    overflow:document.documentElement.scrollWidth>innerWidth,
+   };
+  });
+  assert(state.sameInput&&state.draft==='窗口调整时保留这份未发送草稿','Actual AI local draft survives close and dock/drawer transitions');
+  assert(state.focused,'Passive viewport changes preserve focus inside AI');
+  assert.deepEqual(await input.evaluate(n=>[n.selectionStart,n.selectionEnd]),[2,6],'Passive viewport changes preserve the actual textarea selection');
+  assert(state.sameEditor&&state.sameDoc&&state.scroll>0&&state.tokens>1000,'Layout never replaces the document or loses code colors / reading position');
+  assert(!state.overflow);
+  if(width>=960){assert(state.docked&&!state.bodyInert&&state.bodyWidth>=639.5,JSON.stringify(state));assert(Math.abs(state.libraryWidth-state.bodyLeft)<1&&Math.abs(state.bodyRight-state.aiLeft)<1);if(width<1180)assert.equal(state.libraryWidth,0);}
+  else {assert(!state.docked&&state.bodyInert&&state.overlayOpen,'Only space-constrained windows use a modal AI drawer');}
+  states.push(state);
+ }
+ const a=states.find(s=>s.viewport===1280),b=states.find(s=>s.viewport===1277);assert(Math.abs(a.aiWidth-b.aiWidth-3)<1,'1277 and 1280 share the same interaction');
+ await page.setViewportSize({width:1277,height:900});await settled(page);
+ await page.getByRole('separator',{name:'调整目录宽度'}).press('ArrowRight');await settled(page);
+ await page.getByRole('separator',{name:'调整 AI 助手宽度'}).press('ArrowLeft');await settled(page);
+ await page.setViewportSize({width:1440,height:900});await settled(page);
+ assert.equal((await page.locator('.library-navigation').boundingBox()).width,260,'A clamped no-op does not erase the preferred library width');
+ assert.equal((await page.locator('.ai-navigation').boundingBox()).width,500,'A clamped no-op does not erase the preferred AI width');
+ await page.setViewportSize({width:1100,height:900});await settled(page);
+ await page.getByRole('button',{name:'展开目录',exact:true}).click();await settled(page);
+ assert.equal(await page.locator('.ai-navigation').getAttribute('aria-hidden'),'true','Opening the library gives it priority without discarding the AI draft');
+ await page.getByRole('button',{name:'展开 AI 助手',exact:true}).click();await settled(page);
+ assert.equal(await input.inputValue(),'窗口调整时保留这份未发送草稿');await collapsedSurfaceCheck(page);
+ await page.setViewportSize({width:1440,height:900});await settled(page);
+ assert.equal((await page.locator('.library-navigation').boundingBox()).width,260,'Enough space restores the requested library width');
+ await page.getByRole('button',{name:'收起 AI 助手',exact:true}).click();await settled(page);
+ await page.getByRole('button',{name:'展开 AI 助手',exact:true}).click();await settled(page);
+ assert.equal(await input.inputValue(),'窗口调整时保留这份未发送草稿');
+ await page.setViewportSize({width:736,height:900});await settled(page);
+ await page.getByRole('button',{name:'收起 AI 助手',exact:true}).press('Escape');await settled(page);await input.waitFor({state:'hidden'});
+ assert.equal(await page.locator('.workspace-center-layer').evaluate(n=>n.inert),false);
+ await page.getByRole('button',{name:'展开 AI 助手',exact:true}).click();await settled(page);
+ assert.equal(await input.inputValue(),'窗口调整时保留这份未发送草稿');
+ await page.setViewportSize({width:1277,height:900});await settled(page);
+ await page.emulateMedia({reducedMotion:'reduce'});await settled(page);
+ await page.screenshot({path:join(output,'adaptive-1277.png')});
+ return {adaptiveLayout:true,actualAI:true,actualEditor:true,temporaryPanelPriority:true,closeReopenDraft:true,clampedNoOpPreservesPreferences:true,selectionPreserved:true,states};
+}
 async function motionStress(page) {
  await settled(page);
  await page.evaluate(()=>{
@@ -96,7 +165,7 @@ async function motionStress(page) {
  await page.emulateMedia({reducedMotion:'no-preference'});
  return {reversals:16,nativeCycles:3,nativeMidMotionKeys:6,persistentVisibleToggle:true,sharedToggleProgress:true,frames:result.frames.length,maxFrameGapMs:Math.round(Math.max(...result.gaps)),longTasksOver50ms:result.longTasks.length,editorStable:result.editorStable,documentStable:result.docStable,codeTokens:result.tokenCount,scrollBefore:result.scrollBefore,scrollAfter:result.scrollAfter};
 }
-async function open(page){await page.locator('.library-launcher').click();await page.locator('.library-drawer[data-open="true"]').waitFor();await settled(page);}
+async function open(page){await page.locator('.library-launcher').click();await page.locator('.library-drawer:not(.ai-drawer)[data-open="true"]').waitFor();await settled(page);}
 async function headerCheck(page){
  const title=page.getByRole('heading',{name:'知识库',exact:true});
  assert.equal(await title.count(),1);
@@ -121,7 +190,7 @@ async function resizeChecks(page, panel, width) {
  const handle=page.getByRole('separator',{name:'调整目录宽度'});
  assert.equal(await handle.count(),1);
  const start=await panel.boundingBox(), hit=await handle.boundingBox();
- const maxWidth=Math.min(420,width-416), draggedWidth=Math.min(start.width+100,maxWidth);
+ const maxWidth=Math.min(420,width-Math.min(640,width-260)), draggedWidth=Math.min(start.width+100,maxWidth);
  assert.equal(await handle.locator('span').evaluate(n=>getComputedStyle(n).opacity),'0');
  const renders=await page.evaluate(()=>window.bodyRenderCount), stored=await page.evaluate(()=>localStorage.getItem('noteflow-library-width'));
  await page.mouse.move(hit.x+5,200);await page.mouse.down();await page.mouse.move(hit.x+105,200,{steps:12});
@@ -132,12 +201,13 @@ async function resizeChecks(page, panel, width) {
  assert.equal(await page.locator('.library-navigation').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
  assert.equal(await page.locator('.note-page').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
  await page.mouse.up();await settled(page);
- assert.equal(await page.evaluate(()=>Number(localStorage.getItem('noteflow-library-width'))),draggedWidth);
+ if(draggedWidth===start.width)assert.equal(await page.evaluate(()=>localStorage.getItem('noteflow-library-width')),stored,'A clamped no-op cannot overwrite the preferred width');
+ else assert.equal(await page.evaluate(()=>Number(localStorage.getItem('noteflow-library-width'))),draggedWidth);
  const committed=(await panel.boundingBox()).width;
  const current=await handle.boundingBox();await page.mouse.move(current.x+5,200);await page.mouse.down();await page.mouse.move(current.x+65,200);
  await handle.press('Escape');await page.mouse.up();await settled(page);
  assert.equal((await panel.boundingBox()).width,committed,'Escape rolls back only the current drag');
- assert.equal(await page.evaluate(()=>Number(localStorage.getItem('noteflow-library-width'))),committed);
+ if(draggedWidth!==start.width)assert.equal(await page.evaluate(()=>Number(localStorage.getItem('noteflow-library-width'))),committed);
  await handle.press('Home');await settled(page);assert.equal((await panel.boundingBox()).width,220);
  await handle.press('End');await settled(page);assert.equal((await panel.boundingBox()).width,maxWidth);
  await handle.press('ArrowLeft');await settled(page);assert.equal((await panel.boundingBox()).width,maxWidth-16);
@@ -149,7 +219,7 @@ async function resizeChecks(page, panel, width) {
  assert.equal(await page.evaluate(()=>document.body.style.cursor),'');assert.equal(await page.evaluate(()=>document.body.style.userSelect),'');
 }
 try {
- for(const {width,touch} of [{width:1440,touch:false},{width:1277,touch:false},{width:768,touch:false},{width:768,touch:true},{width:320,touch:true}]){
+ for(const {width,touch} of layoutAudit ? [{width:1440,touch:false}] : [{width:1440,touch:false},{width:1277,touch:false},{width:768,touch:false},{width:768,touch:true},{width:320,touch:true}]){
   const context=await browser.newContext({viewport:{width,height:900},hasTouch:touch});
   const html='<html><head><style>'+css+' html,body,#root{height:100%;margin:0}</style></head><body><div id="root"></div><script type="module">'+script+'</script></body></html>';
   const requests=[],errors=[];await context.route('**/*',r=>{
@@ -160,6 +230,7 @@ try {
   await page.goto('http://noteflow.test/');
   try { await page.getByRole('heading',{name:'Git 入门学习笔记'}).waitFor(); }
   catch(error){console.error(JSON.stringify({width,errors,requests,body:await page.locator('body').innerText()}));throw error;}
+  if(layoutAudit){reports.push(await adaptiveLayoutCheck(page));assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);await context.close();continue;}
   const motion = width>=768 ? await motionStress(page) : null;
   await page.evaluate(()=>window.navigationTest.store.setState({workspaceIssues:[{id:'test-issue',label:'移动笔记',message:'合成未同步',busy:false}],retryWorkspaceOperation:id=>window.navigationTest.retries.push(id)}));
   await page.getByRole('alert').waitFor();assert((await page.getByRole('alert').textContent()).includes('合成未同步'));
@@ -172,7 +243,7 @@ try {
   if(width>=768){
    await headerCheck(page);
    assert.equal(await page.locator('.library-drawer:not(.ai-drawer)').count(),0,'Laptop/tablet library is never a modal drawer');
-   assert.equal(await page.locator('.library-drawer-veil').count(),0,'Docked library has no veil');
+   assert.equal(await page.locator('.library-drawer:not(.ai-drawer) .library-drawer-veil').count(),0,'Docked library has no veil');
    assert.equal(await page.locator('.workspace-center-layer').evaluate(n=>n.inert),false);
    await bodyAction(page);
    await resizeChecks(page,page.locator('.library-navigation'),width);
@@ -226,13 +297,13 @@ try {
   if(width===1277)await page.screenshot({path:join(output,'collapsed.png')});
   if(width<768){
    const body=await page.locator('.document-editor').boundingBox();
-   await page.evaluate(()=>{window.motionFrames=[];window.sampleMotion=true;const sample=()=>{const n=document.querySelector('.library-drawer-surface');window.motionFrames.push(n?Number(getComputedStyle(n).transform.split(',')[4]):null);if(window.sampleMotion)requestAnimationFrame(sample);};requestAnimationFrame(sample);});
+   await page.evaluate(()=>{window.motionFrames=[];window.sampleMotion=true;const sample=()=>{const n=document.querySelector('.library-drawer:not(.ai-drawer) .library-drawer-surface');window.motionFrames.push(n?Number(getComputedStyle(n).transform.split(',')[4]):null);if(window.sampleMotion)requestAnimationFrame(sample);};requestAnimationFrame(sample);});
    await open(page);
    await headerCheck(page);
    const frames=await page.evaluate(()=>{window.sampleMotion=false;return window.motionFrames;});
    assert(frames.some(n=>n<0&&n>-279),'Opening must render intermediate translation frames');
    assert.deepEqual(await page.locator('.document-editor').boundingBox(),body,'Drawer must not reflow body');
-   assert.equal(await page.locator('.library-drawer-veil').evaluate(n=>getComputedStyle(n).backdropFilter),'none');
+   assert.equal(await page.locator('.library-drawer:not(.ai-drawer) .library-drawer-veil').evaluate(n=>getComputedStyle(n).backdropFilter),'none');
    assert.equal(await page.locator('.workspace-center-layer').evaluate(n=>n.inert),true);
    assert.equal(await page.getByRole('button',{name:'收起目录',exact:true}).evaluate(n=>n===document.activeElement),true);
    if(width===320)assert(await page.getByRole('button',{name:'收起目录',exact:true}).evaluate(n=>n.getBoundingClientRect().height)>=44);
@@ -249,24 +320,24 @@ try {
    await page.getByRole('dialog',{name:'账号操作'}).waitFor();
    await page.getByRole('button',{name:'设置',exact:true}).press('Escape');
    await page.getByRole('dialog',{name:'账号操作'}).waitFor({state:'hidden'});
-   assert.equal(await page.locator('.library-drawer').getAttribute('data-open'),'true','Closing the account menu must not close its parent drawer');
+   assert.equal(await page.locator('.library-drawer:not(.ai-drawer)').getAttribute('data-open'),'true','Closing the account menu must not close its parent drawer');
    await page.getByRole('button',{name:'收起目录',exact:true}).click();
    // Exit stays mounted, but becomes inaccessible and non-interactive immediately.
-   assert.equal(await page.locator('.library-drawer').evaluate(n=>n.inert),true);
-   assert.equal(await page.locator('.library-drawer').getAttribute('aria-hidden'),'true');
-   await page.waitForFunction(()=>{const n=document.querySelector('.library-drawer-surface');if(!n)return false;const x=Number(getComputedStyle(n).transform.split(',')[4]);return x<0&&x>-280;});
+   assert.equal(await page.locator('.library-drawer:not(.ai-drawer)').evaluate(n=>n.inert),true);
+   assert.equal(await page.locator('.library-drawer:not(.ai-drawer)').getAttribute('aria-hidden'),'true');
+   await page.waitForFunction(()=>{const n=document.querySelector('.library-drawer:not(.ai-drawer) .library-drawer-surface');if(!n)return false;const x=Number(getComputedStyle(n).transform.split(',')[4]);return x<0&&x>-280;});
    await open(page); // Reversal must cancel the old removal timer.
-   await page.waitForTimeout(280);assert.equal(await page.locator('.library-drawer').count(),1);
+   await page.waitForTimeout(280);assert.equal(await page.locator('.library-drawer:not(.ai-drawer)').count(),1);
    await page.getByRole('button',{name:'收起目录',exact:true}).press('Escape');
-   await page.locator('.library-drawer').waitFor({state:'detached'});
+   await page.locator('.library-drawer:not(.ai-drawer)').waitFor({state:'detached'});
    assert.equal(await page.locator('.workspace-center-layer').evaluate(n=>n.inert),false);
    assert.equal(await page.locator('.library-launcher').evaluate(n=>n===document.activeElement),true,`Focus must return to the launcher at ${width}px`);
-   await open(page);await page.locator('.library-drawer-veil').click({position:{x:width-5,y:450}});
-   await page.locator('.library-drawer').waitFor({state:'detached'});
+   await open(page);await page.locator('.library-drawer:not(.ai-drawer) .library-drawer-veil').click({position:{x:width-5,y:450}});
+   await page.locator('.library-drawer:not(.ai-drawer)').waitFor({state:'detached'});
    if(positions)assert.deepEqual(await page.locator('.library-launcher').boundingBox(),positions);
    await page.emulateMedia({reducedMotion:'reduce'});await open(page);
-   assert.equal(await page.locator('.library-drawer-surface').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
-   await page.getByRole('button',{name:'收起目录',exact:true}).click();await page.locator('.library-drawer').waitFor({state:'detached'});
+   assert.equal(await page.locator('.library-drawer:not(.ai-drawer) .library-drawer-surface').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
+   await page.getByRole('button',{name:'收起目录',exact:true}).click();await page.locator('.library-drawer:not(.ai-drawer)').waitFor({state:'detached'});
    await page.emulateMedia({reducedMotion:'no-preference'});
   }
   await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));await settled(page);
@@ -275,7 +346,7 @@ try {
    await page.emulateMedia({reducedMotion:'reduce'});
    await page.getByRole('button',{name:'展开目录',exact:true}).click();await settled(page);
    assert.equal(await page.locator('.library-navigation').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
-   assert.equal(await page.locator('.library-drawer-veil').count(),0,'Dark/reduced-motion remains non-modal');
+   assert.equal(await page.locator('.library-drawer:not(.ai-drawer) .library-drawer-veil').count(),0,'Dark/reduced-motion remains non-modal');
    await bodyAction(page);
    await page.getByRole('separator',{name:'调整目录宽度'}).press('Escape');await settled(page);
    assert(await page.getByRole('button',{name:'展开目录',exact:true}).evaluate(n=>n===document.activeElement));
@@ -283,7 +354,7 @@ try {
    await collapsedSurfaceCheck(page);
    await page.emulateMedia({reducedMotion:'no-preference'});
   }
-  if(width<768){await open(page);assert.equal(await page.locator('.library-drawer-veil').evaluate(n=>getComputedStyle(n).backgroundColor),'rgba(0, 0, 0, 0.2)');await page.getByRole('button',{name:'收起目录',exact:true}).click();await page.locator('.library-drawer').waitFor({state:'detached'});}
+  if(width<768){await open(page);assert.equal(await page.locator('.library-drawer:not(.ai-drawer) .library-drawer-veil').evaluate(n=>getComputedStyle(n).backgroundColor),'rgba(0, 0, 0, 0.2)');await page.getByRole('button',{name:'收起目录',exact:true}).click();await page.locator('.library-drawer:not(.ai-drawer)').waitFor({state:'detached'});}
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
   if(width>=768){
@@ -297,9 +368,9 @@ try {
    if(width===1440){
     await page.getByRole('button',{name:'展开 AI 助手',exact:true}).click();await settled(page);
     await page.setViewportSize({width:1280,height:900});
-    await page.waitForFunction(()=>Number(document.querySelector('[aria-label="调整目录宽度"]').getAttribute('aria-valuemax'))<=364);
+    await page.waitForFunction(()=>document.querySelector('[aria-label="调整目录宽度"]')?.getAttribute('aria-valuemax')==='220');
     await settled(page);
-    assert(Number(await page.getByRole('separator',{name:'调整目录宽度'}).getAttribute('aria-valuemax'))<=364);
+    assert.equal(Number(await page.getByRole('separator',{name:'调整目录宽度'}).getAttribute('aria-valuemax')),220);
    }
    const edge=await page.getByRole('separator',{name:'调整目录宽度'}).boundingBox();
    await page.mouse.move(edge.x+5,200);await page.mouse.down();await page.mouse.move(edge.x+45,200);
@@ -321,19 +392,20 @@ try {
   }
   await page.emulateMedia({reducedMotion:'no-preference'});
   await page.getByRole('button',{name:'展开 AI 助手',exact:true}).click();await settled(page);
-  if(width>=1280){
+  if(width>=960){
    const ai=page.locator('.ai-navigation'), handle=page.getByRole('separator',{name:'调整 AI 助手宽度'});
-   assert.equal((await ai.boundingBox()).width,500);
+   const initial=Math.min(500,width-860), maximum=Math.min(680,width-860), dragged=Math.min(initial+80,maximum);
+   assert.equal((await ai.boundingBox()).width,initial);
    const before=await page.evaluate(()=>window.bodyRenderCount), edge=await handle.boundingBox();
    await page.mouse.move(edge.x+5,200);await page.mouse.down();await page.mouse.move(edge.x-75,200,{steps:12});
    await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
-   assert.equal((await ai.boundingBox()).width,580);
+   assert.equal((await ai.boundingBox()).width,dragged);
    assert.equal(await page.evaluate(()=>window.bodyRenderCount),before,'AI dragging must not rerender the document');
    assert.equal(await page.locator('.note-page').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
-   await handle.press('Escape');await page.mouse.up();await settled(page);assert.equal((await ai.boundingBox()).width,500);
+   await handle.press('Escape');await page.mouse.up();await settled(page);assert.equal((await ai.boundingBox()).width,initial);
    await handle.press('Home');await settled(page);assert.equal((await ai.boundingBox()).width,320);
-   await handle.press('End');await settled(page);assert.equal((await ai.boundingBox()).width,680);
-   await handle.press('ArrowRight');await settled(page);assert.equal((await ai.boundingBox()).width,664);
+   await handle.press('End');await settled(page);assert.equal((await ai.boundingBox()).width,maximum);
+   await handle.press('ArrowRight');await settled(page);assert.equal((await ai.boundingBox()).width,maximum-16);
    const cancelEdge=await handle.boundingBox();await page.mouse.move(cancelEdge.x+5,200);await page.mouse.down();await page.mouse.move(cancelEdge.x-20,200);
    await page.getByRole('button',{name:'收起 AI 助手',exact:true}).press('Enter');await page.mouse.up();await settled(page);
    assert.equal((await ai.boundingBox()).width,0,'Closing during drag cannot leave empty AI space');
@@ -347,7 +419,7 @@ try {
    await close.focus();await page.keyboard.press('Shift+Tab');assert(await input.evaluate(n=>document.activeElement===n));
    await page.keyboard.press('Tab');assert(await close.evaluate(n=>document.activeElement===n));
    await close.dispatchEvent('keydown',{key:'Escape',bubbles:true,isComposing:true});assert.equal(await drawer.getAttribute('data-open'),'true');
-   await close.press('Escape');await drawer.waitFor({state:'detached'});
+   await close.press('Escape');await drawer.locator('[aria-label="合成对话输入"]').waitFor({state:'hidden'});
    assert.equal(await page.locator('.workspace-center-layer').evaluate(n=>n.inert),false);
    assert(await page.getByRole('button',{name:'展开 AI 助手',exact:true}).evaluate(n=>document.activeElement===n));
   }

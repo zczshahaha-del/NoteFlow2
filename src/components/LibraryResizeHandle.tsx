@@ -75,7 +75,14 @@ export default function LibraryResizeHandle({ width, maxWidth, onPreview, onComm
             callbacks.current.onPreview(drag.current.next, true);
           });
         }}
-        onPointerUp={(event) => { if (drag.current?.id === event.pointerId) finish(); }}
+        onPointerUp={(event) => {
+          const current = drag.current;
+          if (!current || current.id !== event.pointerId) return;
+          // The browser may coalesce the final pointermove; the release itself
+          // carries the authoritative end point. Do not commit a stale preview.
+          current.next = clamp(current.start + (event.clientX - current.x) * (resizeEdge === "left" ? -1 : 1));
+          finish();
+        }}
         onPointerCancel={() => finish()}
         onLostPointerCapture={() => finish()}
         onKeyDown={(event) => {

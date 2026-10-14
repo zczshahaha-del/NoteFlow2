@@ -108,6 +108,8 @@
   width: var(--workspace-right-width);
   transition: width 240ms cubic-bezier(.22, .8, .25, 1);
 }
+.ai-navigation-surface { width: 100%; overflow: hidden; }
+.ai-drawer .ai-navigation-content { width: 100%; }
 .ai-navigation-content { width: var(--ai-panel-width); transition: opacity 180ms ease; }
 .ai-navigation[data-open="false"] .ai-navigation-content { opacity: 0; pointer-events: none; }
 .library-resize-handle {

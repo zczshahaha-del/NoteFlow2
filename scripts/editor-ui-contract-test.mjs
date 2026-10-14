@@ -191,7 +191,7 @@ assert.match(
 );
 assert.match(
   app,
-  /<LibraryResizeHandle width=\{aiPanelWidth\} minWidth=\{320\} maxWidth=\{680\}[\s\S]*?resizeEdge="left"/,
+  /<LibraryResizeHandle width=\{layout.aiWidth\} minWidth=\{320\} maxWidth=\{layout.aiMaxWidth\}[\s\S]*?resizeEdge="left"/,
   "desktop AI panel must remain horizontally resizable"
 );
 assert.match(app, /className=\{`app-frame[\s\S]*?stable-workspace-layout/);
@@ -306,13 +306,13 @@ assert.match(libraryNavigationStyles, /\.directory-tree\[data-expanded="false"\]
 assert.match(libraryNavigationStyles, /\.library-drawer-veil \{[\s\S]*?backdrop-filter: none;/);
 assert.match(libraryNavigationStyles, /transition: transform 240ms cubic-bezier/);
 assert.match(app, /<LibraryDrawer open=\{libraryDrawerOpen\}/);
-assert.match(app, /<LibraryDrawer open=\{aiOpen\} side="right"/);
+assert.match(app, /<LibraryDrawer open=\{aiVisible\} side="right" docked=\{layout.aiDocked\} keepMounted/);
 assert.doesNotMatch(app, /function ResizablePanel|document.addEventListener\("pointermove"/);
 assert.doesNotMatch(app, /!focusedWorkspace && libraryDrawerOpen &&/);
 assert.match(libraryDrawer, /inert=\{!open\}/);
 assert.match(libraryDrawer, /clearTimeout\(timer\)/);
 assert.match(app, /LIBRARY_WIDTH_KEY = "noteflow-library-width"/);
-assert.match(app, /filePanelPinned \? "var\(--library-panel-width\)"/);
+assert.match(app, /libraryVisible \? "var\(--library-panel-width\)"/);
 assert.match(libraryNavigationStyles, /data-library-resizing="true"[^}]*transition: none;/);
 assert.match(directoryTree, /<h1[^>]*>知识库<\/h1>/);
 assert.doesNotMatch(directoryTree, /countFiles|fileCount|folderCount|个文件夹/);
@@ -393,8 +393,8 @@ assert.match(directoryTree, /role="alertdialog"/);
 assert.doesNotMatch(directoryTree, /getDeleteConfirmPosition/);
 assert.match(directoryTree, /<AccountMenu\s+compact\s+active=\{active\}/);
 assert.match(directoryTree, /\{expanded && <div data-account-footer/);
-assert.match(app, /data-open=\{filePanelPinned\}/);
-assert.match(app, /inert=\{!filePanelPinned\}/);
+assert.match(app, /data-open=\{libraryVisible\}/);
+assert.match(app, /inert=\{!libraryVisible\}/);
 assert.match(directoryTree, /trashCount=\{deletedNotes\.length\}/);
 assert.doesNotMatch(directoryTree, /trashOpen|onOpenTrash/);
 assert.doesNotMatch(directoryTree, /max-h-36/);

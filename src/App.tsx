@@ -14,6 +14,7 @@ import WorkspaceFeedback from './components/OperationFeedback';
 import "./components/library-navigation.css";
 import { useAuthSession } from "./hooks/useAuthSession";
 import { useDockedLibraryMotion } from './hooks/useDockedLibraryMotion';
+import { resolveWorkspaceLayout } from './utils/workspaceLayout';
 import { useChatSlice, useDraftSlice } from "./store/selectors";
 
 const NoteEditor = lazy(() => import("./components/NoteEditor"));
@@ -82,12 +83,11 @@ export default function App() {
   const [filePanelPinned, setFilePanelPinned] = useState(true);
   const previousFilePanelPinned = useRef(filePanelPinned);
   const [aiOpen, setAiOpen] = useState(false);
+  const [panelPriority, setPanelPriority] = useState<'library' | 'ai'>('library');
   const [aiPanelWidth, setAiPanelWidth] = useState(AI_PANEL_DEFAULT_WIDTH);
   const [libraryDrawerOpen, setLibraryDrawerOpen] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(loadThemeMode);
-  const isDesktop = useMediaQuery("(min-width: 1280px)");
   const isTabletUp = useMediaQuery("(min-width: 768px)");
-  const wasDesktop = useRef(isDesktop);
   const { centerMode, draftSeed, pendingCheckpoint, activeDraftContext } = useDraftSlice();
   const { chatSelection } = useChatSlice();
   const focusedWorkspace = centerMode === "edit";
@@ -103,22 +103,24 @@ export default function App() {
   const draftWorkspaceKey =
     draftSeed.trim() || checkpointDraftSeed || activeDraftContext?.topic || "draft-workspace";
   const { loading: authLoading, session, signIn, signInWithEmailCode, signUp, signOut, updateSession } = useAuthSession();
-  const desktopRightWidth = isDesktop && !focusedWorkspace && aiOpen
-    ? aiPanelWidth
-    : 0;
-  const libraryMaxWidth = isTabletUp
-    ? Math.max(220, Math.min(420, viewportWidth - desktopRightWidth - 416)) : 420;
-  const effectiveLibraryWidth = Math.min(libraryWidth ?? (isTabletUp ? 260 : 280), libraryMaxWidth);
+  const layout = resolveWorkspaceLayout({ viewportWidth, libraryWidth: libraryWidth ?? 260,
+    aiWidth: aiPanelWidth, libraryRequested: filePanelPinned && !focusedWorkspace,
+    aiRequested: aiOpen && !focusedWorkspace, priority: panelPriority });
+  const libraryVisible = layout.libraryVisible;
+  const aiVisible = layout.aiVisible;
+  const desktopRightWidth = layout.rightWidth;
+  const libraryMaxWidth = isTabletUp ? layout.libraryMaxWidth : 420;
+  const effectiveLibraryWidth = isTabletUp ? layout.libraryWidth : libraryWidth ?? 280;
   const { phase: libraryPhase, previewWidth: previewLibraryMotionWidth } = useDockedLibraryMotion({
     navigationRef: libraryNavigationRef, surfaceRef: librarySurfaceRef,
     toggleRef: libraryLauncherRef, toggleSlotRef: libraryToggleSlotRef,
-    open: filePanelPinned, width: effectiveLibraryWidth,
+    open: libraryVisible, width: effectiveLibraryWidth,
     enabled: isTabletUp && !focusedWorkspace && !authLoading && Boolean(session),
   });
   const desktopLeftWidth = isTabletUp && !focusedWorkspace
-    ? (filePanelPinned ? "var(--library-panel-width)" : "0px") : "0px";
+    ? (libraryVisible ? "var(--library-panel-width)" : "0px") : "0px";
   const workspaceLayoutStyle = {
-    "--ai-panel-width": `${aiPanelWidth}px`,
+    "--ai-panel-width": `${layout.aiWidth}px`,
     "--library-panel-width": `${effectiveLibraryWidth}px`,
     "--workspace-left-width": desktopLeftWidth,
     "--workspace-right-width": `${desktopRightWidth}px`,
@@ -130,21 +132,26 @@ export default function App() {
     if (workspaceRef.current) workspaceRef.current.dataset.libraryResizing = String(dragging);
   }, [previewLibraryMotionWidth]);
   const commitLibraryWidth = useCallback((width: number) => {
+    if (width === effectiveLibraryWidth) return;
     setLibraryWidth(width);
     try { localStorage.setItem(LIBRARY_WIDTH_KEY, String(width)); } catch {}
-  }, []);
+  }, [effectiveLibraryWidth]);
   const previewAiWidth = useCallback((width: number, dragging: boolean) => {
     const node = workspaceRef.current;
     if (!node) return;
-    node.style.setProperty("--ai-panel-width", `${width}px`);
     const visible = node.querySelector('.ai-navigation[data-open="true"]');
-    node.style.setProperty("--workspace-right-width", `${visible ? width : 0}px`);
-    const nextLibraryWidth = Math.min(libraryWidth ?? 260, Math.max(220, Math.min(420, viewportWidth - (visible ? width : 0) - 416)));
-    node.style.setProperty("--library-panel-width", `${nextLibraryWidth}px`);
-    previewLibraryMotionWidth(nextLibraryWidth);
+    const preview = resolveWorkspaceLayout({ viewportWidth, libraryWidth: libraryWidth ?? 260,
+      aiWidth: width, libraryRequested: filePanelPinned && !focusedWorkspace,
+      aiRequested: Boolean(visible), priority: panelPriority });
+    node.style.setProperty("--ai-panel-width", `${preview.aiWidth}px`);
+    node.style.setProperty("--workspace-right-width", `${preview.rightWidth}px`);
+    node.style.setProperty("--library-panel-width", `${preview.libraryWidth}px`);
+    previewLibraryMotionWidth(preview.libraryWidth);
     node.dataset.aiResizing = String(dragging);
-  }, [libraryWidth, viewportWidth, previewLibraryMotionWidth]);
-  const commitAiWidth = useCallback((width: number) => setAiPanelWidth(width), []);
+  }, [libraryWidth, viewportWidth, filePanelPinned, focusedWorkspace, panelPriority, previewLibraryMotionWidth]);
+  const commitAiWidth = useCallback((width: number) => {
+    if (width !== layout.aiWidth) setAiPanelWidth(width);
+  }, [layout.aiWidth]);
   useEffect(() => {
     const resize = () => setViewportWidth(window.innerWidth);
     window.addEventListener("resize", resize);
@@ -163,22 +170,15 @@ export default function App() {
   }, [themeMode]);
 
   useEffect(() => {
-    if (wasDesktop.current && !isDesktop) {
-      setAiOpen(false);
-    }
-    wasDesktop.current = isDesktop;
-  }, [isDesktop]);
-
-  useEffect(() => {
     if (isTabletUp) setLibraryDrawerOpen(false);
   }, [isTabletUp]);
 
   useEffect(() => {
-    const changed = previousFilePanelPinned.current !== filePanelPinned;
-    previousFilePanelPinned.current = filePanelPinned;
-    if (changed) libraryFocusPending.current = true;
+    const changed = previousFilePanelPinned.current !== libraryVisible;
+    previousFilePanelPinned.current = libraryVisible;
+    if (changed) libraryFocusPending.current = panelPriority === 'library';
     if (!isTabletUp || focusedWorkspace) { libraryFocusPending.current = false; return; }
-    if (!libraryFocusPending.current || libraryPhase !== (filePanelPinned ? 'open' : 'closed')) return;
+    if (!libraryFocusPending.current || libraryPhase !== (libraryVisible ? 'open' : 'closed')) return;
     libraryFocusPending.current = false;
     const target = libraryLauncherRef.current;
     const frame = requestAnimationFrame(() => {
@@ -188,10 +188,10 @@ export default function App() {
       }
     });
     return () => cancelAnimationFrame(frame);
-  }, [filePanelPinned, libraryPhase, isTabletUp, focusedWorkspace]);
+  }, [libraryVisible, panelPriority, libraryPhase, isTabletUp, focusedWorkspace]);
 
   useEffect(() => {
-    if (chatSelection) setAiOpen(true);
+    if (chatSelection) { setPanelPriority('ai'); setAiOpen(true); }
   }, [chatSelection?.id]);
 
   if (authLoading) {
@@ -222,23 +222,23 @@ export default function App() {
             <button ref={libraryLauncherRef} type="button"
               className="library-launcher directory-toggle absolute left-3 top-3 z-50 flex h-8 w-8 items-center justify-center text-jelly-text-muted"
               onClick={() => {
-                if (isTabletUp) setFilePanelPinned((open) => !open);
+                if (isTabletUp) { setPanelPriority('library'); setFilePanelPinned(!libraryVisible); }
                 else { setAiOpen(false); setLibraryDrawerOpen(true); }
               }}
               onKeyDown={(event) => {
-                if (isTabletUp && filePanelPinned && event.key === "Escape" && !event.defaultPrevented && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) {
+                if (isTabletUp && libraryVisible && event.key === "Escape" && !event.defaultPrevented && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) {
                   event.preventDefault(); setFilePanelPinned(false);
                 }
               }}
               data-motion={isTabletUp ? libraryPhase : undefined}
-              aria-label={isTabletUp ? (filePanelPinned ? "收起目录" : "展开目录") : "打开知识库"}
-              aria-expanded={isTabletUp ? filePanelPinned : libraryDrawerOpen}
+              aria-label={isTabletUp ? (libraryVisible ? "收起目录" : "展开目录") : "打开知识库"}
+              aria-expanded={isTabletUp ? libraryVisible : libraryDrawerOpen}
               aria-describedby={isTabletUp ? "library-toggle-tooltip" : undefined}
               aria-controls={isTabletUp ? "desktop-library" : undefined}>
               <SidebarToggleIcon />
               {isTabletUp && <span id="library-toggle-tooltip" role="tooltip"
                 className="library-toggle-tooltip directory-toggle-tooltip pointer-events-none absolute right-0 top-full z-50 mt-1.5 whitespace-nowrap rounded-md border border-jelly-border bg-white px-2.5 py-1 text-[12px] font-medium text-jelly-text-soft opacity-0 shadow-[0_6px_18px_rgba(30,44,56,0.08)]">
-                {filePanelPinned ? "收起目录" : "展开目录"}
+                {libraryVisible ? "收起目录" : "展开目录"}
               </span>}
             </button>
           )}
@@ -248,10 +248,10 @@ export default function App() {
             <div
               ref={libraryNavigationRef}
               className="library-navigation relative z-40 shrink-0"
-              data-open={filePanelPinned}
+              data-open={libraryVisible}
               data-motion={libraryPhase}
-              inert={!filePanelPinned}
-              aria-hidden={!filePanelPinned || undefined}
+              inert={!libraryVisible}
+              aria-hidden={!libraryVisible || undefined}
               onKeyDown={(event) => {
                 if (event.key !== "Escape" || event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
                 if ((event.target as HTMLElement).closest('[role="dialog"], [role="alertdialog"], input, textarea, [contenteditable="true"]')) return;
@@ -261,7 +261,7 @@ export default function App() {
               <div ref={librarySurfaceRef} id="desktop-library" className="library-navigation-surface h-full">
                 <DirectoryTree
                   pinned
-                  active={filePanelPinned}
+                  active={libraryVisible}
                   onPinnedChange={setFilePanelPinned}
                   collapseControlSlot={<span ref={libraryToggleSlotRef} aria-hidden="true"
                     className="library-toggle-slot directory-toggle ml-1 flex h-8 w-8 shrink-0" />}
@@ -275,7 +275,7 @@ export default function App() {
                   searchShortcutEnabled
                 />
               </div>
-              {filePanelPinned && libraryPhase === 'open' && libraryResizeHandle}
+              {libraryVisible && libraryPhase === 'open' && libraryResizeHandle}
             </div>
           )}
 
@@ -287,19 +287,6 @@ export default function App() {
 
           {/* AI drafts stay mounted while hidden so background outline/progress state is preserved. */}
           {draftAvailable && <AIDraftWorkspace key={draftWorkspaceKey} />}
-
-          {/* Desktop AI panel stays resizable. */}
-          {isDesktop && !focusedWorkspace && (
-            <div className="ai-navigation relative z-40 ml-auto h-full shrink-0" data-open={aiOpen}>
-              {aiOpen && <LibraryResizeHandle width={aiPanelWidth} minWidth={320} maxWidth={680}
-                resizeEdge="left" label="调整 AI 助手宽度" onPreview={previewAiWidth} onCommit={commitAiWidth} />}
-              <div className="h-full overflow-hidden" inert={!aiOpen} aria-hidden={!aiOpen || undefined}>
-                <div className="ai-navigation-content h-full">
-                  <AIPanel onCollapse={() => setAiOpen(false)} />
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Only phone-size screens use a library drawer. */}
           {!isTabletUp && !focusedWorkspace && (
@@ -322,19 +309,24 @@ export default function App() {
             </LibraryDrawer>
           )}
 
-          {/* Mobile/tablet AI drawer. */}
-          {!isDesktop && !focusedWorkspace && (
-            <LibraryDrawer open={aiOpen} side="right" onClose={() => setAiOpen(false)}>
+          {/* One AI instance survives docking, narrow-window drawers and closing. */}
+          {!focusedWorkspace && (
+            <LibraryDrawer open={aiVisible} side="right" docked={layout.aiDocked} keepMounted
+              onClose={() => setAiOpen(false)}
+              resizeHandle={layout.aiDocked && (libraryPhase === 'open' || libraryPhase === 'closed') ?
+                <LibraryResizeHandle width={layout.aiWidth} minWidth={320} maxWidth={layout.aiMaxWidth}
+                  resizeEdge="left" label="调整 AI 助手宽度" onPreview={previewAiWidth} onCommit={commitAiWidth} /> : undefined}>
                 <AIPanel onCollapse={() => setAiOpen(false)} />
             </LibraryDrawer>
           )}
 
-          {!focusedWorkspace && !aiOpen && (
+          {!focusedWorkspace && !aiVisible && (
             <button
               type="button"
               className="ai-orb-launcher absolute bottom-5 right-5 z-50 flex h-11 w-11 items-center justify-center rounded-full text-jelly-blue-deep"
               onClick={() => {
                 setLibraryDrawerOpen(false);
+                setPanelPriority('ai');
                 setAiOpen(true);
               }}
               aria-label="展开 AI 助手"
