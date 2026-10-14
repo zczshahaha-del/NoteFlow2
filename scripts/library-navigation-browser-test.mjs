@@ -15,6 +15,7 @@ const entry = `import React from 'react';import {createRoot} from 'react-dom/cli
 import App from ${JSON.stringify(path('App.tsx'))};
 import {useAppStore} from ${JSON.stringify(path('store/index.tsx'))};
 useAppStore.setState({treeData:[{id:'folder',type:'folder',name:'学习笔记',children:[{id:'note',type:'file',name:'Git 入门学习笔记.md'}]}],selectedFileId:'note',expandedFolderIds:new Set(['folder']),fileContents:{note:'合成正文'},centerMode:'note',serverSyncReady:false,hydratedUserId:null});
+window.navigationTest={store:useAppStore,retry:useAppStore.getState().retryWorkspaceOperation,retries:[]};
 window.fetch=async()=>new Response(JSON.stringify({note:{id:'note',title:'Git 入门学习笔记.md',content:'合成正文'}}),{headers:{'Content-Type':'application/json'}});
 createRoot(document.getElementById('root')).render(React.createElement(React.StrictMode,null,React.createElement(App)));`;
 const stubs = new Set(['components/AIPanel.tsx','components/AIDraftWorkspace.tsx','components/EditPreviewWorkspace.tsx'].map(path));
@@ -94,6 +95,14 @@ try {
   await page.goto('http://noteflow.test/');
   try { await page.getByRole('heading',{name:'Git 入门学习笔记'}).waitFor(); }
   catch(error){console.error(JSON.stringify({width,errors,requests,body:await page.locator('body').innerText()}));throw error;}
+  await page.evaluate(()=>window.navigationTest.store.setState({workspaceIssues:[{id:'test-issue',label:'移动笔记',message:'合成未同步',busy:false}],retryWorkspaceOperation:id=>window.navigationTest.retries.push(id)}));
+  await page.getByRole('alert').waitFor();assert((await page.getByRole('alert').textContent()).includes('合成未同步'));
+  const feedbackBox=await page.locator('.nf-workspace-feedback').boundingBox();assert(feedbackBox.x>=0&&feedbackBox.x+feedbackBox.width<=width);
+  await page.getByRole('button',{name:'重试',exact:true}).click();assert.deepEqual(await page.evaluate(()=>window.navigationTest.retries),['test-issue']);
+  await page.evaluate(()=>window.navigationTest.store.setState({workspaceIssues:[{id:'test-issue',label:'移动笔记',message:'合成未同步',busy:true}]}));
+  assert(await page.getByRole('button',{name:'重试中…',exact:true}).isDisabled());
+  await page.evaluate(()=>window.navigationTest.store.setState({workspaceIssues:[],workspaceError:null,retryWorkspaceOperation:window.navigationTest.retry}));
+  assert.equal(await page.getByRole('alert').count(),0,'Normal workspace stays free of feedback panels');
   if(width===1440){
    await headerCheck(page);
    await resizeChecks(page,page.locator('.library-navigation'),width);

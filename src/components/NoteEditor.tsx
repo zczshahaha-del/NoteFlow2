@@ -32,6 +32,7 @@ import { createNoteFlowTiptapExtensions } from "../editor/tiptapExtensions";
 import { findTiptapTextRange } from "../utils/tiptapSelection";
 import OutlinePanel from "./OutlinePanel";
 import { attachmentMarkdown, uploadAttachment } from "../services/attachments";
+import { OperationFeedback } from './OperationFeedback';
 import { getNoteOutline, type NoteSectionRecord } from "../services/notes";
 import { formatDocumentTime } from "../utils/documentTime";
 import { getDocumentHeadings, getDocumentNumberedHeadings, getEditorMarkdown, type TiptapHeading } from "../editor/documentCache";
@@ -298,6 +299,7 @@ function NoteEditorDocument({ onReady, presented = true }: {
     treeData,
     fileContents,
     noteSaveState,
+    retryNoteSave,
     pendingEditorSelection,
     pendingSourceFocus,
     updateFileContent,
@@ -321,6 +323,10 @@ function NoteEditorDocument({ onReady, presented = true }: {
   const [showHeadingNumbers, setShowHeadingNumbers] = useState(loadHeadingNumberingPreference);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkDraft, setLinkDraft] = useState("");
+  const [uploadError, setUploadError] = useState('');
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const uploadQueueRef = useRef<File[]>([]);
+  const uploadControllerRef = useRef<AbortController | null>(null);
   const [backendSections, setBackendSections] = useState<NoteSectionRecord[]>([]);
   const documentMenuRef = useRef<HTMLDivElement>(null);
   const [documentScroller, setDocumentScroller] = useState<HTMLDivElement | null>(null);
@@ -348,6 +354,10 @@ function NoteEditorDocument({ onReady, presented = true }: {
     },
     [selectedFileId]
   );
+
+  useEffect(() => () => {
+    uploadControllerRef.current?.abort(); uploadQueueRef.current = [];
+  }, [selectedFileId]);
 
   const documentState = useEditorState({
     editor,
@@ -524,16 +534,6 @@ function NoteEditorDocument({ onReady, presented = true }: {
       : null;
     setActiveEditorSectionId(section?.id ?? null);
   }, [activeId, backendSections, headings, setActiveEditorSectionId]);
-  const saveLabel =
-    noteSaveState.status === "saving"
-      ? "保存中"
-      : noteSaveState.status === "unsaved"
-        ? "未保存"
-        : noteSaveState.status === "offline"
-          ? "离线已保存"
-        : noteSaveState.status === "error"
-          ? "保存失败"
-          : "已保存";
   const indexStatus = selectedFile?.indexStatus ?? "pending";
   const indexLabel =
     indexStatus === "indexed"
@@ -595,9 +595,22 @@ function NoteEditorDocument({ onReady, presented = true }: {
   };
 
   const uploadEditorFiles = async (files: File[]) => {
-    for (const file of files) {
-      const item = await uploadAttachment(file, selectedFile.id);
-      insertAttachmentMarkdown(attachmentMarkdown(item));
+    uploadQueueRef.current.push(...files);
+    if (uploadControllerRef.current && !uploadControllerRef.current.signal.aborted) return;
+    const controller = new AbortController(); uploadControllerRef.current = controller;
+    setUploadBusy(true); setUploadError('');
+    try {
+      while (uploadQueueRef.current.length) {
+        const file = uploadQueueRef.current[0];
+        const item = await uploadAttachment(file, selectedFile.id, controller.signal);
+        if (controller.signal.aborted || editor.isDestroyed) return;
+        insertAttachmentMarkdown(attachmentMarkdown(item));
+        uploadQueueRef.current.shift();
+      }
+    } catch (error) {
+      if (!controller.signal.aborted && !editor.isDestroyed) setUploadError(error instanceof Error ? error.message : '文件上传未完成');
+    } finally {
+      if (uploadControllerRef.current === controller) { uploadControllerRef.current = null; if (!editor.isDestroyed) setUploadBusy(false); }
     }
   };
 
@@ -730,19 +743,28 @@ function NoteEditorDocument({ onReady, presented = true }: {
                     </SoftMenu>
                   </div>
                 </div>
+                {(noteSaveState.status === 'error' || noteSaveState.status === 'offline') && <div className="nf-note-feedback">
+                  <OperationFeedback onRetry={() => retryNoteSave(selectedFile.id)} retryLabel={noteSaveState.status === 'offline' ? '立即同步' : '重试保存'}>
+                    <strong>{noteSaveState.status === 'offline' ? '正文已留在本机，等待同步' : '正文未能同步到服务器'}</strong>
+                    <span>{noteSaveState.message || '请检查连接后重试；当前输入不会被清空。'}</span>
+                  </OperationFeedback>
+                </div>}
+                {uploadError && <div className="nf-note-feedback"><OperationFeedback busy={uploadBusy} onRetry={() => { void uploadEditorFiles([]); }} retryLabel="重试上传">
+                  <strong>文件上传未完成</strong><span>{uploadError}</span>
+                </OperationFeedback></div>}
                 <div
                   onPasteCapture={(event) => {
                     const files = Array.from(event.clipboardData.files);
                     if (!files.length) return;
                     event.preventDefault();
-                    void uploadEditorFiles(files).catch(() => undefined);
+                    void uploadEditorFiles(files);
                   }}
                   onDragOver={(event) => { if (event.dataTransfer.types.includes("Files")) event.preventDefault(); }}
                   onDrop={(event) => {
                     const files = Array.from(event.dataTransfer.files);
                     if (!files.length) return;
                     event.preventDefault();
-                    void uploadEditorFiles(files).catch(() => undefined);
+                    void uploadEditorFiles(files);
                   }}
                 >
                   {documentScroller && <BubbleMenu

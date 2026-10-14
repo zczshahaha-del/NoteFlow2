@@ -10,6 +10,7 @@ import NoteOpeningStatus from "./components/NoteOpeningStatus";
 import LibraryDrawer from "./components/LibraryDrawer";
 import LibraryResizeHandle from "./components/LibraryResizeHandle";
 import SidebarToggleIcon from "./components/SidebarToggleIcon";
+import WorkspaceFeedback from './components/OperationFeedback';
 import "./components/library-navigation.css";
 import { useAuthSession } from "./hooks/useAuthSession";
 import { useChatSlice, useDraftSlice } from "./store/selectors";
@@ -245,6 +246,7 @@ export default function App() {
             }
           >
             <WorkspaceCenter />
+            <WorkspaceFeedback />
           </div>
 
           {/* AI drafts stay mounted while hidden so background outline/progress state is preserved. */}

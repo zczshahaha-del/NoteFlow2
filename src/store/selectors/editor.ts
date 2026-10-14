@@ -12,6 +12,7 @@ export function useEditorSlice() {
     fileContents: state.fileContents,
     updateFileContent: state.updateFileContent,
     noteSaveState: state.noteSaveState,
+    retryNoteSave: state.retryNoteSave,
     updateNodeName: state.updateNodeName,
     reindexNote: state.reindexNote,
     restoreNoteVersion: state.restoreNoteVersion,

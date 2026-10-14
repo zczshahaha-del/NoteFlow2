@@ -13,6 +13,8 @@ export function useWorkspaceSlice() {
     restoreDeletedNote: state.restoreDeletedNote,
     workspaceLoading: state.workspaceLoading,
     workspaceError: state.workspaceError,
+    workspaceIssues: state.workspaceIssues,
+    retryWorkspaceOperation: state.retryWorkspaceOperation,
     reloadWorkspace: state.reloadWorkspace,
     treeData: state.treeData,
     addNode: state.addNode,

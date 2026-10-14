@@ -11,7 +11,7 @@ export interface AttachmentRecord {
   createdAt: string | null;
 }
 
-export async function uploadAttachment(file: File, noteId: string): Promise<AttachmentRecord> {
+export async function uploadAttachment(file: File, noteId: string, signal?: AbortSignal): Promise<AttachmentRecord> {
   const response = await apiFetch("/api/attachments", {
     method: "POST",
     headers: {
@@ -21,6 +21,7 @@ export async function uploadAttachment(file: File, noteId: string): Promise<Atta
       "X-Content-Type": file.type || "application/octet-stream",
     },
     body: file,
+    signal,
   });
   if (!response.ok) throw new Error(await readApiError(response));
   const data = await readApiJson<{ attachment: AttachmentRecord }>(response);

@@ -138,6 +138,8 @@ interface NoteSaveState {
   updatedAt?: string;
 }
 
+interface WorkspaceIssue { id: string; label: string; message: string; busy: boolean }
+
 interface DeletedNoteItem {
   id: string;
   title: string;
@@ -206,6 +208,8 @@ interface AppState {
   restoreNoteVersion: (noteId: string, versionId: string) => Promise<void>;
   workspaceLoading: boolean;
   workspaceError: string | null;
+  workspaceIssues: WorkspaceIssue[];
+  retryWorkspaceOperation: (id: string) => void;
   reloadWorkspace: (preferredSelectedFileId?: string | null, successMessage?: string) => void;
   agentSessionId: string | null;
   agentTask: AgentTaskSnapshot | null;
@@ -261,6 +265,34 @@ const noteOpenRequests = new Map<string, object>();
 const localNoteEdits = new Map<string, { userId: string | null; content: string }>();
 const noteCreationRequests = new Map<string, object>();
 let workspaceLoadRequest: object | null = null;
+const workspaceOperations = new Map<string, { nodeId: string; deletedIds: Set<string>; run: () => Promise<void>; busy: boolean }>();
+
+function runWorkspaceOperation<T>(id: string, nodeId: string, label: string, operation: (active: () => boolean, retrying: boolean) => Promise<T>, success?: (value: T) => void, deletedIds = new Set<string>()) {
+  const userId = useAppStore.getState().hydratedUserId, epoch = workspaceEpoch;
+  const task = { nodeId, deletedIds, busy: false, run: async () => {} };
+  let retrying = false;
+  const active = () => workspaceOperations.get(id) === task && useAppStore.getState().hydratedUserId === userId && workspaceEpoch === epoch;
+  task.run = async () => {
+    if (task.busy || !active()) return;
+    task.busy = true;
+    useAppStore.setState(state => ({ workspaceIssues: state.workspaceIssues.map(issue => issue.id === id ? { ...issue, busy: true } : issue) }));
+    try {
+      const value = await operation(active, retrying);
+      if (!active()) return;
+      success?.(value);
+      workspaceOperations.delete(id);
+      useAppStore.setState(state => ({ workspaceIssues: state.workspaceIssues.filter(issue => issue.id !== id), workspaceError: null }));
+      persistLocalCurrentState();
+    } catch (error) {
+      if (!active()) return;
+      retrying = true;
+      const message = error instanceof Error ? error.message : `${label}未完成`;
+      useAppStore.setState(state => ({ workspaceIssues: [...state.workspaceIssues.filter(issue => issue.id !== id), { id, label, message, busy: false }], workspaceError: message }));
+    } finally { task.busy = false; }
+  };
+  workspaceOperations.set(id, task);
+  void task.run();
+}
 
 function mergeWorkspaceRefresh(remote: KnowledgeBaseSnapshot, started: KnowledgeBaseSnapshot, current: KnowledgeBaseSnapshot, userId: string) {
   const flatten = (nodes: FileNode[], parentId: string | null = null, result = new Map<string, { node: FileNode; parentId: string | null }>()) => {
@@ -268,11 +300,13 @@ function mergeWorkspaceRefresh(remote: KnowledgeBaseSnapshot, started: Knowledge
     return result;
   };
   const before = flatten(started.treeData), local = flatten(current.treeData), next = flatten(remote.treeData);
+  const pendingNodes = new Set([...workspaceOperations.values()].map(task => task.nodeId));
+  const pendingDeletes = new Set([...workspaceOperations.values()].flatMap(task => [...task.deletedIds]));
   const dirty = (id: string) => localNoteEdits.get(id)?.userId === userId ||
     current.fileContents[id] !== started.fileContents[id];
   for (const [id, entry] of next) {
     const previous = before.get(id), latest = local.get(id);
-    if (previous && !latest) { next.delete(id); delete remote.fileContents[id]; continue; }
+    if (pendingDeletes.has(id) || (previous && !latest)) { next.delete(id); delete remote.fileContents[id]; continue; }
     if (!latest) continue;
     const node = { ...entry.node };
     if (latest.node.type === 'file' && dirty(id)) {
@@ -281,9 +315,9 @@ function mergeWorkspaceRefresh(remote: KnowledgeBaseSnapshot, started: Knowledge
       remote.fileContents[id] = node.content;
     }
     for (const field of ['name', 'pinned', 'favorite', 'tags'] as const) {
-      if (previous && latest.node[field] !== previous.node[field]) Object.assign(node, { [field]: latest.node[field] });
+      if (pendingNodes.has(id) || (previous && latest.node[field] !== previous.node[field])) Object.assign(node, { [field]: latest.node[field] });
     }
-    next.set(id, { node, parentId: previous && latest.parentId !== previous.parentId ? latest.parentId : entry.parentId });
+    next.set(id, { node, parentId: pendingNodes.has(id) || (previous && latest.parentId !== previous.parentId) ? latest.parentId : entry.parentId });
   }
   const keepLocal = (id: string) => {
     if (next.has(id)) return;
@@ -293,7 +327,7 @@ function mergeWorkspaceRefresh(remote: KnowledgeBaseSnapshot, started: Knowledge
     if (entry.parentId) keepLocal(entry.parentId);
   };
   for (const [id, entry] of local) {
-    if (!before.has(id) || noteCreationRequests.has(id) || (entry.node.type === 'file' && dirty(id))) keepLocal(id);
+    if (!before.has(id) || pendingNodes.has(id) || noteCreationRequests.has(id) || (entry.node.type === 'file' && dirty(id))) keepLocal(id);
   }
   const roots: FileNode[] = [];
   for (const entry of next.values()) if (entry.node.type === 'folder') entry.node.children = [];
@@ -505,6 +539,7 @@ async function persistNoteContent(noteId: string, content: string) {
     const note = await enqueueNoteMutation(noteId, async () => {
       const beforeSave = useAppStore.getState();
       if (!ownsNote() || beforeSave.fileContents[noteId] !== content) return null;
+      if (noteCreationRequests.has(noteId)) throw new Error('笔记尚未创建成功，请先重试创建；当前正文已保留。');
       const beforeSaveNote = findFileById(beforeSave.treeData, noteId);
       baseUpdatedAt = beforeSaveNote?.updatedAt ?? null;
       baseContentHash = beforeSaveNote?.contentHash ?? null;
@@ -716,6 +751,9 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   noteSaveState: noteSaveState("idle"),
   noteSaveStates: {},
   retryNoteSave: (noteId) => {
+    const creation = workspaceOperations.get(`create:${noteId}`);
+    if (noteCreationRequests.has(noteId) && creation) { void creation.run(); return; }
+    if (noteSavesInFlight.has(noteId)) return;
     const content = get().fileContents[noteId];
     if (content === undefined || !findFileById(get().treeData, noteId)) return;
     clearScheduledNoteSave(noteId); startPersistNoteContent(noteId, content);
@@ -723,6 +761,8 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   deletedNotes: [],
   workspaceLoading: false,
   workspaceError: null,
+  workspaceIssues: [],
+  retryWorkspaceOperation: (id) => { void workspaceOperations.get(id)?.run(); },
   agentSessionId: null,
   agentTask: null,
   agentRunHistory: [],
@@ -1410,6 +1450,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     workspaceEpoch += 1;
     clearScheduledNoteSave();
     noteSavesInFlight.clear();
+    workspaceOperations.clear();
     workspaceLoadRequest = null;
     noteCreationRequests.clear();
     noteOpenRequests.clear();
@@ -1434,6 +1475,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       deletedNotes: [],
       workspaceLoading: true,
       workspaceError: null,
+      workspaceIssues: [],
       treeData: snapshot.treeData,
       agentSessionId: null,
       agentTask: null,
@@ -2229,27 +2271,33 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     persistLocalCurrentState();
 
     if (node.type === "folder") {
-      void createCategory({
-        id: node.id,
-        name: node.name,
-        parentId,
-      }).catch((error) => {
-        set({ workspaceError: error instanceof Error ? error.message : "创建分类失败" });
+      runWorkspaceOperation(`create:${node.id}`, node.id, '创建文件夹', async (active, retrying) => {
+        const latest = findNode(get().treeData, node.id);
+        if (!latest) return null;
+        const payload = { id: node.id, name: latest.name, parentId: findParentFolderId(get().treeData, node.id) };
+        // A lost response may have committed the initial POST. Retry the same
+        // identity, never create another folder or repeat an unsafe duplicate POST.
+        if (retrying) {
+          const existing = (await listCategories()).find(category => category.id === node.id);
+          if (!active()) return null;
+          if (existing) return updateCategory(node.id, payload);
+        }
+        return createCategory(payload);
       });
       return;
     }
 
-    void enqueueNoteMutation(node.id, () => ownsCreation() ? createNote({
+    runWorkspaceOperation(`create:${node.id}`, node.id, '创建笔记', (active) => enqueueNoteMutation(node.id, () => active() && ownsCreation() ? createNote({
       id: node.id,
-      title: titleFromNodeName(node.name),
-      categoryId: parentId,
-      content: node.content ?? "",
+      title: titleFromNodeName(findFileById(get().treeData, node.id)?.name ?? node.name),
+      categoryId: findParentFolderId(get().treeData, node.id),
+      content: get().fileContents[node.id] ?? node.content ?? "",
+      idempotencyKey: `create:${ownerId}:${node.id}`,
       summary: node.summary ?? null,
       isPinned: Boolean(node.pinned),
       isFavorite: Boolean(node.favorite),
       tags: node.tags ?? [],
-    }) : Promise.resolve(null))
-      .then((note) => {
+    }) : Promise.resolve(null)), (note) => {
         if (!note || !ownsCreation() || note.id !== node.id) return;
         const current = get();
         const currentNode = findFileById(current.treeData, node.id)!;
@@ -2262,12 +2310,11 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           treeData: replaceNoteRecordInTree(current.treeData, merged),
         });
         persistLocalCurrentState();
-      })
-      .catch((error) => {
-        if (!ownsCreation()) return;
-        set({ workspaceError: error instanceof Error ? error.message : "创建笔记失败" });
-      })
-      .finally(() => {
+        if (content === note.content) {
+          clearScheduledNoteSave(node.id); localNoteEdits.delete(node.id); setNoteSaveState(node.id, noteSaveState('saved'));
+        } else {
+          setNoteSaveState(node.id, noteSaveState('unsaved')); scheduleNoteSave(node.id, content);
+        }
         if (noteCreationRequests.get(node.id) === creation) noteCreationRequests.delete(node.id);
       });
   },
@@ -2281,24 +2328,22 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     if (!node) return;
 
     if (node.type === "folder") {
-      void updateCategory(id, {
+      runWorkspaceOperation(`rename:${id}`, id, '重命名文件夹', () => updateCategory(id, {
         id,
         name,
         parentId,
-      }).catch((error) => {
-        set({ workspaceError: error instanceof Error ? error.message : "重命名分类失败" });
-      });
+      }));
       return;
     }
 
-    void enqueueNoteMutation(id, () =>
-      updateNote(id, {
+    runWorkspaceOperation(`rename:${id}`, id, '重命名笔记', (active) => enqueueNoteMutation(id, () =>
+      active() ? updateNote(id, {
         title: titleFromNodeName(name),
         source: "manual_edit",
         changeSummary: "重命名笔记",
-      })
-    )
-      .then((note) => {
+      }) : Promise.resolve(null)
+    ), (note) => {
+        if (!note || !findFileById(get().treeData, id)) return;
         const current = get();
         const localContent = current.fileContents[note.id];
         set({
@@ -2308,9 +2353,6 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           }),
         });
         persistLocalCurrentState();
-      })
-      .catch((error) => {
-        set({ workspaceError: error instanceof Error ? error.message : "重命名笔记失败" });
       });
   },
 
@@ -2355,10 +2397,11 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     });
     persistLocalCurrentState();
 
-    const request = nodeToDelete.type === "folder" ? deleteCategory(id) : deleteNote(id);
-    void request.catch((error) => {
-      set({ workspaceError: error instanceof Error ? error.message : "删除失败" });
-    });
+    const removedIds = new Set<string>();
+    const collect = (node: FileNode) => { removedIds.add(node.id); node.children?.forEach(collect); }; collect(nodeToDelete);
+    for (const [key, task] of workspaceOperations) if (removedIds.has(task.nodeId)) workspaceOperations.delete(key);
+    set(state => ({ workspaceIssues: state.workspaceIssues.filter(issue => workspaceOperations.has(issue.id)) }));
+    runWorkspaceOperation(`delete:${id}`, id, nodeToDelete.type === 'folder' ? '删除文件夹' : '删除笔记', () => nodeToDelete.type === "folder" ? deleteCategory(id) : deleteNote(id), undefined, removedIds);
   },
 
   restoreDeletedNote: (id) => {
@@ -2460,23 +2503,19 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     if (!node) return;
 
     if (node.type === "folder") {
-      void updateCategory(id, {
+      runWorkspaceOperation(`move:${id}`, id, '移动文件夹', () => updateCategory(id, {
         id,
         name: node.name,
         parentId,
-      }).catch((error) => {
-        set({ workspaceError: error instanceof Error ? error.message : "移动分类失败" });
-      });
+      }));
       return;
     }
 
-    void updateNote(id, {
+    runWorkspaceOperation(`move:${id}`, id, '移动笔记', active => enqueueNoteMutation(id, () => active() ? updateNote(id, {
       categoryId: parentId,
       source: "manual_edit",
       changeSummary: "移动笔记",
-    }).catch((error) => {
-      set({ workspaceError: error instanceof Error ? error.message : "移动笔记失败" });
-    });
+    }) : Promise.resolve(null)));
   },
 
   toggleNodePinned: (id) => {

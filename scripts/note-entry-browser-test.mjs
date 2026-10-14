@@ -17,10 +17,21 @@ import NoteEditor from ${JSON.stringify(component)};
 import DirectoryTree from ${JSON.stringify(path('components/DirectoryTree.tsx'))};
 import {useAppStore} from ${JSON.stringify(path('store/index.tsx'))};
 const content=id=>'# '+id+' 标题\\n\\n'+id+' 独有正文\\n\\n\`\`\`go\\nfunc main() { println("color") }\\n\`\`\`';
-const note=id=>({id,title:id+'.md',categoryId:null,summary:null,tags:[],content:content(id),contentHash:'synthetic',isPinned:false,isFavorite:false,indexStatus:'indexed',createdAt:null,updatedAt:null,deletedAt:null});
+const serverContents=new Map();
+const note=id=>({id,title:id+'.md',categoryId:null,summary:null,tags:[],content:serverContents.get(id)??content(id),contentHash:'synthetic',isPinned:false,isFavorite:false,indexStatus:'indexed',createdAt:null,updatedAt:null,deletedAt:null});
 const pending=new Map();const calls=[];
 const response=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json'}});
-window.fetch=async(input)=>{const url=String(input);calls.push(url);
+window.fetch=async(input,init={})=>{const url=String(input);calls.push(url);
+  if(url==='/api/attachments'){
+    window.noteEntryTest.uploads++;
+    if(window.noteEntryTest.uploadWait)return new Promise(resolve=>{window.noteEntryTest.replyUpload=()=>resolve(response({attachment:{fileName:'late.txt',contentType:'text/plain',downloadUrl:'/synthetic-download'}}));});
+    if(window.noteEntryTest.uploadFail)return response({error:'合成上传失败'},503);
+    return response({attachment:{fileName:'example.txt',contentType:'text/plain',downloadUrl:'/synthetic-download'}});
+  }
+  if(init.method==='PUT'&&url.startsWith('/api/notes/')){
+    if(window.noteEntryTest.saveFail)return response({error:'合成保存失败'},503);
+    const id=url.split('/').at(-1);serverContents.set(id,JSON.parse(init.body).content);return response({note:note(id)});
+  }
   if(url.endsWith('/outline')){const id=url.match(/\\/notes\\/([^/]+)\\/outline$/)[1];return response({sections:[{id:'section-'+id,title:id+' 标题'}]});}
   const id=url.match(/\\/api\\/notes\\/([^/]+)$/)?.[1];
   if(id){if(['missing','failed','late','race'].includes(id))return new Promise(resolve=>{pending.set(id,resolve)});return response({note:note(id)});}
@@ -30,7 +41,7 @@ window.fetch=async(input)=>{const url=String(input);calls.push(url);
 };
 const nodes=['A','B','C','missing','failed','late','race'].map(id=>({id,type:'file',name:id+'.md',indexStatus:'indexed'}));
 useAppStore.setState({treeData:[{id:'folder',type:'folder',name:'合成目录',children:nodes}],selectedFileId:'A',expandedFolderIds:new Set(['folder']),fileContents:{A:content('A'),B:content('B'),C:content('C'),race:content('race')},serverSyncReady:false,hydratedUserId:null});
-window.noteEntryTest={store:useAppStore,editor:null,calls,content,select:id=>useAppStore.getState().setSelectedFileId(id),
+window.noteEntryTest={store:useAppStore,editor:null,calls,content,saveFail:false,uploadFail:false,uploads:0,uploadWait:false,select:id=>useAppStore.getState().setSelectedFileId(id),
   reply(id,ok=true){const resolve=pending.get(id);if(!resolve)throw Error('No pending '+id);pending.delete(id);resolve(ok?response({note:note(id)}):response({error:'synthetic unavailable'},503));}};
 const noop=()=>{};
 createRoot(document.getElementById('root')).render(React.createElement(React.StrictMode,null,
@@ -113,8 +124,30 @@ try {
     assert.equal(await page.evaluate(()=>window.noteEntryTest.calls.filter(url=>url.endsWith('/C/outline')).length),outlineReads,'Save feedback must not refetch the outline');
     assert.equal(await page.evaluate(()=>window.noteEntryTest.store.getState().activeEditorSectionId),'section-C','Saving must keep the current section context');
   }
-  const editor=page.locator('.note-content');await editor.click();await page.keyboard.press('ControlOrMeta+End');await page.keyboard.type('stable-edit');
-  assert((await editor.textContent()).endsWith('stable-edit'));
+  // Real save API failure is visible and retry saves the current content.
+  await page.evaluate(()=>{window.noteEntryTest.saveFail=true;window.noteEntryTest.store.getState().retryNoteSave('C');});
+  await page.getByRole('button',{name:'重试保存',exact:true}).waitFor();
+  assert((await page.getByRole('alert').textContent()).includes('合成保存失败'));
+  await page.evaluate(()=>{window.noteEntryTest.saveFail=false;});
+  await page.getByRole('button',{name:'重试保存',exact:true}).click();
+  await page.waitForFunction(()=>window.noteEntryTest.store.getState().noteSaveState.status==='saved');
+  assert.equal(await page.getByRole('alert').count(),0);
+  // Paste a synthetic file, fail, retry only the pending file, then ignore a late upload after navigation.
+  await page.evaluate(()=>{window.noteEntryTest.uploadFail=true;const data=new DataTransfer();data.items.add(new File(['synthetic'],'example.txt',{type:'text/plain'}));document.querySelector('.note-content').dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:data}));});
+  await page.getByRole('button',{name:'重试上传',exact:true}).waitFor();
+  await page.evaluate(()=>{window.noteEntryTest.uploadFail=false;});
+  await page.getByRole('button',{name:'重试上传',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('.note-content').textContent.includes('example.txt'));
+  assert.equal(await page.evaluate(()=>window.noteEntryTest.uploads),2);
+  await page.evaluate(()=>{window.noteEntryTest.uploadWait=true;const data=new DataTransfer();data.items.add(new File(['late'],'late.txt',{type:'text/plain'}));document.querySelector('.note-content').dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:data}));});
+  await page.waitForFunction(()=>typeof window.noteEntryTest.replyUpload==='function');
+  await page.evaluate(()=>window.noteEntryTest.select('B'));await ready(page,'B');
+  await page.evaluate(()=>window.noteEntryTest.replyUpload());
+  assert(!(await page.locator('.note-content').textContent()).includes('late.txt'));
+  await page.evaluate(()=>window.noteEntryTest.select('C'));await ready(page,'C');
+  const endKey=await page.evaluate(()=>/Mac/.test(navigator.platform)?'Meta+ArrowDown':'Control+End');
+  const editor=page.locator('.note-content');await editor.locator('h1').first().click();await page.keyboard.press(endKey);await page.keyboard.type('stable-edit');
+  assert((await editor.textContent()).endsWith('stable-edit'),JSON.stringify(await page.evaluate(()=>({text:document.querySelector('.note-content').textContent,focus:document.activeElement?.outerHTML?.slice(0,100),selection:window.noteEntryTest.editor.state.selection.toJSON()}))));
   assert((await page.evaluate(()=>window.noteEntryTest.store.getState().fileContents.C)).includes('stable-edit'));
   assert.equal(await page.evaluate(()=>window.noteEntryTest.calls.filter(url=>url.endsWith('/C/outline')).length),outlineReads,'Local input does not read an outdated outline');
   await page.evaluate(()=>{const store=window.noteEntryTest.store;store.setState({treeData:store.getState().treeData.map(folder=>({...folder,children:folder.children.map(node=>node.id==='C'?{...node,indexStatus:'indexed',updatedAt:'2026-10-12T00:00:00Z'}:node)}))});});
@@ -140,7 +173,7 @@ try {
   assert.equal(background,await page.locator('.document-scroll').evaluate(n=>getComputedStyle(n).backgroundColor),'Opening and visible reading surfaces must match');
   // Type in an already cached note while its background GET is still pending.
   await page.evaluate(()=>window.noteEntryTest.select('race'));await ready(page,'race');
-  await editor.click();await page.keyboard.press('ControlOrMeta+End');await page.keyboard.type('local-race-input');
+  await editor.click();await page.keyboard.press(endKey);await page.keyboard.type('local-race-input');
   await page.evaluate(()=>window.noteEntryTest.reply('race'));await ready(page,'race');
   assert((await editor.textContent()).endsWith('local-race-input'),'Late server read must not replace the visible local editor');
   assert((await page.evaluate(()=>window.noteEntryTest.store.getState().fileContents.race)).includes('local-race-input'));
@@ -148,7 +181,7 @@ try {
   await page.keyboard.press('ControlOrMeta+z');
   assert(!(await editor.textContent()).endsWith('local-race-input'),'Undo history survives the ignored server response');
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
-  reports.push({width,mouseFocusDoesNotSelect:width===1280?true:null,latestNoteOnly:true,loadingAndRetry:true,revealIntermediateFrames:frames.filter(n=>n>0&&n<1).length,codeColors:true,inputSavedWithoutReanimation:true,saveFeedbackDoesNotRefetch:true,indexedOutlineRefreshes:true,lateReadKeepsTypingAndUndo:true,reducedMotion:true,dark:true,requests,errors});await context.close();
+  reports.push({width,mouseFocusDoesNotSelect:width===1280?true:null,latestNoteOnly:true,loadingAndRetry:true,saveFailureRetry:true,uploadFailureRetry:true,lateUploadIgnored:true,revealIntermediateFrames:frames.filter(n=>n>0&&n<1).length,codeColors:true,inputSavedWithoutReanimation:true,saveFeedbackDoesNotRefetch:true,indexedOutlineRefreshes:true,lateReadKeepsTypingAndUndo:true,reducedMotion:true,dark:true,requests,errors});await context.close();
  }
  console.log(JSON.stringify({actualComponentsAndStore:true,syntheticOnly:true,output,reports},null,2));
 } finally { await browser.close(); }
