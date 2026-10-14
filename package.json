@@ -24,6 +24,7 @@
     "test:workspace-operations": "node scripts/workspace-operation-test.mjs",
     "test:memory-settings": "node scripts/memory-settings-test.mjs",
     "test:library-navigation": "node scripts/library-navigation-browser-test.mjs",
+    "test:library-motion": "node scripts/library-motion-browser-test.mjs",
     "test:account-menu": "node scripts/account-menu-browser-test.mjs",
     "test:highlight-geometry": "node scripts/selection-highlight-diagnostic.mjs",
     "test:editor-document-cache": "node --experimental-strip-types scripts/editor-document-cache-test.ts",

@@ -1,15 +1,14 @@
 /* A full library surface slides away; there is no collapsed account rail. */
 .library-navigation {
-  transition: width 240ms cubic-bezier(.22, .8, .25, 1);
+  width: var(--library-panel-width);
 }
 /* Children keep their expanded width and travel together, including the avatar. */
 .library-navigation-surface {
   width: var(--library-panel-width);
   position: relative;
   transform: translateX(0);
-  transition: transform 240ms cubic-bezier(.22, .8, .25, 1), visibility 240ms;
 }
-.library-navigation[data-open="false"] .library-navigation-surface {
+.library-navigation[data-motion="closed"] .library-navigation-surface {
   transform: translateX(-100%);
   visibility: hidden;
 }
@@ -19,14 +18,13 @@
   border-radius: 9px;
   transition: background-color 140ms ease, color 140ms ease;
 }
-/* The old header must leave before its replacement paints in the same corner.
-   Phone drawers and their launchers keep their existing motion. */
+/* Mounted only after the actual owned exit completes, never a guessed delay. */
 .app-frame.stable-workspace-layout .library-launcher {
-  animation: library-launcher-reveal 80ms ease-out 240ms both;
+  animation: library-launcher-reveal 80ms ease-out both;
 }
 @keyframes library-launcher-reveal {
-  from { opacity: 0; visibility: hidden; }
-  to { opacity: 1; visibility: visible; }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 .library-navigation[data-open="false"] .directory-toggle-tooltip {
   visibility: hidden;

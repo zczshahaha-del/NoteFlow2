@@ -8,15 +8,18 @@ import { createRequire } from 'node:module';
 import { build } from 'vite';
 const { chromium } = createRequire(import.meta.url)(process.env.NOTEFLOW_PLAYWRIGHT_MODULE || 'playwright');
 const path = name => fileURLToPath(new URL('../src/' + name, import.meta.url));
+const realEditor = process.env.NOTEFLOW_MOTION_REAL_EDITOR === '1';
+const longContent = '# Git 入门学习笔记\n\n' + Array.from({length:150},(_,i)=>`## 第 ${i+1} 节：长篇笔记\n\n${'正文流畅性验证，保留排版、彩色代码与阅读位置。'.repeat(12)}\n\n${'连续伸缩不能丢失输入、重建编辑器或产生重叠。'.repeat(8)}\n\n\`\`\`go\n${'func demo() { println("彩色代码") }\n'.repeat(8)}\`\`\`\n\n`).join('');
+const fixtureContent = realEditor ? longContent : '合成正文';
 const assets = new URL('../dist/assets/', import.meta.url);
-const css = readdirSync(assets).filter(n => /^index-.*\.css$/.test(n)).map(n => readFileSync(new URL(n, assets), 'utf8')).join('\n');
+const css = readdirSync(assets).filter(n => /^(index-|NoteEditor-).*\.css$/.test(n)).map(n => readFileSync(new URL(n, assets), 'utf8')).join('\n');
 assert(css, 'Build production CSS first');
 const entry = `import React from 'react';import {createRoot} from 'react-dom/client';
 import App from ${JSON.stringify(path('App.tsx'))};
 import {useAppStore} from ${JSON.stringify(path('store/index.tsx'))};
-useAppStore.setState({treeData:[{id:'folder',type:'folder',name:'学习笔记',children:[{id:'note',type:'file',name:'Git 入门学习笔记.md'}]}],selectedFileId:'note',expandedFolderIds:new Set(['folder']),fileContents:{note:'合成正文'},centerMode:'note',serverSyncReady:false,hydratedUserId:null});
+useAppStore.setState({treeData:[{id:'folder',type:'folder',name:'学习笔记',children:[{id:'note',type:'file',name:'Git 入门学习笔记.md'}]}],selectedFileId:'note',expandedFolderIds:new Set(['folder']),fileContents:{note:${JSON.stringify(fixtureContent)}},centerMode:'note',serverSyncReady:false,hydratedUserId:null});
 window.navigationTest={store:useAppStore,retry:useAppStore.getState().retryWorkspaceOperation,retries:[]};
-window.fetch=async()=>new Response(JSON.stringify({note:{id:'note',title:'Git 入门学习笔记.md',content:'合成正文'}}),{headers:{'Content-Type':'application/json'}});
+window.fetch=async(input)=>new Response(JSON.stringify(String(input).endsWith('/outline')?{sections:[]}:{note:{id:'note',title:'Git 入门学习笔记.md',content:${JSON.stringify(fixtureContent)},categoryId:null,summary:null,tags:[],contentHash:'synthetic',isPinned:false,isFavorite:false,indexStatus:'outdated',createdAt:null,updatedAt:null,deletedAt:null}}),{headers:{'Content-Type':'application/json'}});
 createRoot(document.getElementById('root')).render(React.createElement(React.StrictMode,null,React.createElement(App)));`;
 const stubs = new Set(['components/AIPanel.tsx','components/AIDraftWorkspace.tsx','components/EditPreviewWorkspace.tsx'].map(path));
 const result=await build({configFile:false,logLevel:'silent',plugins:[{
@@ -26,8 +29,12 @@ const result=await build({configFile:false,logLevel:'silent',plugins:[{
   if(id==='\0entry')return entry;
   if(id===path('components/AIPanel.tsx'))return `import React from 'react';export default function AI({onCollapse}){return <div><button aria-label="收起 AI 助手" onClick={onCollapse}>收起</button><textarea aria-label="合成对话输入" /></div>}`;
   if(stubs.has(id))return 'export default function Stub(){return null}';
-  if(id===path('components/NoteEditor.tsx'))return `import React from 'react';export default function Body(){window.bodyRenderCount=(window.bodyRenderCount||0)+1;return <div className="document-editor" style={{padding:'84px 72px',width:'100%'}}><div className="document-canvas"><div className="note-page"><h1>Git 入门学习笔记</h1><p>这是隔离验证正文，不读取真实笔记。</p><button>正文操作</button></div></div></div>}`;
+  if(id===path('components/NoteEditor.tsx'))return realEditor ? readFileSync(id,'utf8')
+   .replace('export default function NoteEditor() {','export default function NoteEditor() { window.bodyRenderCount=(window.bodyRenderCount||0)+1;')
+   .replace('      extensions,','      extensions, onCreate: ({editor}) => { window.navigationTest.editor=editor; },')
+   : `import React from 'react';export default function Body(){window.bodyRenderCount=(window.bodyRenderCount||0)+1;return <div className="document-editor" style={{padding:'84px 72px',width:'100%'}}><div className="document-canvas"><div className="note-page"><h1>Git 入门学习笔记</h1><p>这是隔离验证正文，不读取真实笔记。</p><button>正文操作</button></div></div></div>}`;
   if(id===path('App.tsx'))return readFileSync(id,'utf8')
+   .replace('const [filePanelPinned, setFilePanelPinned] = useState(true);','const [filePanelPinned, setFilePanelPinned] = useState(true); window.navigationTest.toggleLibrary=setFilePanelPinned;')
    .replace('import { useAuthSession } from "./hooks/useAuthSession";', 'const noop = () => {}; const useAuthSession = () => ({loading:false,session:{user:{id:"synthetic",email:"test@example.invalid",displayName:"合成用户",emailVerified:true}},signIn:noop,signInWithEmailCode:noop,signUp:noop,signOut:noop,updateSession:noop});')
    .replace('<AppProvider userId={session.user.id}>','<>').replace('</AppProvider>','</>');
  }
@@ -36,8 +43,52 @@ const chunks=result.output.filter(n=>n.type==='chunk');assert.equal(chunks.lengt
 const script=chunks[0].code.replaceAll('</script','<\\/script');
 const browser=await chromium.launch({executablePath:process.env.NOTEFLOW_BROWSER_EXECUTABLE||undefined,headless:true});
 const output=mkdtempSync(join(tmpdir(),'noteflow-library-navigation-')), reports=[];
-async function settled(page){await page.evaluate(async()=>{await Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{})));});}
-async function open(page){const button=page.getByRole('button',{name:/^(展开目录|打开知识库)$/});await button.click();await page.locator('.library-drawer[data-open="true"]').waitFor();await settled(page);}
+async function settled(page){await page.evaluate(async()=>{await Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{})));});await page.waitForFunction(()=>{const n=document.querySelector('.library-navigation');return !n || n.dataset.motion===(n.dataset.open==='true'?'open':'closed');});await page.evaluate(()=>new Promise(r=>requestAnimationFrame(r)));}
+async function bodyAction(page){await page.getByRole(realEditor?'textbox':'button',{name:realEditor?'文档标题':'正文操作',exact:true}).click();}
+async function motionStress(page) {
+ await settled(page);
+ await page.evaluate(()=>{
+  const editor=window.navigationTest.editor, scroll=document.querySelector('.document-scroll');
+  if(scroll)scroll.scrollTop=1700;
+  window.motionBefore={editor,doc:editor?.state.doc,scroll:scroll?.scrollTop};
+  window.stressFrames=[];window.stressSampling=true;
+  window.motionLongTasks=[];
+  if(PerformanceObserver.supportedEntryTypes.includes('longtask')){window.motionObserver=new PerformanceObserver(list=>window.motionLongTasks.push(...list.getEntries().map(e=>e.duration)));window.motionObserver.observe({type:'longtask'});}
+  const sample=()=>{const n=document.querySelector('.library-navigation'), b=document.querySelector('.workspace-center-layer'),s=document.querySelector('.library-navigation-surface');window.stressFrames.push({t:performance.now(),width:n.getBoundingClientRect().width,edge:n.getBoundingClientRect().right,body:b.getBoundingClientRect().left,surface:s.getBoundingClientRect().right,phase:n.dataset.motion,launcher:!!document.querySelector('.library-launcher'),resize:!!n.querySelector('.library-resize-handle')});if(window.stressSampling)requestAnimationFrame(sample)};requestAnimationFrame(sample);
+ });
+ // Engine interruption test through the same React setter, not a fake native click.
+ await page.evaluate(async()=>{for(let i=0;i<16;i++){window.navigationTest.toggleLibrary(i%2===1);await new Promise(r=>setTimeout(r,25));}window.navigationTest.toggleLibrary(true);});
+ await settled(page);
+ const result=await page.evaluate(()=>{
+  window.stressSampling=false;window.motionObserver?.disconnect();
+  const frames=window.stressFrames, gaps=frames.slice(1).map((n,i)=>n.t-frames[i].t), scroll=document.querySelector('.document-scroll');
+  return {frames,gaps,longTasks:window.motionLongTasks,editorStable:window.motionBefore.editor===window.navigationTest.editor,docStable:window.motionBefore.doc===window.navigationTest.editor?.state.doc,scrollBefore:window.motionBefore.scroll,scrollAfter:scroll?.scrollTop,tokenCount:document.querySelectorAll('.note-content .token-keyword,.note-content .token-string,.note-content .token-function').length};
+ });
+ assert(result.frames.some(n=>n.phase==='opening')&&result.frames.some(n=>n.phase==='closing'),'Both reversal directions really run');
+ assert(result.frames.every(n=>n.width>=0&&n.width<=260.1&&Math.abs(n.edge-n.body)<1&&n.surface<=n.edge+1),'Reversals keep geometry in bounds and never overlay the body');
+ assert(result.frames.every(n=>!n.launcher || n.phase==='closed'),'Launcher is controlled by actual completion, not a fixed delay');
+ assert(result.frames.every(n=>!n.resize || n.phase==='open'),'A moving edge cannot start a competing drag');
+ assert.equal(await page.locator('.library-navigation').getAttribute('data-motion'),'open');
+ if(realEditor){assert(result.editorStable&&result.docStable,'Motion must not recreate the editor or replace its document');assert(result.tokenCount>1000,'Production highlighter renders the long code note');assert(result.scrollAfter>0,'Motion does not reset reading to the top');}
+ // Separate normal mouse/keyboard cycles from the synthetic reversal stress.
+ for(let i=0;i<3;i++){await page.getByRole('button',{name:'收起目录',exact:true}).click();await settled(page);await page.getByRole('button',{name:'展开目录',exact:true}).press('Enter');await settled(page);}
+ // Close while pointer capture is active: cleanup must not resurrect old width.
+ const edge=await page.getByRole('separator',{name:'调整目录宽度'}).boundingBox();
+ await page.mouse.move(edge.x+5,210);await page.mouse.down();await page.mouse.move(edge.x+40,210,{steps:4});
+ await page.evaluate(()=>{window.dragExitFrames=[];window.dragExitSampling=true;const sample=()=>{const n=document.querySelector('.library-navigation').getBoundingClientRect(),s=document.querySelector('.library-navigation-surface').getBoundingClientRect();window.dragExitFrames.push({edge:n.right,surface:s.right});if(window.dragExitSampling)requestAnimationFrame(sample)};requestAnimationFrame(sample)});
+ await page.getByRole('button',{name:'收起目录',exact:true}).press('Enter');await page.mouse.up();await settled(page);
+ const dragExitFrames=await page.evaluate(()=>{window.dragExitSampling=false;return window.dragExitFrames});assert(dragExitFrames.every(n=>n.surface<=n.edge+1),'Drag cleanup cannot expose a stale-width surface over the body');
+ await collapsedSurfaceCheck(page);
+ assert.equal(await page.evaluate(()=>document.body.style.cursor),'');assert.equal(await page.evaluate(()=>document.body.style.userSelect),'');
+ await page.getByRole('button',{name:'展开目录',exact:true}).press('Enter');await settled(page);
+ // Switch reduced motion during an owned exit, rather than only before it.
+ await page.evaluate(()=>window.navigationTest.toggleLibrary(false));
+ await page.emulateMedia({reducedMotion:'reduce'});await settled(page);await collapsedSurfaceCheck(page);
+ await page.getByRole('button',{name:'展开目录',exact:true}).press('Enter');await settled(page);
+ await page.emulateMedia({reducedMotion:'no-preference'});
+ return {reversals:16,nativeCycles:3,frames:result.frames.length,maxFrameGapMs:Math.round(Math.max(...result.gaps)),longTasksOver50ms:result.longTasks.length,editorStable:result.editorStable,documentStable:result.docStable,codeTokens:result.tokenCount,scrollBefore:result.scrollBefore,scrollAfter:result.scrollAfter};
+}
+async function open(page){await page.locator('.library-launcher').click();await page.locator('.library-drawer[data-open="true"]').waitFor();await settled(page);}
 async function headerCheck(page){
  const title=page.getByRole('heading',{name:'知识库',exact:true});
  assert.equal(await title.count(),1);
@@ -100,6 +151,7 @@ try {
   await page.goto('http://noteflow.test/');
   try { await page.getByRole('heading',{name:'Git 入门学习笔记'}).waitFor(); }
   catch(error){console.error(JSON.stringify({width,errors,requests,body:await page.locator('body').innerText()}));throw error;}
+  const motion = width>=768 ? await motionStress(page) : null;
   await page.evaluate(()=>window.navigationTest.store.setState({workspaceIssues:[{id:'test-issue',label:'移动笔记',message:'合成未同步',busy:false}],retryWorkspaceOperation:id=>window.navigationTest.retries.push(id)}));
   await page.getByRole('alert').waitFor();assert((await page.getByRole('alert').textContent()).includes('合成未同步'));
   const feedbackBox=await page.locator('.nf-workspace-feedback').boundingBox();assert(feedbackBox.x>=0&&feedbackBox.x+feedbackBox.width<=width);
@@ -113,7 +165,7 @@ try {
    assert.equal(await page.locator('.library-drawer:not(.ai-drawer)').count(),0,'Laptop/tablet library is never a modal drawer');
    assert.equal(await page.locator('.library-drawer-veil').count(),0,'Docked library has no veil');
    assert.equal(await page.locator('.workspace-center-layer').evaluate(n=>n.inert),false);
-   await page.getByRole('button',{name:'正文操作',exact:true}).click();
+   await bodyAction(page);
    await resizeChecks(page,page.locator('.library-navigation'),width);
    await page.reload();await page.getByRole('heading',{name:'Git 入门学习笔记'}).waitFor();
    assert.equal((await page.locator('.library-navigation').boundingBox()).width,236,'Saved width after reload');
@@ -153,7 +205,7 @@ try {
    assert.equal(await page.getByRole('dialog',{name:'账号操作'}).count(),0,'No stale menu on reopen');
    const boxes=await page.evaluate(()=>({nav:document.querySelector('.library-navigation').getBoundingClientRect().right,body:document.querySelector('.workspace-center-layer').getBoundingClientRect().left,text:document.querySelector('.note-page').getBoundingClientRect().left}));
    assert(Math.abs(boxes.nav-boxes.body)<1 && boxes.text>=boxes.nav,'Docked document is alongside, not behind the library');
-   await page.getByRole('button',{name:'正文操作',exact:true}).click();
+   await bodyAction(page);
    if(width===1277)await page.screenshot({path:join(output,'opened.png')});
    await page.getByRole('button',{name:'收起目录',exact:true}).click();await settled(page);
   }
@@ -199,7 +251,7 @@ try {
    await page.getByRole('button',{name:'收起目录',exact:true}).press('Escape');
    await page.locator('.library-drawer').waitFor({state:'detached'});
    assert.equal(await page.locator('.workspace-center-layer').evaluate(n=>n.inert),false);
-   assert.equal(await page.getByRole('button',{name:/^(展开目录|打开知识库)$/}).evaluate(n=>n===document.activeElement),true,`Focus must return to the launcher at ${width}px`);
+   assert.equal(await page.locator('.library-launcher').evaluate(n=>n===document.activeElement),true,`Focus must return to the launcher at ${width}px`);
    await open(page);await page.locator('.library-drawer-veil').click({position:{x:width-5,y:450}});
    await page.locator('.library-drawer').waitFor({state:'detached'});
    if(positions)assert.deepEqual(await page.locator('.library-launcher').boundingBox(),positions);
@@ -215,7 +267,7 @@ try {
    await page.getByRole('button',{name:'展开目录',exact:true}).click();await settled(page);
    assert.equal(await page.locator('.library-navigation').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
    assert.equal(await page.locator('.library-drawer-veil').count(),0,'Dark/reduced-motion remains non-modal');
-   await page.getByRole('button',{name:'正文操作',exact:true}).click();
+   await bodyAction(page);
    await page.getByRole('separator',{name:'调整目录宽度'}).press('Escape');await settled(page);
    assert(await page.getByRole('button',{name:'展开目录',exact:true}).evaluate(n=>n===document.activeElement));
    assert.equal(await page.locator('.library-launcher').evaluate(n=>getComputedStyle(n).animationName),'none','Reduced motion does not delay the replacement entry');
@@ -291,7 +343,7 @@ try {
    assert(await page.getByRole('button',{name:'展开 AI 助手',exact:true}).evaluate(n=>document.activeElement===n));
   }
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);assert.deepEqual(errors,[]);
-  reports.push({width,resizing:width>=768,persistence:width>=768,noDocumentRerenderDuringDrag:width>=768,noCollapsedAccountRail:true,dockedWithoutVeil:width>=768,bodyClickableWhileLibraryOpen:width>=768,noOverlapDuringMotion:width>=768,avatarMovesWithPanel:width>=768,viewportModals:width>=768,collapsedGlobalSearch:width>=768,drawerEnterExit:width<768,aiConsistentMotion:true,aiDragOrFocusVerified:true,stableBodyAndControls:true,focusAndReducedMotion:true,dark:true,requests,errors});await context.close();
+  reports.push({width,realEditor,motion,resizing:width>=768,persistence:width>=768,noDocumentRerenderDuringDrag:width>=768,noCollapsedAccountRail:true,dockedWithoutVeil:width>=768,bodyClickableWhileLibraryOpen:width>=768,noOverlapDuringMotion:width>=768,avatarMovesWithPanel:width>=768,viewportModals:width>=768,collapsedGlobalSearch:width>=768,drawerEnterExit:width<768,aiConsistentMotion:true,aiDragOrFocusVerified:true,stableBodyAndControls:true,focusAndReducedMotion:true,dark:true,requests,errors});await context.close();
  }
  console.log(JSON.stringify({actualNavigation:true,syntheticOnly:true,output,reports},null,2));
 } finally {await browser.close();}

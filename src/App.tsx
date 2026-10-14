@@ -13,6 +13,7 @@ import SidebarToggleIcon from "./components/SidebarToggleIcon";
 import WorkspaceFeedback from './components/OperationFeedback';
 import "./components/library-navigation.css";
 import { useAuthSession } from "./hooks/useAuthSession";
+import { useDockedLibraryMotion } from './hooks/useDockedLibraryMotion';
 import { useChatSlice, useDraftSlice } from "./store/selectors";
 
 const NoteEditor = lazy(() => import("./components/NoteEditor"));
@@ -72,6 +73,9 @@ function useMediaQuery(query: string) {
 export default function App() {
   const workspaceRef = useRef<HTMLDivElement>(null);
   const libraryLauncherRef = useRef<HTMLButtonElement>(null);
+  const libraryNavigationRef = useRef<HTMLDivElement>(null);
+  const librarySurfaceRef = useRef<HTMLDivElement>(null);
+  const libraryFocusPending = useRef(false);
   const [libraryWidth, setLibraryWidth] = useState(loadLibraryWidth);
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
   const [filePanelPinned, setFilePanelPinned] = useState(true);
@@ -104,6 +108,11 @@ export default function App() {
   const libraryMaxWidth = isTabletUp
     ? Math.max(220, Math.min(420, viewportWidth - desktopRightWidth - 416)) : 420;
   const effectiveLibraryWidth = Math.min(libraryWidth ?? (isTabletUp ? 260 : 280), libraryMaxWidth);
+  const { phase: libraryPhase, previewWidth: previewLibraryMotionWidth } = useDockedLibraryMotion({
+    navigationRef: libraryNavigationRef, surfaceRef: librarySurfaceRef,
+    open: filePanelPinned, width: effectiveLibraryWidth,
+    enabled: isTabletUp && !focusedWorkspace && !authLoading && Boolean(session),
+  });
   const desktopLeftWidth = isTabletUp && !focusedWorkspace
     ? (filePanelPinned ? "var(--library-panel-width)" : "0px") : "0px";
   const workspaceLayoutStyle = {
@@ -115,8 +124,9 @@ export default function App() {
 
   const previewLibraryWidth = useCallback((width: number, dragging: boolean) => {
     workspaceRef.current?.style.setProperty("--library-panel-width", `${width}px`);
+    previewLibraryMotionWidth(width);
     if (workspaceRef.current) workspaceRef.current.dataset.libraryResizing = String(dragging);
-  }, []);
+  }, [previewLibraryMotionWidth]);
   const commitLibraryWidth = useCallback((width: number) => {
     setLibraryWidth(width);
     try { localStorage.setItem(LIBRARY_WIDTH_KEY, String(width)); } catch {}
@@ -127,13 +137,12 @@ export default function App() {
     node.style.setProperty("--ai-panel-width", `${width}px`);
     const visible = node.querySelector('.ai-navigation[data-open="true"]');
     node.style.setProperty("--workspace-right-width", `${visible ? width : 0}px`);
-    node.style.setProperty("--library-panel-width", `${Math.min(libraryWidth ?? 260, Math.max(220, Math.min(420, viewportWidth - (visible ? width : 0) - 416)))}px`);
+    const nextLibraryWidth = Math.min(libraryWidth ?? 260, Math.max(220, Math.min(420, viewportWidth - (visible ? width : 0) - 416)));
+    node.style.setProperty("--library-panel-width", `${nextLibraryWidth}px`);
+    previewLibraryMotionWidth(nextLibraryWidth);
     node.dataset.aiResizing = String(dragging);
-  }, [libraryWidth, viewportWidth]);
+  }, [libraryWidth, viewportWidth, previewLibraryMotionWidth]);
   const commitAiWidth = useCallback((width: number) => setAiPanelWidth(width), []);
-  useEffect(() => {
-    previewLibraryWidth(effectiveLibraryWidth, false);
-  }, [effectiveLibraryWidth, isTabletUp, filePanelPinned, libraryDrawerOpen, previewLibraryWidth]);
   useEffect(() => {
     const resize = () => setViewportWidth(window.innerWidth);
     window.addEventListener("resize", resize);
@@ -165,25 +174,22 @@ export default function App() {
   useEffect(() => {
     const changed = previousFilePanelPinned.current !== filePanelPinned;
     previousFilePanelPinned.current = filePanelPinned;
-    if (!changed || !isTabletUp || focusedWorkspace) return;
+    if (changed) libraryFocusPending.current = true;
+    if (!isTabletUp || focusedWorkspace) { libraryFocusPending.current = false; return; }
+    if (!libraryFocusPending.current || libraryPhase !== (filePanelPinned ? 'open' : 'closed')) return;
+    libraryFocusPending.current = false;
     const target = filePanelPinned
       ? workspaceRef.current?.querySelector<HTMLButtonElement>('#desktop-library button[aria-label="收起目录"]')
       : libraryLauncherRef.current;
-    // The surface/launcher may still be hidden while their motion hands off.
-    // Do not focus a hidden control, or steal focus if the user moves elsewhere.
-    let cancelled = false;
-    const frame = requestAnimationFrame(async () => {
-      const animatedElement = filePanelPinned
-        ? workspaceRef.current?.querySelector('.library-navigation-surface') : target;
-      await Promise.all((animatedElement?.getAnimations() ?? []).map(animation => animation.finished.catch(() => {})));
-      if (!cancelled && (document.activeElement === document.body ||
+    const frame = requestAnimationFrame(() => {
+      if (document.activeElement === document.body ||
           document.activeElement === libraryLauncherRef.current ||
-          document.activeElement === target)) {
+          document.activeElement === target) {
         target?.focus({ preventScroll: true });
       }
     });
-    return () => { cancelled = true; cancelAnimationFrame(frame); };
-  }, [filePanelPinned, isTabletUp, focusedWorkspace]);
+    return () => cancelAnimationFrame(frame);
+  }, [filePanelPinned, libraryPhase, isTabletUp, focusedWorkspace]);
 
   useEffect(() => {
     if (chatSelection) setAiOpen(true);
@@ -213,7 +219,7 @@ export default function App() {
           }`}
           style={workspaceLayoutStyle}
         >
-          {!focusedWorkspace && (isTabletUp ? !filePanelPinned : !libraryDrawerOpen) && (
+          {!focusedWorkspace && (isTabletUp ? !filePanelPinned && libraryPhase === 'closed' : !libraryDrawerOpen) && (
             <button ref={libraryLauncherRef} type="button"
               className="library-launcher directory-toggle absolute left-3 top-3 z-50 flex h-8 w-8 items-center justify-center text-jelly-text-muted"
               onClick={() => {
@@ -230,9 +236,10 @@ export default function App() {
           {/* Keep one full-width surface alive; the closed state owns zero layout space. */}
           {isTabletUp && !focusedWorkspace && (
             <div
+              ref={libraryNavigationRef}
               className="library-navigation relative z-40 shrink-0"
               data-open={filePanelPinned}
-              style={{ width: filePanelPinned ? "var(--library-panel-width)" : 0 }}
+              data-motion={libraryPhase}
               inert={!filePanelPinned}
               aria-hidden={!filePanelPinned || undefined}
               onKeyDown={(event) => {
@@ -241,7 +248,7 @@ export default function App() {
                 event.preventDefault(); setFilePanelPinned(false); libraryLauncherRef.current?.focus({ preventScroll: true });
               }}
             >
-              <div id="desktop-library" className="library-navigation-surface h-full">
+              <div ref={librarySurfaceRef} id="desktop-library" className="library-navigation-surface h-full">
                 <DirectoryTree
                   pinned
                   active={filePanelPinned}
@@ -256,7 +263,7 @@ export default function App() {
                   searchShortcutEnabled
                 />
               </div>
-              {filePanelPinned && libraryResizeHandle}
+              {filePanelPinned && libraryPhase === 'open' && libraryResizeHandle}
             </div>
           )}
 

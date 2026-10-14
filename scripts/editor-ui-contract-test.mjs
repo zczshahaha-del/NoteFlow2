@@ -332,7 +332,8 @@ assert.doesNotMatch(directoryTree, /searchQuery|searchResults\.map|正在检索�
 assert.match(directoryTree, /if \(!searchShortcutEnabled\) return/);
 assert.match(app, /searchShortcutEnabled\s*\/>/);
 assert.doesNotMatch(app, /hideCollapseControl/);
-assert.match(app, /isTabletUp \? !filePanelPinned : !libraryDrawerOpen/);
+assert.match(app, /isTabletUp \? !filePanelPinned && libraryPhase === 'closed' : !libraryDrawerOpen/);
+assert.match(app, /useDockedLibraryMotion/);
 assert.match(libraryDrawer, /event.nativeEvent.isComposing \|\| event.nativeEvent.keyCode === 229/);
 assert.match(librarySearch, /const SEARCH_DEBOUNCE_MS = 340/);
 assert.match(librarySearch, /onCompositionStart=\{handleCompositionStart\}/);
