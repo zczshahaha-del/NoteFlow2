@@ -87,6 +87,11 @@ export interface UserSettingsRecord {
 }
 
 let memoryEnabledCache = readLocalMemoryEnabled();
+let confirmedMemoryEnabled = memoryEnabledCache;
+let memoryContext = 0;
+let memoryWriteSequence = 0;
+let memoryWrites: Promise<unknown> = Promise.resolve();
+const pendingMemoryWrites = new Map<number, number>();
 
 function readLocalMemoryEnabled(): boolean {
   try {
@@ -106,30 +111,60 @@ export function isMemoryEnabled(): boolean {
   return memoryEnabledCache;
 }
 
-export function setMemoryEnabledLocal(enabled: boolean) {
+function publishMemoryEnabled(enabled: boolean) {
   memoryEnabledCache = enabled;
   writeLocalMemoryEnabled(enabled);
 }
 
+export function setMemoryEnabledLocal(enabled: boolean) {
+  memoryContext += 1; memoryWriteSequence += 1;
+  confirmedMemoryEnabled = enabled;
+  publishMemoryEnabled(enabled);
+}
+
 export async function loadMemorySettings(): Promise<UserSettingsRecord> {
+  const context = memoryContext, sequence = memoryWriteSequence;
+  const pendingAtStart = pendingMemoryWrites.get(context) ?? 0;
   const response = await apiFetch("/api/settings");
   if (!response.ok) throw new Error(await readApiError(response));
   const data = await readApiJson<{ settings: UserSettingsRecord }>(response);
-  setMemoryEnabledLocal(data.settings.memoryEnabled);
-  return data.settings;
+  if (typeof data.settings?.memoryEnabled !== 'boolean') throw new Error('记忆设置响应无效，请重试。');
+  if (context === memoryContext && sequence === memoryWriteSequence && !pendingAtStart && !pendingMemoryWrites.get(context)) {
+    confirmedMemoryEnabled = data.settings.memoryEnabled;
+    publishMemoryEnabled(confirmedMemoryEnabled);
+    return data.settings;
+  }
+  // Do not let an older GET undo a toggle or its failure rollback in the UI.
+  return { ...data.settings, memoryEnabled: memoryEnabledCache };
 }
 
-export async function setMemoryEnabled(enabled: boolean): Promise<UserSettingsRecord> {
-  setMemoryEnabledLocal(enabled);
-  const response = await apiFetch("/api/settings", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ memoryEnabled: enabled }),
+export function setMemoryEnabled(enabled: boolean): Promise<UserSettingsRecord> {
+  const context = memoryContext, sequence = ++memoryWriteSequence;
+  publishMemoryEnabled(enabled);
+  pendingMemoryWrites.set(context, (pendingMemoryWrites.get(context) ?? 0) + 1);
+  const result = memoryWrites.catch(() => undefined).then(async () => {
+    if (context !== memoryContext) throw new Error('设置上下文已变化，请重新读取后重试。');
+    const response = await apiFetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memoryEnabled: enabled }),
+    });
+    if (!response.ok) throw new Error(await readApiError(response));
+    const data = await readApiJson<{ settings: UserSettingsRecord }>(response);
+    if (typeof data.settings?.memoryEnabled !== 'boolean') throw new Error('记忆设置响应无效，请重试。');
+    if (context !== memoryContext) throw new Error('设置上下文已变化，请重新读取后重试。');
+    confirmedMemoryEnabled = data.settings.memoryEnabled;
+    if (sequence === memoryWriteSequence) publishMemoryEnabled(confirmedMemoryEnabled);
+    return { ...data.settings, memoryEnabled: memoryEnabledCache };
+  }).catch(error => {
+    if (context === memoryContext && sequence === memoryWriteSequence) publishMemoryEnabled(confirmedMemoryEnabled);
+    throw error;
+  }).finally(() => {
+    const remaining = (pendingMemoryWrites.get(context) ?? 1) - 1;
+    if (remaining) pendingMemoryWrites.set(context, remaining); else pendingMemoryWrites.delete(context);
   });
-  if (!response.ok) throw new Error(await readApiError(response));
-  const data = await readApiJson<{ settings: UserSettingsRecord }>(response);
-  setMemoryEnabledLocal(data.settings.memoryEnabled);
-  return data.settings;
+  memoryWrites = result.then(() => undefined, () => undefined);
+  return result;
 }
 
 export async function listMemories(includeDeleted = false): Promise<UserMemoryRecord[]> {

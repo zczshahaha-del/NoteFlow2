@@ -102,6 +102,6 @@ try {
     expectedEnabled: true, observedEnabled: memories.isMemoryEnabled(),
     persistedEnabled: localStorage.getItem('noteflow-memory-enabled') });
 
-  console.log(JSON.stringify({ auditCompleted: true, productFixed: false, actualStore: true,
+  console.log(JSON.stringify({ auditCompleted: true, mutatesProduct: false, allProbedRisksAbsent: findings.every(finding => !finding.riskConfirmed), actualStore: true,
     syntheticOnly: true, realNetworkRequests: 0, findings }, null, 2));
 } finally { await vite.close(); dom.window.close(); }
