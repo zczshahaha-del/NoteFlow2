@@ -1,0 +1,117 @@
+<style>
+#nf-clean-reading { color-scheme:light dark;--cr-paper:light-dark(#fdfdfc,#111820);--cr-panel:light-dark(#f5f6f5,#17212b);--cr-popover:light-dark(#fff,#222c37);--cr-ink:light-dark(#29313a,#e6edf3);--cr-muted:light-dark(#74818c,#9eafbd);--cr-line:light-dark(#e7eae9,#303e4b);--cr-hover:light-dark(#e9edee,#293b49);--cr-selected:light-dark(#e7eef2,#243d4c);--cr-avatar:light-dark(#c37870,#be7c70);--cr-code:light-dark(#f6f6f3,#17212b);--cr-red:light-dark(#c54f49,#fa9b91);--cr-blue:light-dark(#167eaa,#72c5ee);--cr-green:light-dark(#668a1d,#b6cf79);--cr-purple:light-dark(#a54873,#e9a6cf);--cr-white:light-dark(#fff,#fff);--cr-sidebar:240px;--cr-reader:624px;font:400 14px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;color:var(--cr-ink);padding-top:52px; }
+#nf-clean-reading :where(.cr-shell) * { box-sizing:border-box; }
+#nf-clean-reading :where(.cr-shell) button { font:inherit;border:0;color:inherit;background:transparent; }
+#nf-clean-reading [hidden] { display:none!important; }
+#nf-clean-reading .cr-shell { position:relative;min-width:0;min-height:800px;background:var(--cr-paper);overflow:hidden; }
+#nf-clean-reading .cr-icon-button { display:grid;place-items:center;width:32px;height:32px;border-radius:7px;flex:none;color:var(--cr-muted); }
+#nf-clean-reading .cr-icon-button svg { width:17px;height:17px;stroke-width:1.6; }
+#nf-clean-reading .cr-icon-button:hover { background:var(--cr-hover);color:var(--cr-ink); }
+#nf-clean-reading .cr-library-toggle { position:absolute;top:16px;left:14px;z-index:10; }
+#nf-clean-reading .cr-library { position:absolute;inset:0 auto 0 0;width:var(--cr-sidebar);background:var(--cr-panel);z-index:7;transform:translateX(-100%);visibility:hidden; }
+#nf-clean-reading[data-library="true"] .cr-library { transform:translateX(0);visibility:visible; }
+#nf-clean-reading .cr-library-heading { display:flex;align-items:center;justify-content:space-between;gap:8px;padding:16px 13px 28px 54px;min-height:76px; }
+#nf-clean-reading .cr-library-heading h2 { font-size:13px;font-weight:600;margin:0; }
+#nf-clean-reading .cr-library-tools { display:flex;align-items:center;gap:2px; }
+#nf-clean-reading .cr-placeholder { display:grid;place-items:center;width:24px;height:28px;color:var(--cr-muted); }
+#nf-clean-reading .cr-placeholder svg { width:16px;height:16px; }
+#nf-clean-reading .cr-file-list { padding:0 12px 90px; }
+#nf-clean-reading .cr-search { width:100%;min-height:36px;border:1px solid var(--cr-line);border-radius:7px;padding:6px 9px;background:var(--cr-paper);color:var(--cr-ink);font:inherit;margin-bottom:15px; }
+#nf-clean-reading .cr-row { display:flex;align-items:center;gap:9px;min-height:37px;padding:7px 11px;margin:3px 0;border-radius:7px;font-size:13px;white-space:nowrap; }
+#nf-clean-reading .cr-row svg { width:16px;height:16px;color:var(--cr-muted);flex:none; }
+#nf-clean-reading .cr-row[data-folder] { font-weight:500;margin-bottom:10px; }
+#nf-clean-reading .cr-row[data-child] { margin-left:12px; }
+#nf-clean-reading .cr-row[data-selected] { background:var(--cr-selected);font-weight:500; }
+#nf-clean-reading .cr-row .cr-more { margin-left:auto;width:14px; }
+#nf-clean-reading .cr-footer { position:absolute;left:12px;bottom:12px; }
+#nf-clean-reading .cr-account { display:grid;place-items:center;width:44px;height:44px;border-radius:50%; }
+#nf-clean-reading .cr-avatar { display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--cr-avatar);color:var(--cr-white); }
+#nf-clean-reading .cr-avatar svg { width:17px;height:17px;stroke-width:1.6; }
+#nf-clean-reading .cr-account[aria-expanded="true"] .cr-avatar { box-shadow:0 0 0 3px var(--cr-hover); }
+#nf-clean-reading .cr-content { padding-left:0;padding-right:0; }
+#nf-clean-reading[data-library="true"] .cr-content { padding-left:var(--cr-sidebar); }
+#nf-clean-reading[data-ai="true"] .cr-content { padding-right:300px; }
+#nf-clean-reading .cr-document { width:min(var(--cr-reader),calc(100% - 96px));margin:0 auto;padding:64px 0 80px; }
+#nf-clean-reading .cr-document h1 { font-size:32px;line-height:1.3;font-weight:650;letter-spacing:-.7px;margin:0 0 13px; }
+#nf-clean-reading .cr-metadata { display:flex;align-items:center;gap:9px;color:var(--cr-muted);font-size:11px;margin:0 0 38px; }
+#nf-clean-reading .cr-metadata .cr-icon-button { margin-left:auto; }
+#nf-clean-reading .cr-document h2 { font-size:21px;font-weight:600;letter-spacing:-.3px;margin:0 0 16px; }
+#nf-clean-reading .cr-document h3 { font-size:16px;font-weight:600;margin:30px 0 13px; }
+#nf-clean-reading .cr-document p { font-size:14px;line-height:1.95;margin:13px 0; }
+#nf-clean-reading .cr-document strong { font-weight:600; }
+#nf-clean-reading .cr-document p code { font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--cr-code);color:var(--cr-red);padding:2px 5px;border-radius:4px; }
+#nf-clean-reading .cr-code-block { position:relative;border-radius:10px;background:var(--cr-code);padding:35px 20px 20px;margin:16px 0 21px; }
+#nf-clean-reading .cr-language { position:absolute;top:10px;right:15px;color:var(--cr-muted);font-size:11px; }
+#nf-clean-reading pre { margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.95 ui-monospace,SFMono-Regular,Menlo,monospace; }
+#nf-clean-reading pre code { font:inherit; }
+#nf-clean-reading .cr-keyword { color:var(--cr-blue); }
+#nf-clean-reading .cr-type,#nf-clean-reading .cr-string { color:var(--cr-green); }
+#nf-clean-reading .cr-number { color:var(--cr-purple); }
+#nf-clean-reading .cr-comment { color:var(--cr-muted); }
+#nf-clean-reading .cr-callout { display:flex;gap:10px;background:light-dark(#edf3ed,#20382f);padding:14px 16px;border-radius:8px;margin-top:20px;font-size:13px;line-height:1.9; }
+#nf-clean-reading .cr-callout svg { width:17px;height:17px;color:var(--cr-green);flex:none;margin-top:4px; }
+#nf-clean-reading .cr-chapter-marks { position:absolute;right:17px;top:210px;display:flex;flex-direction:column;align-items:flex-end;gap:13px;z-index:2; }
+#nf-clean-reading .cr-chapter-marks span { height:2px;width:10px;border-radius:1px;background:var(--cr-line); }
+#nf-clean-reading .cr-chapter-marks span:first-child { width:17px;background:var(--cr-muted); }
+#nf-clean-reading .cr-veil { position:absolute;inset:0;z-index:3;background:light-dark(#27323c16,#00000045);width:100%;height:100%; }
+#nf-clean-reading .cr-menu { position:absolute;left:52px;bottom:0;width:224px;z-index:8;background:var(--cr-popover);border:1px solid var(--cr-line);border-radius:12px;padding:7px;box-shadow:0 8px 24px light-dark(#24354414,#00000038); }
+#nf-clean-reading .cr-identity { display:flex;align-items:center;gap:9px;font-size:13px;font-weight:500;padding:5px 8px 9px; }
+#nf-clean-reading .cr-identity .cr-avatar { width:28px;height:28px;flex:none; }
+#nf-clean-reading .cr-identity .cr-icon-button { margin-left:auto; }
+#nf-clean-reading .cr-menu-row { display:flex;align-items:center;gap:10px;padding:8px 10px;min-height:36px;font-size:13px; }
+#nf-clean-reading .cr-menu-row svg { width:17px;height:17px;color:var(--cr-muted); }
+#nf-clean-reading .cr-separator { height:1px;background:var(--cr-line);margin:3px 8px; }
+#nf-clean-reading .cr-ai-launcher { position:absolute;right:16px;bottom:16px;width:36px;height:36px;border-radius:50%;z-index:6; }
+#nf-clean-reading .cr-ai-panel { position:absolute;inset:0 0 0 auto;width:300px;background:var(--cr-panel);border-left:1px solid var(--cr-line);z-index:5;padding:22px 18px; }
+#nf-clean-reading .cr-ai-heading { display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:500; }
+#nf-clean-reading .cr-ai-empty { margin-top:110px;text-align:center;color:var(--cr-muted);font-size:13px; }
+#nf-clean-reading .cr-ai-empty svg { width:22px;height:22px;display:block;margin:0 auto 12px; }
+#nf-clean-reading .cr-composer { margin-top:70px;border:1px solid var(--cr-line);border-radius:14px;background:var(--cr-paper);padding:12px; }
+#nf-clean-reading .cr-context { display:inline-block;font-size:11px;color:var(--cr-muted);background:var(--cr-panel);padding:3px 8px;border-radius:6px;margin-bottom:8px; }
+#nf-clean-reading .cr-composer textarea { display:block;width:100%;resize:vertical;min-height:88px;background:transparent;border:0;color:var(--cr-ink);font:inherit;font-size:13px;line-height:1.7; }
+#nf-clean-reading[data-ai="true"] .cr-chapter-marks { display:none; }
+@media(hover:hover) { #nf-clean-reading .cr-account:hover .cr-avatar { box-shadow:0 0 0 3px var(--cr-hover); } }
+@media(min-width:900px) { #nf-clean-reading .cr-veil { display:none!important; } }
+@media(max-width:899px) { #nf-clean-reading .cr-content,#nf-clean-reading[data-library="true"] .cr-content,#nf-clean-reading[data-ai="true"] .cr-content { padding:0; } #nf-clean-reading .cr-library { width:min(var(--cr-sidebar),calc(100% - 52px));box-shadow:8px 0 24px light-dark(#26334012,#00000030); } #nf-clean-reading .cr-ai-panel { width:min(360px,calc(100% - 24px)); } }
+@media(max-width:550px) { #nf-clean-reading .cr-document { width:calc(100% - 40px);padding-top:80px; } #nf-clean-reading .cr-document h1 { font-size:28px; } #nf-clean-reading .cr-document h2 { font-size:19px; } #nf-clean-reading .cr-metadata { gap:6px;flex-wrap:wrap; } #nf-clean-reading .cr-code-block { padding-inline:14px; } #nf-clean-reading .cr-chapter-marks { display:none; } #nf-clean-reading .cr-library-toggle { top:10px;left:10px; } }
+@media(pointer:coarse) { #nf-clean-reading .cr-icon-button { min-width:44px;min-height:44px; } #nf-clean-reading .cr-menu-row { min-height:44px; } #nf-clean-reading .cr-search,#nf-clean-reading .cr-composer textarea { font-size:16px; } #nf-clean-reading .cr-library-heading { padding-left:60px;padding-right:8px; } }
+@media(prefers-reduced-motion:no-preference) { #nf-clean-reading .cr-library { transition:transform 260ms cubic-bezier(.22,1,.36,1),visibility 260ms; } #nf-clean-reading .cr-content { transition:padding 260ms cubic-bezier(.22,1,.36,1); } #nf-clean-reading .cr-icon-button { transition:background-color 140ms ease; } }
+</style>
+<div id="nf-clean-reading" data-library="false" data-ai="false" aria-label="无顶栏、头像随知识库收起的正文工作台候选">
+  <div class="cr-shell">
+    <button class="cr-library-toggle cr-icon-button cursor-interaction" data-action="library" type="button" aria-label="展开知识库" aria-expanded="false" aria-controls="cr-library"><i data-lucide="panel-left" aria-hidden="true"></i></button>
+    <button class="cr-veil cursor-interaction" data-action="dismiss" type="button" aria-label="收起面板" hidden></button>
+    <aside class="cr-library" id="cr-library" aria-label="知识库" inert aria-hidden="true">
+      <div class="cr-library-heading"><h2>知识库</h2><div class="cr-library-tools"><button class="cr-icon-button cursor-interaction" data-action="search" type="button" aria-label="搜索知识库" aria-expanded="false" aria-controls="cr-search"><i data-lucide="search" aria-hidden="true"></i></button><span class="cr-placeholder" aria-label="新建笔记入口示意"><i data-lucide="plus" aria-hidden="true"></i></span></div></div>
+      <div class="cr-file-list"><input class="cr-search" id="cr-search" type="search" aria-label="搜索示例笔记" placeholder="搜索笔记" hidden><div class="cr-row" data-folder><i data-lucide="chevron-down" aria-hidden="true"></i><i data-lucide="folder" aria-hidden="true"></i>全栈开发</div><div class="cr-row" data-child data-note="Git 入门学习笔记"><i data-lucide="file-text" aria-hidden="true"></i>Git 入门学习笔记</div><div class="cr-row" data-child data-note="Redis"><i data-lucide="file-text" aria-hidden="true"></i>Redis</div><div class="cr-row" data-child data-note="Python 面试常见问题"><i data-lucide="file-text" aria-hidden="true"></i>Python 面试常见问题</div><div class="cr-row" data-selected data-note="Go 语言"><i data-lucide="file-text" aria-hidden="true"></i>Go 语言<i class="cr-more" data-lucide="ellipsis" aria-hidden="true"></i></div></div>
+      <div class="cr-footer"><button class="cr-account cursor-interaction" type="button" data-action="account" aria-label="我的账号菜单" aria-expanded="false" aria-controls="cr-account-menu" aria-haspopup="dialog"><span class="cr-avatar"><i data-lucide="user-round" aria-hidden="true"></i></span></button><div class="cr-menu" id="cr-account-menu" role="dialog" aria-label="我的账号" hidden><div class="cr-identity"><span class="cr-avatar"><i data-lucide="user-round" aria-hidden="true"></i></span><span>我的账号</span><button class="cr-icon-button cursor-interaction" type="button" data-action="close-account" aria-label="关闭账号菜单"><i data-lucide="x" aria-hidden="true"></i></button></div><div class="cr-separator"></div><div class="cr-menu-row"><i data-lucide="settings" aria-hidden="true"></i>设置</div><div class="cr-menu-row"><i data-lucide="trash-2" aria-hidden="true"></i>回收站</div><div class="cr-separator"></div><div class="cr-menu-row"><i data-lucide="log-out" aria-hidden="true"></i>退出登录</div></div></div>
+    </aside>
+    <main class="cr-content"><article class="cr-document" aria-label="示例笔记正文"><h1>Go 语言</h1><div class="cr-metadata"><span>创建于 2026-07-23</span><span>·</span><span>更新于 2026-10-13</span><span class="cr-icon-button" aria-label="文档显示设置入口示意"><i data-lucide="ellipsis" aria-hidden="true"></i></span></div><h2>2. 变量、常量与基本数据类型</h2><p>Go 是一门静态类型语言。变量的类型在编译时确定，让代码更清晰，也更容易维护。</p><h3>2.1 变量的声明与初始化</h3><p>使用 <code>var</code> 声明变量，可以写出类型，也可以让编译器自动推断。</p><div class="cr-code-block"><span class="cr-language">Go</span><pre><code data-language="go">var name string = "张成"
+var age = 24 // 自动推断为 int</code></pre></div><p><strong>短变量声明：</strong>在函数内部，用 <code>:=</code> 声明并初始化变量，写法更简洁。</p><div class="cr-code-block"><span class="cr-language">Go</span><pre><code data-language="go">name := "张成"
+age := 24
+height := 180</code></pre></div><div class="cr-callout"><i data-lucide="lightbulb" aria-hidden="true"></i><span>先保证表达清楚，再选择更简洁的写法。<strong>代码是写给人读的。</strong></span></div></article></main>
+    <div class="cr-chapter-marks" aria-label="章节目录位置示意"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+    <button class="cr-ai-launcher cr-icon-button cursor-interaction" data-action="ai" type="button" aria-label="打开 AI 助手" aria-expanded="false" aria-controls="cr-ai"><i data-lucide="sparkles" aria-hidden="true"></i></button>
+    <aside class="cr-ai-panel" id="cr-ai" aria-label="AI 助手示意" hidden><div class="cr-ai-heading"><span>AI 助手</span><button class="cr-icon-button cursor-interaction" type="button" data-action="ai" aria-label="收起 AI 助手"><i data-lucide="panel-right" aria-hidden="true"></i></button></div><div class="cr-ai-empty"><i data-lucide="sparkles" aria-hidden="true"></i>基于当前笔记提问</div><div class="cr-composer"><span class="cr-context">Go 语言</span><textarea aria-label="示例对话草稿" placeholder="使用 AI 处理各种任务…"></textarea></div></aside>
+  </div>
+</div>
+<script>
+(() => {
+ const root=document.getElementById('nf-clean-reading'),narrow=matchMedia('(max-width:899px)');
+ const state={library:false,ai:false,account:false,search:false};let revision=0;
+ const library=root.querySelector('.cr-library'),ai=root.querySelector('.cr-ai-panel'),account=root.querySelector('.cr-menu'),search=root.querySelector('.cr-search');
+ const toggle=root.querySelector('[data-action="library"]'),aiToggle=root.querySelector('.cr-ai-launcher'),accountToggle=root.querySelector('[data-action="account"]');
+ function render(){root.dataset.library=String(state.library);root.dataset.ai=String(state.ai);library.inert=!state.library;library.setAttribute('aria-hidden',String(!state.library));ai.hidden=!state.ai;aiToggle.hidden=state.ai;account.hidden=!state.account;search.hidden=!state.search;root.querySelector('.cr-veil').hidden=!(narrow.matches&&(state.library||state.ai));root.querySelector('.cr-content').inert=narrow.matches&&(state.library||state.ai);toggle.setAttribute('aria-expanded',String(state.library));toggle.setAttribute('aria-label',state.library?'收起知识库':'展开知识库');aiToggle.setAttribute('aria-expanded',String(state.ai));accountToggle.setAttribute('aria-expanded',String(state.account));root.querySelector('[data-action="search"]').setAttribute('aria-expanded',String(state.search));}
+ function persist(){revision++;window.openai?.setWidgetState?.({modelContent:{design:'noteflow-clean-reading',proposal:'无顶栏，头像随知识库整体收起',library:state.library,ai:state.ai},privateContent:{revision,...state}}).catch(()=>{});}
+ function apply(snapshot){if(snapshot?.modelContent?.design!=='noteflow-clean-reading'||!snapshot.privateContent)return;const data=snapshot.privateContent;if(Number(data.revision||0)<revision)return;revision=Number(data.revision||0);['library','ai','account','search'].forEach(k=>{if(typeof data[k]==='boolean')state[k]=data[k]});if(state.library&&state.ai)state.ai=false;if(!state.library)state.account=false;render();}
+ render();apply(window.openai?.widgetState);
+ root.addEventListener('click',event=>{const action=event.target.closest('button')?.dataset.action;if(!action){if(state.account&&!event.target.closest('.cr-menu')){state.account=false;render();persist();}return;}if(action==='library'){state.library=!state.library;if(state.library)state.ai=false;state.account=false;}else if(action==='ai'){state.ai=!state.ai;if(state.ai)state.library=false;state.account=false;}else if(action==='account')state.account=!state.account;else if(action==='close-account'){state.account=false;accountToggle.focus();}else if(action==='search')state.search=!state.search;else if(action==='dismiss'){const wasLibrary=state.library;state.library=false;state.ai=false;state.account=false;render();(wasLibrary?toggle:aiToggle).focus();}render();if(action==='account'&&state.account)root.querySelector('[data-action="close-account"]').focus();if(action==='search'&&state.search)search.focus();if(action==='ai'){if(state.ai)root.querySelector('.cr-ai-heading button').focus();else aiToggle.focus();}persist();});
+ root.addEventListener('keydown',event=>{if(event.key!=='Escape'||event.isComposing)return;if(state.account){state.account=false;render();accountToggle.focus();}else if(state.search&&library.contains(event.target)){state.search=false;render();root.querySelector('[data-action="search"]').focus();}else if(state.library){state.library=false;render();toggle.focus();}else if(state.ai){state.ai=false;render();aiToggle.focus();}else return;persist();});
+ search.addEventListener('input',()=>{const query=search.value.trim().toLocaleLowerCase();root.querySelectorAll('[data-note]').forEach(row=>row.hidden=!row.dataset.note.toLocaleLowerCase().includes(query));});
+ narrow.addEventListener('change',()=>{state.library=false;state.ai=false;state.account=false;render();});
+ window.addEventListener('openai:set_globals',event=>apply(event.detail?.globals?.widgetState));
+ const escape=text=>text.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+ root.querySelectorAll('code[data-language="go"]').forEach(code=>{const source=code.textContent,pattern=/\/\/[^\n]*|"(?:\\.|[^"\\])*"|\b(?:var|const|func|return|if|else|type|struct)\b|\b(?:string|int|bool|float64)\b|\b\d+(?:\.\d+)?\b/g;let html='',last=0;for(const token of source.matchAll(pattern)){html+=escape(source.slice(last,token.index));const value=token[0],kind=value.startsWith('//')?'comment':value.startsWith('"')?'string':/^\d/.test(value)?'number':/^(string|int|bool|float64)$/.test(value)?'type':'keyword';html+='<span class="cr-'+kind+'">'+escape(value)+'</span>';last=token.index+value.length;}code.innerHTML=html+escape(source.slice(last));});
+ if(globalThis.Tweak){const options={reader:624};const update=()=>root.style.setProperty('--cr-reader',options.reader+'px');const tweak=new Tweak({container:root,onChange:update});tweak.addSlider(options,'reader',{label:'正文首选宽度',min:600,max:680,step:8,unit:'px'});}
+})();
+</script>
