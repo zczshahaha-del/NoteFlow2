@@ -330,7 +330,9 @@ assert.match(directoryTree, /<ChevronDown[\s\S]*?size=\{14\}[\s\S]*?strokeWidth=
 assert.match(directoryTree, /<LibrarySearchDialog[\s\S]*?open=\{searchOpen\}/);
 assert.doesNotMatch(directoryTree, /searchQuery|searchResults\.map|正在检索知识库/);
 assert.match(directoryTree, /if \(!searchShortcutEnabled\) return/);
-assert.match(app, /hideCollapseControl[\s\S]*?searchShortcutEnabled\s*\/>/);
+assert.match(app, /searchShortcutEnabled\s*\/>/);
+assert.doesNotMatch(app, /hideCollapseControl/);
+assert.match(app, /isTabletUp \? !filePanelPinned : !libraryDrawerOpen/);
 assert.match(libraryDrawer, /event.nativeEvent.isComposing \|\| event.nativeEvent.keyCode === 229/);
 assert.match(librarySearch, /const SEARCH_DEBOUNCE_MS = 340/);
 assert.match(librarySearch, /onCompositionStart=\{handleCompositionStart\}/);

@@ -75,6 +75,7 @@ export default function App() {
   const [libraryWidth, setLibraryWidth] = useState(loadLibraryWidth);
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
   const [filePanelPinned, setFilePanelPinned] = useState(true);
+  const previousFilePanelPinned = useRef(filePanelPinned);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiPanelWidth, setAiPanelWidth] = useState(AI_PANEL_DEFAULT_WIDTH);
   const [libraryDrawerOpen, setLibraryDrawerOpen] = useState(false);
@@ -162,6 +163,30 @@ export default function App() {
   }, [isTabletUp]);
 
   useEffect(() => {
+    const changed = previousFilePanelPinned.current !== filePanelPinned;
+    previousFilePanelPinned.current = filePanelPinned;
+    if (!changed || !isTabletUp || focusedWorkspace) return;
+    const target = filePanelPinned
+      ? workspaceRef.current?.querySelector<HTMLButtonElement>('#desktop-library button[aria-label="收起目录"]')
+      : libraryLauncherRef.current;
+    // Visibility stays hidden during the surface's entrance transition.
+    // Do not focus a hidden control, or steal focus if the user moves elsewhere.
+    let cancelled = false;
+    const frame = requestAnimationFrame(async () => {
+      if (filePanelPinned) {
+        const surface = workspaceRef.current?.querySelector('.library-navigation-surface');
+        await Promise.all((surface?.getAnimations() ?? []).map(animation => animation.finished.catch(() => {})));
+      }
+      if (!cancelled && (document.activeElement === document.body ||
+          document.activeElement === libraryLauncherRef.current ||
+          document.activeElement === target)) {
+        target?.focus({ preventScroll: true });
+      }
+    });
+    return () => { cancelled = true; cancelAnimationFrame(frame); };
+  }, [filePanelPinned, isTabletUp, focusedWorkspace]);
+
+  useEffect(() => {
     if (chatSelection) setAiOpen(true);
   }, [chatSelection?.id]);
 
@@ -189,14 +214,14 @@ export default function App() {
           }`}
           style={workspaceLayoutStyle}
         >
-          {!focusedWorkspace && (isTabletUp || !libraryDrawerOpen) && (
+          {!focusedWorkspace && (isTabletUp ? !filePanelPinned : !libraryDrawerOpen) && (
             <button ref={libraryLauncherRef} type="button"
               className="library-launcher directory-toggle absolute left-3 top-3 z-50 flex h-8 w-8 items-center justify-center text-jelly-text-muted"
               onClick={() => {
                 if (isTabletUp) setFilePanelPinned((open) => !open);
                 else { setAiOpen(false); setLibraryDrawerOpen(true); }
               }}
-              aria-label={isTabletUp && filePanelPinned ? "收起目录" : isTabletUp ? "展开目录" : "打开知识库"}
+              aria-label={isTabletUp ? "展开目录" : "打开知识库"}
               aria-expanded={isTabletUp ? filePanelPinned : libraryDrawerOpen}
               aria-controls={isTabletUp ? "desktop-library" : undefined}>
               <SidebarToggleIcon />
@@ -221,7 +246,6 @@ export default function App() {
                 <DirectoryTree
                   pinned
                   active={filePanelPinned}
-                  hideCollapseControl
                   onPinnedChange={setFilePanelPinned}
                   themeMode={themeMode}
                   onThemeModeChange={setThemeMode}

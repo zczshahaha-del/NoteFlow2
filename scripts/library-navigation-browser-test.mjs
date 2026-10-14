@@ -43,6 +43,10 @@ async function headerCheck(page){
  assert.equal(await title.count(),1);
  assert.equal(await title.evaluate(n=>n.parentElement.textContent.trim()),'知识库','Library header has no note count');
  assert.equal(await title.evaluate(n=>n.parentElement.querySelector('svg')?.getAttribute('width')),'16','Book icon is retained');
+ const controls=await page.evaluate(()=>['搜索全部笔记','新建','收起目录'].map(label=>{const n=document.querySelector(`.directory-tree button[aria-label="${label}"]`);const r=n.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};}));
+ assert(controls[0].x<controls[1].x && controls[1].x<controls[2].x,'Collapse stays after search and new, at the right of the header');
+ assert(controls.every(n=>Math.abs(n.y+n.height/2-controls[0].y-controls[0].height/2)<1),'All three header controls share a center line, including larger touch targets');
+ assert.equal(await page.locator('.library-launcher').count(),0,'Expanded library has no separate top-left toggle');
 }
 async function collapsedSurfaceCheck(page) {
  const state=await page.locator('.library-navigation').evaluate(n=>({
@@ -140,6 +144,8 @@ try {
    assert.equal(await page.getByRole('separator',{name:'调整目录宽度'}).count(),0);
    await page.evaluate(()=>{window.openingFrames=[];window.openingSampling=true;const sample=()=>{const nav=document.querySelector('.library-navigation').getBoundingClientRect(),body=document.querySelector('.workspace-center-layer').getBoundingClientRect(),text=document.querySelector('.note-page').getBoundingClientRect();window.openingFrames.push({width:nav.width,edge:nav.right,body:body.x,text:text.x});if(window.openingSampling)requestAnimationFrame(sample)};requestAnimationFrame(sample)});
    await page.getByRole('button',{name:'展开目录',exact:true}).click();await settled(page);
+   await page.waitForFunction(()=>document.activeElement===document.querySelector('.directory-tree button[aria-label="收起目录"]'));
+   assert(await page.getByRole('button',{name:'收起目录',exact:true}).evaluate(n=>n===document.activeElement),'Opening transfers focus to the restored header control');
    const openingFrames=await page.evaluate(()=>{window.openingSampling=false;return window.openingFrames});
    assert(openingFrames.some(n=>n.width>0&&n.width<236),'Opening has intermediate normal-flow widths');
    assert(openingFrames.every(n=>Math.abs(n.edge-n.body)<1&&n.text>=n.edge),'No overlap during opening either');
