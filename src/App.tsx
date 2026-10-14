@@ -1,5 +1,5 @@
 import { lazy, Suspense, useRef, useCallback, useState, useEffect } from "react";
-import { BookOpen, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { AppProvider } from "./store";
 import DirectoryTree from "./components/DirectoryTree";
 import AIDraftWorkspace from "./components/AIDraftWorkspace";
@@ -9,6 +9,7 @@ import LoginPage from "./components/LoginPage";
 import NoteOpeningStatus from "./components/NoteOpeningStatus";
 import LibraryDrawer from "./components/LibraryDrawer";
 import LibraryResizeHandle from "./components/LibraryResizeHandle";
+import SidebarToggleIcon from "./components/SidebarToggleIcon";
 import "./components/library-navigation.css";
 import { useAuthSession } from "./hooks/useAuthSession";
 import { useChatSlice, useDraftSlice } from "./store/selectors";
@@ -69,6 +70,7 @@ function useMediaQuery(query: string) {
 
 export default function App() {
   const workspaceRef = useRef<HTMLDivElement>(null);
+  const libraryLauncherRef = useRef<HTMLButtonElement>(null);
   const [libraryWidth, setLibraryWidth] = useState(loadLibraryWidth);
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
   const [filePanelPinned, setFilePanelPinned] = useState(true);
@@ -101,7 +103,7 @@ export default function App() {
     ? Math.max(220, Math.min(420, viewportWidth - desktopRightWidth - 416)) : 420;
   const effectiveLibraryWidth = Math.min(libraryWidth ?? (isDesktop ? 260 : 280), libraryMaxWidth);
   const desktopLeftWidth = isDesktop && !focusedWorkspace
-    ? (filePanelPinned ? "var(--library-panel-width)" : "52px") : "0px";
+    ? (filePanelPinned ? "var(--library-panel-width)" : "0px") : "0px";
   const workspaceLayoutStyle = {
     "--ai-panel-width": `${aiPanelWidth}px`,
     "--library-panel-width": `${effectiveLibraryWidth}px`,
@@ -185,31 +187,50 @@ export default function App() {
           }`}
           style={workspaceLayoutStyle}
         >
-          {/* Persistent library navigation: full panel on desktop, icon rail on tablet. */}
+          {!focusedWorkspace && (isDesktop || !libraryDrawerOpen) && (
+            <button ref={libraryLauncherRef} type="button"
+              className="library-launcher directory-toggle absolute left-3 top-3 z-50 flex h-8 w-8 items-center justify-center text-jelly-text-muted"
+              onClick={() => {
+                if (isDesktop) setFilePanelPinned((open) => !open);
+                else { setAiOpen(false); setLibraryDrawerOpen(true); }
+              }}
+              aria-label={isDesktop && filePanelPinned ? "收起目录" : isTabletUp ? "展开目录" : "打开知识库"}
+              aria-expanded={isDesktop ? filePanelPinned : libraryDrawerOpen}
+              aria-controls={isDesktop ? "desktop-library" : undefined}>
+              <SidebarToggleIcon />
+            </button>
+          )}
+
+          {/* Keep one full-width surface alive; the closed state owns zero layout space. */}
           {isTabletUp && !focusedWorkspace && (
             <div
               className="library-navigation relative z-40 shrink-0"
-              style={{ width: isDesktop && filePanelPinned ? "var(--library-panel-width)" : 52 }}
+              data-open={isDesktop && filePanelPinned}
+              style={{ width: isDesktop && filePanelPinned ? "var(--library-panel-width)" : 0 }}
+              inert={!isDesktop || !filePanelPinned}
+              aria-hidden={!isDesktop || !filePanelPinned || undefined}
+              onKeyDown={(event) => {
+                if (event.key !== "Escape" || event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+                if ((event.target as HTMLElement).closest('[role="dialog"], [role="alertdialog"], input, textarea, [contenteditable="true"]')) return;
+                event.preventDefault(); setFilePanelPinned(false); libraryLauncherRef.current?.focus({ preventScroll: true });
+              }}
             >
-              <DirectoryTree
-                pinned={isDesktop ? filePanelPinned : false}
-                onPinnedChange={(pinned) => {
-                  if (isDesktop) {
-                    setFilePanelPinned(pinned);
-                  } else if (pinned) {
-                    setAiOpen(false);
-                    setLibraryDrawerOpen(true);
-                  }
-                }}
-                themeMode={themeMode}
-                onThemeModeChange={setThemeMode}
-                userEmail={session.user.email}
-                userEmailVerified={session.user.emailVerified}
-                userName={session.user.displayName}
-                onEmailChanged={updateSession}
-                onSignOut={signOut}
-                searchShortcutEnabled={isDesktop || !libraryDrawerOpen}
-              />
+              <div id="desktop-library" className="library-navigation-surface h-full">
+                <DirectoryTree
+                  pinned
+                  active={isDesktop && filePanelPinned}
+                  hideCollapseControl
+                  onPinnedChange={setFilePanelPinned}
+                  themeMode={themeMode}
+                  onThemeModeChange={setThemeMode}
+                  userEmail={session.user.email}
+                  userEmailVerified={session.user.emailVerified}
+                  userName={session.user.displayName}
+                  onEmailChanged={updateSession}
+                  onSignOut={signOut}
+                  searchShortcutEnabled={isDesktop || !libraryDrawerOpen}
+                />
+              </div>
               {isDesktop && filePanelPinned && libraryResizeHandle}
             </div>
           )}
@@ -268,21 +289,6 @@ export default function App() {
             <LibraryDrawer open={aiOpen} side="right" onClose={() => setAiOpen(false)}>
                 <AIPanel onCollapse={() => setAiOpen(false)} />
             </LibraryDrawer>
-          )}
-
-          {!isTabletUp && !focusedWorkspace && !libraryDrawerOpen && (
-            <button
-              type="button"
-              className="floating-launcher absolute left-3 top-3 z-50 flex h-10 items-center gap-2 px-3 text-[13px] font-medium text-jelly-text-soft"
-              onClick={() => {
-                setAiOpen(false);
-                setLibraryDrawerOpen(true);
-              }}
-              aria-label="打开知识库"
-            >
-              <BookOpen size={16} strokeWidth={1.8} />
-              <span className="hidden min-[420px]:inline">知识库</span>
-            </button>
           )}
 
           {!focusedWorkspace && !aiOpen && (

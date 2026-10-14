@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   ChevronDown,
   Folder,
@@ -476,6 +477,8 @@ type DirectoryTreeProps = {
   onPinnedChange: (pinned: boolean) => void;
   onFileOpen?: () => void;
   searchShortcutEnabled?: boolean;
+  active?: boolean;
+  hideCollapseControl?: boolean;
 } & Pick<AccountMenuProps, "themeMode" | "onThemeModeChange" | "userEmail" | "userEmailVerified" | "userName" | "onEmailChanged" | "onSignOut">;
 
 export default function DirectoryTree({
@@ -490,6 +493,8 @@ export default function DirectoryTree({
   onSignOut,
   onFileOpen,
   searchShortcutEnabled = true,
+  active = true,
+  hideCollapseControl = false,
 }: DirectoryTreeProps) {
   const {
     treeData,
@@ -521,6 +526,11 @@ export default function DirectoryTree({
   const newMenuRef = useRef<HTMLDivElement>(null);
   const lastDeleteNodeRef = useRef<FileNode | null>(null);
   const expanded = pinned;
+  useEffect(() => {
+    if (active) return;
+    setSearchOpen(false); setNewMenuOpen(false); setNewTooltipOpen(false);
+    setMenuNodeId(null); setNewFolderOpen(false); setMovingNode(null); setDeleteTarget(null);
+  }, [active]);
 
   const filteredTree = useMemo(
     () => sortPinnedFirst(treeData),
@@ -860,7 +870,7 @@ export default function DirectoryTree({
                     </button>
                   </SoftMenu>
                 </div>
-                <div className="group/collapse-directory relative ml-1">
+                {!hideCollapseControl && <div className="group/collapse-directory relative ml-1">
                   <button
                     type="button"
                     className="directory-toggle flex h-8 w-8 items-center justify-center text-jelly-text-muted"
@@ -878,7 +888,7 @@ export default function DirectoryTree({
                   >
                     收起目录
                   </span>
-                </div>
+                </div>}
               </div>
             </div>
           </>
@@ -951,9 +961,10 @@ export default function DirectoryTree({
         onSelect={handleSearchSelect}
       />
 
-      <div data-account-footer className={expanded ? "px-3 py-2" : "flex justify-center py-2"}>
+      {expanded && <div data-account-footer className="px-3 py-2">
         <AccountMenu
-          compact={!expanded}
+          compact
+          active={active}
           themeMode={themeMode}
           onThemeModeChange={onThemeModeChange}
           userEmail={userEmail}
@@ -963,9 +974,9 @@ export default function DirectoryTree({
           onSignOut={onSignOut}
           trashCount={deletedNotes.length}
         />
-      </div>
+      </div>}
 
-      {newFolderOpen && expanded && (
+      {newFolderOpen && expanded && createPortal(
         <div className="fixed inset-0 z-[90] grid place-items-center bg-[#26343d]/20 p-4 backdrop-blur-[2px]">
           <button
             type="button"
@@ -1074,10 +1085,10 @@ export default function DirectoryTree({
               </div>
             </footer>
           </section>
-        </div>
+        </div>, document.body
       )}
 
-      {movingNode && expanded && (
+      {movingNode && expanded && createPortal(
         <div className="fixed inset-0 z-[90] grid place-items-center bg-[#26343d]/20 p-4 backdrop-blur-[2px]">
           <button
             type="button"
@@ -1175,7 +1186,7 @@ export default function DirectoryTree({
               </div>
             </footer>
           </section>
-        </div>
+        </div>, document.body
       )}
 
       <OverlayDialog open={Boolean(deleteTarget && expanded)} onClose={cancelDeleteTarget} themeMode={themeMode}

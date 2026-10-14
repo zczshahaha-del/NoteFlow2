@@ -385,7 +385,10 @@ assert.match(directoryTree, /border border-jelly-border bg-white[\s\S]*?text-jel
 assert.match(directoryTree, /<OverlayDialog open=\{Boolean\(deleteTarget && expanded\)\}/);
 assert.match(directoryTree, /role="alertdialog"/);
 assert.doesNotMatch(directoryTree, /getDeleteConfirmPosition/);
-assert.match(directoryTree, /compact=\{!expanded\}/);
+assert.match(directoryTree, /<AccountMenu\s+compact\s+active=\{active\}/);
+assert.match(directoryTree, /\{expanded && <div data-account-footer/);
+assert.match(app, /data-open=\{isDesktop && filePanelPinned\}/);
+assert.match(app, /inert=\{!isDesktop \|\| !filePanelPinned\}/);
 assert.match(directoryTree, /trashCount=\{deletedNotes\.length\}/);
 assert.doesNotMatch(directoryTree, /trashOpen|onOpenTrash/);
 assert.doesNotMatch(directoryTree, /max-h-36/);
@@ -414,7 +417,7 @@ assert.doesNotMatch(accountMenu, /nf-divider/);
 assert.equal((accountMenu.match(/className="nf-account-separator"/g) ?? []).length, 2);
 assert.match(accountStyles, /\.nf-account-heading \.nf-avatar \{\s*width: 28px;\s*height: 28px;/);
 assert.match(accountStyles, /@media \(pointer: coarse\)[\s\S]*?min-height: 44px;/);
-assert.match(directoryTree, /<div data-account-footer className=\{expanded \? "px-3 py-2" : "flex justify-center py-2"\}>/);
+assert.match(directoryTree, /<div data-account-footer className="px-3 py-2">/);
 assert.doesNotMatch(accountMenu, /bottom-0 left-full/);
 assert.match(settingsStyles, /\.nf-account-popover \{[^}]*bottom: 0; left: 54px; right: auto;/);
 assert.match(settingsStyles, /\.nf-account-trigger \{[^}]*width: 100%;[^}]*min-width: 0;/);
@@ -442,7 +445,7 @@ assert.match(
 );
 assert.match(
   app,
-  /className="floating-launcher absolute left-3 top-3 z-50[\s\S]*?aria-label="打开知识库"/,
+  /className="library-launcher directory-toggle absolute left-3 top-3 z-50[\s\S]*?"打开知识库"/,
   "the mobile library launcher remains on the left"
 );
 assert.match(

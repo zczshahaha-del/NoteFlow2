@@ -66,6 +66,7 @@ export interface AccountMenuProps {
   onEmailChanged?: (session: AuthSession) => void;
   onSignOut: () => void | Promise<void>;
   compact?: boolean;
+  active?: boolean;
   trashCount?: number;
 }
 
@@ -144,9 +145,11 @@ export default function AccountMenu({
   onEmailChanged,
   onSignOut,
   compact = false,
+  active = true,
   trashCount = 0,
 }: AccountMenuProps) {
   const [accountOpen, setAccountOpen] = useState(false);
+  useEffect(() => { if (!active) setAccountOpen(false); }, [active]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<"account" | "appearance" | "memory" | "data" | "trash">("account");
   const accountPresent = useSurfacePresence(accountOpen);
@@ -175,9 +178,12 @@ export default function AccountMenu({
   const accountPanelRef = useRef<HTMLDivElement>(null);
   const accountPanelId = useId();
   const importInputRef = useRef<HTMLInputElement>(null);
-  const accountPrimary = (userName?.trim() && !userName.includes("@") ? userName.trim() : userEmail.split("@")[0]) || "NoteFlow";
+  const emailLocalPart = userEmail.split("@")[0];
+  const displayName = userName?.trim();
+  const accountPrimary = displayName && !displayName.includes("@") &&
+    !(displayName === emailLocalPart && /^\d+$/.test(emailLocalPart)) ? displayName : "我的账号";
   const avatarText = Array.from(accountPrimary)[0].toLocaleUpperCase();
-  const avatar = /\p{L}/u.test(avatarText) ? avatarText : <UserRound size={17} strokeWidth={1.6} aria-hidden="true" />;
+  const avatar = accountPrimary !== "我的账号" && /\p{L}/u.test(avatarText) ? avatarText : <UserRound size={17} strokeWidth={1.6} aria-hidden="true" />;
   const settingsScrollRef = useRef<HTMLDivElement>(null);
   const { treeData, fileContents, addNode, setSelectedFileId, deletedNotes, restoreDeletedNote } = useWorkspaceSlice();
   const isDark = themeMode === "dark";

@@ -746,9 +746,9 @@ try {
   await act(async () => {
     newFolderButton.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
   });
-  assert.match(directoryContainer.textContent ?? "", /确认后才会创建/);
-  assert.ok(directoryContainer.querySelector('[role="dialog"][aria-labelledby="new-folder-title"]'));
-  const closeNewFolder = directoryContainer.querySelector('button[aria-label="关闭新建文件夹"]');
+  assert.match(document.body.textContent ?? "", /确认后才会创建/);
+  assert.ok(document.querySelector('[role="dialog"][aria-labelledby="new-folder-title"]'));
+  const closeNewFolder = document.querySelector('button[aria-label="关闭新建文件夹"]');
   assert.ok(closeNewFolder);
   await act(async () => {
     closeNewFolder.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
@@ -777,8 +777,8 @@ try {
   await act(async () => {
     moveButton.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
   });
-  assert.match(directoryContainer.textContent ?? "", /选择目标位置/);
-  assert.ok(directoryContainer.querySelector('[role="dialog"][aria-labelledby="move-item-title"]'));
+  assert.match(document.body.textContent ?? "", /选择目标位置/);
+  assert.ok(document.querySelector('[role="dialog"][aria-labelledby="move-item-title"]'));
   await act(async () => directoryRoot.unmount());
   directoryContainer.remove();
 
@@ -885,6 +885,7 @@ try {
   });
   assert.ok(collapsedDirectoryContainer.querySelector('button[aria-label="展开目录"]'));
   assertIcon(collapsedDirectoryContainer.querySelector('button[aria-label="展开目录"]'), "sidebar-toggle-icon", 18, 1.6);
+  assert.equal(collapsedDirectoryContainer.querySelector('[data-account-footer]'), null, "No collapsed-state avatar rail");
   assert.equal(
     (collapsedDirectoryContainer.textContent ?? "").includes("组件测试笔记"),
     false
@@ -1087,6 +1088,15 @@ try {
   await act(async () => fallbackRoot.render(React.createElement(AccountMenu, { ...accountProps, userName: "12345@example.com", userEmail: "12345@example.com" })));
   assert.ok(fallbackContainer.querySelector('.nf-avatar svg.lucide-user-round'));
   assert.doesNotMatch(fallbackContainer.textContent, /@example.com/);
+  assert.equal(fallbackContainer.querySelector('.nf-account-trigger').getAttribute('aria-label'), '我的账号的账号菜单');
+  await act(async () => fallbackRoot.render(React.createElement(AccountMenu, { ...accountProps, compact:true, userName:'12345', userEmail:'12345@example.com' })));
+  assert.equal(fallbackContainer.querySelector('.nf-account-trigger').getAttribute('aria-label'), '我的账号的账号菜单');
+  await clickAccount(fallbackContainer.querySelector('.nf-account-trigger'));
+  assert.equal(fallbackContainer.querySelector('.nf-account-heading .nf-username').textContent,'我的账号');
+  await act(async () => fallbackRoot.render(React.createElement(AccountMenu, { ...accountProps, compact:true, active:false, userName:'12345', userEmail:'12345@example.com' })));
+  assert.equal(fallbackContainer.querySelector('.nf-account-popover').dataset.open,'false','Hiding navigation closes a stale account popover');
+  await act(async () => fallbackRoot.render(React.createElement(AccountMenu, { ...accountProps, userName:'123', userEmail:'other@example.com' })));
+  assert.equal(fallbackContainer.querySelector('.nf-account-trigger').getAttribute('aria-label'),'123的账号菜单','Explicit numeric nickname unlike email identifier is preserved');
   const longName = "一个很长的真实用户名需要在弹出菜单中完整呈现而不是依赖悬停小框";
   await act(async () => fallbackRoot.render(React.createElement(AccountMenu, { ...accountProps, userName: longName })));
   const longNameTrigger = fallbackContainer.querySelector('.nf-account-trigger');

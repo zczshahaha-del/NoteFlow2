@@ -1,11 +1,30 @@
-/* Only library navigation: keep the existing 52px rail and both entry positions. */
+/* A full library surface slides away; there is no collapsed account rail. */
 .library-navigation {
   transition: width 240ms cubic-bezier(.22, .8, .25, 1);
 }
-/* A transparent rail used to reveal the white app frame next to warmer paper.
-   Reuse the document token without changing the expanded library surface. */
-.library-navigation:has(> .directory-tree[data-expanded="false"]) {
-  background: var(--noteflow-paper, #fdfdfc);
+/* Children keep their expanded width and travel together, including the avatar. */
+.library-navigation-surface {
+  width: var(--library-panel-width);
+  position: relative;
+  transform: translateX(0);
+  transition: transform 240ms cubic-bezier(.22, .8, .25, 1), visibility 240ms;
+}
+.library-navigation[data-open="false"] .library-navigation-surface {
+  transform: translateX(-100%);
+  visibility: hidden;
+}
+.library-navigation-surface > .directory-tree > div:first-child {
+  padding-left: 54px;
+}
+.library-launcher {
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+.library-launcher:focus-visible {
+  outline: 2px solid var(--color-jelly-text-muted);
+  outline-offset: 2px;
 }
 .directory-tree[data-expanded="false"] {
   background: transparent;
@@ -30,7 +49,7 @@
 .directory-toggle-tooltip { transition: opacity 120ms ease; }
 .directory-toggle:focus-visible + .directory-toggle-tooltip { opacity: 1; }
 @media (hover: hover) {
-  .directory-tree .directory-toggle:hover {
+  .directory-tree .directory-toggle:hover, .library-launcher:hover {
     background: color-mix(in srgb, var(--color-jelly-text-muted) 10%, transparent);
     color: var(--color-jelly-text);
   }
@@ -119,11 +138,12 @@
 @media (max-width: 767px) { .library-drawer-surface { width: 280px; } }
 @media (forced-colors: active) { .library-resize-handle > span { background: Highlight; } }
 @media (pointer: coarse) {
-  .directory-tree .directory-toggle { min-width: 44px; min-height: 44px; }
+  .directory-tree .directory-toggle, .library-launcher { min-width: 44px; min-height: 44px; }
+  .library-navigation-surface > .directory-tree > div:first-child { padding-left: 60px; }
   .directory-tree[data-expanded="false"] > div:first-child { padding-inline: 4px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .library-navigation, .ai-navigation, .ai-navigation-content, .library-drawer-surface, .library-drawer-veil,
+  .library-navigation, .library-navigation-surface, .library-launcher, .ai-navigation, .ai-navigation-content, .library-drawer-surface, .library-drawer-veil,
   .directory-toggle, .directory-toggle .sidebar-toggle-icon, .directory-toggle-tooltip,
   .library-resize-handle > span {
     transition: none !important;
