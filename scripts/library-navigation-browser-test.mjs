@@ -131,19 +131,20 @@ try {
    await page.getByRole('button',{name:'移动到',exact:true}).click();await centeredDialog('移动笔记');
    assert.equal(await page.locator('[data-account-footer] .nf-username').count(),0,'No permanent account identifier in the sidebar');
    await page.locator('.nf-account-trigger').click();await page.getByRole('dialog',{name:'账号操作'}).waitFor();
-   await page.evaluate(()=>{window.avatarFrames=[];window.avatarSampling=true;const sample=()=>{const p=document.querySelector('.library-navigation-surface').getBoundingClientRect(),a=document.querySelector('.nf-account-trigger').getBoundingClientRect(),nav=document.querySelector('.library-navigation').getBoundingClientRect(),body=document.querySelector('.workspace-center-layer').getBoundingClientRect(),text=document.querySelector('.note-page').getBoundingClientRect();window.avatarFrames.push({p:p.x,a:a.x,edge:nav.right,body:body.x,text:text.x});if(window.avatarSampling)requestAnimationFrame(sample)};requestAnimationFrame(sample)});
+   await page.evaluate(()=>{window.avatarFrames=[];window.avatarSampling=true;const sample=()=>{const surface=document.querySelector('.library-navigation-surface'),p=surface.getBoundingClientRect(),a=document.querySelector('.nf-account-trigger').getBoundingClientRect(),nav=document.querySelector('.library-navigation').getBoundingClientRect(),body=document.querySelector('.workspace-center-layer').getBoundingClientRect(),text=document.querySelector('.note-page').getBoundingClientRect(),launcher=document.querySelector('.library-launcher'),style=launcher&&getComputedStyle(launcher),r=launcher?.getBoundingClientRect();const oldHeaderVisible=getComputedStyle(surface).visibility==='visible';const overlapping=Boolean(r&&style.visibility==='visible'&&Number(style.opacity)>0&&oldHeaderVisible&&Array.from(surface.querySelectorAll('h1,button[aria-label="搜索全部笔记"],button[aria-label="新建"],button[aria-label="收起目录"]')).some(n=>{const b=n.getBoundingClientRect();return Math.max(0,r.left,b.left)<Math.min(r.right,b.right)&&Math.max(r.top,b.top)<Math.min(r.bottom,b.bottom)}));window.avatarFrames.push({p:p.x,a:a.x,edge:nav.right,body:body.x,text:text.x,overlapping});if(window.avatarSampling)requestAnimationFrame(sample)};requestAnimationFrame(sample)});
    await page.getByRole('button',{name:'收起目录',exact:true}).click();await settled(page);
    await page.keyboard.press('Control+k');await page.getByRole('dialog',{name:'搜索全部笔记',exact:true}).waitFor();
    await page.getByRole('combobox',{name:'搜索全部笔记',exact:true}).press('Escape');await settled(page);
    assert.equal(await page.getByRole('dialog',{name:'搜索全部笔记',exact:true}).count(),0,'Global search remains available while the library is closed');
    const avatarFrames=await page.evaluate(()=>{window.avatarSampling=false;return window.avatarFrames});
+   assert(avatarFrames.every(n=>!n.overlapping),'The emerging launcher must never overlap the exiting title or toolbar');
    assert(avatarFrames.some(n=>n.p<0&&n.p>-236),'Full panel animates out');
    const relative=avatarFrames[0].a-avatarFrames[0].p;
    assert(avatarFrames.every(n=>Math.abs(n.a-n.p-relative)<0.01),'Avatar travels with its panel');
    assert(avatarFrames.every(n=>Math.abs(n.edge-n.body)<1 && n.text>=n.edge),'Document and text never sit underneath the library, including intermediate closing frames');
    assert.equal(await page.getByRole('separator',{name:'调整目录宽度'}).count(),0);
    await page.evaluate(()=>{window.openingFrames=[];window.openingSampling=true;const sample=()=>{const nav=document.querySelector('.library-navigation').getBoundingClientRect(),body=document.querySelector('.workspace-center-layer').getBoundingClientRect(),text=document.querySelector('.note-page').getBoundingClientRect();window.openingFrames.push({width:nav.width,edge:nav.right,body:body.x,text:text.x});if(window.openingSampling)requestAnimationFrame(sample)};requestAnimationFrame(sample)});
-   await page.getByRole('button',{name:'展开目录',exact:true}).click();await settled(page);
+   await page.getByRole('button',{name:'展开目录',exact:true}).press('Enter');await settled(page);
    await page.waitForFunction(()=>document.activeElement===document.querySelector('.directory-tree button[aria-label="收起目录"]'));
    assert(await page.getByRole('button',{name:'收起目录',exact:true}).evaluate(n=>n===document.activeElement),'Opening transfers focus to the restored header control');
    const openingFrames=await page.evaluate(()=>{window.openingSampling=false;return window.openingFrames});
@@ -217,6 +218,7 @@ try {
    await page.getByRole('button',{name:'正文操作',exact:true}).click();
    await page.getByRole('separator',{name:'调整目录宽度'}).press('Escape');await settled(page);
    assert(await page.getByRole('button',{name:'展开目录',exact:true}).evaluate(n=>n===document.activeElement));
+   assert.equal(await page.locator('.library-launcher').evaluate(n=>getComputedStyle(n).animationName),'none','Reduced motion does not delay the replacement entry');
    await collapsedSurfaceCheck(page);
    await page.emulateMedia({reducedMotion:'no-preference'});
   }

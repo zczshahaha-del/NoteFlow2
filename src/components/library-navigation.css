@@ -19,6 +19,18 @@
   border-radius: 9px;
   transition: background-color 140ms ease, color 140ms ease;
 }
+/* The old header must leave before its replacement paints in the same corner.
+   Phone drawers and their launchers keep their existing motion. */
+.app-frame.stable-workspace-layout .library-launcher {
+  animation: library-launcher-reveal 80ms ease-out 240ms both;
+}
+@keyframes library-launcher-reveal {
+  from { opacity: 0; visibility: hidden; }
+  to { opacity: 1; visibility: visible; }
+}
+.library-navigation[data-open="false"] .directory-toggle-tooltip {
+  visibility: hidden;
+}
 .library-launcher:focus-visible {
   outline: 2px solid var(--color-jelly-text-muted);
   outline-offset: 2px;
@@ -139,6 +151,7 @@
   .directory-tree[data-expanded="false"] > div:first-child { padding-inline: 4px; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .app-frame.stable-workspace-layout .library-launcher { animation: none !important; }
   .library-navigation, .library-navigation-surface, .library-launcher, .ai-navigation, .ai-navigation-content, .library-drawer-surface, .library-drawer-veil,
   .directory-toggle, .directory-toggle .sidebar-toggle-icon, .directory-toggle-tooltip,
   .library-resize-handle > span {

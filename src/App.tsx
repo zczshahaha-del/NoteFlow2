@@ -169,14 +169,13 @@ export default function App() {
     const target = filePanelPinned
       ? workspaceRef.current?.querySelector<HTMLButtonElement>('#desktop-library button[aria-label="收起目录"]')
       : libraryLauncherRef.current;
-    // Visibility stays hidden during the surface's entrance transition.
+    // The surface/launcher may still be hidden while their motion hands off.
     // Do not focus a hidden control, or steal focus if the user moves elsewhere.
     let cancelled = false;
     const frame = requestAnimationFrame(async () => {
-      if (filePanelPinned) {
-        const surface = workspaceRef.current?.querySelector('.library-navigation-surface');
-        await Promise.all((surface?.getAnimations() ?? []).map(animation => animation.finished.catch(() => {})));
-      }
+      const animatedElement = filePanelPinned
+        ? workspaceRef.current?.querySelector('.library-navigation-surface') : target;
+      await Promise.all((animatedElement?.getAnimations() ?? []).map(animation => animation.finished.catch(() => {})));
       if (!cancelled && (document.activeElement === document.body ||
           document.activeElement === libraryLauncherRef.current ||
           document.activeElement === target)) {
