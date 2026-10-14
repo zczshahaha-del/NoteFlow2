@@ -15,8 +15,8 @@
 .nf-operation-feedback button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .document-editor .nf-operation-feedback button:focus-visible { text-decoration: underline; text-underline-offset: 4px; }
 .nf-workspace-feedback {
-  position: absolute; z-index: 55; left: calc((100% + var(--workspace-left-width, 0px) - var(--workspace-right-width, 0px)) / 2); bottom: 24px; transform: translateX(-50%);
-  width: min(520px, calc(100% - var(--workspace-left-width, 0px) - var(--workspace-right-width, 0px) - 32px)); max-height: 40vh; overflow-y: auto;
+  position: absolute; z-index: 55; left: 50%; bottom: 80px; transform: translateX(-50%);
+  width: min(520px, calc(100% - 32px)); max-height: 40vh; overflow-y: auto;
   display: grid; gap: 8px; box-shadow: 0 6px 24px rgb(20 30 40 / 8%);
 }
 .nf-note-feedback { margin-block: 12px; }

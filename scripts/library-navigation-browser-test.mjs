@@ -57,27 +57,28 @@ async function resizeChecks(page, panel, width) {
  const handle=page.getByRole('separator',{name:'调整目录宽度'});
  assert.equal(await handle.count(),1);
  const start=await panel.boundingBox(), hit=await handle.boundingBox();
+ const maxWidth=Math.min(420,width-416), draggedWidth=Math.min(start.width+100,maxWidth);
  assert.equal(await handle.locator('span').evaluate(n=>getComputedStyle(n).opacity),'0');
  const renders=await page.evaluate(()=>window.bodyRenderCount), stored=await page.evaluate(()=>localStorage.getItem('noteflow-library-width'));
  await page.mouse.move(hit.x+5,200);await page.mouse.down();await page.mouse.move(hit.x+105,200,{steps:12});
  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
- assert.equal((await panel.boundingBox()).width,start.width+100);
+ assert.equal((await panel.boundingBox()).width,draggedWidth);
  assert.equal(await page.evaluate(()=>window.bodyRenderCount),renders,'Dragging must not rerender the document');
  assert.equal(await page.evaluate(()=>localStorage.getItem('noteflow-library-width')),stored,'Do not write storage on pointermove');
  assert.equal(await page.locator('.library-navigation').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
- if(width>=1280)assert.equal(await page.locator('.note-page').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
+ assert.equal(await page.locator('.note-page').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
  await page.mouse.up();await settled(page);
- assert.equal(await page.evaluate(()=>Number(localStorage.getItem('noteflow-library-width'))),start.width+100);
+ assert.equal(await page.evaluate(()=>Number(localStorage.getItem('noteflow-library-width'))),draggedWidth);
  const committed=(await panel.boundingBox()).width;
  const current=await handle.boundingBox();await page.mouse.move(current.x+5,200);await page.mouse.down();await page.mouse.move(current.x+65,200);
  await handle.press('Escape');await page.mouse.up();await settled(page);
  assert.equal((await panel.boundingBox()).width,committed,'Escape rolls back only the current drag');
  assert.equal(await page.evaluate(()=>Number(localStorage.getItem('noteflow-library-width'))),committed);
  await handle.press('Home');await settled(page);assert.equal((await panel.boundingBox()).width,220);
- await handle.press('End');await settled(page);assert.equal((await panel.boundingBox()).width,420);
- await handle.press('ArrowLeft');await settled(page);assert.equal((await panel.boundingBox()).width,404);
+ await handle.press('End');await settled(page);assert.equal((await panel.boundingBox()).width,maxWidth);
+ await handle.press('ArrowLeft');await settled(page);assert.equal((await panel.boundingBox()).width,maxWidth-16);
  const limit=await handle.boundingBox();await page.mouse.move(limit.x+5,200);await page.mouse.down();await page.mouse.move(limit.x+305,200);await page.mouse.up();await settled(page);
- assert.equal((await panel.boundingBox()).width,420,'Pointer maximum');
+ assert.equal((await panel.boundingBox()).width,maxWidth,'Pointer maximum');
  const max=await handle.boundingBox();await page.mouse.move(max.x+5,200);await page.mouse.down();await page.mouse.move(100,200);await page.mouse.up();await settled(page);
  assert.equal((await panel.boundingBox()).width,220,'Pointer minimum');
  await handle.press('ArrowRight');await settled(page);assert.equal((await panel.boundingBox()).width,236);
@@ -103,8 +104,12 @@ try {
   assert(await page.getByRole('button',{name:'重试中…',exact:true}).isDisabled());
   await page.evaluate(()=>window.navigationTest.store.setState({workspaceIssues:[],workspaceError:null,retryWorkspaceOperation:window.navigationTest.retry}));
   assert.equal(await page.getByRole('alert').count(),0,'Normal workspace stays free of feedback panels');
-  if(width===1440){
+  if(width>=768){
    await headerCheck(page);
+   assert.equal(await page.locator('.library-drawer:not(.ai-drawer)').count(),0,'Laptop/tablet library is never a modal drawer');
+   assert.equal(await page.locator('.library-drawer-veil').count(),0,'Docked library has no veil');
+   assert.equal(await page.locator('.workspace-center-layer').evaluate(n=>n.inert),false);
+   await page.getByRole('button',{name:'正文操作',exact:true}).click();
    await resizeChecks(page,page.locator('.library-navigation'),width);
    await page.reload();await page.getByRole('heading',{name:'Git 入门学习笔记'}).waitFor();
    assert.equal((await page.locator('.library-navigation').boundingBox()).width,236,'Saved width after reload');
@@ -122,7 +127,7 @@ try {
    await page.getByRole('button',{name:'移动到',exact:true}).click();await centeredDialog('移动笔记');
    assert.equal(await page.locator('[data-account-footer] .nf-username').count(),0,'No permanent account identifier in the sidebar');
    await page.locator('.nf-account-trigger').click();await page.getByRole('dialog',{name:'账号操作'}).waitFor();
-   await page.evaluate(()=>{window.avatarFrames=[];window.avatarSampling=true;const sample=()=>{const p=document.querySelector('.library-navigation-surface').getBoundingClientRect(),a=document.querySelector('.nf-account-trigger').getBoundingClientRect();window.avatarFrames.push({p:p.x,a:a.x});if(window.avatarSampling)requestAnimationFrame(sample)};requestAnimationFrame(sample)});
+   await page.evaluate(()=>{window.avatarFrames=[];window.avatarSampling=true;const sample=()=>{const p=document.querySelector('.library-navigation-surface').getBoundingClientRect(),a=document.querySelector('.nf-account-trigger').getBoundingClientRect(),nav=document.querySelector('.library-navigation').getBoundingClientRect(),body=document.querySelector('.workspace-center-layer').getBoundingClientRect(),text=document.querySelector('.note-page').getBoundingClientRect();window.avatarFrames.push({p:p.x,a:a.x,edge:nav.right,body:body.x,text:text.x});if(window.avatarSampling)requestAnimationFrame(sample)};requestAnimationFrame(sample)});
    await page.getByRole('button',{name:'收起目录',exact:true}).click();await settled(page);
    await page.keyboard.press('Control+k');await page.getByRole('dialog',{name:'搜索全部笔记',exact:true}).waitFor();
    await page.getByRole('combobox',{name:'搜索全部笔记',exact:true}).press('Escape');await settled(page);
@@ -131,9 +136,18 @@ try {
    assert(avatarFrames.some(n=>n.p<0&&n.p>-236),'Full panel animates out');
    const relative=avatarFrames[0].a-avatarFrames[0].p;
    assert(avatarFrames.every(n=>Math.abs(n.a-n.p-relative)<0.01),'Avatar travels with its panel');
+   assert(avatarFrames.every(n=>Math.abs(n.edge-n.body)<1 && n.text>=n.edge),'Document and text never sit underneath the library, including intermediate closing frames');
    assert.equal(await page.getByRole('separator',{name:'调整目录宽度'}).count(),0);
+   await page.evaluate(()=>{window.openingFrames=[];window.openingSampling=true;const sample=()=>{const nav=document.querySelector('.library-navigation').getBoundingClientRect(),body=document.querySelector('.workspace-center-layer').getBoundingClientRect(),text=document.querySelector('.note-page').getBoundingClientRect();window.openingFrames.push({width:nav.width,edge:nav.right,body:body.x,text:text.x});if(window.openingSampling)requestAnimationFrame(sample)};requestAnimationFrame(sample)});
    await page.getByRole('button',{name:'展开目录',exact:true}).click();await settled(page);
+   const openingFrames=await page.evaluate(()=>{window.openingSampling=false;return window.openingFrames});
+   assert(openingFrames.some(n=>n.width>0&&n.width<236),'Opening has intermediate normal-flow widths');
+   assert(openingFrames.every(n=>Math.abs(n.edge-n.body)<1&&n.text>=n.edge),'No overlap during opening either');
    assert.equal(await page.getByRole('dialog',{name:'账号操作'}).count(),0,'No stale menu on reopen');
+   const boxes=await page.evaluate(()=>({nav:document.querySelector('.library-navigation').getBoundingClientRect().right,body:document.querySelector('.workspace-center-layer').getBoundingClientRect().left,text:document.querySelector('.note-page').getBoundingClientRect().left}));
+   assert(Math.abs(boxes.nav-boxes.body)<1 && boxes.text>=boxes.nav,'Docked document is alongside, not behind the library');
+   await page.getByRole('button',{name:'正文操作',exact:true}).click();
+   if(width===1277)await page.screenshot({path:join(output,'opened.png')});
    await page.getByRole('button',{name:'收起目录',exact:true}).click();await settled(page);
   }
   let positions=null;
@@ -142,7 +156,7 @@ try {
    positions=await page.locator('.library-launcher').boundingBox();
   }
   if(width===1277)await page.screenshot({path:join(output,'collapsed.png')});
-  if(width<1280){
+  if(width<768){
    const body=await page.locator('.document-editor').boundingBox();
    await page.evaluate(()=>{window.motionFrames=[];window.sampleMotion=true;const sample=()=>{const n=document.querySelector('.library-drawer-surface');window.motionFrames.push(n?Number(getComputedStyle(n).transform.split(',')[4]):null);if(window.sampleMotion)requestAnimationFrame(sample);};requestAnimationFrame(sample);});
    await open(page);
@@ -188,14 +202,24 @@ try {
    await page.emulateMedia({reducedMotion:'no-preference'});
   }
   await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));await settled(page);
-  if(width>=768)await collapsedSurfaceCheck(page);
-  if(width<1280){await open(page);assert.equal(await page.locator('.library-drawer-veil').evaluate(n=>getComputedStyle(n).backgroundColor),'rgba(0, 0, 0, 0.2)');await page.getByRole('button',{name:'收起目录',exact:true}).click();await page.locator('.library-drawer').waitFor({state:'detached'});}
+  if(width>=768){
+   await collapsedSurfaceCheck(page);
+   await page.emulateMedia({reducedMotion:'reduce'});
+   await page.getByRole('button',{name:'展开目录',exact:true}).click();await settled(page);
+   assert.equal(await page.locator('.library-navigation').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
+   assert.equal(await page.locator('.library-drawer-veil').count(),0,'Dark/reduced-motion remains non-modal');
+   await page.getByRole('button',{name:'正文操作',exact:true}).click();
+   await page.getByRole('separator',{name:'调整目录宽度'}).press('Escape');await settled(page);
+   assert(await page.getByRole('button',{name:'展开目录',exact:true}).evaluate(n=>n===document.activeElement));
+   await collapsedSurfaceCheck(page);
+   await page.emulateMedia({reducedMotion:'no-preference'});
+  }
+  if(width<768){await open(page);assert.equal(await page.locator('.library-drawer-veil').evaluate(n=>getComputedStyle(n).backgroundColor),'rgba(0, 0, 0, 0.2)');await page.getByRole('button',{name:'收起目录',exact:true}).click();await page.locator('.library-drawer').waitFor({state:'detached'});}
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
   if(width>=768){
    await page.reload();await page.getByRole('heading',{name:'Git 入门学习笔记'}).waitFor();
-   if(width<1280)await open(page);
-   const panel=page.locator(width>=1280?'.library-navigation':'.library-drawer-surface');
+   const panel=page.locator('.library-navigation');
    assert.equal((await panel.boundingBox()).width,236,'Persistence across reload');
    // Storage rejection must not block an in-memory width change.
    await page.evaluate(()=>{window.originalStorageSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw new DOMException('Denied','SecurityError');};});
@@ -203,7 +227,9 @@ try {
    assert.equal((await panel.boundingBox()).width,252);
    if(width===1440){
     await page.getByRole('button',{name:'展开 AI 助手',exact:true}).click();await settled(page);
-    await page.setViewportSize({width:1280,height:900});await settled(page);
+    await page.setViewportSize({width:1280,height:900});
+    await page.waitForFunction(()=>Number(document.querySelector('[aria-label="调整目录宽度"]').getAttribute('aria-valuemax'))<=364);
+    await settled(page);
     assert(Number(await page.getByRole('separator',{name:'调整目录宽度'}).getAttribute('aria-valuemax'))<=364);
    }
    const edge=await page.getByRole('separator',{name:'调整目录宽度'}).boundingBox();
@@ -217,11 +243,10 @@ try {
    assert.notEqual(await page.locator('.app-frame').getAttribute('data-library-resizing'),'true');
    await page.evaluate(()=>{Storage.prototype.setItem=window.originalStorageSetItem;localStorage.setItem('noteflow-library-width','invalid');});
    await page.setViewportSize({width,height:900});await page.reload();await page.getByRole('heading',{name:'Git 入门学习笔记'}).waitFor();
-   if(width<1280)await open(page);
-   assert.equal((await page.locator(width>=1280?'.library-navigation':'.library-drawer-surface').boundingBox()).width,width>=1280?260:280,'Invalid saved width falls back safely');
+   assert.equal((await page.locator('.library-navigation').boundingBox()).width,260,'Invalid saved width falls back safely');
   }
   assert.deepEqual(errors,[]);
-  if(width<1280 && await page.getByRole('button',{name:'收起目录',exact:true}).count()) {
+  if(width<768 && await page.getByRole('button',{name:'收起目录',exact:true}).count()) {
    await page.getByRole('button',{name:'收起目录',exact:true}).click();
    await page.locator('.library-drawer:not(.ai-drawer)').waitFor({state:'detached'});
   }
@@ -258,7 +283,7 @@ try {
    assert(await page.getByRole('button',{name:'展开 AI 助手',exact:true}).evaluate(n=>document.activeElement===n));
   }
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);assert.deepEqual(errors,[]);
-  reports.push({width,resizing:width>=768,persistence:width>=768,noDocumentRerenderDuringDrag:width>=768,noCollapsedAccountRail:true,avatarMovesWithPanel:width===1440,viewportModals:width===1440,collapsedGlobalSearch:width===1440,drawerEnterExit:width<1280,aiConsistentMotion:true,aiDragOrFocusVerified:true,stableBodyAndControls:true,focusAndReducedMotion:true,dark:true,requests,errors});await context.close();
+  reports.push({width,resizing:width>=768,persistence:width>=768,noDocumentRerenderDuringDrag:width>=768,noCollapsedAccountRail:true,dockedWithoutVeil:width>=768,bodyClickableWhileLibraryOpen:width>=768,noOverlapDuringMotion:width>=768,avatarMovesWithPanel:width>=768,viewportModals:width>=768,collapsedGlobalSearch:width>=768,drawerEnterExit:width<768,aiConsistentMotion:true,aiDragOrFocusVerified:true,stableBodyAndControls:true,focusAndReducedMotion:true,dark:true,requests,errors});await context.close();
  }
  console.log(JSON.stringify({actualNavigation:true,syntheticOnly:true,output,reports},null,2));
 } finally {await browser.close();}

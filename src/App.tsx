@@ -100,10 +100,10 @@ export default function App() {
   const desktopRightWidth = isDesktop && !focusedWorkspace && aiOpen
     ? aiPanelWidth
     : 0;
-  const libraryMaxWidth = isDesktop
+  const libraryMaxWidth = isTabletUp
     ? Math.max(220, Math.min(420, viewportWidth - desktopRightWidth - 416)) : 420;
-  const effectiveLibraryWidth = Math.min(libraryWidth ?? (isDesktop ? 260 : 280), libraryMaxWidth);
-  const desktopLeftWidth = isDesktop && !focusedWorkspace
+  const effectiveLibraryWidth = Math.min(libraryWidth ?? (isTabletUp ? 260 : 280), libraryMaxWidth);
+  const desktopLeftWidth = isTabletUp && !focusedWorkspace
     ? (filePanelPinned ? "var(--library-panel-width)" : "0px") : "0px";
   const workspaceLayoutStyle = {
     "--ai-panel-width": `${aiPanelWidth}px`,
@@ -132,7 +132,7 @@ export default function App() {
   const commitAiWidth = useCallback((width: number) => setAiPanelWidth(width), []);
   useEffect(() => {
     previewLibraryWidth(effectiveLibraryWidth, false);
-  }, [effectiveLibraryWidth, isDesktop, filePanelPinned, libraryDrawerOpen, previewLibraryWidth]);
+  }, [effectiveLibraryWidth, isTabletUp, filePanelPinned, libraryDrawerOpen, previewLibraryWidth]);
   useEffect(() => {
     const resize = () => setViewportWidth(window.innerWidth);
     window.addEventListener("resize", resize);
@@ -154,11 +154,12 @@ export default function App() {
     if (wasDesktop.current && !isDesktop) {
       setAiOpen(false);
     }
-    if (isDesktop) {
-      setLibraryDrawerOpen(false);
-    }
     wasDesktop.current = isDesktop;
   }, [isDesktop]);
+
+  useEffect(() => {
+    if (isTabletUp) setLibraryDrawerOpen(false);
+  }, [isTabletUp]);
 
   useEffect(() => {
     if (chatSelection) setAiOpen(true);
@@ -184,20 +185,20 @@ export default function App() {
         <div
           ref={workspaceRef}
           className={`app-frame relative flex h-full min-w-0 overflow-hidden ${
-            isDesktop ? "stable-workspace-layout" : ""
+            isTabletUp ? "stable-workspace-layout" : ""
           }`}
           style={workspaceLayoutStyle}
         >
-          {!focusedWorkspace && (isDesktop || !libraryDrawerOpen) && (
+          {!focusedWorkspace && (isTabletUp || !libraryDrawerOpen) && (
             <button ref={libraryLauncherRef} type="button"
               className="library-launcher directory-toggle absolute left-3 top-3 z-50 flex h-8 w-8 items-center justify-center text-jelly-text-muted"
               onClick={() => {
-                if (isDesktop) setFilePanelPinned((open) => !open);
+                if (isTabletUp) setFilePanelPinned((open) => !open);
                 else { setAiOpen(false); setLibraryDrawerOpen(true); }
               }}
-              aria-label={isDesktop && filePanelPinned ? "收起目录" : isTabletUp ? "展开目录" : "打开知识库"}
-              aria-expanded={isDesktop ? filePanelPinned : libraryDrawerOpen}
-              aria-controls={isDesktop ? "desktop-library" : undefined}>
+              aria-label={isTabletUp && filePanelPinned ? "收起目录" : isTabletUp ? "展开目录" : "打开知识库"}
+              aria-expanded={isTabletUp ? filePanelPinned : libraryDrawerOpen}
+              aria-controls={isTabletUp ? "desktop-library" : undefined}>
               <SidebarToggleIcon />
             </button>
           )}
@@ -206,10 +207,10 @@ export default function App() {
           {isTabletUp && !focusedWorkspace && (
             <div
               className="library-navigation relative z-40 shrink-0"
-              data-open={isDesktop && filePanelPinned}
-              style={{ width: isDesktop && filePanelPinned ? "var(--library-panel-width)" : 0 }}
-              inert={!isDesktop || !filePanelPinned}
-              aria-hidden={!isDesktop || !filePanelPinned || undefined}
+              data-open={filePanelPinned}
+              style={{ width: filePanelPinned ? "var(--library-panel-width)" : 0 }}
+              inert={!filePanelPinned}
+              aria-hidden={!filePanelPinned || undefined}
               onKeyDown={(event) => {
                 if (event.key !== "Escape" || event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
                 if ((event.target as HTMLElement).closest('[role="dialog"], [role="alertdialog"], input, textarea, [contenteditable="true"]')) return;
@@ -219,7 +220,7 @@ export default function App() {
               <div id="desktop-library" className="library-navigation-surface h-full">
                 <DirectoryTree
                   pinned
-                  active={isDesktop && filePanelPinned}
+                  active={filePanelPinned}
                   hideCollapseControl
                   onPinnedChange={setFilePanelPinned}
                   themeMode={themeMode}
@@ -229,22 +230,15 @@ export default function App() {
                   userName={session.user.displayName}
                   onEmailChanged={updateSession}
                   onSignOut={signOut}
-                  searchShortcutEnabled={isDesktop || !libraryDrawerOpen}
+                  searchShortcutEnabled
                 />
               </div>
-              {isDesktop && filePanelPinned && libraryResizeHandle}
+              {filePanelPinned && libraryResizeHandle}
             </div>
           )}
 
-          {/* On desktop the document owns the whole viewport. Side panels consume
-              the empty gutters first and only move the page when they touch it. */}
-          <div
-            className={
-              isDesktop
-                ? "workspace-center-layer absolute inset-0 z-0 flex min-w-0"
-                : "workspace-center-layer flex min-w-0 flex-1"
-            }
-          >
+          {/* Docked panels and the document share normal flow, including during motion. */}
+          <div className="workspace-center-layer relative z-0 flex min-w-0 flex-1">
             <WorkspaceCenter />
             <WorkspaceFeedback />
           </div>
@@ -265,8 +259,8 @@ export default function App() {
             </div>
           )}
 
-          {/* Mobile/tablet library drawer. */}
-          {!isDesktop && !focusedWorkspace && (
+          {/* Only phone-size screens use a library drawer. */}
+          {!isTabletUp && !focusedWorkspace && (
             <LibraryDrawer open={libraryDrawerOpen} onClose={() => setLibraryDrawerOpen(false)} resizeHandle={libraryResizeHandle}>
                 <DirectoryTree
                   pinned

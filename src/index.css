@@ -3369,24 +3369,13 @@ body,
 }
 
 /*
- * Stable desktop reading geometry.
- * The document remains centered in the full application viewport while there
- * is enough gutter space. A side panel only shifts the page after crossing its
- * safety edge; the page narrows only when both safety edges leave less than
- * the preferred 780px reading width.
+ * Docked reading geometry. The document is centered in its own remaining
+ * space; normal-flow panel widths keep it clear throughout open/close/resize.
  */
-@media (min-width: 1280px) {
+@media (min-width: 768px) {
   .app-frame.stable-workspace-layout {
     --document-edge-gap: 28px;
-    --document-page-width: min(
-      780px,
-      calc(
-        100vw
-        - var(--workspace-left-width, 0px)
-        - var(--workspace-right-width, 0px)
-        - 56px
-      )
-    );
+    --document-page-width: min(780px, calc(100% - 56px));
   }
 
   .app-frame.stable-workspace-layout .document-canvas .document-scroll {
@@ -3395,23 +3384,13 @@ body,
   }
 
   .app-frame.stable-workspace-layout .chapter-rail {
-    right: calc(var(--workspace-right-width, 0px) + 10px);
+    right: 10px;
   }
 
   .app-frame.stable-workspace-layout .document-canvas .note-page {
     width: var(--document-page-width) !important;
     max-width: none !important;
-    margin-right: 0 !important;
-    margin-left: clamp(
-      calc(var(--workspace-left-width, 0px) + var(--document-edge-gap)),
-      calc((100vw - var(--document-page-width)) / 2),
-      calc(
-        100vw
-        - var(--workspace-right-width, 0px)
-        - var(--document-edge-gap)
-        - var(--document-page-width)
-      )
-    ) !important;
-    transition: width 160ms ease, margin-left 160ms ease;
+    margin-inline: auto !important;
+    transition: none;
   }
 }

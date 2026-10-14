@@ -197,21 +197,22 @@ assert.match(
 assert.match(app, /className=\{`app-frame[\s\S]*?stable-workspace-layout/);
 assert.match(app, /"--workspace-left-width"/);
 assert.match(app, /"--workspace-right-width"/);
-assert.match(app, /workspace-center-layer absolute inset-0 z-0/);
+assert.match(app, /workspace-center-layer relative z-0 flex min-w-0 flex-1/);
+assert.doesNotMatch(app, /workspace-center-layer absolute inset-0/);
 assert.match(app, /onPreview=\{previewAiWidth\} onCommit=\{commitAiWidth\}/);
 assert.match(
   styles,
-  /\.app-frame\.stable-workspace-layout \.document-canvas \.note-page \{[\s\S]*?margin-left: clamp\(/,
-  "desktop document must remain globally centered until a side panel reaches its safety edge"
+  /\.app-frame\.stable-workspace-layout \.document-canvas \.note-page \{[\s\S]*?margin-inline: auto/,
+  "document must be centered in its own non-overlapping remaining space"
 );
 assert.match(
   styles,
-  /--document-page-width: min\([\s\S]*?780px,[\s\S]*?--workspace-left-width[\s\S]*?--workspace-right-width/,
-  "document width must shrink only after side panels consume the available gutters"
+  /--document-page-width: min\(780px, calc\(100% - 56px\)\)/,
+  "document width must follow its available space without covering panels"
 );
 assert.match(
   styles,
-  /\.app-frame\.stable-workspace-layout \.chapter-rail \{[\s\S]*?right: calc\(var\(--workspace-right-width, 0px\) \+ 10px\);/,
+  /\.app-frame\.stable-workspace-layout \.chapter-rail \{[\s\S]*?right: 10px;/,
   "the document outline rail must remain visible beside the resizable AI panel"
 );
 assert.match(editPreviewWorkspace, /role="alert"/);
@@ -329,7 +330,7 @@ assert.match(directoryTree, /<ChevronDown[\s\S]*?size=\{14\}[\s\S]*?strokeWidth=
 assert.match(directoryTree, /<LibrarySearchDialog[\s\S]*?open=\{searchOpen\}/);
 assert.doesNotMatch(directoryTree, /searchQuery|searchResults\.map|正在检索知识库/);
 assert.match(directoryTree, /if \(!searchShortcutEnabled\) return/);
-assert.match(app, /searchShortcutEnabled=\{isDesktop \|\| !libraryDrawerOpen\}/);
+assert.match(app, /hideCollapseControl[\s\S]*?searchShortcutEnabled\s*\/>/);
 assert.match(libraryDrawer, /event.nativeEvent.isComposing \|\| event.nativeEvent.keyCode === 229/);
 assert.match(librarySearch, /const SEARCH_DEBOUNCE_MS = 340/);
 assert.match(librarySearch, /onCompositionStart=\{handleCompositionStart\}/);
@@ -387,8 +388,8 @@ assert.match(directoryTree, /role="alertdialog"/);
 assert.doesNotMatch(directoryTree, /getDeleteConfirmPosition/);
 assert.match(directoryTree, /<AccountMenu\s+compact\s+active=\{active\}/);
 assert.match(directoryTree, /\{expanded && <div data-account-footer/);
-assert.match(app, /data-open=\{isDesktop && filePanelPinned\}/);
-assert.match(app, /inert=\{!isDesktop \|\| !filePanelPinned\}/);
+assert.match(app, /data-open=\{filePanelPinned\}/);
+assert.match(app, /inert=\{!filePanelPinned\}/);
 assert.match(directoryTree, /trashCount=\{deletedNotes\.length\}/);
 assert.doesNotMatch(directoryTree, /trashOpen|onOpenTrash/);
 assert.doesNotMatch(directoryTree, /max-h-36/);
