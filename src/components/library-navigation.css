@@ -2,6 +2,11 @@
 .library-navigation {
   transition: width 240ms cubic-bezier(.22, .8, .25, 1);
 }
+/* A transparent rail used to reveal the white app frame next to warmer paper.
+   Reuse the document token without changing the expanded library surface. */
+.library-navigation:has(> .directory-tree[data-expanded="false"]) {
+  background: var(--noteflow-paper, #fdfdfc);
+}
 .directory-tree[data-expanded="false"] {
   background: transparent;
   border-right-color: transparent;

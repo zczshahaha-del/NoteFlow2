@@ -43,6 +43,16 @@ async function headerCheck(page){
  assert.equal(await title.evaluate(n=>n.parentElement.textContent.trim()),'知识库','Library header has no note count');
  assert.equal(await title.evaluate(n=>n.parentElement.querySelector('svg')?.getAttribute('width')),'16','Book icon is retained');
 }
+async function collapsedSurfaceCheck(page, dark = false) {
+ const state=await page.locator('.library-navigation').evaluate(n=>({
+  background:getComputedStyle(n).backgroundColor,
+  rail:getComputedStyle(n.querySelector('.directory-tree')).backgroundColor,
+  border:getComputedStyle(n.querySelector('.directory-tree')).borderRightColor,
+ }));
+ assert.equal(state.background,dark?'rgb(17, 24, 32)':'rgb(253, 253, 252)','Collapsed gutter shares the document paper, not the white app surface');
+ assert.equal(state.rail,'rgba(0, 0, 0, 0)');
+ assert.equal(state.border,'rgba(0, 0, 0, 0)');
+}
 async function resizeChecks(page, panel, width) {
  const handle=page.getByRole('separator',{name:'调整目录宽度'});
  assert.equal(await handle.count(),1);
@@ -95,6 +105,7 @@ try {
   }
   let positions=null;
   if(width>=768){
+   await collapsedSurfaceCheck(page);
    const rail=page.locator('.directory-tree');
    const state=await rail.evaluate(n=>({width:n.getBoundingClientRect().width,bg:getComputedStyle(n).backgroundColor,border:getComputedStyle(n).borderRightColor}));
    assert.equal(state.width,52);assert.equal(state.bg,'rgba(0, 0, 0, 0)');assert.equal(state.border,'rgba(0, 0, 0, 0)');
@@ -147,7 +158,7 @@ try {
    await page.emulateMedia({reducedMotion:'no-preference'});
   }
   await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));await settled(page);
-  if(width>=768)assert.equal(await page.locator('.directory-tree').evaluate(n=>getComputedStyle(n).backgroundColor),'rgba(0, 0, 0, 0)');
+  if(width>=768)await collapsedSurfaceCheck(page,true);
   if(width<1280){await open(page);assert.equal(await page.locator('.library-drawer-veil').evaluate(n=>getComputedStyle(n).backgroundColor),'rgba(0, 0, 0, 0.2)');await page.getByRole('button',{name:'收起目录',exact:true}).click();await page.locator('.library-drawer').waitFor({state:'detached'});}
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);

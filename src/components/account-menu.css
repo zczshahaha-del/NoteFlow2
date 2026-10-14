@@ -1,5 +1,26 @@
-/* Refine only the account popover; leave its launcher and settings dialog unchanged.
+/* Refine the account popover and compact launcher; leave settings unchanged.
    [data-compact] also makes this independent of the shared menu CSS import order. */
+.nf-settings-system.account-menu-root[data-compact="true"] .nf-account-trigger {
+  border-radius: 50%;
+  background: transparent;
+  transform: none;
+}
+.nf-settings-system.account-menu-root[data-compact="true"] .nf-account-trigger .nf-avatar {
+  transition: box-shadow 150ms ease;
+}
+.nf-settings-system.account-menu-root[data-compact="true"] .nf-account-trigger[aria-expanded="true"] .nf-avatar {
+  box-shadow: 0 0 0 3px var(--nf-soft);
+}
+@media (hover: hover) {
+  .nf-settings-system.account-menu-root[data-compact="true"] .nf-account-trigger:hover .nf-avatar {
+    box-shadow: 0 0 0 3px var(--nf-soft);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nf-settings-system.account-menu-root[data-compact="true"] .nf-account-trigger .nf-avatar {
+    transition: none;
+  }
+}
 .nf-settings-system.account-menu-root[data-compact] .nf-account-popover {
   padding: 6px;
   border-radius: 12px;

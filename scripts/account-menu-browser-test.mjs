@@ -27,6 +27,26 @@ const browser=await chromium.launch({executablePath:process.env.NOTEFLOW_BROWSER
 const output=mkdtempSync(join(tmpdir(),'noteflow-account-menu-')),reports=[];
 async function settled(page){await page.evaluate(async()=>{await Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{})));});}
 async function open(page){await page.locator('.nf-account-trigger').click();await page.locator('.nf-account-popover[data-open="true"]').waitFor();await settled(page);}
+async function framelessLauncherCheck(page, width){
+ const trigger=page.locator('.nf-account-trigger'), avatar=trigger.locator('.nf-avatar');
+ const box=await trigger.boundingBox();
+ const check=async()=>{
+  assert.equal(await trigger.evaluate(n=>getComputedStyle(n).backgroundColor),'rgba(0, 0, 0, 0)','Compact avatar never acquires a rectangular plate');
+  assert.equal(await trigger.evaluate(n=>getComputedStyle(n).borderRadius),'50%');
+  assert.deepEqual(await trigger.boundingBox(),box,'Feedback must not move the launcher');
+ };
+ await check();
+ assert.equal(await avatar.evaluate(n=>getComputedStyle(n).boxShadow),'none');
+ if(width!==320){
+  await trigger.hover();await settled(page);await check();
+  assert.notEqual(await avatar.evaluate(n=>getComputedStyle(n).boxShadow),'none','Hover feedback belongs to the circular avatar');
+  await page.mouse.down();
+  assert.equal(await trigger.evaluate(n=>getComputedStyle(n).transform),'none','Press must not shift the avatar');
+  await page.mouse.move(width-5,8);await page.mouse.up();await settled(page);
+  assert.equal(await avatar.evaluate(n=>getComputedStyle(n).boxShadow),'none','Mouse leave clears hover feedback');
+ }
+ assert(box.width>=44&&box.height>=44,'Preserve the existing touch target');
+}
 try{
  for(const width of [1280,736,320]){
   const context=await browser.newContext({viewport:{width,height:720},hasTouch:width===320}),requests=[],errors=[];
@@ -34,7 +54,10 @@ try{
   const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
   await page.setContent('<html><head><style>'+css+' body{background:#fdfdfc}#anchor{position:absolute;left:12px;bottom:16px;width:236px}</style></head><body><div id="anchor"></div><script type="module">'+script+'</script></body></html>');
   await page.locator('.nf-account-trigger').waitFor();const triggerBefore=await page.locator('.nf-account-trigger').boundingBox();
+  await framelessLauncherCheck(page,width);
   await open(page);
+  assert.equal(await page.locator('.nf-account-trigger').evaluate(n=>getComputedStyle(n).backgroundColor),'rgba(0, 0, 0, 0)');
+  assert.notEqual(await page.locator('.nf-account-trigger .nf-avatar').evaluate(n=>getComputedStyle(n).boxShadow),'none','Open menu keeps only circular feedback');
   const panel=page.locator('.nf-account-popover');
   assert.equal(await panel.locator('.nf-account-separator').count(),2);
   const geometry=await panel.evaluate(n=>({box:n.getBoundingClientRect().toJSON(),radius:getComputedStyle(n).borderRadius,avatar:n.querySelector('.nf-avatar').getBoundingClientRect().width,footer:document.querySelector('.nf-account-trigger .nf-avatar').getBoundingClientRect().width,rows:[...n.querySelectorAll('.nf-menu-item')].map(b=>b.getBoundingClientRect().height)}));
@@ -49,6 +72,7 @@ try{
   if(width===1280)await page.screenshot({path:join(output,'menu.png')});
   await panel.getByRole('button',{name:'设置',exact:true}).press('Escape');await settled(page);
   assert.equal(await panel.count(),0);assert.equal(await page.locator('.nf-account-trigger').evaluate(n=>n===document.activeElement),true);
+  assert.equal(await page.locator('.nf-account-trigger').evaluate(n=>getComputedStyle(n).outlineStyle),'solid','Keyboard return retains a visible circular focus');
   await open(page);await page.locator('.nf-account-trigger').click();assert.equal(await panel.evaluate(n=>n.hasAttribute('inert')),true);
   await open(page);await page.waitForTimeout(210);assert.equal(await panel.count(),1);
   // Existing settings / trash routing is unchanged; no dangerous action is submitted.
@@ -59,6 +83,8 @@ try{
   assert.equal(await page.getByRole('heading',{name:'回收站',exact:true}).count(),1);
   await page.getByRole('dialog',{name:'设置',exact:true}).press('Escape');await settled(page);
   await page.evaluate(()=>window.accountTest.update({userName:'很长的名字'.repeat(8),compact:false}));await open(page);
+  assert.equal(await page.locator('.nf-account-trigger').evaluate(n=>getComputedStyle(n).borderRadius),'11px','Expanded account row keeps its original styling');
+  assert.notEqual(await page.locator('.nf-account-trigger').evaluate(n=>getComputedStyle(n).backgroundColor),'rgba(0, 0, 0, 0)');
   assert.equal(await panel.locator('.nf-username').textContent(),'很长的名字'.repeat(8));
   assert.equal(await panel.evaluate(n=>n.scrollWidth<=n.clientWidth),true);
   assert.equal(await panel.evaluate(n=>n.getBoundingClientRect().width),224);
@@ -68,18 +94,20 @@ try{
   assert(await panel.evaluate(n=>n.getBoundingClientRect().right)<=width);
   await panel.getByRole('button',{name:'设置',exact:true}).press('Escape');await settled(page);
   await page.evaluate(()=>window.accountTest.update({userName:'示例用户',compact:true,themeMode:'dark'}));await open(page);
+  assert.equal(await page.locator('.nf-account-trigger').evaluate(n=>getComputedStyle(n).backgroundColor),'rgba(0, 0, 0, 0)','Dark compact launcher has no plate');
   assert.equal(await panel.evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(37, 43, 51)');
   assert.equal(await panel.locator('.nf-account-heading .nf-avatar').evaluate(n=>n.getBoundingClientRect().width),28);
   await panel.getByRole('button',{name:'设置',exact:true}).press('Escape');await settled(page);
   await page.emulateMedia({reducedMotion:'reduce'});await open(page);
   assert.equal(await panel.evaluate(n=>getComputedStyle(n).animationName),'none');
+  assert.equal(await page.locator('.nf-account-trigger .nf-avatar').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
   await panel.getByRole('button',{name:'退出登录',exact:true}).click();assert.equal(await page.evaluate(()=>window.signOutCount),1);
   await page.setViewportSize({width,height:240});await open(page);
   assert(await panel.evaluate(n=>n.getBoundingClientRect().top)>=0);assert.equal(await panel.evaluate(n=>getComputedStyle(n).overflowY),'auto');
   await page.emulateMedia({forcedColors:'active'});
   assert.equal(await panel.evaluate(n=>getComputedStyle(n).outlineStyle),'solid');
   assert.deepEqual(requests,[]);assert.deepEqual(errors,[]);
-  reports.push({width,compactWidth:224,rightOfAvatar:true,bottomAligned:true,avatar:28,launcherUnchanged:true,rows:geometry.rows,settingsAndTrash:true,longName:true,dark:true,reducedMotion:true,shortViewport:true,requests,errors});await context.close();
+  reports.push({width,compactWidth:224,rightOfAvatar:true,bottomAligned:true,avatar:28,launcherUnchanged:true,framelessCompactLauncher:true,circularFeedback:true,keyboardFocus:true,expandedRowUnchanged:true,rows:geometry.rows,settingsAndTrash:true,longName:true,dark:true,reducedMotion:true,shortViewport:true,requests,errors});await context.close();
  }
  console.log(JSON.stringify({actualAccountMenu:true,syntheticOnly:true,output,reports},null,2));
 }finally{await browser.close();}
