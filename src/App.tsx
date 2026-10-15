@@ -15,7 +15,7 @@ import "./components/library-navigation.css";
 import { useAuthSession } from "./hooks/useAuthSession";
 import { useDockedLibraryMotion } from './hooks/useDockedLibraryMotion';
 import { resolveWorkspaceLayout } from './utils/workspaceLayout';
-import { useChatSlice, useDraftSlice } from "./store/selectors";
+import { useChatSelection, useDraftSlice } from "./store/selectors";
 
 const NoteEditor = lazy(() => import("./components/NoteEditor"));
 
@@ -89,7 +89,7 @@ export default function App() {
   const [themeMode, setThemeMode] = useState<ThemeMode>(loadThemeMode);
   const isTabletUp = useMediaQuery("(min-width: 768px)");
   const { centerMode, draftSeed, pendingCheckpoint, activeDraftContext } = useDraftSlice();
-  const { chatSelection } = useChatSlice();
+  const chatSelection = useChatSelection();
   const focusedWorkspace = centerMode === "edit";
   const draftAvailable =
     centerMode === "draft" ||

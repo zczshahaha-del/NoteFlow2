@@ -33,7 +33,7 @@ window.presentationTest=api;api.render();`;
 const result=await build({root:repo,configFile:false,logLevel:'silent',plugins:[{
   name:'isolated-chat-presentation',enforce:'pre',
   resolveId(id,importer){if(id==='virtual:chat-presentation')return '\0chat-presentation';if(importer===component&&id==='../store/selectors')return '\0chat-selectors'},
-  load(id){if(id==='\0chat-presentation')return entry;if(id==='\0chat-selectors')return 'export const useChatSlice=()=>window.presentationTest.chat;export const useEditorSlice=()=>window.presentationTest.editor;export const useDraftSlice=()=>window.presentationTest.draft;export const useAgentSlice=()=>window.presentationTest.agent;export const useWorkspaceSlice=()=>window.presentationTest.workspace;'},
+  load(id){if(id==='\0chat-presentation')return entry;if(id==='\0chat-selectors')return 'export const useChatSlice=()=>window.presentationTest.chat;export const useAIContextSlice=()=>({...window.presentationTest.editor,...window.presentationTest.workspace});export const useDraftSlice=()=>window.presentationTest.draft;export const useAgentSlice=()=>window.presentationTest.agent;'},
   transform(source,id){if(id===markdown)return source.replace('export function renderChatMarkdown(', 'function originalRenderChatMarkdown(')+'\nexport function renderChatMarkdown(text,count=0,options){const html=originalRenderChatMarkdown(text,count,options);const api=window.presentationTest;api.metrics.push({history:text.startsWith("## 合成历史"),length:text.length});if(!text.startsWith("## 合成历史")){api.currentText=text;api.samples.push({time:performance.now(),length:text.length})}return html;}';}
 }],build:{write:false,minify:false,rolldownOptions:{input:'virtual:chat-presentation'}}});
 const chunks=result.output.filter(item=>item.type==='chunk');assert.equal(chunks.length,1);
@@ -356,16 +356,19 @@ try{
     assert.equal(await replyCopy.locator('svg').getAttribute('width'),'14');
     assert.equal((await userCopy.locator('svg').boundingBox()).width,14);
     assert.equal((await replyCopy.locator('svg').boundingBox()).height,14);
-    await input.focus();await page.mouse.move(599,1);await page.waitForTimeout(150);
+    await input.focus();await page.mouse.move(599,1);
+    await page.waitForFunction(expected=>getComputedStyle(document.querySelector('[aria-label="复制消息"]')).opacity===expected,mobile?'1':'0');
     assert.equal(await userCopy.evaluate(n=>getComputedStyle(n).opacity),mobile?'1':'0');
     assert.equal(await page.locator('[data-role="user"] time').evaluate(n=>getComputedStyle(n).opacity),mobile?'1':'0');
     if(!mobile){
       const messageRow=page.locator('.nf-chat-message-row').filter({has:page.locator('.nf-chat-message--user')});
-      await messageRow.hover();await page.waitForTimeout(150);
+      await messageRow.hover();
+      await page.waitForFunction(()=>getComputedStyle(document.querySelector('[aria-label="复制消息"]')).opacity==='1');
       assert.equal(await userCopy.evaluate(n=>getComputedStyle(n).opacity),'1');
       assert.equal(await page.locator('[data-role="user"] time').evaluate(n=>getComputedStyle(n).opacity),'1');
       assert.deepEqual(await userCopy.boundingBox(),copyBox,'hover cannot move the copy target');
-      await page.mouse.move(599,1);await page.waitForTimeout(150);
+      await page.mouse.move(599,1);
+      await page.waitForFunction(()=>getComputedStyle(document.querySelector('[aria-label="复制消息"]')).opacity==='0');
       assert.equal(await userCopy.evaluate(n=>getComputedStyle(n).opacity),'0');
       assert.equal(await page.locator('[data-role="user"] time').evaluate(n=>getComputedStyle(n).opacity),'0');
     }
@@ -424,7 +427,7 @@ try{
       await page.mouse.move(319,1);
     }
     await page.keyboard.press('Tab');await userCopy.focus();assert.notEqual(await userCopy.evaluate(n=>getComputedStyle(n).outlineStyle),'none');
-    await page.waitForTimeout(150);assert.equal(await userCopy.evaluate(n=>getComputedStyle(n).opacity),'1');
+    await page.waitForFunction(()=>getComputedStyle(document.querySelector('[aria-label="复制消息"]')).opacity==='1');assert.equal(await userCopy.evaluate(n=>getComputedStyle(n).opacity),'1');
     assert.equal(await page.locator('[data-role="user"] time').evaluate(n=>getComputedStyle(n).opacity),'1');
     await tooltip.filter({hasText:'复制消息'}).waitFor();
     await page.keyboard.press('Escape');assert.equal(await tooltip.count(),0);

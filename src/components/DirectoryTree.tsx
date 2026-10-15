@@ -22,7 +22,7 @@ import {
   Check,
 } from "lucide-react";
 import { generateId } from "../store";
-import { useEditorSlice, useWorkspaceSlice } from "../store/selectors";
+import { useDirectoryRowSlice, useDirectorySlice, readWorkspaceFileContent } from "../store/selectors";
 import type { ChatSource, FileNode } from "../types";
 import AccountMenu, { type AccountMenuProps } from "./AppNav";
 import LibrarySearchDialog from "./LibrarySearchDialog";
@@ -235,7 +235,7 @@ function TreeNode({
     setSelectedFileId,
     expandedFolderIds,
     toggleFolder,
-  } = useWorkspaceSlice();
+  } = useDirectoryRowSlice();
   const isExpanded = expandedFolderIds.has(node.id) || autoExpand;
   const isSelected = selectedFileId === node.id;
   const isFolder = node.type === "folder";
@@ -502,7 +502,6 @@ export default function DirectoryTree({
     treeData,
     selectedFileId,
     setSelectedFileId,
-    fileContents,
     addNode,
     updateNodeName,
     deleteNode,
@@ -510,8 +509,8 @@ export default function DirectoryTree({
     toggleNodePinned,
     toggleNodeFavorite,
     deletedNotes,
-  } = useWorkspaceSlice();
-  const { focusChatSource } = useEditorSlice();
+    focusChatSource,
+  } = useDirectorySlice();
   const [searchOpen, setSearchOpen] = useState(false);
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const [newTooltipOpen, setNewTooltipOpen] = useState(false);
@@ -723,7 +722,7 @@ export default function DirectoryTree({
       setDeleteTarget(null);
 
       const fileName = node.name.endsWith(".md") ? node.name : `${node.name}.md`;
-      const content = fileContents[node.id] ?? node.content ?? "";
+      const content = readWorkspaceFileContent(node.id) ?? node.content ?? "";
       const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -735,7 +734,7 @@ export default function DirectoryTree({
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 0);
     },
-    [fileContents]
+    []
   );
 
   const handleDelete = useCallback(

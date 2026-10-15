@@ -791,6 +791,21 @@ try {
     fileMenu.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
   });
   assert.deepEqual(Array.from(directoryContainer.querySelector('.nf-action-menu[data-open="true"]').querySelectorAll('button')).map(button => button.textContent.trim()), ["重命名", "移动到", "导出", "置顶", "取消收藏", "删除"]);
+  // Export reads the latest body at action time, without subscribing navigation
+  // to every keystroke. No system download or clipboard is used in this test.
+  const exportId = useAppStore.getState().selectedFileId;
+  const savedCreateUrl = URL.createObjectURL, savedRevokeUrl = URL.revokeObjectURL;
+  const savedAnchorClick = dom.window.HTMLAnchorElement.prototype.click;
+  let exportedBlob;
+  URL.createObjectURL = blob => { exportedBlob = blob; return 'blob:synthetic-latest-note'; };
+  URL.revokeObjectURL = () => {};
+  dom.window.HTMLAnchorElement.prototype.click = function () {};
+  await act(async () => useAppStore.setState(state => ({fileContents:{...state.fileContents,[exportId]:'最新尚未同步的导出正文'}})));
+  await act(async () => Array.from(directoryContainer.querySelector('.nf-action-menu[data-open="true"]').querySelectorAll('button')).find(button=>button.textContent.trim()==='导出').click());
+  assert.equal(await exportedBlob.text(),'最新尚未同步的导出正文');
+  URL.createObjectURL = savedCreateUrl; URL.revokeObjectURL = savedRevokeUrl;
+  dom.window.HTMLAnchorElement.prototype.click = savedAnchorClick;
+  await act(async () => fileMenu.click());
   let moveButton = Array.from(directoryContainer.querySelectorAll("button"))
     .find((button) => button.textContent?.trim() === "移动到");
   assert.ok(moveButton);

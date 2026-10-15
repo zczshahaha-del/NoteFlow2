@@ -29,6 +29,8 @@
     "test:library-motion": "node scripts/library-motion-browser-test.mjs",
     "test:workspace-layout": "node --experimental-strip-types scripts/workspace-layout-test.ts",
     "test:workspace-layout-ui": "node scripts/workspace-layout-browser-test.mjs",
+    "test:workspace-flow": "node scripts/workspace-flow-browser-test.mjs",
+    "test:navigation-tree": "node --experimental-strip-types scripts/navigation-tree-test.ts",
     "test:resize-release": "node scripts/resize-pointer-release-test.mjs",
     "test:ui-foundation": "node scripts/ui-foundation-browser-test.mjs",
     "test:document-header": "node --experimental-strip-types scripts/document-header-test.ts",

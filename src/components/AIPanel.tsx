@@ -26,8 +26,7 @@ import {
   useAgentSlice,
   useChatSlice,
   useDraftSlice,
-  useEditorSlice,
-  useWorkspaceSlice,
+  useAIContextSlice,
 } from "../store/selectors";
 import { findFileById } from "../workspaceTree";
 import { handleRenderedCodeBlockAction, renderChatMarkdown } from "../utils/chatMarkdown";
@@ -377,7 +376,10 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
     applyEditPreviewRequest,
     cancelEditPreviewRequest,
     focusChatSource,
-  } = useEditorSlice();
+    selectedFileId,
+    treeData,
+    reloadWorkspace,
+  } = useAIContextSlice();
   const {
     centerMode,
     draftSeed,
@@ -390,7 +392,6 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
     requestDraftCommand,
   } = useDraftSlice();
   const { agentSessionId, agentTask, agentRunHistory, agentTaskDetailOpen } = useAgentSlice();
-  const { selectedFileId, treeData, reloadWorkspace } = useWorkspaceSlice();
   const [input, setInput] = useState("");
   const [composerMode, setComposerMode] = useState<"chat" | "ask_notes">("chat");
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
