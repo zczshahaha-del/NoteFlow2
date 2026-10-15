@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import {
@@ -27,6 +27,9 @@ import { findFileById } from "../workspaceTree";
 import { createNoteFlowTiptapExtensions } from "../editor/tiptapExtensions";
 import { findTiptapTextRange } from "../utils/tiptapSelection";
 import OutlinePanel from "./OutlinePanel";
+import ChapterRail from "./ChapterRail";
+import { useReadingHeading } from "../hooks/useReadingHeading";
+import { useHeadingGroups } from "../hooks/useHeadingGroups";
 import { attachmentMarkdown, uploadAttachment } from "../services/attachments";
 import { OperationFeedback } from './OperationFeedback';
 import { getNoteOutline, type NoteSectionRecord } from "../services/notes";
@@ -82,15 +85,6 @@ function useMediaQuery(query: string) {
 
 function collectHeadings(editor: Editor): TiptapHeading[] {
   return getDocumentHeadings(editor.state.doc);
-}
-
-function activeHeadingId(editor: Editor, headings: TiptapHeading[]): string {
-  const selectionPosition = editor.state.selection.from;
-  let active = "";
-  headings.forEach((heading) => {
-    if (heading.position < selectionPosition) active = heading.id;
-  });
-  return active;
 }
 
 function markdownPlainText(editor: Editor, markdown: string): string {
@@ -361,13 +355,10 @@ function NoteEditorDocument({ onReady, presented = true }: {
     editor,
     selector: ({ editor: current }) => ({
       doc: current && !current.isDestroyed ? current.state.doc : null,
-      activeId: current && !current.isDestroyed
-        ? activeHeadingId(current, collectHeadings(current))
-        : "",
     }),
     // Compare immutable doc identity, not a deep traversal of the whole note.
     equalityFn: (previous, next) =>
-      previous.doc === next?.doc && previous.activeId === next?.activeId,
+      previous.doc === next?.doc,
   });
 
   useEffect(() => {
@@ -486,7 +477,8 @@ function NoteEditorDocument({ onReady, presented = true }: {
     ? numberedHeadings
     : numberedHeadings.map((heading) => ({ ...heading, displayNumber: "" })),
   [numberedHeadings, showHeadingNumbers]);
-  const activeId = documentState?.activeId ?? "";
+  const activeId = useReadingHeading(editor, documentScroller, headings);
+  const headingGroups = useHeadingGroups(visibleHeadings, activeId);
   const headingPositions = useMemo(
     () => new Map(headings.map((heading) => [heading.id, heading.position])),
     [headings]
@@ -613,6 +605,7 @@ function NoteEditorDocument({ onReady, presented = true }: {
   const outline = (
     <OutlinePanel
       headings={visibleHeadings}
+      groups={headingGroups}
       activeId={activeId}
       onHeadingClick={scrollToHeading}
       onClose={() => setMobileOutlineOpen(false)}
@@ -723,26 +716,7 @@ function NoteEditorDocument({ onReady, presented = true }: {
       </div>
 
       {!isMobile && headings.length > 1 && !mobileOutlineOpen && (
-        <nav className="chapter-rail" aria-label="章节快速导航">
-          <div className="chapter-rail-track">
-            {visibleHeadings.map((heading) => (
-              <button
-                key={heading.id}
-                type="button"
-                className={`chapter-rail-item ${activeId === heading.id ? "is-active" : ""}`}
-                onClick={() => scrollToHeading(heading.id)}
-                title={`${heading.displayNumber ? `${heading.displayNumber} ` : ""}${heading.text}`}
-                style={{ "--chapter-indent": `${Math.min(heading.hierarchyDepth, 3) * 12}px` } as CSSProperties}
-              >
-                <span className="chapter-rail-mark" />
-                <span className="chapter-rail-label">
-                  {heading.displayNumber ? `${heading.displayNumber} ` : ""}
-                  {heading.text}
-                </span>
-              </button>
-            ))}
-          </div>
-        </nav>
+        <ChapterRail headings={visibleHeadings} groups={headingGroups} activeId={activeId} onHeadingClick={scrollToHeading} />
       )}
 
       {versionHistoryOpen && (

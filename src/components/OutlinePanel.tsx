@@ -1,151 +1,33 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef } from "react";
 import { ChevronRight, ChevronsLeft, ListTree } from "lucide-react";
-
-interface HeadingItem {
-  level: number;
-  text: string;
-  id: string;
-  displayNumber?: string;
-  hierarchyDepth?: number;
-}
-
-interface HeadingNode {
-  item: HeadingItem;
-  children: HeadingNode[];
-}
-
-interface VisibleHeading {
-  node: HeadingNode;
-  depth: number;
-}
-
-function buildHeadingTree(headings: HeadingItem[]): HeadingNode[] {
-  const roots: HeadingNode[] = [];
-  const stack: HeadingNode[] = [];
-
-  headings.forEach((heading) => {
-    const node: HeadingNode = { item: heading, children: [] };
-    const headingDepth = heading.hierarchyDepth ?? heading.level;
-
-    while (
-      stack.length > 0 &&
-      (stack[stack.length - 1].item.hierarchyDepth ?? stack[stack.length - 1].item.level) >=
-        headingDepth
-    ) {
-      stack.pop();
-    }
-
-    const parent = stack[stack.length - 1];
-    if (parent) {
-      parent.children.push(node);
-    } else {
-      roots.push(node);
-    }
-    stack.push(node);
-  });
-
-  return roots;
-}
-
-function flattenVisibleHeadings(
-  nodes: HeadingNode[],
-  collapsedIds: Set<string>,
-  depth = 0
-): VisibleHeading[] {
-  return nodes.flatMap((node) => {
-    const current = { node, depth };
-    if (collapsedIds.has(node.item.id)) return [current];
-    return [
-      current,
-      ...flattenVisibleHeadings(node.children, collapsedIds, depth + 1),
-    ];
-  });
-}
-
-function collectExpandableIds(nodes: HeadingNode[], ids = new Set<string>()): Set<string> {
-  nodes.forEach((node) => {
-    if (node.children.length > 0) ids.add(node.item.id);
-    collectExpandableIds(node.children, ids);
-  });
-  return ids;
-}
-
-function collectParentIds(nodes: HeadingNode[], parentId = ""): Map<string, string> {
-  const parents = new Map<string, string>();
-  nodes.forEach((node) => {
-    if (parentId) parents.set(node.item.id, parentId);
-    collectParentIds(node.children, node.item.id).forEach((value, key) => {
-      parents.set(key, value);
-    });
-  });
-  return parents;
-}
-
-function getAncestorIds(id: string, parents: Map<string, string>): string[] {
-  const ancestors: string[] = [];
-  let current = parents.get(id);
-  while (current) {
-    ancestors.push(current);
-    current = parents.get(current);
-  }
-  return ancestors;
-}
+import type { HeadingGroups } from "../hooks/useHeadingGroups";
+import type { OutlineHeading as HeadingItem } from "../utils/outlineNavigation";
+import "./chapter-navigation.css";
 
 export default function OutlinePanel({
   headings,
   activeId,
   onHeadingClick,
   onClose,
+  groups,
 }: {
   headings: HeadingItem[];
   activeId: string;
   onHeadingClick: (id: string) => void;
   onClose?: () => void;
+  groups: HeadingGroups;
 }) {
-  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
-  const headingTree = useMemo(() => buildHeadingTree(headings), [headings]);
-  const expandableIds = useMemo(() => collectExpandableIds(headingTree), [headingTree]);
-  const parentIds = useMemo(() => collectParentIds(headingTree), [headingTree]);
-  const visibleHeadings = useMemo(
-    () => flattenVisibleHeadings(headingTree, collapsedIds),
-    [collapsedIds, headingTree]
-  );
-
+  const visibleHeadings = groups.rows;
+  const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    setCollapsedIds((current) => {
-      const next = new Set<string>();
-      current.forEach((id) => {
-        if (expandableIds.has(id)) next.add(id);
-      });
-      return next.size === current.size ? current : next;
-    });
-  }, [expandableIds]);
-
-  useEffect(() => {
-    if (!activeId) return;
-    const ancestors = getAncestorIds(activeId, parentIds);
-    if (ancestors.length === 0) return;
-    setCollapsedIds((current) => {
-      let changed = false;
-      const next = new Set(current);
-      ancestors.forEach((id) => {
-        if (next.delete(id)) changed = true;
-      });
-      return changed ? next : current;
-    });
-  }, [activeId, parentIds]);
-
-  const toggleHeading = (id: string) => {
-    setCollapsedIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
+    const list = listRef.current;
+    if (!list || list.contains(document.activeElement)) return;
+    const active = list.querySelector<HTMLElement>('[aria-current="location"]');
+    if (!active) return;
+    const row = active.getBoundingClientRect(), box = list.getBoundingClientRect();
+    if (row.top < box.top) list.scrollTop -= box.top - row.top;
+    else if (row.bottom > box.bottom) list.scrollTop += row.bottom - box.bottom;
+  }, [activeId, groups.rows]);
 
   return (
     <div className="flex h-full flex-col bg-jelly-surface">
@@ -170,6 +52,10 @@ export default function OutlinePanel({
             </span>
           </div>
         )}
+        {headings.length > 100 && groups.model.expandable.size > 0 && <div className="outline-group-tools ml-auto flex gap-2 text-[11px] text-jelly-text-muted">
+          <button type="button" onClick={groups.expandAll}>展开全部</button>
+          <button type="button" onClick={groups.collapseGroups}>收起分组</button>
+        </div>}
       </div>
 
       {/* Heading list */}
@@ -178,25 +64,27 @@ export default function OutlinePanel({
           <p className="text-[12px] text-jelly-text-muted">暂无标题</p>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto px-2 py-3">
+        <div ref={listRef} className="flex-1 overflow-y-auto px-2 py-3">
           {visibleHeadings.map(({ node, depth }) => {
             const h = node.item;
             const hasChildren = node.children.length > 0;
-            const collapsed = collapsedIds.has(h.id);
+            const collapsed = groups.collapsed.has(node.key);
             return (
               <div key={h.id} className="flex min-w-0 items-center">
                 <button
                   type="button"
-                  className={`flex h-7 w-5 shrink-0 items-center justify-center rounded-md transition-colors ${
+                  className={`document-outline-toggle flex h-7 w-5 shrink-0 items-center justify-center rounded-md transition-colors ${
                     hasChildren
                       ? "text-jelly-text-muted hover:bg-jelly-blue-pale hover:text-jelly-blue-deep"
                       : "cursor-default text-transparent"
                   }`}
                   style={{ marginLeft: `${depth * 18}px` }}
                   onClick={() => {
-                    if (hasChildren) toggleHeading(h.id);
+                    if (hasChildren) groups.toggle(node.key);
                   }}
-                  aria-label={collapsed ? "展开小节" : "收起小节"}
+                  disabled={!hasChildren}
+                  aria-expanded={hasChildren ? !collapsed : undefined}
+                  aria-label={`${collapsed ? "展开" : "收起"}小节：${h.text}`}
                   title={collapsed ? "展开小节" : "收起小节"}
                 >
                   <ChevronRight
@@ -206,7 +94,10 @@ export default function OutlinePanel({
                   />
                 </button>
                 <button
-                  className={`
+                  type="button"
+                  data-heading-id={h.id}
+                  aria-current={activeId === h.id ? "location" : undefined}
+                  className={`document-outline-heading
                     min-w-0 flex-1 truncate rounded-md border-l-[3px] py-1.5 pr-2 text-left transition-colors duration-100
                     ${
                       activeId === h.id

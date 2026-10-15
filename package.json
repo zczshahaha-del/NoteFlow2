@@ -17,6 +17,8 @@
     "test:selection-toolbar-ui": "node scripts/selection-toolbar-browser-test.mjs",
     "test:editor-performance": "node scripts/editor-performance-browser-test.mjs",
     "test:chapter-rail": "node scripts/chapter-rail-browser-test.mjs",
+    "test:outline-navigation": "node --experimental-strip-types scripts/outline-navigation-test.ts",
+    "test:outline-reading-ui": "node scripts/outline-reading-browser-test.mjs",
     "test:note-entry": "node scripts/note-entry-browser-test.mjs",
     "test:note-open-race": "node scripts/note-open-race-test.mjs",
     "test:note-write-race": "node scripts/note-write-race-test.mjs",
