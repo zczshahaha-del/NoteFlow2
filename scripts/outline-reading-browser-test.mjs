@@ -51,18 +51,25 @@ try{
   page.setDefaultTimeout(6000);page.on('pageerror',e=>errors.push(e.message));await context.route('**/*',r=>{requests.push(r.request().url());return r.abort()});
   await page.setContent('<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'</style></head><body><div id="root" style="display:flex;height:100vh"></div><script type="module">'+source+'</script></body></html>');
   await page.waitForFunction(()=>window.readingTest.api.editor&&document.querySelector('.note-entry[data-ready="true"]'));await settle(page);
+  const tickGeometry=()=>page.locator('.chapter-rail-tick').evaluateAll(nodes=>nodes.map(n=>{const b=n.getBoundingClientRect();return {top:b.top,left:b.left,width:b.width,height:b.height}}));
+  const initialTicks=await tickGeometry();
+  if(width!==320&&!baseline)assert.equal(initialTicks.length,60,'251 headings fit into a bounded fixed overview');
   assert.equal(await page.evaluate(()=>window.readingTest.api.headings().length),251);
   await page.evaluate(()=>{const a=window.readingTest.api;window.originalReadingDoc=a.editor.state.doc;window.originalReadingSelection=a.editor.state.selection;a.updates=a.scans=a.serializations=a.headingReads=a.selectionUpdates=0;});
   await scrollTo(page,target);
   if(baseline){const active=await page.locator('.chapter-rail-item.is-active').textContent();console.log(JSON.stringify({baselineRef:'d7ba25b',expected:'小节 10-4',actual:active}));assert(active.includes('小节 10-4'),'Scrolling without editing must update the active chapter');}
   if(width===320){await page.getByRole('button',{name:'展开目录',exact:true}).click();await expectActive(page,target,'[aria-label="本文目录"]');}
   else await expectActive(page,target);
+  if(width!==320)assert.deepEqual(await tickGeometry(),initialTicks,'reading and branch expansion do not move compact ticks');
   const scope=width===320?page.getByRole('dialog',{name:'本文目录',exact:true}):page.locator('.chapter-rail');
   assert((await scope.locator('[data-heading-id]').count())<60,'Long hierarchical notes start with chapter groups, not 251 marks');
   assert(await page.evaluate(()=>window.readingTest.api.editor.state.doc===window.originalReadingDoc&&window.readingTest.api.editor.state.selection===window.originalReadingSelection));
   assert.equal(await page.evaluate(()=>window.readingTest.api.updates),0);assert.equal(await page.evaluate(()=>window.readingTest.api.selectionUpdates),0);
   if(width!==320){
-   await page.mouse.move(width-24,450);await settle(page);
+   if(touch)await scope.getByRole('button',{name:'展开章节目录',exact:true}).tap();
+   else await page.mouse.move(width-24,450);
+   await settle(page);
+   assert(await scope.locator('[aria-current="location"]').evaluate(n=>{const row=n.getBoundingClientRect(),track=n.closest('.chapter-rail-track').getBoundingClientRect();return row.top>=track.top-1&&row.bottom<=track.bottom+1}),'entry reveals the current chapter for both pointer and touch');
    assert(await scope.locator('.chapter-rail-item').evaluateAll(nodes=>nodes.every(n=>Math.abs(n.getBoundingClientRect().width-n.closest('.chapter-rail-track').getBoundingClientRect().width)<1)),'Row wrappers must not shrink labels into a 23px-wide flex item');
    const before=await scope.locator('.chapter-rail-track').evaluate(n=>({top:n.scrollTop,height:n.clientHeight,range:n.scrollHeight}));
    const box=await scope.boundingBox();await page.mouse.move(20,20);await settle(page);
@@ -116,7 +123,7 @@ try{
   assert(await page.locator('.note-content code [class^="token-"]').count()>0);
   await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));await settle(page);
   assert.equal(await page.locator('.note-content').evaluate(n=>getComputedStyle(n).color),'rgb(230, 229, 223)');
-  if(width!==320)assert.notEqual(await page.locator('.chapter-rail').evaluate(n=>getComputedStyle(n,'::before').backgroundColor),'rgba(255, 255, 255, 0.96)');
+  if(width!==320)assert.equal(await page.locator('.chapter-rail-panel').evaluate(n=>getComputedStyle(n).backgroundColor),'rgba(36, 43, 53, 0.98)');
   await page.emulateMedia({reducedMotion:'reduce'});
   await page.evaluate(()=>{const t=window.readingTest;t.slice.selectedFileId='short';t.api.render()});await page.waitForFunction(()=>document.querySelector('.note-entry[data-ready="true"]')&&document.querySelector('.note-content').textContent.includes('短正文'));await settle(page);
   if(width!==320){assert.equal(await page.locator('.chapter-rail-item').count(),2);await expectActive(page,0);}

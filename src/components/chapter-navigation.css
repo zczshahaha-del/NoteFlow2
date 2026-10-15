@@ -1,14 +1,11 @@
-/* Keep the fixed 23px rail geometry and clipping from the reading surface. */
-.chapter-rail-row { position: relative; display: flex; flex: 0 0 23px; min-height: 23px; }
+/* Expanded labels retain their own geometry; compact ticks are a separate view. */
+.chapter-rail-row { position: relative; display: flex; flex: 0 0 28px; min-height: 28px; }
 .chapter-rail-row > .chapter-rail-item { flex: 1 1 auto; width: 100%; }
-.chapter-rail-tools { display: flex; justify-content: flex-start; gap: 12px; flex: 0 0 27px; opacity: 0; transition: opacity var(--nf-motion-feedback); }
+.chapter-rail-tools { display: flex; justify-content: flex-start; gap: 12px; flex: 0 0 27px; }
 .chapter-rail-tools button { border: 0; padding: 0 2px; background: transparent; color: var(--nf-ui-muted); font-size: 11px; }
-.chapter-rail-group-toggle { position: absolute; left: var(--chapter-indent, 0px); top: 0; display: grid; place-items: center; width: 20px; height: 23px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: inherit; opacity: 0; transition: opacity var(--nf-motion-feedback); }
+.chapter-rail-group-toggle { position: absolute; left: var(--chapter-indent, 0px); top: 0; display: grid; place-items: center; width: 20px; height: 28px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: inherit; }
+.chapter-rail-row:has(.chapter-rail-group-toggle) .chapter-rail-item { padding-left: calc(24px + var(--chapter-indent, 0px)); }
 .chapter-rail-group-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
-.chapter-rail:hover .chapter-rail-tools, .chapter-rail:has(:focus-visible) .chapter-rail-tools,
-.chapter-rail:hover .chapter-rail-group-toggle, .chapter-rail:has(:focus-visible) .chapter-rail-group-toggle { opacity: 1; }
-.chapter-rail:hover .chapter-rail-row:has(.chapter-rail-group-toggle) .chapter-rail-mark,
-.chapter-rail:has(:focus-visible) .chapter-rail-row:has(.chapter-rail-group-toggle) .chapter-rail-mark { opacity: 0; }
 .chapter-rail-group-toggle:hover { background: var(--nf-ui-soft); }
 .chapter-rail-group-toggle:focus-visible, .chapter-rail-tools button:focus-visible { outline: 1px solid var(--nf-ui-focus) !important; outline-offset: -1px; }
 @media (pointer: coarse) {
@@ -20,7 +17,4 @@
   .outline-group-tools button { min-height: 44px; min-width: 44px; }
   .document-outline-heading, .document-outline-toggle { min-height: 44px; }
   .document-outline-toggle { min-width: 28px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .chapter-rail-tools, .chapter-rail-group-toggle { transition: none; }
 }

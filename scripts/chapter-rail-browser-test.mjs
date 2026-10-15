@@ -12,7 +12,7 @@ const assets = new URL('../dist/assets/', import.meta.url);
 const css = readdirSync(assets).filter(n => /^(index-|NoteEditor-).*\.css$/.test(n)).map(n => readFileSync(new URL(n, assets), 'utf8')).join('\n');
 assert(css, 'Build first');
 const output = mkdtempSync(join(tmpdir(), 'noteflow-chapter-rail-'));
-const markdown = Array.from({length:80},(_,i)=>[
+const markdown = Array.from({length:70},(_,i)=>[
   (i%4===0?'## ':'### ')+'章节 '+i+'：长笔记的目录测试', '',
   '正文阅读测试，保留 **加粗** 和 `行内代码`。'.repeat(10), '',
   ...(i%8===0?['```go','var users []User','db.Preload("Posts").Find(&users)','```','']:[]),
@@ -68,13 +68,26 @@ try{
     }else{
       const box=await rail.boundingBox();
       const track=rail.locator('.chapter-rail-track');
-      await track.evaluate(n=>{n.scrollTop=240});
+      const panel=rail.locator('.chapter-rail-panel');
+      const tickGeometry=()=>rail.locator('.chapter-rail-tick').evaluateAll(nodes=>nodes.map(n=>{const b=n.getBoundingClientRect();return {top:b.top,left:b.left,width:b.width,height:b.height}}));
+      const originalTicks=await tickGeometry();
+      assert.equal(originalTicks.length,60,'long outlines have a bounded overview');
+      assert(originalTicks.every((n,i)=>i===0||n.top-originalTicks[i-1].top<=14),'ticks stay compact');
+      assert(new Set(originalTicks.map(n=>n.width)).size>1,'tick lengths distinguish heading levels');
+      await page.screenshot({path:join(output,`compact-${width}.png`)});
+      const originalSelection=await page.evaluate(()=>window.railTest.editor.state.selection.toJSON());
+      await rail.getByRole('button',{name:'展开章节目录',exact:true}).click();await settle(page);
+      assert.equal(await rail.getAttribute('data-open'),'true');
+      assert.deepEqual(await page.evaluate(()=>window.railTest.editor.state.selection.toJSON()),originalSelection,'clicking the opener cannot fall through to a heading');
+      assert.equal(await track.evaluate(n=>n.scrollTop),0,'opening cannot scroll the list while trying to hit the trigger');
+      await page.locator('.document-title').click();await settle(page);
+      assert.equal(await rail.getAttribute('data-open'),'false');
       const geometry=()=>track.evaluate(n=>({scrollTop:n.scrollTop,scrollHeight:n.scrollHeight,clientHeight:n.clientHeight,rowHeight:n.querySelector('button').getBoundingClientRect().height}));
       const before=await geometry();
       await page.evaluate(()=>{window.railTest.renders=0;window.railTest.scans=0;window.railTest.serializations=0});
       // Native pointer hover, then record every transition frame without disabling it.
       await page.mouse.move(box.x+box.width-14,box.y+box.height/2);
-      const frames=await track.evaluate(async n=>{const samples=[];const start=performance.now();while(performance.now()-start<450){await new Promise(r=>requestAnimationFrame(r));samples.push({geometry:{scrollTop:n.scrollTop,scrollHeight:n.scrollHeight,clientHeight:n.clientHeight,rowHeight:n.querySelector('button').getBoundingClientRect().height},clip:getComputedStyle(n.parentElement).clipPath,opacity:Number(getComputedStyle(n.querySelector('.chapter-rail-label')).opacity)})}return samples});
+      const frames=await track.evaluate(async n=>{const samples=[];const start=performance.now();while(performance.now()-start<450){await new Promise(r=>requestAnimationFrame(r));samples.push({geometry:{scrollTop:n.scrollTop,scrollHeight:n.scrollHeight,clientHeight:n.clientHeight,rowHeight:n.querySelector('button').getBoundingClientRect().height},clip:getComputedStyle(n.parentElement).transform,opacity:Number(getComputedStyle(n.parentElement).opacity)})}return samples});
       await settle(page);
       const after=await geometry();
       console.log(JSON.stringify({width,before,after,frames:frames.length}));
@@ -84,9 +97,9 @@ try{
       assert(frames.some(f=>f.opacity>0&&f.opacity<1),'labels fade continuously rather than pop in');
       const snapshot=await page.evaluate(()=>({renders:window.railTest.renders,scans:window.railTest.scans,serializations:window.railTest.serializations,updates:window.railTest.updates}));
       assert.deepEqual(snapshot,{renders:0,scans:0,serializations:0,updates:0},'hover has no editor work or writes');
-      assert.equal(await rail.locator('.chapter-rail-label').first().evaluate(n=>getComputedStyle(n).opacity),'1');
+      assert.equal(await panel.evaluate(n=>getComputedStyle(n).opacity),'1');
       const bodyScroll=await page.locator('.document-scroll').evaluate(n=>n.scrollTop);
-      const expanded=await rail.boundingBox();
+      const expanded=await panel.boundingBox();
       await page.mouse.move(expanded.x+expanded.width/2,expanded.y+expanded.height/2);
       await page.mouse.wheel(0,330);
       await page.waitForFunction(top=>document.querySelector('.chapter-rail-track').scrollTop>top,before.scrollTop);
@@ -98,14 +111,14 @@ try{
       const wheelTop=await track.evaluate(n=>n.scrollTop);
       await page.mouse.move(30,30);await settle(page);
       assert.equal(await track.evaluate(n=>n.scrollTop),wheelTop,'closing retains outline scroll');
-      assert.equal(await rail.locator('.chapter-rail-label').first().evaluate(n=>getComputedStyle(n).opacity),'0');
-      // Clipped, hidden part of the 222px layer must not block the note behind it.
+      assert.equal(await panel.evaluate(n=>getComputedStyle(n).opacity),'0');
+      // The closed panel must not intercept prose underneath its footprint.
       assert.equal(await page.evaluate(b=>document.elementFromPoint(b.x+10,b.y+30)?.closest('.chapter-rail')!==null,expanded),false);
       await page.mouse.move(box.x+box.width-14,box.y+box.height/2);await settle(page);
-      assert.equal(await track.evaluate(n=>n.scrollTop),wheelTop);
+      assert.equal(await track.evaluate(n=>n.scrollTop),0,'entry reveals the current heading once, not the previous manual browsing position');
       await page.screenshot({path:join(output,`expanded-${width}.png`)});
       // A real click should scroll the document smoothly and not save content.
-      const target=rail.locator('button').nth(30);
+      const target=rail.locator('.chapter-rail-item').nth(30);
       await target.scrollIntoViewIfNeeded();await target.click();
       const samples=await page.locator('.document-scroll').evaluate(async n=>{const a=[];for(let i=0;i<50;i++){await new Promise(r=>requestAnimationFrame(r));a.push(n.scrollTop)}return a});
       assert(new Set(samples).size>3,'heading jump has intermediate scroll positions');
@@ -115,21 +128,36 @@ try{
       assert(Math.abs(aligned-24)<2,'heading settles at the existing 24px inset');
       assert.equal(await page.evaluate(()=>window.railTest.updates),0,'navigation cannot change note content');
       await page.mouse.move(30,30);await settle(page);
-      assert.equal(await rail.locator('.chapter-rail-label').first().evaluate(n=>getComputedStyle(n).opacity),'0','mouse click focus cannot pin hover open');
+      assert.equal(await panel.evaluate(n=>getComputedStyle(n).opacity),'0','mouse click focus cannot pin hover open');
+      assert.deepEqual(await tickGeometry(),originalTicks,'scrolling prose never translates or rescales the overview');
+      assert.equal(await rail.locator('.chapter-rail-tick.is-active').count(),1);
+      // Navigation updates the highlight while all overview slots stay fixed,
+      // including when the prose crosses several sections in either direction.
+      for(const index of [45,8,60,30]){
+        await page.evaluate(i=>{const e=window.railTest.editor,h=e.view.dom.querySelectorAll('h2,h3')[i],s=document.querySelector('.document-scroll');s.scrollTop+=h.getBoundingClientRect().top-s.getBoundingClientRect().top-32},index);
+        await settle(page);
+        assert.deepEqual(await tickGeometry(),originalTicks);
+        assert.equal(await rail.locator('.chapter-rail-tick.is-active').count(),1);
+      }
       // Keyboard focus still reveals the same labels, with a visible focus cue.
       await page.keyboard.press('Tab');
-      await rail.locator('button').first().focus();await settle(page);
-      assert.equal(await rail.locator('.chapter-rail-label').first().evaluate(n=>getComputedStyle(n).opacity),'1');
+      await rail.locator('.chapter-rail-overview').focus();await settle(page);
+      await rail.locator('.chapter-rail-item').first().focus();await settle(page);
+      assert.equal(await panel.evaluate(n=>getComputedStyle(n).opacity),'1');
       assert((await rail.locator('.chapter-rail-label').first().evaluate(n=>getComputedStyle(n).textDecorationLine)).includes('underline'));
+      await page.keyboard.press('Escape');await settle(page);
+      assert.equal(await panel.evaluate(n=>getComputedStyle(n).opacity),'0','Escape closes without instantly reopening on returned focus');
+      await page.keyboard.press('Enter');await settle(page);
+      assert.equal(await panel.evaluate(n=>getComputedStyle(n).opacity),'1','keyboard can reopen from the compact trigger');
       await page.locator('.document-title').focus();await settle(page);
       await page.emulateMedia({reducedMotion:'reduce'});
       await page.mouse.move(box.x+box.width-14,box.y+box.height/2);await settle(page);
-      assert(parseFloat(await rail.evaluate(n=>getComputedStyle(n).transitionDuration))<0.001,'reduced motion avoids expansion tween');
+      assert(parseFloat(await panel.evaluate(n=>getComputedStyle(n).transitionDuration))<0.001,'reduced motion avoids expansion tween');
       await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));await settle(page);
-      const surface=await rail.evaluate(n=>getComputedStyle(n,'::before').backgroundColor);
-      assert.notEqual(surface,'rgba(255, 255, 255, 0.96)','dark rail uses a dark surface');
+      const surface=await panel.evaluate(n=>getComputedStyle(n).backgroundColor);
+      assert.equal(surface,'rgba(36, 43, 53, 0.98)','dark rail uses the actual dark panel surface');
       await page.emulateMedia({forcedColors:'active'});await settle(page);
-      assert.notEqual(await rail.evaluate(n=>getComputedStyle(n,'::before').borderStyle),'none');
+      assert.notEqual(await panel.evaluate(n=>getComputedStyle(n).borderStyle),'none');
       reports.push({width,stableGeometry:true,frames:frames.length,hoverWork:snapshot,localWheel:true,clickScroll:true,keyboard:true,reducedMotion:true,dark:true,forcedColors:true});
     }
     assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);

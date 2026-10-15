@@ -470,19 +470,19 @@ assert.match(
 );
 assert.match(
   styles,
-  /\.chapter-rail \{[\s\S]*?width: 222px;[\s\S]*?clip-path: inset\(0 0 0 188px round 14px\);[\s\S]*?color: var\(--color-jelly-text-muted\);/,
-  "fixed chapter layout must expose only a 34px marker rail when collapsed"
+  /\.chapter-rail \{[\s\S]*?width: 34px;[\s\S]*?color: var\(--color-jelly-text-muted\);/,
+  "collapsed navigation is an independent compact overview, not a clipped label list"
 );
 assert.match(
   styles,
-  /\.chapter-rail-item \{[\s\S]*?flex: 0 0 23px;[\s\S]*?min-height: 23px;/,
-  "chapter rows keep their height and scroll range during hover expansion"
+  /\.chapter-rail-item \{[\s\S]*?min-height: 28px;/,
+  "expanded labels retain readable row heights independently of compact ticks"
 );
 assert.doesNotMatch(styles, /\.chapter-rail:focus-within/, "mouse focus cannot pin the rail expanded");
 assert.match(
   styles,
   /\.chapter-rail-track \{[\s\S]*?display: flex;[\s\S]*?flex-direction: column;[\s\S]*?gap: 2px;/,
-  "collapsed chapter markers must form one continuous vertical track"
+  "expanded labels must form one contained vertical track"
 );
 assert.doesNotMatch(
   styles,
