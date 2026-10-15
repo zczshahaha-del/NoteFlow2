@@ -210,8 +210,40 @@ try {
   assert.equal(useAppStore.getState().activeDraftContext?.stage, "outline_ready");
   useAppStore.getState().openPendingDraft();
   assert.equal(useAppStore.getState().centerMode, "draft");
-  useAppStore.getState().closeDraft();
+  useAppStore.getState().closeDraft({ status: "resolved", draftId: "draft-test-1" });
   assert.equal(useAppStore.getState().centerMode, "note");
+  assert.equal(useAppStore.getState().chatMessages.at(-1)?.draftCard?.status, "resolved", "saving must settle the original conversation card");
+  useAppStore.getState().startDraft("测试主题");
+  useAppStore.getState().setActiveDraftContext({ ...useAppStore.getState().activeDraftContext, id: "second-draft", stage: "assembled" });
+  useAppStore.getState().closeDraft({ status: "resolved", draftId: "draft-test-1" });
+  assert.equal(useAppStore.getState().activeDraftContext?.id, "second-draft", "late completion must not close another draft");
+  useAppStore.getState().closeDraft({ status: "cancelled", draftId: "second-draft" });
+  assert.equal(useAppStore.getState().chatMessages.at(-1)?.draftCard?.status, "cancelled");
+  assert.equal(useAppStore.getState().chatMessages.filter(message => message.draftCard?.status === "resolved").length, 1, "a repeated topic must not overwrite the completed task");
+
+  // A failed cancellation must not claim success or discard the retry target.
+  const cancelPreview = { id: "cancel-failure-preview", noteId: note.id, targetType: "note", oldContent: "before", newContent: "after", changeSummary: [] };
+  useAppStore.setState({ activeEditPreview: cancelPreview, centerMode: "edit", chatLoading: false });
+  globalThis.fetch = window.fetch = async () => new Response('{"detail":"合成取消失败"}', { status: 503 });
+  await useAppStore.getState().cancelEditPreviewRequest();
+  assert.equal(useAppStore.getState().activeEditPreview?.id, cancelPreview.id);
+  assert.equal(useAppStore.getState().centerMode, "edit");
+  assert.match(useAppStore.getState().editPreviewError, /合成取消失败/);
+  globalThis.fetch = window.fetch = testFetch;
+  await useAppStore.getState().cancelEditPreviewRequest();
+  assert.equal(useAppStore.getState().activeEditPreview, null);
+  assert.equal(useAppStore.getState().chatLoading, false);
+  for (const action of ["revise", "restore"]) {
+    useAppStore.setState({ activeEditPreview: cancelPreview, centerMode: "edit" });
+    globalThis.fetch = window.fetch = async () => new Response('{"detail":"合成调整失败"}', { status: 503 });
+    if (action === "revise") await useAppStore.getState().reviseEditPreviewRequest("合成修改");
+    else await useAppStore.getState().restoreEditPreviewRevisionRequest("revision").catch(() => undefined);
+    assert.equal(useAppStore.getState().activeEditPreview?.id, cancelPreview.id);
+    assert.match(useAppStore.getState().editPreviewError, /合成调整失败/);
+    assert.equal(useAppStore.getState().chatLoading, false);
+  }
+  globalThis.fetch = window.fetch = testFetch;
+  useAppStore.setState({ activeEditPreview: null, centerMode: "note", editPreviewError: "" });
 
   useAppStore.getState().addSelectionToChat({
     text: "选中的正文",

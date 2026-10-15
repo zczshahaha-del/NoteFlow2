@@ -20,7 +20,7 @@ const makeDraft=(status='outline_ready')=>({id:'synthetic-draft',topic:'Redis �
 sections:[{id:'s1',title:'认识 Redis',sortOrder:0,level:2,outlineText:'## 认识 Redis',content:'## 缓存的基础\\n\\n这是用于离线组件检查的合成正文。',status:status==='generating'?'generating':'generated'},
 {id:'s2',title:'数据类型与常用命令',sortOrder:1,level:2,outlineText:'## 数据类型与常用命令',content:'## 常用命令\\n\\n字符串、列表与集合。',status:'generated'},
 {id:'s3',title:'过期策略与持久化',sortOrder:2,level:2,outlineText:'## 过期策略与持久化',content:'',status:'outline_only'}]});
-const api={calls:[],draft:makeDraft(),failNext:null,render(){root.render(React.createElement(Draft,{key:revision}))},show(status){this.draft=makeDraft(status);slice.centerMode='draft';revision++;this.render()},async call(name,args){this.calls.push({name,args});if(this.failNext===name){this.failNext=null;throw new Error('合成失败，请重试')}const section=this.draft.sections.find(s=>s.id===args[1]);
+const api={calls:[],draft:makeDraft(),failNext:null,holdNext:null,render(){root.render(React.createElement(Draft,{key:revision}))},reopen(){slice.centerMode='draft';this.render()},show(status){this.draft=makeDraft(status);slice.centerMode='draft';revision++;this.render()},async call(name,args){this.calls.push({name,args});if(this.holdNext===name){this.holdNext=null;await new Promise(resolve=>this.release=resolve)}if(this.failNext===name){this.failNext=null;throw new Error('合成失败，请重试')}const section=this.draft.sections.find(s=>s.id===args[1]);
 if(name==='updateDraftSection')Object.assign(section,args[2]);
 if(name==='confirmDraftSection')section.status='confirmed';
 if(name==='deleteDraftSection')section.status='deleted';
@@ -32,7 +32,7 @@ if(name==='generateAllDraftSections')this.draft.status='generating';
 if(name==='stopAllDraftSections'){this.draft.status='outline_ready';this.draft.sections.forEach(s=>{if(s.status==='generating')s.status=s.content.trim()?'generated':'outline_only'})}
 if(name==='saveDraftToNotes')return {draft:{...this.draft,status:'saved'},note:{id:'synthetic-note',title:args[1].title}};
 return structuredClone(this.draft)}};
-const slice={centerMode:'draft',draftSeed:'Redis 学习笔记',draftCommand:null,pendingCheckpoint:{id:'synthetic-checkpoint',checkpointType:'draft_workspace',payload:{draftId:'synthetic-draft'}},consumeDraftCommand(){},setActiveDraftContext(){},closeDraft(){api.calls.push({name:'closeDraft'});slice.centerMode='note';api.render()},dismissDraftWorkspace(){api.calls.push({name:'dismissDraftWorkspace'});slice.centerMode='note';api.render()}};
+const slice={centerMode:'draft',draftSeed:'Redis 学习笔记',draftCommand:null,pendingCheckpoint:{id:'synthetic-checkpoint',checkpointType:'draft_workspace',payload:{draftId:'synthetic-draft'}},consumeDraftCommand(){slice.draftCommand=null},setActiveDraftContext(value){api.context=value},closeDraft(outcome){api.calls.push({name:'closeDraft',outcome});slice.centerMode='note';api.render()},dismissDraftWorkspace(){api.calls.push({name:'dismissDraftWorkspace'});slice.centerMode='note';api.render()}};
 const workspace={treeData:[{id:'folder',name:'全栈开发',type:'folder',children:[]}],reloadWorkspace(...args){api.calls.push({name:'reloadWorkspace',args})}};
 window.draftTest={api,slice,workspace}; api.render();`;
 const bundled = await build({configFile:false,logLevel:'silent',plugins:[{
@@ -73,6 +73,11 @@ try {
     assert.ok(buttons.every(b=>b.inside));if(mobile)assert.ok(buttons.every(b=>b.height>=44));
     await shell.getByRole('button',{name:'编辑',exact:true}).focus();await page.keyboard.press('Tab');assert.ok(await shell.getByRole('button',{name:'确认',exact:true}).evaluate(n=>n.matches(':focus-visible') && getComputedStyle(n).outlineStyle==='solid'));
     const field=page.locator('#draft-section-instruction');assert.equal(await field.evaluate(n=>getComputedStyle(n).resize),'none');
+    assert.equal(await shell.locator('.nf-writing-label').textContent(),'正文待完善');
+    await field.fill('关闭重开后保留的合成修改要求');
+    await shell.locator('.nf-draft-close').click();await shell.waitFor({state:'detached'});
+    await page.evaluate(()=>window.draftTest.api.reopen());await field.waitFor();
+    assert.equal(await field.inputValue(),'关闭重开后保留的合成修改要求');
     if(mobile)assert.equal(await field.evaluate(n=>getComputedStyle(n).fontSize),'16px');
     await field.fill('一行\n二行\n三行\n四行\n五行\n六行\n七行');
     assert.equal(await field.evaluate(n=>n.getBoundingClientRect().height),104);assert.equal(await field.evaluate(n=>getComputedStyle(n).overflowY),'auto');
@@ -108,15 +113,41 @@ try {
     const save=page.getByRole('dialog',{name:'保存为笔记',exact:true});await save.waitFor();
     const centered=await save.locator('.nf-draft-panel').evaluate(n=>{const r=n.getBoundingClientRect();return {width:r.width,x:r.x,y:r.y,offset:Math.abs((r.left+r.right)/2-innerWidth/2)}});assert.ok(centered.offset<1);assert.equal(centered.width,mobile?288:460);
     await save.getByRole('textbox',{name:'笔记标题'}).fill('');assert.ok(await save.getByRole('button',{name:'确认保存',exact:true}).isDisabled());
-    await save.getByRole('textbox',{name:'笔记标题'}).fill('离线保存验证');await save.getByRole('button',{name:'确认保存',exact:true}).click();await shell.waitFor({state:'detached'});
+    await save.getByRole('textbox',{name:'笔记标题'}).fill('离线保存验证');
+    await page.evaluate(()=>window.draftTest.api.failNext='saveDraftToNotes');
+    await save.getByRole('button',{name:'确认保存',exact:true}).click();await save.getByRole('alert').waitFor();
+    assert.equal(await save.getByRole('textbox',{name:'笔记标题'}).inputValue(),'离线保存验证');
+    assert.equal(await page.evaluate(()=>window.draftTest.api.context.stage),'assembled','save failure must not offer outline regeneration');
+    await page.evaluate(()=>window.draftTest.api.holdNext='saveDraftToNotes');
+    await save.getByRole('button',{name:'确认保存',exact:true}).click();
+    await save.getByRole('button',{name:'正在保存…',exact:true}).waitFor();
+    assert.equal(await page.evaluate(()=>window.draftTest.api.context.stage),'saving');
+    assert.equal(await shell.locator('.nf-writing-label').textContent(),'正在保存为笔记');
+    assert.ok(await save.getByRole('button',{name:'正在保存…',exact:true}).isDisabled());
+    for(const action of ['stop','cancel']){
+      await page.evaluate(action=>{const a=window.draftTest;a.slice.draftCommand={id:'during-save-'+action,action};a.api.render()},action);
+      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      assert.equal(await page.evaluate(()=>window.draftTest.api.context.stage),'saving','chat commands must not unlock an in-flight save');
+      assert.ok(await save.getByRole('button',{name:'正在保存…',exact:true}).isDisabled());
+    }
+    await page.evaluate(()=>window.draftTest.api.release());await shell.waitFor({state:'detached'});
+    assert.ok(await page.evaluate(()=>window.draftTest.api.calls.some(c=>c.name==='closeDraft' && c.outcome?.status==='resolved' && c.outcome.draftId==='synthetic-draft')));
     assert.ok(await page.evaluate(()=>window.draftTest.api.calls.some(c=>c.name==='saveDraftToNotes' && c.args[1].confirm===true && c.args[1].title==='离线保存验证')));
     await page.evaluate(()=>window.draftTest.api.show('generating'));await shell.getByRole('button',{name:'停止',exact:true}).waitFor();await shell.getByRole('button',{name:'停止',exact:true}).click();await page.waitForFunction(()=>window.draftTest.api.calls.some(c=>c.name==='stopAllDraftSections'));
     if(!mobile){
       await page.evaluate(()=>window.draftTest.api.failNext='generateAllDraftSections');await shell.getByRole('button',{name:'全部生成',exact:true}).click();await shell.getByRole('alert').waitFor();
       await shell.getByRole('button',{name:'全部生成',exact:true}).click();await shell.getByRole('button',{name:'停止生成',exact:true}).waitFor();await shell.getByRole('button',{name:'停止生成',exact:true}).click();
+      await page.evaluate(()=>window.draftTest.api.failNext='cancelNoteDraft');
+      const discard=async()=>{await shell.getByRole('button',{name:'更多草稿操作',exact:true}).click();await shell.getByRole('button',{name:'放弃草稿',exact:true}).click();await page.getByRole('dialog',{name:'退出当前 AI 草稿？',exact:true}).getByRole('button',{name:'退出',exact:true}).click()};
+      await discard();await shell.getByRole('alert').waitFor();
+      assert.equal(await shell.isVisible(),true,'failed discard keeps the draft available');
+      assert.notEqual(await page.evaluate(()=>window.draftTest.api.context.stage),'failed');
+      await discard();await shell.waitFor({state:'detached'});
+      assert.ok(await page.evaluate(()=>window.draftTest.api.calls.some(c=>c.name==='closeDraft' && c.outcome?.status==='cancelled')));
+      await page.evaluate(()=>window.draftTest.api.show('outline_ready'));await shell.waitFor();
     }
     await shell.locator('.nf-draft-close').click();await shell.waitFor({state:'detached'});assert.ok(await page.evaluate(()=>window.draftTest.api.calls.some(c=>c.name==='dismissDraftWorkspace')));
-    reports.push({mobile,initial,centered,editing:true,confirmation:!mobile,directoryCRUD:!mobile,failureRetry:!mobile,saveMock:true,stopMock:true,dark:true,reducedMotion:true});await context.close();
+    reports.push({mobile,initial,centered,editing:true,confirmation:!mobile,directoryCRUD:!mobile,failureRetry:!mobile,dismissReopenPreservesInput:true,saveFailureRetry:true,savingDistinct:true,discardFailureRetry:!mobile,terminalOutcome:true,saveMock:true,stopMock:true,dark:true,reducedMotion:true});await context.close();
   }
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
   console.log(JSON.stringify({ok:true,offlineProductionComponent:true,syntheticServices:true,networkBlocked:true,reports,errors},null,2));

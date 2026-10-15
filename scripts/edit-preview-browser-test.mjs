@@ -16,9 +16,16 @@ const entry = `import React from 'react';import {createRoot} from 'react-dom/cli
 import Preview from ${JSON.stringify(path('components/EditPreviewWorkspace.tsx'))};
 import {useAppStore} from ${JSON.stringify(path('store/index.tsx'))};
 const preview={id:'synthetic-preview',noteId:'synthetic-note',targetType:'note',oldContent:${JSON.stringify(before)},newContent:${JSON.stringify(after)},instruction:'合成修改',changeSummary:['更新说明并增加代码示例'],status:'preview'};
-window.previewTest={applied:0,cancelled:0,closed:0,replace(){useAppStore.setState({activeEditPreview:{...preview,id:'second'}})}};
-useAppStore.setState({activeEditPreview:preview,chatLoading:false,applyEditPreviewRequest:async()=>{window.previewTest.applied++},cancelEditPreviewRequest:async()=>{window.previewTest.cancelled++},closeEditPreview:()=>{window.previewTest.closed++}});
-window.fetch=async()=>new Response('{"revisions":[]}',{headers:{'Content-Type':'application/json'}});
+window.previewTest={applied:0,cancelled:0,closed:0,requests:[],failNext:'',holdRevisions:false,replace(){useAppStore.setState({activeEditPreview:{...preview,id:'second'}})}};
+useAppStore.setState({activeEditPreview:preview,chatLoading:false,applyEditPreviewRequest:async()=>{window.previewTest.applied++;await new Promise(resolve=>window.previewTest.finishApply=resolve)},closeEditPreview:()=>{window.previewTest.closed++}});
+window.fetch=async(input)=>{const a=window.previewTest,url=String(input);a.requests.push(url);
+ if(a.holdRevisions&&url.endsWith('/revisions')){a.holdRevisions=false;await new Promise(resolve=>a.finishRevisions=resolve)}
+ if(a.failNext && url.endsWith(a.failNext)){a.failNext='';return new Response('{"detail":"合成请求失败"}',{status:503})}
+ const id=url.includes('/second/')?'second':'synthetic-preview';
+ const data=url.endsWith('/revisions')?{revisions:[{id:id+'-r1',newContent:preview.oldContent,source:'generated'},{id:id+'-r2',newContent:preview.newContent,source:'revised'}]}
+ :url.endsWith('/cancel')?(a.cancelled++,{preview:{...preview,id,status:'cancelled'}})
+ :{preview:{...preview,id,newContent:preview.oldContent}};
+ return new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}})};
 createRoot(document.getElementById('root')).render(React.createElement(React.StrictMode,null,React.createElement(Preview)));`;
 const bundle = await build({ configFile: false, logLevel: 'silent', plugins: [{ name: 'isolated-preview',
   resolveId(id) { if(id === 'virtual:preview') return '\0preview'; }, load(id) { if(id === '\0preview') return entry; },
@@ -40,6 +47,7 @@ try {
     assert.match(await result.innerText(),/修改后的合成内容/);
     assert(!await page.getByText('原来的合成内容。',{exact:true}).count());
     assert.equal(await page.getByRole('button',{name:'修改后',exact:true}).getAttribute('aria-pressed'),'true');
+    await page.getByText('修改待确认',{exact:true}).waitFor();
     const colors=await result.locator('pre span').evaluateAll(nodes=>[...new Set(nodes.map(n=>getComputedStyle(n).color))]);
     assert(colors.length>=2,JSON.stringify({width,colors}));
     assert.equal(await page.locator('.note-content p').first().evaluate(n=>getComputedStyle(n).fontSize),'16px');
@@ -51,18 +59,51 @@ try {
     assert.match(await page.locator('main').innerText(),/修改后的合成内容/);
     await page.getByRole('button',{name:'详细差异',exact:true}).click();
     assert.match(await page.locator('main').innerText(),/原版本/);
-    await page.evaluate(()=>window.previewTest.replace());
+    await page.evaluate(()=>{window.previewTest.holdRevisions=true;window.previewTest.replace()});
     await result.waitFor({state:'visible'});
+    assert.ok(await page.getByRole('combobox',{name:'恢复旧版'}).isDisabled(),'a new preview cannot restore the previous preview revisions');
+    await page.waitForFunction(()=>Boolean(window.previewTest.finishRevisions));
+    await page.evaluate(()=>window.previewTest.finishRevisions());
+    await page.waitForFunction(()=>!document.querySelector('select').disabled);
+    const instruction=page.getByPlaceholder('继续调整这份预览，例如：再通俗一点，补一个项目例子...');
+    await instruction.fill('失败后保留这条调整要求');
+    await page.evaluate(()=>window.previewTest.failNext='/revise');
+    await page.getByRole('button',{name:'调整预览',exact:true}).click();
+    await page.getByRole('alert').filter({hasText:'合成请求失败'}).waitFor();
+    assert.equal(await instruction.inputValue(),'失败后保留这条调整要求');
+    await page.getByRole('button',{name:'调整预览',exact:true}).click();
+    await page.waitForFunction(()=>!document.querySelector('textarea').value);
+    await page.evaluate(()=>window.previewTest.replace());
+    await page.waitForFunction(()=>!document.querySelector('select').disabled);
+    await page.evaluate(()=>window.previewTest.failNext='/restore-revision');
+    await page.getByRole('button',{name:'撤销上次调整',exact:true}).click();
+    await page.getByRole('alert').filter({hasText:'合成请求失败'}).waitFor();
+    assert.match(await result.innerText(),/修改后的合成内容/,'failed restore keeps the preview');
+    await page.getByRole('button',{name:'撤销上次调整',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('.edit-preview-result').textContent.includes('原来的合成内容'));
+    // Reopen the synthetic result for visual/color and pending-apply checks.
+    await page.evaluate(()=>window.previewTest.replace());
+    await page.waitForFunction(()=>document.querySelector('.edit-preview-result').textContent.includes('修改后的合成内容'));
     await page.getByRole('button',{name:'应用修改',exact:true}).click();
     assert.equal(await page.evaluate(()=>window.previewTest.applied),1);
+    await page.getByText('正在应用并保存',{exact:true}).waitFor();
+    await page.evaluate(()=>window.previewTest.finishApply());
+    await page.getByText('修改待确认',{exact:true}).waitFor();
     await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));
     assert.notEqual(await page.locator('main').evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(255, 255, 255)');
     await page.emulateMedia({reducedMotion:'reduce'});
     assert.equal(await result.evaluate(n=>getComputedStyle(n).animationName),'none');
     await page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(a=>a.effect?.getComputedTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})));});
     await page.screenshot({path:join(output,'dark-'+width+'.png')});
+    await page.evaluate(()=>window.previewTest.failNext='/cancel');
+    await page.getByRole('button',{name:'取消',exact:true}).click();
+    await page.getByRole('alert').filter({hasText:'合成请求失败'}).waitFor();
+    assert.match(await result.innerText(),/修改后的合成内容/,'failed cancellation must keep the retry target visible');
+    await page.getByRole('button',{name:'取消',exact:true}).click();
+    await result.waitFor({state:'detached'});
+    assert.equal(await page.evaluate(()=>window.previewTest.cancelled),1);
     assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
-    reports.push({width,resultFirst:true,compare:true,diff:true,newPreviewReset:true,coloredCode:true,applyRetained:true,dark:true,reducedMotion:true,errors,requests});
+    reports.push({width,resultFirst:true,compare:true,diff:true,newPreviewReset:true,coloredCode:true,applyRetained:true,applyStage:true,revisionOwnership:true,restoreFailureRetry:true,cancelFailureRetry:true,dark:true,reducedMotion:true,errors,requests});
     await context.close();
   }
   console.log(JSON.stringify({ok:true,productionComponent:true,syntheticOnly:true,output,reports},null,2));

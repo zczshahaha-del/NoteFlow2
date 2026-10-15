@@ -18,6 +18,7 @@ import {
 } from "../services/edits";
 import { renderChatMarkdown } from "../utils/chatMarkdown";
 import { diffMarkdownLines } from "../utils/markdownDiff";
+import AIWritingStatus from "./AIWritingStatus";
 import "./document-prose.css";
 import "./edit-preview.css";
 
@@ -59,6 +60,10 @@ export default function EditPreviewWorkspace() {
   const [viewMode, setViewMode] = useState<"result" | "compare" | "diff">("result");
   const [revisions, setRevisions] = useState<NoteEditPreviewRevisionRecord[]>([]);
   const [revisionError, setRevisionError] = useState("");
+  const [operation, setOperation] = useState<"apply" | "cancel" | "revise" | "restore" | null>(null);
+  const [revisionLoading, setRevisionLoading] = useState(false);
+  const [revisionOwnerId, setRevisionOwnerId] = useState("");
+  const [revisionReload, setRevisionReload] = useState(0);
 
   const diff = useMemo(
     () => viewMode === "diff" ? diffMarkdownLines(activeEditPreview?.oldContent ?? "", activeEditPreview?.newContent ?? "") : null,
@@ -72,14 +77,18 @@ export default function EditPreviewWorkspace() {
       return;
     }
     let alive = true;
+    setRevisions([]);
+    setRevisionLoading(true);
     setRevisionError("");
     void listEditPreviewRevisions(activeEditPreview.id)
-      .then((items) => { if (alive) setRevisions(items); })
+      .then((items) => { if (alive) { setRevisions(items); setRevisionOwnerId(activeEditPreview.id); } })
       .catch(() => {
-        if (alive) setRevisionError("修订记录将在后端服务重启后可用");
-      });
+        if (alive) setRevisionError("暂时无法读取修订记录，当前预览已保留。");
+      })
+      .finally(() => { if (alive) setRevisionLoading(false); });
     return () => { alive = false; };
-  }, [activeEditPreview?.id, activeEditPreview?.newContent]);
+  }, [activeEditPreview?.id, activeEditPreview?.newContent, revisionReload]);
+  const revisionsReady = !revisionLoading && revisionOwnerId === activeEditPreview?.id;
 
   const currentRevisionIndex = useMemo(() => {
     for (let index = revisions.length - 1; index >= 0; index -= 1) {
@@ -94,15 +103,20 @@ export default function EditPreviewWorkspace() {
       : null;
 
   const restoreRevision = useCallback(async (revisionId: string) => {
-    if (!revisionId || chatLoading) return;
-    await restoreEditPreviewRevisionRequest(revisionId).catch(() => undefined);
-  }, [chatLoading, restoreEditPreviewRevisionRequest]);
+    if (!revisionId || chatLoading || !revisionsReady || !revisions.some(revision => revision.id === revisionId)) return;
+    setOperation("restore");
+    try { await restoreEditPreviewRevisionRequest(revisionId); }
+    catch { /* Store exposes the failure; keep the existing preview. */ }
+    finally { setOperation(null); }
+  }, [chatLoading, revisionsReady, revisions, restoreEditPreviewRevisionRequest]);
 
   const handleRevise = useCallback(() => {
     const text = revisionText.trim();
     if (!text || chatLoading) return;
-    reviseEditPreviewRequest(text);
-    setRevisionText("");
+    setOperation("revise");
+    void reviseEditPreviewRequest(text).then(success => {
+      if (success) setRevisionText(current => current.trim() === text ? "" : current);
+    }).finally(() => setOperation(null));
   }, [chatLoading, reviseEditPreviewRequest, revisionText]);
 
   const handleKeyDown = useCallback(
@@ -143,6 +157,9 @@ export default function EditPreviewWorkspace() {
     );
   }
 
+  const operationLabel = operation === "apply" ? "正在应用并保存" : operation === "cancel" ? "正在取消修改"
+    : operation === "revise" ? "正在调整预览" : operation === "restore" ? "正在恢复预览版本" : "AI 正在处理";
+
   return (
     <main className="edit-preview-workspace document-canvas nf-prose-refined flex min-w-0 flex-1 flex-col bg-jelly-bg">
       <div className="shrink-0 border-b border-jelly-border bg-white px-4 py-3 sm:px-5">
@@ -157,14 +174,14 @@ export default function EditPreviewWorkspace() {
                 {targetTypeLabel(activeEditPreview.targetType)}
               </span>
             </div>
-            <p className="mt-1 truncate text-[12px] text-jelly-text-muted">
-              正式笔记尚未改变，应用后才会保存并更新索引。
-            </p>
+            <div className="mt-2"><AIWritingStatus kind="edit" step={operation === "apply" ? 2 : 1}
+              label={chatLoading || operation ? operationLabel : "修改待确认"}
+              hint="正式笔记尚未改变，应用后才会保存并更新索引。" /></div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
-              onClick={cancelEditPreviewRequest}
+              onClick={() => { setOperation("cancel"); void cancelEditPreviewRequest().finally(() => setOperation(null)); }}
               disabled={chatLoading}
               className="inline-flex h-9 items-center gap-2 rounded-md border border-jelly-border bg-white px-3 text-[13px] font-medium text-jelly-text-soft transition-colors hover:border-jelly-red/30 hover:bg-jelly-red-bg hover:text-jelly-red disabled:cursor-not-allowed disabled:opacity-55"
             >
@@ -173,7 +190,7 @@ export default function EditPreviewWorkspace() {
             </button>
             <button
               type="button"
-              onClick={applyEditPreviewRequest}
+              onClick={() => { setOperation("apply"); void applyEditPreviewRequest().finally(() => setOperation(null)); }}
               disabled={chatLoading}
               className="inline-flex h-9 items-center gap-2 rounded-md bg-jelly-blue px-3 text-[13px] font-semibold text-white shadow-[0_2px_8px_rgba(122,175,207,0.22)] transition-colors hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-55"
             >
@@ -297,7 +314,7 @@ export default function EditPreviewWorkspace() {
           <button
             type="button"
             onClick={() => undoRevision && void restoreRevision(undoRevision.id)}
-            disabled={!undoRevision || chatLoading}
+            disabled={!undoRevision || chatLoading || !revisionsReady}
             className="inline-flex h-8 items-center gap-1.5 rounded-md border border-jelly-border bg-white px-3 text-[12px] text-jelly-text-soft hover:bg-jelly-blue-pale hover:text-jelly-blue-deep disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Undo2 size={14} strokeWidth={1.8} /> 撤销上次调整
@@ -308,7 +325,7 @@ export default function EditPreviewWorkspace() {
             <select
               value={currentRevisionIndex >= 0 ? revisions[currentRevisionIndex]?.id : ""}
               onChange={(event) => void restoreRevision(event.target.value)}
-              disabled={revisions.length === 0 || chatLoading}
+              disabled={revisions.length === 0 || chatLoading || !revisionsReady}
               className="h-8 min-w-0 max-w-[260px] rounded-md border border-jelly-border bg-white px-2 text-[12px] text-jelly-text-soft outline-none disabled:opacity-50"
             >
               <option value="">选择预览版本</option>
@@ -319,7 +336,7 @@ export default function EditPreviewWorkspace() {
               ))}
             </select>
           </label>
-          {revisionError && <span className="text-[11px] text-jelly-amber">{revisionError}</span>}
+          {revisionError && <span className="text-[11px] text-jelly-amber">{revisionError} <button type="button" onClick={() => setRevisionReload(value => value + 1)} disabled={chatLoading} className="underline">重试读取</button></span>}
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-end">
           <textarea

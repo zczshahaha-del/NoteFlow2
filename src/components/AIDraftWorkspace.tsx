@@ -20,6 +20,8 @@ import {
   X,
 } from "lucide-react";
 import { useDraftSlice, useWorkspaceSlice } from "../store/selectors";
+import AIWritingStatus from "./AIWritingStatus";
+import { draftWritingStage, draftWritingLabels } from "../utils/aiWritingFlow";
 import type { FileNode } from "../types";
 import { generateNoteStream } from "../services/aiStream";
 import {
@@ -53,7 +55,7 @@ const AUTO_WRITING_TONE = "根据用户需求自动匹配";
 const AUTO_NOTE_FORMAT = "AI 自动组织结构";
 const AUTO_HEADING_LEVEL = "AI 自动层级";
 
-type BusyMode = "idle" | "outline" | "section" | "assemble" | "save" | "revise";
+type BusyMode = "idle" | "outline" | "section" | "assemble" | "save" | "revise" | "cancel";
 interface FolderOption {
   id: string | null;
   path: string;
@@ -434,6 +436,8 @@ export default function AIDraftWorkspace() {
   );
   const canGenerateSections = Boolean(draft && activeSections.length > 0);
   const canSave = Boolean(draft?.status === "assembled" && draft.assembledContent.trim());
+  const writingStage = draftWritingStage(draft?.status, busyMode, errorText, activeSections.some(section => Boolean(section.content.trim())));
+  const writingStatus = draftWritingLabels[writingStage];
 
   const fitSectionInstruction = useCallback(() => {
     const field = sectionInstructionRef.current;
@@ -551,21 +555,12 @@ export default function AIDraftWorkspace() {
     ).length;
     const generationJob = (draft?.draftConfig?.generationJob ?? {}) as Record<string, unknown>;
     const jobError = typeof generationJob.error === "string" ? generationJob.error : "";
-    const stage = errorText || draft?.status === "failed"
-      ? "failed"
-      : draft?.status === "generating" || busyMode === "section" || busyMode === "assemble" || busyMode === "save"
-        ? "generating"
-        : draft?.status === "assembled"
-          ? "assembled"
-          : draft
-            ? "outline_ready"
-            : "configuring";
     setActiveDraftContext(
       {
         id: draft?.id ?? "",
         title: draft?.title || cleanTitle(topic),
         topic: draft?.topic || topic,
-        stage,
+        stage: writingStage,
         busy: isBusy,
         statusText:
           draft?.status === "generating" && typeof generationJob.currentSectionTitle === "string"
@@ -576,7 +571,7 @@ export default function AIDraftWorkspace() {
         totalSections: sections.length,
       }
     );
-  }, [busyMode, draft, errorText, isBusy, setActiveDraftContext, statusText, topic]);
+  }, [draft, errorText, isBusy, setActiveDraftContext, statusText, topic, writingStage]);
 
   const patchSection = useCallback((sectionId: string, patch: Partial<NoteDraftSectionRecord>) => {
     setDraft((current) =>
@@ -985,7 +980,7 @@ export default function AIDraftWorkspace() {
               noteId: latest.savedNoteId,
             }).catch(() => null);
           }
-          closeDraft();
+          closeDraft({ status: "resolved", draftId: latest.id });
         }
       } catch (error) {
         if (alive) setErrorText(error instanceof Error ? error.message : "读取生成进度失败");
@@ -1241,7 +1236,7 @@ export default function AIDraftWorkspace() {
           noteId: result.note.id,
         }).catch(() => null);
       }
-      closeDraft();
+      closeDraft({ status: "resolved", draftId: draft.id });
     } catch (error) {
       setErrorText(error instanceof Error ? error.message : "保存正式笔记失败");
     } finally {
@@ -1251,7 +1246,9 @@ export default function AIDraftWorkspace() {
 
   const cancelDraft = useCallback(async () => {
     if (isBusy) {
-      stopActiveRequest();
+      // Only streaming work is abortable. Do not unlock an in-flight save,
+      // assembly or cancellation while its server request is still running.
+      if (activeRequestRef.current) stopActiveRequest();
       return;
     }
     const confirmed =
@@ -1264,17 +1261,22 @@ export default function AIDraftWorkspace() {
         tone: "danger",
       }));
     if (!confirmed) return;
+    setBusyMode("cancel");
+    setErrorText("");
     try {
       if (draft && draft.status !== "saved") {
-        await cancelNoteDraft(draft.id).catch(() => {});
+        await cancelNoteDraft(draft.id);
       }
       if (pendingCheckpoint?.checkpointType === "draft_workspace") {
         await resolveAgentCheckpoint(pendingCheckpoint.id, "cancelled", {
           draftId: draft?.id,
         }).catch(() => null);
       }
+      closeDraft({ status: "cancelled", draftId: draft?.id });
+    } catch (error) {
+      setErrorText(error instanceof Error ? error.message : "放弃草稿失败，请重试；草稿已保留。");
     } finally {
-      closeDraft();
+      setBusyMode("idle");
     }
   }, [closeDraft, confirm, draft, isBusy, pendingCheckpoint, stopActiveRequest]);
 
@@ -1288,7 +1290,7 @@ export default function AIDraftWorkspace() {
     }
     if (draftCommand.action === "stop") {
       if (draft?.status === "generating") void stopBackgroundGeneration();
-      else stopActiveRequest();
+      else if (activeRequestRef.current) stopActiveRequest();
       return;
     }
     void cancelDraft();
@@ -1477,6 +1479,11 @@ export default function AIDraftWorkspace() {
               <X size={18} strokeWidth={1.8} />
             </button>
           </header>
+
+          <div className="nf-draft-stage shrink-0 px-5 pb-3 sm:px-7">
+            <AIWritingStatus label={busyMode === "cancel" ? "正在放弃草稿" : writingStatus.label}
+              step={writingStatus.step} hint={writingStage === "generating" && statusText ? statusText : writingStatus.hint} />
+          </div>
 
           {activeSections.length > 0 && (
             <div className="nf-draft-progress h-1 shrink-0" role="progressbar" aria-label="草稿正文生成进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
@@ -1911,6 +1918,7 @@ export default function AIDraftWorkspace() {
                   <X size={18} strokeWidth={1.8} />
                 </button>
               </div>
+              {errorText && <p role="alert" className="mt-3 text-[12px] text-jelly-red">{errorText}</p>}
               <div className="mt-5 space-y-4">
                 <label className="block">
                   <FieldLabel>笔记标题</FieldLabel>
@@ -1945,7 +1953,7 @@ export default function AIDraftWorkspace() {
                   className="nf-draft-action nf-draft-primary inline-flex h-9 items-center gap-1.5 px-4 disabled:opacity-40"
                 >
                   <Save size={14} />
-                  确认保存
+                  {busyMode === "save" ? "正在保存…" : "确认保存"}
                 </button>
               </div>
             </section>

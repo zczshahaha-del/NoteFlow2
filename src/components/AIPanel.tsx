@@ -36,6 +36,8 @@ import type { AgentToolTrace, ChatMessage, ChatSource } from "../types";
 import { resolveAgentCheckpoint, type AgentTaskSnapshot } from "../services/agent";
 import { getNoteDraft } from "../services/drafts";
 import ChatGenerationStatus from "./ChatGenerationStatus";
+import AIWritingStatus from "./AIWritingStatus";
+import { draftConversationIndex, draftWritingLabels, draftWritingStage } from "../utils/aiWritingFlow";
 import ChatMessageActions from "./ChatMessageActions";
 import { useChatPresentation } from "../hooks/useChatPresentation";
 import SoftMenu from "./SoftMenu";
@@ -378,6 +380,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
   } = useEditorSlice();
   const {
     centerMode,
+    draftSeed,
     activeDraftContext,
     setActiveDraftContext,
     pendingCheckpoint,
@@ -434,37 +437,37 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
   const currentNoteTitle = selectedFile?.name.replace(/\.md$/i, "") ?? "";
   const draftCardVisible = activeCheckpoint?.checkpointType === "draft_workspace" || Boolean(activeDraftContext);
   const outlineGenerating = !activeDraftContext || activeDraftContext.stage === "configuring";
-  const outlineFailed = activeDraftContext?.stage === "failed";
+  const outlineFailed = activeDraftContext?.stage === "failed" && !activeDraftContext.id;
   const outlineCanOpen = Boolean(
-    activeDraftContext && ["outline_ready", "generating", "assembled"].includes(activeDraftContext.stage)
+    activeDraftContext && !outlineGenerating && (!outlineFailed || activeDraftContext.id)
   );
+  const activeDraftMessageId = chatMessages[draftConversationIndex(chatMessages, {
+    checkpointId: activeCheckpoint?.checkpointType === "draft_workspace" ? activeCheckpoint.id : null,
+    draftId: activeDraftContext?.id,
+    seed: draftSeed || activeDraftContext?.topic || "",
+  })]?.id;
   const renderDraftConversationCard = (
     card: NonNullable<ChatMessage["draftCard"]>,
+    messageId: string,
     className = "mt-3 w-[92%]"
   ) => {
     const isCurrent = Boolean(
-      draftCardVisible &&
-      ((card.checkpointId && activeCheckpoint?.id === card.checkpointId) ||
-        (!card.checkpointId && activeDraftContext?.topic === card.seed))
+      draftCardVisible && messageId === activeDraftMessageId
     );
     const context = isCurrent ? activeDraftContext : null;
-    const historicalText = card.status === "resolved"
-      ? "该大纲已完成并保存。"
-      : card.status === "cancelled"
-        ? "该大纲任务已取消。"
-        : "这是当时生成的大纲记录。";
+    const flow = draftWritingLabels[isCurrent ? context?.stage || "configuring" : (card.status === "resolved" || card.status === "cancelled" ? card.status : "history")];
     const historicalAction = card.status === "resolved"
       ? "已完成"
       : card.status === "cancelled"
         ? "已取消"
-        : "历史大纲";
+        : "历史草稿";
 
     return (
-    <section className={`${className} overflow-hidden rounded-2xl border border-[#dfe7ec] bg-[#fbfcfd] shadow-[0_8px_24px_rgba(45,65,80,0.06)]`} aria-label="AI 笔记大纲">
+    <section className={`${className} overflow-hidden rounded-2xl border border-[#dfe7ec] bg-[#fbfcfd] shadow-[0_8px_24px_rgba(45,65,80,0.06)]`} aria-label="AI 笔记草稿">
       <div className="px-4 pb-3 pt-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold tracking-wide text-[#748694]">AI 笔记大纲</p>
+            <p className="text-[11px] font-semibold tracking-wide text-[#748694]">AI 笔记草稿</p>
             <h3 className="mt-1 truncate text-[14px] font-semibold text-jelly-text">
               {context?.title || card.seed}
             </h3>
@@ -477,16 +480,8 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
             </span>
           ) : null}
         </div>
-        <p className={`mt-2 text-[12px] leading-relaxed ${context?.errorText ? "text-jelly-red" : "text-jelly-text-muted"}`}>
-          {!isCurrent ? historicalText : context?.errorText ||
-            (context?.stage === "outline_ready"
-              ? "大纲已经准备好，请打开完整查看后再确认生成。"
-              : context?.stage === "generating"
-                ? context.statusText || "正在按章节生成正文。"
-                : context?.stage === "assembled"
-                  ? "所有章节已生成，可以打开检查并保存为正式笔记。"
-                  : "正在根据你的要求生成大纲…")}
-        </p>
+        <div className="mt-2"><AIWritingStatus label={flow.label} step={flow.step} compact error={Boolean(context?.errorText)}
+          hint={context?.errorText || (context?.stage === "generating" ? context.statusText || flow.hint : flow.hint)} /></div>
         {context?.totalSections ? (
           <div className="mt-3 h-1 overflow-hidden rounded-full bg-[#e7eef2]">
             <div
@@ -515,9 +510,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
           ? "重新生成大纲"
           : outlineGenerating
             ? "大纲生成中…"
-            : activeDraftContext?.stage === "generating" || activeDraftContext?.stage === "assembled"
-              ? "查看草稿"
-              : "查看大纲"}
+            : activeDraftContext?.stage === "outline_ready" ? "查看大纲" : "查看草稿"}
       </button>
     </section>
     );
@@ -725,19 +718,14 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
               noteId: latest.savedNoteId,
             }).catch(() => null);
           }
-          closeDraft();
+          closeDraft({ status: "resolved", draftId: latest.id });
           return;
         }
         setActiveDraftContext({
           id: latest.id,
           title: latest.title,
           topic: latest.topic,
-          stage:
-            latest.status === "failed"
-              ? "failed"
-              : latest.status === "assembled"
-                ? "assembled"
-                : "generating",
+          stage: draftWritingStage(latest.status, "idle", "", sections.some(section => Boolean(section.content.trim()))),
           busy: false,
           statusText:
             latest.status === "assembled"
@@ -1286,7 +1274,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
             </div>
             {(msg.text.trim() || isStreaming) && <ChatMessageActions text={msg.text} role={msg.role} busy={isStreaming} createdAt={msg.createdAt} />}
             {msg.role === "assistant" && msg.draftCard &&
-              renderDraftConversationCard(msg.draftCard)}
+              renderDraftConversationCard(msg.draftCard, msg.id)}
           </div>
           </Fragment>
           );

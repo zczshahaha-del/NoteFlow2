@@ -10,6 +10,7 @@ import type {
 } from "../types";
 import { findFileById, initialWorkspaceTree } from "../workspaceTree";
 import { askAIStream } from "../services/aiStream";
+import { updateDraftConversation, type DraftOutcome, type DraftWritingStage } from "../utils/aiWritingFlow";
 import type { ChatPageState } from "../services/aiStream";
 import {
   clearKnowledgeBase,
@@ -124,7 +125,7 @@ interface ActiveDraftContext {
   id: string;
   title: string;
   topic: string;
-  stage: "configuring" | "outline_ready" | "generating" | "assembled" | "failed";
+  stage: DraftWritingStage;
   busy: boolean;
   statusText: string;
   errorText: string;
@@ -174,17 +175,17 @@ interface AppState {
   consumeDraftCommand: (id: string) => void;
   addSelectionToChat: (selection: { text: string; noteId?: string | null; noteTitle?: string }) => void;
   clearChatSelection: () => void;
-  closeDraft: () => void;
+  closeDraft: (outcome?: DraftOutcome) => void;
   createEditPreviewRequest: (
     instruction: string,
     selectedText?: string,
     targetType?: EditTargetType | null,
     sectionId?: string | null
   ) => void;
-  reviseEditPreviewRequest: (instruction: string) => void;
+  reviseEditPreviewRequest: (instruction: string) => Promise<boolean>;
   restoreEditPreviewRevisionRequest: (revisionId: string) => Promise<void>;
-  applyEditPreviewRequest: () => void;
-  cancelEditPreviewRequest: () => void;
+  applyEditPreviewRequest: () => Promise<void>;
+  cancelEditPreviewRequest: () => Promise<void>;
   closeEditPreview: () => void;
   focusChatSource: (source: ChatSource) => void;
   clearPendingSourceFocus: () => void;
@@ -822,7 +823,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
 
   openPendingDraft: () => {
     const activeDraft = get().activeDraftContext;
-    if (!activeDraft || activeDraft.stage === "configuring" || activeDraft.stage === "failed") {
+    if (!activeDraft || activeDraft.stage === "configuring" || (activeDraft.stage === "failed" && !activeDraft.id)) {
       return;
     }
     const checkpoint = get().pendingCheckpoint ?? get().agentTask?.checkpoint ?? null;
@@ -888,8 +889,13 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     }
   },
 
-  closeDraft: () => {
-    set((state) => ({
+  closeDraft: (outcome) => {
+    set((state) => outcome?.draftId && state.activeDraftContext?.id !== outcome.draftId ? state : ({
+      chatMessages: outcome ? updateDraftConversation(state.chatMessages, {
+        checkpointId: state.pendingCheckpoint?.checkpointType === "draft_workspace" ? state.pendingCheckpoint.id : null,
+        draftId: outcome.draftId || state.activeDraftContext?.id,
+        seed: state.draftSeed || state.activeDraftContext?.topic || "",
+      }, { status: outcome.status, draftId: outcome.draftId || state.activeDraftContext?.id }) : state.chatMessages,
       centerMode: "note",
       draftSeed: "",
       draftCommand: null,
@@ -907,7 +913,13 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   },
 
   setActiveDraftContext: (context) => {
-    set({ activeDraftContext: context });
+    set((state) => ({ activeDraftContext: context,
+      chatMessages: context?.id ? updateDraftConversation(state.chatMessages, {
+        checkpointId: state.pendingCheckpoint?.checkpointType === "draft_workspace" ? state.pendingCheckpoint.id : null,
+        draftId: context.id,
+        seed: state.draftSeed || context.topic,
+      }, { draftId: context.id }) : state.chatMessages,
+    }));
   },
 
   requestDraftCommand: (action, feedback = "") => {
@@ -1007,7 +1019,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
 
   reviseEditPreviewRequest: async (instruction) => {
     const preview = get().activeEditPreview;
-    if (!preview || get().chatLoading) return;
+    if (!preview || get().chatLoading) return false;
     const userMsg: ChatMessage = { ...newChatMessageMetadata(), role: "user", text: instruction };
     const assistantMsg: ChatMessage = {
       ...newChatMessageMetadata(),
@@ -1042,13 +1054,16 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
             : message
         ),
       }));
+      return true;
     } catch (error) {
       const text = error instanceof Error ? error.message : "继续调整失败";
       set((current) => ({
+        editPreviewError: text,
         chatMessages: current.chatMessages.map((message) =>
           message.id === assistantMsg.id ? { ...message, text } : message
         ),
       }));
+      return false;
     } finally {
       set({ chatLoading: false });
     }
@@ -1064,6 +1079,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     } catch (error) {
       const text = error instanceof Error ? error.message : "恢复预览版本失败";
       set((current) => ({
+        editPreviewError: text,
         chatMessages: [
           ...current.chatMessages,
           { ...newChatMessageMetadata(), role: "assistant", text },
@@ -1144,7 +1160,8 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     const preview = current.activeEditPreview;
     const checkpoint = current.pendingCheckpoint ?? current.agentTask?.checkpoint ?? null;
     const editPreviewId = preview?.id ?? editPreviewIdFromCheckpoint(checkpoint);
-    if (!editPreviewId) return;
+    if (!editPreviewId || current.chatLoading) return;
+    set({ chatLoading: true, editPreviewError: "" });
     try {
       await cancelEditPreview(editPreviewId);
       if (checkpoint?.checkpointType === "edit_preview") {
@@ -1154,23 +1171,27 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           .then(() => get().refreshAgentRunHistory(checkpoint.sessionId))
           .catch(() => null);
       }
-    } catch {}
-    set((current) => ({
-      activeEditPreview: null,
-      editPreviewError: "",
-      pendingCheckpoint: null,
-      agentTask: taskWithCheckpoint(current.agentTask, null),
-      centerMode: "note",
-      activeDraftContext: null,
-      chatMessages: [
-        ...current.chatMessages,
-        {
-          ...newChatMessageMetadata(),
-          role: "assistant",
-          text: "已取消本次修改预览，正式笔记没有变化。",
-        },
-      ],
-    }));
+      set((current) => ({
+        activeEditPreview: null,
+        editPreviewError: "",
+        pendingCheckpoint: null,
+        agentTask: taskWithCheckpoint(current.agentTask, null),
+        centerMode: "note",
+        activeDraftContext: null,
+        chatMessages: [
+          ...current.chatMessages,
+          {
+            ...newChatMessageMetadata(),
+            role: "assistant",
+            text: "已取消本次修改预览，正式笔记没有变化。",
+          },
+        ],
+      }));
+    } catch (error) {
+      set({ editPreviewError: error instanceof Error ? error.message : "取消失败，请重试；预览已保留。" });
+    } finally {
+      set({ chatLoading: false });
+    }
   },
 
   closeEditPreview: () => {
@@ -1763,7 +1784,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         }
 
         if (action.toolName === "note_draft_tool" && action.action === "cancel_draft") {
-          get().closeDraft();
+          get().closeDraft({ status: "cancelled", draftId: get().activeDraftContext?.id });
           set((current) => ({
             chatMessages: current.chatMessages.map((message) =>
               message.id === assistantMsg.id

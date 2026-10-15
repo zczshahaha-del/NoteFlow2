@@ -490,6 +490,28 @@ try{
     await page.evaluate(()=>window.presentationTest.clear());await page.waitForTimeout(350);
     assert.equal(await page.locator('.nf-chat-message').count(),0);
     assert.equal(await tooltip.count(),0,'clearing the conversation removes all hint portals and pending timers');
+    // Stage feedback uses real task identity, not a topic shared by old cards.
+    await page.evaluate(()=>{const a=window.presentationTest;
+      a.chat.chatMessages=[{id:'old-card',role:'assistant',text:'',draftCard:{seed:'合成写作',draftId:'old',status:'resolved'}},
+        {id:'current-card',role:'assistant',text:'',draftCard:{seed:'合成写作',draftId:'new'}}];
+      Object.assign(a.draft,{draftSeed:'合成写作',activeDraftContext:{id:'new',title:'合成写作',topic:'合成写作',stage:'assembled',busy:false,errorText:'',statusText:'',totalSections:2,completedSections:2},
+        openPendingDraft(){a.openedDraft=(a.openedDraft||0)+1}});a.render()});
+    const draftCards=page.getByRole('region',{name:'AI 笔记草稿',exact:true});
+    await draftCards.nth(1).getByRole('button',{name:'查看草稿',exact:true}).waitFor();
+    assert.equal(await draftCards.nth(0).locator('.nf-writing-label').textContent(),'已保存为笔记');
+    assert.equal(await draftCards.nth(1).locator('.nf-writing-label').textContent(),'草稿待保存');
+    await draftCards.nth(1).getByRole('button',{name:'查看草稿',exact:true}).click();
+    assert.equal(await page.evaluate(()=>window.presentationTest.openedDraft),1);
+    await page.evaluate(()=>{const a=window.presentationTest;a.draft.activeDraftContext={...a.draft.activeDraftContext,stage:'saving',busy:true};a.render()});
+    await draftCards.nth(1).getByText('正在保存为笔记',{exact:true}).waitFor();
+    assert.equal(await draftCards.nth(0).locator('.nf-writing-label').textContent(),'已保存为笔记');
+    await page.evaluate(()=>{const a=window.presentationTest;a.draft.activeDraftContext={...a.draft.activeDraftContext,stage:'assembled',busy:false,errorText:'合成保存失败，草稿已保留'};a.render()});
+    await draftCards.nth(1).getByText('合成保存失败，草稿已保留',{exact:true}).waitFor();
+    assert.equal(await draftCards.nth(1).getByRole('button',{name:'重新生成大纲',exact:true}).count(),0);
+    if(process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR)await page.locator('#root').screenshot({path:process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR+'/writing-stages-'+(mobile?'mobile':'desktop')+'.png'});
+    await page.evaluate(()=>{const a=window.presentationTest;a.chat.chatMessages=a.chat.chatMessages.map(m=>m.id==='current-card'?{...m,draftCard:{...m.draftCard,status:'resolved'}}:m);a.draft.activeDraftContext=null;a.render()});
+    await page.waitForFunction(()=>[...document.querySelectorAll('.nf-writing-label')].every(n=>n.textContent==='已保存为笔记'));
+    assert.equal(await draftCards.getByRole('button',{name:'查看草稿',exact:true}).count(),0);
     reports.push({mobile,historySearchSoftFocus:true,historySearchStyle,historySearchFilter:true,historySearchFocusReturn:true,historyImeEscapeCloses,singleChunkTyping:true,stats,stop:true,completedTailStop:true,switchHistory:true,canonicalReplacement:true,markdownActions:true,reducedMotion:true,backgroundFlush:true,readingPosition:true,inputStable:true,scrollSurface,wideContentLocalScroll:true,jumpGeometry,jumpStable:true,bothRoleCopy:true,smallHoverCopy:true,timeTogether:true,copyKeyboard:true,copyTooltip:true,tooltipDelayHoverBridge:true,tooltipNoLayoutShift:true,tooltipEscapeScrollResize:true,tooltipReducedMotionForcedColors:true,pendingCopyFocus:true,copyFeedbackStable:true,copyFailureRetry:true,copyFallback:true});
     await context.close();
   }

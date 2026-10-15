@@ -176,7 +176,7 @@ assert.match(aiPanel, /ref=\{modeMenuRef\}/);
 assert.match(aiPanel, /document\.addEventListener\("mousedown", closeOnOutsideClick, true\)/);
 assert.doesNotMatch(aiPanel, /draftFallbackAnchorRef/);
 assert.doesNotMatch(aiPanel, /fallbackDraftAnchor/);
-assert.match(aiPanel, /renderDraftConversationCard\(msg\.draftCard\)/);
+assert.match(aiPanel, /renderDraftConversationCard\(msg\.draftCard, msg\.id\)/);
 assert.match(aiPanel, /outlineCanOpen/);
 assert.match(aiPanel, /大纲生成中…/);
 assert.match(aiPanel, /重新生成大纲/);

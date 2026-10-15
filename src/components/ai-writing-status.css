@@ -1,0 +1,11 @@
+.nf-writing-status { min-width: 0; color: var(--nf-ui-muted, #66717d); font: 400 12px/1.6 var(--nf-font-ui, system-ui, sans-serif); }
+.nf-writing-status .nf-writing-label { margin: 0; font-size: 12px; font-weight: 500; color: var(--nf-ui-text, #30353c); }
+.nf-writing-status ol { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 5px 0 0; padding: 0; list-style: none; }
+.nf-writing-status li { display: inline-flex; align-items: center; gap: 6px; }
+.nf-writing-status li::before { content: ""; width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: .3; }
+.nf-writing-status li[aria-current="step"] { color: var(--color-jelly-blue-deep, #315f7d); }
+.nf-writing-status li[aria-current="step"]::before,
+.nf-writing-status li[data-complete]::before { opacity: 1; }
+.nf-writing-status .nf-writing-hint { margin: 4px 0 0; overflow-wrap: anywhere; }
+.nf-writing-status[data-error] .nf-writing-hint { color: var(--nf-ui-danger, #b34c49); }
+.nf-writing-status-compact .nf-writing-label { font-size: 12px; }
