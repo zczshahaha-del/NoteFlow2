@@ -3,17 +3,14 @@ import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/r
 import { BubbleMenu } from "@tiptap/react/menus";
 import {
   Bold,
-  Calendar,
   Code2,
   Highlighter,
-  History,
   Italic,
   Link,
   List,
   ListOrdered,
   Menu,
   MessageSquarePlus,
-  MoreHorizontal,
   Quote,
   RefreshCw,
   Strikethrough,
@@ -21,12 +18,11 @@ import {
   X,
 } from "lucide-react";
 import { useEditorSlice } from "../store/selectors";
-import SoftMenu from "./SoftMenu";
+import DocumentHeader from "./DocumentHeader";
 import NoteOpeningStatus from "./NoteOpeningStatus";
 import "./document-prose.css";
 import "./selection-toolbar.css";
 import "./mobile-note-navigation.css";
-import "./document-metadata.css";
 import { findFileById } from "../workspaceTree";
 import { createNoteFlowTiptapExtensions } from "../editor/tiptapExtensions";
 import { findTiptapTextRange } from "../utils/tiptapSelection";
@@ -34,7 +30,7 @@ import OutlinePanel from "./OutlinePanel";
 import { attachmentMarkdown, uploadAttachment } from "../services/attachments";
 import { OperationFeedback } from './OperationFeedback';
 import { getNoteOutline, type NoteSectionRecord } from "../services/notes";
-import { formatDocumentTime } from "../utils/documentTime";
+import { documentFolderPath, hasMatchingDocumentTitle } from "../utils/documentHeader";
 import { getDocumentHeadings, getDocumentNumberedHeadings, getEditorMarkdown, type TiptapHeading } from "../editor/documentCache";
 import { setHeadingNumbering } from "../editor/headingDecorations";
 
@@ -317,9 +313,10 @@ function NoteEditorDocument({ onReady, presented = true }: {
   const [titleDraft, setTitleDraft] = useState(
     selectedFile?.name.replace(/\.md$/i, "") ?? "未命名笔记"
   );
+  const titleEditingRef = useRef(false);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
-  const [documentMenuOpen, setDocumentMenuOpen] = useState(false);
+  const [bodyEditing, setBodyEditing] = useState(false);
   const [showHeadingNumbers, setShowHeadingNumbers] = useState(loadHeadingNumberingPreference);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkDraft, setLinkDraft] = useState("");
@@ -328,7 +325,6 @@ function NoteEditorDocument({ onReady, presented = true }: {
   const uploadQueueRef = useRef<File[]>([]);
   const uploadControllerRef = useRef<AbortController | null>(null);
   const [backendSections, setBackendSections] = useState<NoteSectionRecord[]>([]);
-  const documentMenuRef = useRef<HTMLDivElement>(null);
   const [documentScroller, setDocumentScroller] = useState<HTMLDivElement | null>(null);
   const toolbarOptions = useMemo(() => ({ ...selectionToolbarOptions, scrollTarget: documentScroller ?? undefined }), [documentScroller]);
   const isMobile = useMediaQuery("(max-width: 767px)");
@@ -340,6 +336,8 @@ function NoteEditorDocument({ onReady, presented = true }: {
       contentType: "markdown",
       immediatelyRender: true,
       shouldRerenderOnTransaction: false,
+      onFocus: () => setBodyEditing(true),
+      onBlur: () => setBodyEditing(false),
       editorProps: {
         attributes: {
           class: "note-content min-h-[56vh] outline-none",
@@ -379,22 +377,11 @@ function NoteEditorDocument({ onReady, presented = true }: {
   }, [editor, onReady]);
 
   useEffect(() => {
-    setTitleDraft(selectedFile?.name.replace(/\.md$/i, "") ?? "未命名笔记");
+    // Metadata acknowledgements must not replace a title draft under its caret.
+    if (!titleEditingRef.current) setTitleDraft(selectedFile?.name.replace(/\.md$/i, "") ?? "未命名笔记");
     setVersionHistoryOpen(false);
     setMobileOutlineOpen(false);
-    setDocumentMenuOpen(false);
   }, [selectedFile?.id, selectedFile?.name]);
-
-  useEffect(() => {
-    if (!documentMenuOpen) return;
-    const closeOnOutsideClick = (event: PointerEvent) => {
-      if (!documentMenuRef.current?.contains(event.target as Node)) {
-        setDocumentMenuOpen(false);
-      }
-    };
-    document.addEventListener("pointerdown", closeOnOutsideClick, true);
-    return () => document.removeEventListener("pointerdown", closeOnOutsideClick, true);
-  }, [documentMenuOpen]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed || getEditorMarkdown(editor) === rawContent) return;
@@ -545,8 +532,8 @@ function NoteEditorDocument({ onReady, presented = true }: {
           : indexStatus === "outdated"
             ? "待更新"
             : "待解析";
-  const createdAtLabel = formatDocumentTime(selectedFile?.createdAt);
-  const updatedAtLabel = formatDocumentTime(selectedFile?.updatedAt);
+  const folders = useMemo(() => selectedFileId ? documentFolderPath(treeData, selectedFileId) : [], [treeData, selectedFileId]);
+  const matchingBodyTitle = hasMatchingDocumentTitle(titleDraft, documentState?.doc?.firstChild);
 
   if (!selectedFile) {
     return (
@@ -672,77 +659,22 @@ function NoteEditorDocument({ onReady, presented = true }: {
           <div className="min-h-0 flex-1">
             <div ref={setDocumentScroller} className="document-scroll h-full overflow-y-auto px-7 pb-32 pt-20 sm:px-10 xl:px-0">
               <article className="note-page mx-auto max-w-[780px]">
-                <input
-                  value={titleDraft}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setTitleDraft(value);
-                    updateNodeName(selectedFile.id, `${value.trim() || "未命名笔记"}.md`);
+                <DocumentHeader note={selectedFile} folders={folders} title={titleDraft}
+                  onTitleChange={setTitleDraft}
+                  onTitleEditingChange={editing => { titleEditingRef.current = editing; }}
+                  onTitleCommit={(value) => {
+                    const name = value.trim() || "未命名笔记";
+                    setTitleDraft(name);
+                    if (name !== selectedFile.name.replace(/\.md$/i, "")) updateNodeName(selectedFile.id, name + ".md");
                   }}
-                  onBlur={() => {
-                    if (!titleDraft.trim()) setTitleDraft("未命名笔记");
-                  }}
-                  className="document-title block w-full border-none bg-transparent px-0 py-1 text-[clamp(2.05rem,4vw,2.7rem)] font-bold leading-tight text-jelly-text outline-none"
-                  aria-label="文档标题"
-                />
-                <div className="document-meta-row relative mb-8 mt-4 flex min-h-8 flex-wrap items-center gap-2 text-[13px] text-jelly-text-muted">
-                  <div className="document-meta-dates">
-                    {createdAtLabel && <span className="document-meta-date">创建于 {createdAtLabel}</span>}
-                    {updatedAtLabel && <span className="document-meta-date">更新于 {updatedAtLabel}</span>}
-                  </div>
-                  <div ref={documentMenuRef} className="document-meta-menu relative ml-auto">
-                    <button
-                      type="button"
-                      className="document-view-menu-trigger flex h-8 w-8 items-center justify-center rounded-lg text-jelly-text-muted transition-colors hover:bg-[#f1f3f4] hover:text-jelly-text"
-                      onClick={() => setDocumentMenuOpen((open) => !open)}
-                      aria-label="文档显示设置"
-                      aria-haspopup="menu"
-                      aria-expanded={documentMenuOpen}
-                    >
-                      <MoreHorizontal size={17} />
-                    </button>
-                    <SoftMenu open={documentMenuOpen} onClose={() => setDocumentMenuOpen(false)}
-                      className="document-view-menu nf-action-menu absolute right-0 top-full z-40 mt-1.5"
-                      role="menu"
-                      aria-label="文档显示设置"
-                    >
-                      <button
-                        type="button"
-                        className="nf-soft-menu-item"
-                        role="menuitemcheckbox"
-                        aria-checked={showHeadingNumbers}
-                        onClick={() => {
-                          const nextValue = !showHeadingNumbers;
-                          setShowHeadingNumbers(nextValue);
-                          try {
-                            window.localStorage.setItem(
-                              HEADING_NUMBERING_STORAGE_KEY,
-                              String(nextValue)
-                            );
-                          } catch {
-                            // The preference remains active for this session.
-                          }
-                          setDocumentMenuOpen(false);
-                        }}
-                      >
-                        <span
-                          className="nf-menu-checkbox"
-                          aria-hidden="true"
-                        >
-                          {showHeadingNumbers ? "✓" : ""}
-                        </span>
-                        <span>
-                          <span className="nf-menu-label">
-                            显示章节编号
-                          </span>
-                          <span className="nf-menu-description">
-                            自动编号一级和二级标题
-                          </span>
-                        </span>
-                      </button>
-                    </SoftMenu>
-                  </div>
-                </div>
+                  matchingBodyTitle={matchingBodyTitle} bodyEditing={bodyEditing} saveStatus={noteSaveState.status}
+                  showHeadingNumbers={showHeadingNumbers}
+                  onToggleHeadingNumbers={() => {
+                    const nextValue = !showHeadingNumbers;
+                    setShowHeadingNumbers(nextValue);
+                    try { window.localStorage.setItem(HEADING_NUMBERING_STORAGE_KEY, String(nextValue)); }
+                    catch { /* Keep this session's preference when storage is unavailable. */ }
+                  }} />
                 {(noteSaveState.status === 'error' || noteSaveState.status === 'offline') && <div className="nf-note-feedback">
                   <OperationFeedback onRetry={() => retryNoteSave(selectedFile.id)} retryLabel={noteSaveState.status === 'offline' ? '立即同步' : '重试保存'}>
                     <strong>{noteSaveState.status === 'offline' ? '正文已留在本机，等待同步' : '正文未能同步到服务器'}</strong>

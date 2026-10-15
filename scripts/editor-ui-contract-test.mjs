@@ -26,6 +26,7 @@ const softMenu = readFileSync(new URL("../src/components/SoftMenu.tsx", import.m
 const proseStyles = readFileSync(new URL("../src/components/document-prose.css", import.meta.url), "utf8");
 const selectionStyles = readFileSync(new URL("../src/components/selection-toolbar.css", import.meta.url), "utf8");
 const foundationStyles = readFileSync(new URL("../src/components/ui-foundation.css", import.meta.url), "utf8");
+const documentHeader = readFileSync(new URL("../src/components/DocumentHeader.tsx", import.meta.url), "utf8");
 assert.match(styles, /@import "\.\/components\/ui-foundation\.css"/);
 assert.match(foundationStyles, /@layer base[\s\S]*?button, input, select, textarea \{ font: inherit; \}/);
 assert.match(foundationStyles, /--nf-radius-menu: 14px;/);
@@ -53,7 +54,7 @@ assert.doesNotMatch(proseStyles, /\.code-toolbar|\.code-copy-button|\.code-langu
 
 assert.match(directoryTree, /<SoftMenu open=\{menuOpen\}/);
 assert.match(directoryTree, /<SoftMenu open=\{newMenuOpen\}/);
-assert.match(editor, /<SoftMenu open=\{documentMenuOpen\}/);
+assert.match(documentHeader, /<SoftMenu open=\{menuOpen\}/);
 assert.match(aiPanel, /<SoftMenu open=\{historyOpen\}/);
 assert.match(menuStyles, /font: 400 14px\/1\.5/);
 assert.match(menuStyles, /border: 0;\s*border-radius: var\(--nf-radius-menu, 14px\);/);
@@ -107,9 +108,9 @@ assert.doesNotMatch(
 );
 assert.match(editor, /getDocumentNumberedHeadings\(editor\.state\.doc\)/);
 assert.match(editor, /setHeadingNumbering\(editor, showHeadingNumbers\)/);
-assert.match(editor, /aria-label="文档显示设置"/);
-assert.match(editor, /显示章节编号/);
-assert.match(editor, /role="menuitemcheckbox"/);
+assert.match(documentHeader, /aria-label="文档显示设置"/);
+assert.match(documentHeader, /显示章节编号/);
+assert.match(documentHeader, /role="menuitemcheckbox"/);
 assert.match(editor, /HEADING_NUMBERING_STORAGE_KEY/);
 assert.match(editor, /headings=\{visibleHeadings\}/);
 assert.match(styles, /\.note-content\.heading-numbering-enabled[\s\S]*?\[data-heading-number\]::before/);
