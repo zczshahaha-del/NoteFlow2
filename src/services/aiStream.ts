@@ -1,4 +1,5 @@
-import type { AgentToolAction, AgentToolTrace, ChatMessage, ChatSource } from "../types";
+import type { AgentToolAction, AgentToolTrace, ChatMessage, ChatSource, ChatPageState } from "../types";
+export type { ChatPageState } from "../types";
 import { apiFetch, readApiError } from "./api";
 
 interface StreamPayload {
@@ -32,29 +33,16 @@ interface AskAIParams {
   sessionId?: string | null;
   question: string;
   mode?: "chat" | "ask_notes";
+  retryAnswerOnly?: boolean;
+  retryOfRunId?: string;
   documentTitle?: string;
   documentContent?: string;
   pageState?: ChatPageState;
-  history: ChatMessage[];
+  history: Pick<ChatMessage, "role" | "text">[];
   maxTokens?: number;
   temperature?: number;
   memoryEnabled?: boolean;
   signal?: AbortSignal;
-}
-
-export interface ChatPageState {
-  currentNoteId?: string | null;
-  selectedText?: string;
-  currentSectionId?: string | null;
-  dirty?: boolean;
-  unsavedContent?: string;
-  centerMode?: string;
-  activeEditPreviewId?: string | null;
-  draftSeed?: string;
-  activeDraftId?: string | null;
-  activeDraftTitle?: string;
-  activeDraftTopic?: string;
-  contextScope?: "auto" | "current_note" | "knowledge_base" | "selection";
 }
 
 interface StreamRequest {
@@ -71,6 +59,7 @@ interface StreamRequest {
   onStreamError?: (error: { status: string; code?: string; message: string }) => void;
   onToolTrace?: (trace: AgentToolTrace) => void;
   onToolAction?: (action: AgentToolAction) => void;
+  requireCompletion?: boolean;
 }
 
 export interface GenerateNoteStreamParams {
@@ -108,6 +97,8 @@ export async function askAIStream({
   sessionId,
   question,
   mode,
+  retryAnswerOnly,
+  retryOfRunId,
   documentTitle,
   documentContent,
   pageState,
@@ -148,10 +139,13 @@ export async function askAIStream({
     onAgentError,
     onToolTrace,
     onToolAction,
+    requireCompletion: true,
     body: {
       sessionId,
       question,
       mode,
+      retryAnswerOnly,
+      retryOfRunId,
       documentTitle,
       documentContent,
       pageState,
@@ -192,6 +186,7 @@ async function streamAIResponse({
   onStreamError,
   onToolTrace,
   onToolAction,
+  requireCompletion = false,
 }: StreamRequest): Promise<void> {
   const response = await apiFetch(path, {
     method: "POST",
@@ -218,12 +213,11 @@ async function streamAIResponse({
   const reader = response.body.getReader();
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
+  let completed = false;
 
   while (true) {
     const { value, done } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
+    buffer += done ? decoder.decode() + "\n" : decoder.decode(value, { stream: true });
     const lines = buffer.split(/\r?\n/);
     buffer = lines.pop() ?? "";
 
@@ -232,7 +226,8 @@ async function streamAIResponse({
       if (!trimmed.startsWith("data:")) continue;
 
       const payload = trimmed.slice(5).trim();
-      if (!payload || payload === "[DONE]") continue;
+      if (!payload) continue;
+      if (payload === "[DONE]") { completed = true; continue; }
 
       const data = JSON.parse(payload) as StreamPayload;
       if (data.type === "agent_session") {
@@ -273,6 +268,7 @@ async function streamAIResponse({
         continue;
       }
       if (data.type === "agent_done") {
+        completed = true;
         if (data.sessionId && data.runId) {
           onAgentDone?.({
             sessionId: data.sessionId,
@@ -317,5 +313,7 @@ async function streamAIResponse({
       if (delta) onDelta(delta);
       if (choice?.finish_reason) onFinishReason?.(choice.finish_reason);
     }
+    if (done) break;
   }
+  if (requireCompletion && !completed) throw new Error("连接已中断，回复未完成。");
 }

@@ -29,6 +29,8 @@ class AgentChatPayload(BaseModel):
     sessionId: Optional[str] = None
     question: str
     mode: str = "chat"
+    retryAnswerOnly: bool = False
+    retryOfRunId: Optional[str] = None
     documentTitle: str = ""
     documentContent: str = ""
     history: list[AgentChatMessageIn] = Field(default_factory=list)

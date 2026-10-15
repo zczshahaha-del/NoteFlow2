@@ -28,6 +28,20 @@
   min-height: 0;
   overflow-x: hidden;
 }
+.nf-ai-conversation .nf-chat-message-row + .nf-chat-message-row { margin-top: 12px; }
+.nf-ai-conversation .nf-chat-message-row + .nf-chat-message-row[data-role="user"] { margin-top: 28px; }
+.nf-ai-conversation .nf-chat-recovery {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 9px;
+  width: 100%; margin-top: 10px; color: var(--nf-chat-muted); font-size: 12px; line-height: 1.6;
+}
+.nf-ai-conversation .nf-chat-retry {
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; border: 0;
+  border-radius: 6px; color: var(--nf-chat-text); background: var(--nf-chat-soft);
+}
+.nf-ai-conversation .nf-chat-retry:hover:not(:disabled) { background: var(--nf-chat-line); }
+.nf-ai-conversation .nf-chat-retry:focus-visible { outline: 2px solid var(--nf-chat-muted); outline-offset: 2px; }
+.nf-ai-conversation .nf-chat-retry:disabled { opacity: .5; }
+.nf-ai-conversation .nf-chat-recovery-detail { flex-basis: 100%; overflow-wrap: anywhere; }
 .nf-ai-conversation .nf-chat-thread { position: relative; display: flex; flex: 1; min-width: 0; min-height: 0; }
 .nf-ai-conversation .nf-chat-message-actions { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 26px; margin-top: 4px; }
 .nf-ai-conversation .nf-chat-message-actions[data-role="user"] { max-width: 92%; justify-content: flex-end; }
@@ -157,10 +171,10 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  min-height: 158px;
+  min-height: 0;
   padding: 12px 14px;
   border: 1px solid var(--nf-chat-line);
-  border-radius: var(--nf-radius-dialog, 20px);
+  border-radius: 16px;
   background: var(--nf-chat-surface);
   box-shadow: 0 3px 12px var(--nf-chat-shadow);
   transition: border-color 180ms ease, box-shadow 180ms ease;
@@ -179,6 +193,9 @@
 .nf-ai-conversation .nf-chat-attachment-remove:hover { background: var(--nf-chat-line); }
 .nf-ai-conversation .ai-chat-input {
   min-width: 0;
+  min-height: 52px;
+  max-height: min(180px, 25vh);
+  flex: none;
   padding: 0 2px;
   color: var(--nf-chat-text);
   font: 400 14px/1.75 var(--nf-font-ui, system-ui, sans-serif);

@@ -229,7 +229,8 @@ interface AppState {
   switchChatSession: (sessionId: string) => Promise<void>;
   renameChatSession: (sessionId: string, title: string) => Promise<void>;
   deleteChatSession: (sessionId: string) => Promise<void>;
-  sendMessage: (text: string, pageState?: Partial<ChatPageState>, options?: { mode?: ChatMode }) => void;
+  sendMessage: (text: string, pageState?: Partial<ChatPageState>, options?: { mode?: ChatMode; retryMessageId?: string }) => void;
+  retryChatReply: (messageId: string) => void;
   stopGeneration: () => void;
   treeData: FileNode[];
   addNode: (parentId: string | null, node: FileNode) => void;
@@ -1633,14 +1634,30 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     scheduleNoteSave(id, content);
   },
 
+  retryChatReply: (messageId) => {
+    const state = get();
+    const message = state.chatMessages[state.chatMessages.length - 1];
+    if (state.chatLoading || message?.id !== messageId || message.role !== "assistant" ||
+        message.streamState !== "failed" || !message.replyRequest || message.retryBlocked ||
+        state.pendingCheckpoint || state.activeDraftContext || state.activeEditPreview) return;
+    state.sendMessage(message.replyRequest.question, undefined, { retryMessageId: messageId });
+  },
+
   sendMessage: async (text, pageState, options) => {
     const state = get();
     if (state.chatLoading) return;
-    const chatMode: ChatMode = options?.mode ?? "chat";
+    const retryMessage = options?.retryMessageId ? state.chatMessages[state.chatMessages.length - 1] : undefined;
+    if (options?.retryMessageId && (retryMessage?.id !== options.retryMessageId ||
+        retryMessage.streamState !== "failed" || !retryMessage.replyRequest || retryMessage.retryBlocked ||
+        state.pendingCheckpoint || state.activeDraftContext || state.activeEditPreview)) return;
+    const retryRequest = retryMessage?.replyRequest;
+    const chatMode: ChatMode = retryRequest?.mode ?? options?.mode ?? "chat";
+    let replaceOnFirstDelta = Boolean(retryRequest);
 
     generationAbortController?.abort();
     const abortController = new AbortController();
     generationAbortController = abortController;
+    const isCurrentReply = () => generationAbortController === abortController && !abortController.signal.aborted;
 
     const userMsg: ChatMessage = {
       ...newChatMessageMetadata(),
@@ -1656,17 +1673,21 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         : undefined,
     };
     const assistantMsg: ChatMessage = {
-      ...newChatMessageMetadata(),
+      ...(retryMessage ? { ...retryMessage, createdAt: new Date().toISOString() } : newChatMessageMetadata()),
       role: "assistant",
-      text: "",
+      text: retryMessage?.text ?? "",
       chatMode,
       streamState: "streaming",
+      errorText: undefined,
+      retrying: Boolean(retryRequest),
     };
 
-    set((current) => ({
-      chatMessages: [...current.chatMessages, userMsg, assistantMsg],
-      chatLoading: true,
-    }));
+    set((current) => {
+      // Only the latest recoverable turn needs a full request snapshot.
+      const messages = current.chatMessages.map(message => message.id === retryMessage?.id
+        ? assistantMsg : message.replyRequest ? { ...message, replyRequest: undefined } : message);
+      return { chatMessages: retryMessage ? messages : [...messages, userMsg, assistantMsg], chatLoading: true };
+    });
 
     try {
       const latest = get();
@@ -1698,6 +1719,17 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         activeDraftTopic: latest.activeDraftContext?.topic ?? "",
         contextScope: pageState?.contextScope ?? "auto",
       };
+      const replyRequest = retryRequest ?? {
+        question: text,
+        mode: chatMode,
+        documentTitle: selectedFile?.name.replace(/\.md$/, "") ?? "",
+        documentContent,
+        pageState: requestPageState,
+        history: state.chatMessages.map(({ role, text }) => ({ role, text })),
+        memoryEnabled: isMemoryEnabled(),
+      };
+      set(current => ({ chatMessages: current.chatMessages.map(message =>
+        message.id === assistantMsg.id ? { ...message, replyRequest } : message) }));
       const toolActionTasks: Promise<void>[] = [];
 
         const handleAgentToolAction = async (action: AgentToolAction) => {
@@ -2037,16 +2069,13 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       };
 
       await askAIStream({
+        ...replyRequest,
         sessionId: latest.agentSessionId,
-        question: text,
-        mode: chatMode,
-        documentTitle: selectedFile?.name.replace(/\.md$/, ""),
-        documentContent,
-        pageState: requestPageState,
-        history: state.chatMessages,
-        memoryEnabled: isMemoryEnabled(),
+        retryAnswerOnly: Boolean(retryRequest),
+        retryOfRunId: retryMessage?.agentRunId,
         signal: abortController.signal,
         onContext: (context) => {
+          if (!isCurrentReply()) return;
           set((current) => ({
             chatMessages: current.chatMessages.map((message) =>
               message.id === assistantMsg.id
@@ -2060,6 +2089,8 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           }));
         },
         onAnswerReplace: (content) => {
+          if (!isCurrentReply()) return;
+          replaceOnFirstDelta = false;
           set((current) => ({
             chatMessages: current.chatMessages.map((message) =>
               message.id === assistantMsg.id
@@ -2069,6 +2100,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           }));
         },
         onAgentSession: (session) => {
+          if (!isCurrentReply()) return;
           set((current) => ({
             agentSessionId: session.sessionId,
             agentTask: {
@@ -2095,6 +2127,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
                     ...message,
                     agentSessionId: session.sessionId,
                     agentRunId: session.runId,
+                    retryBlocked: !["general_chat", "note_search", "note_context_qa", "unknown"].includes(session.intent),
                   }
                 : message.id === userMsg.id
                   ? {
@@ -2107,6 +2140,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           }));
         },
         onToolTrace: (trace: AgentToolTrace) => {
+          if (!isCurrentReply()) return;
           const visibleTrace = trace.metadata?.silent !== true;
           set((current) => {
             const task = current.agentTask;
@@ -2134,6 +2168,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           });
         },
         onAgentDone: (result) => {
+          if (!isCurrentReply()) return;
           set((current) => ({
             chatMessages: result.status === "failed" || result.status === "cancelled"
               ? current.chatMessages.map(message => message.id === assistantMsg.id
@@ -2148,13 +2183,14 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           }));
         },
         onAgentError: (event) => {
+          if (!isCurrentReply()) return;
           const errorText = event.message || "Agent 执行失败，请稍后重试。";
           set((current) => {
             const runId = event.runId ?? current.agentTask?.run.id;
             const failedTask = runId ? taskWithRunStatus(current.agentTask, runId, "failed") : current.agentTask;
             return {
               chatMessages: current.chatMessages.map(message => message.id === assistantMsg.id
-                ? { ...message, streamState: "failed" }
+                ? { ...message, streamState: "failed", errorText }
                 : message),
               agentTask: failedTask
                 ? {
@@ -2169,20 +2205,27 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           });
         },
         onToolAction: (action) => {
+          if (!isCurrentReply()) return;
+          set(current => ({ chatMessages: current.chatMessages.map(message =>
+            message.id === assistantMsg.id ? { ...message, retryBlocked: true } : message) }));
+          if (retryRequest) throw new Error("这次请求需要处理笔记任务，请回到对应任务继续。");
           toolActionTasks.push(handleAgentToolAction(action));
         },
         onDelta: (delta) => {
+          if (!isCurrentReply()) return;
           set((current) => ({
             chatMessages: current.chatMessages.map((message) =>
-              message.id === assistantMsg.id
-                ? { ...message, text: message.text + delta }
+              message.id === assistantMsg.id && message.streamState !== "failed"
+                ? { ...message, text: (replaceOnFirstDelta ? "" : message.text) + delta }
                 : message
             ),
           }));
+          replaceOnFirstDelta = false;
         },
       });
       await Promise.all(toolActionTasks);
     } catch (error) {
+      if (generationAbortController !== abortController) return;
       if (error instanceof Error && error.name === "AbortError") {
         set((current) => ({
           agentTask: current.agentTask?.run.id
@@ -2210,7 +2253,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
             }
           : current.agentTask,
         chatMessages: current.chatMessages.map((message) =>
-          message.id === assistantMsg.id ? { ...message, text: errorText, streamState: "failed" } : message
+          message.id === assistantMsg.id ? { ...message, errorText, streamState: "failed" } : message
         ),
       }));
     } finally {
@@ -2219,8 +2262,11 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         set((current) => ({
           chatLoading: false,
           chatMessages: current.chatMessages.map(message =>
-            message.id === assistantMsg.id && message.streamState === "streaming"
-              ? { ...message, streamState: abortController.signal.aborted ? "stopped" : "completed" }
+            message.id === assistantMsg.id
+              ? { ...message, retrying: false,
+                replyRequest: message.streamState === "failed" ? message.replyRequest : undefined,
+                streamState: message.streamState === "streaming"
+                ? abortController.signal.aborted ? "stopped" : "completed" : message.streamState }
               : message
           ),
         }));
@@ -2239,7 +2285,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     set((state) => ({
       chatLoading: false,
       chatMessages: state.chatMessages.map(message =>
-        message.streamState === "streaming" ? { ...message, streamState: "stopped" } : message
+        message.streamState === "streaming" ? { ...message, streamState: "stopped", retrying: false, replyRequest: undefined } : message
       ),
       agentTask: runId ? taskWithRunStatus(state.agentTask, runId, "cancelled") : state.agentTask,
     }));

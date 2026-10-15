@@ -60,7 +60,7 @@ def _message_out(message: ChatMessage, draft_cards_by_run_id: dict[str, dict] | 
         if persisted_card or checkpoint_card
         else None
     )
-    return {
+    output = {
         "id": message.id,
         "role": message.role,
         "text": message.text,
@@ -73,6 +73,46 @@ def _message_out(message: ChatMessage, draft_cards_by_run_id: dict[str, dict] | 
         "draftCard": draft_card,
         "createdAt": _utc_iso(message.created_at),
     }
+    if metadata.get("replyState") == "failed":
+        output.update(streamState="failed", errorText=metadata.get("replyError"))
+    elif metadata.get("replyState") == "cancelled":
+        output["streamState"] = "stopped"
+    return output
+
+
+def _visible_reply_attempts(messages: list[ChatMessage], cards: dict[str, dict]) -> list[dict]:
+    """Keep all attempts in storage, but show one question / latest reply per retry chain."""
+    visible: list[dict] = []
+    roots: dict[str, str] = {}
+    questions: dict[str, ChatMessage] = {}
+    answers: dict[str, int] = {}
+    for message in messages:
+        run_id = message.run_id or ""
+        parent = (message.metadata_json or {}).get("retryOfRunId")
+        root = roots.get(parent or "")
+        original = questions.get(root or "")
+        if message.role == "user" and root and original and (
+            message.text == original.text and message.user_id == original.user_id
+            and message.session_id == original.session_id
+        ):
+            roots[run_id] = root
+            continue
+        payload = _message_out(message, cards)
+        root = roots.get(run_id, run_id)
+        if message.role == "assistant" and root in answers:
+            previous = visible[answers[root]]
+            if not message.text and payload.get("streamState") == "failed":
+                payload["text"] = previous["text"]
+                payload["sources"] = previous["sources"]
+            visible[answers[root]] = payload
+            continue
+        if message.role == "user" and run_id:
+            roots[run_id] = run_id
+            questions[run_id] = message
+        elif message.role == "assistant" and run_id:
+            answers[root] = len(visible)
+        visible.append(payload)
+    return visible
 
 
 async def _owned_session(user_id: str, session_id: str) -> ChatSession:
@@ -167,7 +207,7 @@ async def list_chat_messages(
             for checkpoint in checkpoint_result.scalars().all():
                 draft_cards_by_run_id[checkpoint.run_id] = _draft_card_out(checkpoint)
     return {
-        "messages": [_message_out(message, draft_cards_by_run_id) for message in messages],
+        "messages": _visible_reply_attempts(messages, draft_cards_by_run_id),
         "hasMore": len(messages) == safe_limit,
     }
 

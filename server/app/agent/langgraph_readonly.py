@@ -25,6 +25,7 @@ class ReadonlyAgentState(TypedDict, total=False):
     page_state: dict[str, Any]
     turn_plan: dict[str, Any]
     memory_enabled: bool
+    suppress_memory_write: bool
     status: str
     intent: str
     route: str
@@ -312,7 +313,7 @@ def build_readonly_graph(
             return {"error_code": "ai_stream_failed", "error_message": str(exc), "status": "failed"}
 
     async def memory_writer(state: ReadonlyAgentState) -> dict[str, Any]:
-        if not state.get("memory_enabled"):
+        if not state.get("memory_enabled") or state.get("suppress_memory_write"):
             return {"memory_write_count": 0}
         try:
             count = await deps.memory_write(state)

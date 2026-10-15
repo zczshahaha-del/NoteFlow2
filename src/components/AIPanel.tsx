@@ -1,4 +1,4 @@
-import { Fragment, memo, useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { Fragment, memo, useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import {
   ArrowUp,
   ArrowDown,
@@ -15,6 +15,7 @@ import {
   MicOff,
   RotateCcw,
   Square,
+  SquarePen,
   XCircle,
   Plus,
   Pencil,
@@ -362,6 +363,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
     renameChatSession,
     deleteChatSession,
     sendMessage,
+    retryChatReply,
     stopGeneration,
     chatSelection,
     clearChatSelection,
@@ -417,6 +419,29 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
   const manualChatJumpRef = useRef(false);
   const previousMessageCountRef = useRef(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const element = inputRef.current;
+    if (!element) return;
+    const resize = () => {
+      // Reset before measuring so deleting text also shrinks the input.
+      element.style.height = "0px";
+      const limit = Math.max(72, Math.min(180, window.innerHeight * .25));
+      const height = Math.min(limit, Math.max(52, element.scrollHeight));
+      element.style.height = `${height}px`;
+      element.style.overflowY = element.scrollHeight > height ? "auto" : "hidden";
+      const thread = chatScrollRef.current;
+      if (thread && shouldAutoScrollChatRef.current) thread.scrollTo({ top: thread.scrollHeight, behavior: "auto" });
+    };
+    resize();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(entries => {
+      const width = entries[0]?.contentRect.width;
+      if (width !== previousWidth) { previousWidth = width; resize(); }
+    });
+    let previousWidth = element.getBoundingClientRect().width;
+    observer?.observe(element);
+    window.addEventListener("resize", resize);
+    return () => { observer?.disconnect(); window.removeEventListener("resize", resize); };
+  }, [input]);
   const modeMenuRef = useRef<HTMLDivElement>(null);
   const historyMenuRef = useRef<HTMLDivElement>(null);
   const historyTriggerRef = useRef<HTMLButtonElement>(null);
@@ -996,7 +1021,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
               aria-label="新建对话"
               aria-describedby="new-chat-tooltip"
             >
-              <Plus size={18} strokeWidth={1.9} />
+              <SquarePen size={18} strokeWidth={1.9} />
             </button>
             <span
               id="new-chat-tooltip"
@@ -1149,7 +1174,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
         role="region"
         aria-label="聊天记录"
         tabIndex={-1}
-        className="ai-message-list flex-1 space-y-[26px] overflow-y-auto px-0 py-[34px]"
+        className="ai-message-list flex-1 overflow-y-auto px-0 py-6"
       >
         {visibleMessages.map((msg, index) => {
           const isStreaming =
@@ -1173,7 +1198,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
           })();
           return (
           <Fragment key={msg.id}>
-          <div className={`nf-chat-message-row flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
+          <div data-role={msg.role} className={`nf-chat-message-row flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
             <div
               className={`nf-chat-message nf-chat-message--${msg.role}`}
               data-streaming={isStreaming}
@@ -1273,6 +1298,20 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
                 </div>
               )}
             </div>
+            {isStreaming && msg.retrying && msg.text.trim() && (
+              <div className="nf-chat-recovery" role="status">正在重新回复…</div>
+            )}
+            {msg.role === "assistant" && msg.streamState === "failed" && (
+              <div className="nf-chat-recovery" role="status">
+                <span>{msg.text.trim() ? "回复已中断，已保留收到的内容" : "暂时没能完成回复"}</span>
+                {index === visibleMessages.length - 1 && msg.replyRequest && !msg.retryBlocked &&
+                  !activeCheckpoint && !activeDraftContext && !activeEditPreview && (
+                  <button type="button" disabled={replyBusy} onClick={() => retryChatReply(msg.id)}
+                    aria-label="重试回复" className="nf-chat-retry"><RotateCcw size={13} aria-hidden="true" />重试</button>
+                )}
+                {msg.errorText && <span className="nf-chat-recovery-detail">{msg.errorText}</span>}
+              </div>
+            )}
             {(msg.text.trim() || isStreaming) && <ChatMessageActions text={msg.text} role={msg.role} busy={isStreaming} createdAt={msg.createdAt} />}
             {msg.role === "assistant" && msg.draftCard &&
               renderDraftConversationCard(msg.draftCard, msg.id)}
@@ -1349,7 +1388,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
                   ? "在全部笔记中提问..."
                   : "使用 AI 处理各种任务..."
             }
-            className="ai-chat-input min-h-[82px] flex-1 resize-none border-0 bg-transparent text-[15px] leading-7 text-jelly-text outline-none placeholder:text-[#a4aab2]"
+            className="ai-chat-input resize-none border-0 bg-transparent text-[15px] leading-7 text-jelly-text outline-none placeholder:text-[#a4aab2]"
           />
           <div className="nf-chat-composer-toolbar flex items-center justify-between gap-2">
             <div className="relative" ref={modeMenuRef}>

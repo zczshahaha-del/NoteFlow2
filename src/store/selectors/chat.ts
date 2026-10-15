@@ -14,6 +14,7 @@ export function useChatSlice() {
     renameChatSession: state.renameChatSession,
     deleteChatSession: state.deleteChatSession,
     sendMessage: state.sendMessage,
+    retryChatReply: state.retryChatReply,
     stopGeneration: state.stopGeneration,
     chatSelection: state.chatSelection,
     addSelectionToChat: state.addSelectionToChat,

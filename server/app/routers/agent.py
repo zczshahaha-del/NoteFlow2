@@ -101,6 +101,7 @@ def _langgraph_response(
         trace_id=run_state.get("trace_id") or "",
         thread_id=session_id,
     )
+    state["suppress_memory_write"] = payload.retryAnswerOnly
 
     async def stream():
         answer_parts: list[str] = []
@@ -127,7 +128,7 @@ def _langgraph_response(
                         data = event.to_wire()
                         if event.type == "agent_session":
                             data.setdefault("intent", intent)
-                        elif event.type == "choices":
+                        elif event.type == "choices" and not failed:
                             answer_parts.append(_event_delta_text(data))
                         elif event.type == "answer_replace":
                             answer_parts = [str(data.get("content") or "")]
@@ -142,8 +143,6 @@ def _langgraph_response(
                 failed = True
                 error_message = public_error_message(exc)
                 yield _sse_format(_agent_error_event(session_id, run_id, error_message))
-                yield _sse_format(_choice_delta(error_message))
-                answer_parts.append(error_message)
                 yield _sse_format(_agent_done_event(session_id, run_id, "failed"))
 
             answer = "".join(answer_parts).strip()
@@ -244,6 +243,7 @@ def _terminal_turn_response(
     intent: str,
     answer: str,
     turn_plan: TurnPlan | None = None,
+    status: str = "completed",
 ) -> StreamingResponse:
     session_id = run_state["session_id"]
     run_id = run_state["run_id"]
@@ -267,15 +267,19 @@ def _terminal_turn_response(
                     "metadata": {"turnPlan": turn_plan.model_dump(mode="json"), "silent": True},
                 }
             )
-        yield _sse_format(_choice_delta(answer))
+        if status == "failed":
+            yield _sse_format(_agent_error_event(session_id, run_id, answer))
+        else:
+            yield _sse_format(_choice_delta(answer))
         await _finish_agent_run(
             user_id=user_id,
             session_id=session_id,
             run_id=run_id,
-            status="completed",
-            answer=answer,
+            status=status,
+            answer="" if status == "failed" else answer,
+            error_message=answer if status == "failed" else None,
         )
-        yield _sse_format(_agent_done_event(session_id, run_id, "completed"))
+        yield _sse_format(_agent_done_event(session_id, run_id, status))
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(
@@ -626,6 +630,7 @@ async def chat(
             run_state=run_state,
             intent="unknown",
             answer=answer,
+            status="failed",
         )
 
     raw_plan = turn_state.get("turn_plan") or {}
@@ -672,6 +677,7 @@ async def chat(
             run_state=run_state,
             intent="unknown",
             answer=answer,
+            status="failed",
         )
 
     if turn_plan.primary_intent == PrimaryIntent.UNKNOWN:
@@ -702,6 +708,16 @@ async def chat(
         step_id=route_step_id,
         intent=intent,
     )
+    # A retry may produce an answer, but must never replay a writing or memory
+    # operation, even if the planner changes its classification on this attempt.
+    if payload.retryAnswerOnly and intent not in {"general_chat", "note_search", "note_context_qa"}:
+        return _terminal_turn_response(
+            user_id=user.id,
+            run_state=run_state,
+            intent=intent,
+            answer="这次请求涉及笔记或记忆操作，请回到对应任务继续。",
+            status="failed",
+        )
     active_checkpoint = await _checkpoint_for_plan(user.id, payload.sessionId, intent)
     memory_enabled = await _effective_memory_enabled(user.id, not force_note_answer)
 

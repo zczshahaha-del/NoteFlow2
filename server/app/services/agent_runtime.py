@@ -73,6 +73,7 @@ async def start_agent_run(payload: AgentChatPayload, user_id: str, intent: str) 
             started_at=now,
             request_id=trace.request_id or None,
             trace_id=trace.trace_id or None,
+            metadata_json={"retryOfRunId": payload.retryOfRunId if payload.retryAnswerOnly else None},
         )
         user_message = DbChatMessage(
             id=_new_id(),
@@ -84,6 +85,7 @@ async def start_agent_run(payload: AgentChatPayload, user_id: str, intent: str) 
             context_mode=payload.mode,
             metadata_json={
                 "chatMode": payload.mode,
+                "retryOfRunId": payload.retryOfRunId if payload.retryAnswerOnly else None,
                 "attachedSelection": {
                     "text": payload.pageState.selectedText,
                     "noteId": payload.pageState.currentNoteId,
@@ -207,6 +209,7 @@ async def finish_agent_run(
             chat_session.last_message_at = now
             chat_session.updated_at = now
 
+        retry_of_run_id = (run.metadata_json or {}).get("retryOfRunId") if run is not None else None
         db.add(
             DbChatMessage(
                 id=_new_id(),
@@ -217,7 +220,8 @@ async def finish_agent_run(
                 text=answer,
                 context_mode=context_mode,
                 sources=sources or [],
-                metadata_json=message_metadata or {},
+                metadata_json={**(message_metadata or {}), "retryOfRunId": retry_of_run_id,
+                               "replyState": status, "replyError": error_message},
                 created_at=now,
             )
         )

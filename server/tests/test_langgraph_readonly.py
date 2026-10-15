@@ -53,6 +53,14 @@ class FakeReadonlyTools:
 
 
 class LangGraphReadonlyTest(unittest.TestCase):
+    def test_reply_retry_keeps_recall_but_skips_memory_write(self) -> None:
+        tools = FakeReadonlyTools()
+        state = new_readonly_state(user_id="u", question="原问题", mode="chat", memory_enabled=True)
+        state["suppress_memory_write"] = True
+        result = asyncio.run(invoke_readonly_graph(state, dependencies=tools.dependencies()))
+        self.assertEqual(result["answer"], "answer")
+        self.assertEqual(tools.memory_write_calls, 0)
+
     def test_library_search_does_not_leak_editor_content_or_fall_back(self) -> None:
         captured = []
 

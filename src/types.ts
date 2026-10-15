@@ -15,12 +15,42 @@ export interface FileNode {
   indexStatus?: string;
 }
 
+export interface ChatPageState {
+  currentNoteId?: string | null;
+  selectedText?: string;
+  currentSectionId?: string | null;
+  dirty?: boolean;
+  unsavedContent?: string;
+  centerMode?: string;
+  activeEditPreviewId?: string | null;
+  draftSeed?: string;
+  activeDraftId?: string | null;
+  activeDraftTitle?: string;
+  activeDraftTopic?: string;
+  contextScope?: "auto" | "current_note" | "knowledge_base" | "selection";
+}
+
+export interface ChatReplyRequest {
+  question: string;
+  mode: "chat" | "ask_notes";
+  documentTitle: string;
+  documentContent: string;
+  pageState: ChatPageState;
+  history: { role: "user" | "assistant"; text: string }[];
+  memoryEnabled: boolean;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   text: string;
-  /** Client-only presentation lifecycle; restored history does not replay typing. */
+  /** Streaming is client-only; history may restore terminal failure/stop states. */
   streamState?: "streaming" | "completed" | "stopped" | "failed";
+  /** Client-only recovery data; never serialized as chat history. */
+  replyRequest?: ChatReplyRequest;
+  retryBlocked?: boolean;
+  retrying?: boolean;
+  errorText?: string;
   chatMode?: "chat" | "ask_notes";
   attachedSelection?: {
     text: string;

@@ -25,6 +25,7 @@ replace(text,status='streaming',sources){chat.chatMessages=chat.chatMessages.map
 history(text){chat.chatLoading=false;chat.chatMessages=[{id:'loaded-'+(++key),role:'assistant',text}];this.render()},
 clear(){chat.chatLoading=false;chat.chatMessages=[];this.render()}};
 api.renames=[];chat.renameChatSession=async(id,title)=>{api.renames.push({id,title})};
+api.retries=[];chat.retryChatReply=id=>{api.retries.push(id)};
 chat.stopGeneration=()=>{api.stops++;chat.chatLoading=false;chat.chatMessages=chat.chatMessages.map(m=>m.streamState==='streaming'?{...m,streamState:'stopped'}:m);api.render()};
 // In-memory clipboard substitute: no system clipboard access in browser tests.
 Object.defineProperty(navigator,'clipboard',{configurable:true,value:{async writeText(text){api.copies.push(text);if(api.copyMode==='denied')throw new Error('synthetic denial');if(api.copyMode==='pending')await new Promise(resolve=>{api.finishCopy=resolve})}}});
@@ -47,6 +48,32 @@ try{
     const page=await context.newPage();page.setDefaultTimeout(4000);page.on('pageerror',error=>errors.push(String(error)));
     await page.setContent('<html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>'+css+'#root{width:100%;max-width:500px;height:95vh;display:flex}#root>aside{flex:1;min-width:0}</style></head><body><div id="root"></div><script type="module">'+source+'</script></body></html>');
     await page.waitForFunction(()=>Boolean(window.presentationTest));
+
+    // Actual composer grows/shrinks without replacing its input or changing mode.
+    const composerInput=page.getByRole('textbox',{name:'消息输入框',exact:true});
+    const compactInput=await composerInput.boundingBox();
+    await composerInput.fill('多行草稿\n第二行\n第三行\n第四行\n第五行');
+    assert.ok((await composerInput.boundingBox()).height>compactInput.height);
+    assert.equal(await composerInput.evaluate(n=>document.activeElement===n),true);
+    await composerInput.fill(Array.from({length:25},(_,i)=>'长输入 '+i).join('\n'));
+    assert.ok(await composerInput.evaluate(n=>n.scrollHeight>n.clientHeight&&getComputedStyle(n).overflowY==='auto'));
+    await composerInput.fill('');assert.equal((await composerInput.boundingBox()).height,compactInput.height);
+
+    // Read-only retry is reachable on the latest failed answer only; stop isn't failure.
+    await page.evaluate(()=>{const a=window.presentationTest;a.chat.chatMessages=[{id:'failed-reply',role:'assistant',text:'保留部分回答',streamState:'failed',errorText:'合成断流',replyRequest:{question:'原问题'}}];a.render()});
+    await page.getByText('回复已中断，已保留收到的内容',{exact:true}).waitFor();
+    if(process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR){
+      mkdirSync(process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR,{recursive:true});
+      await page.locator('#root').screenshot({path:process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR+'/chat-retry-'+(mobile?'mobile':'desktop')+'.png'});
+    }
+    await page.getByRole('button',{name:'重试回复',exact:true}).click();
+    assert.deepEqual(await page.evaluate(()=>window.presentationTest.retries),['failed-reply']);
+    await page.evaluate(()=>{const a=window.presentationTest;a.chat.chatMessages=a.chat.chatMessages.map(m=>({...m,streamState:'stopped'}));a.render()});
+    await page.getByRole('button',{name:'重试回复',exact:true}).waitFor({state:'detached'});
+    await page.evaluate(()=>{const a=window.presentationTest;a.chat.chatMessages=[{id:'u1',role:'user',text:'问题一'},{id:'a1',role:'assistant',text:'回答一'},{id:'u2',role:'user',text:'问题二'}];a.render()});
+    const messageGaps=await page.locator('.nf-chat-message-row').evaluateAll(rows=>rows.slice(1).map((n,i)=>n.getBoundingClientRect().top-rows[i].getBoundingClientRect().bottom));
+    assert.deepEqual(messageGaps,[12,28]);
+    await page.evaluate(()=>window.presentationTest.clear());
 
     // The real history search signals focus without an inner frame or baseline.
     await page.evaluate(()=>{const a=window.presentationTest;a.agent.agentSessionId='history-current';a.chat.chatSessions=[

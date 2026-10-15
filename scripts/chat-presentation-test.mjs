@@ -103,7 +103,8 @@ try {
   streams[2].push({ type: 'stream_error', message: '合成错误，请重试' }); await operation;
   streams[2].close();
   assert.equal(useAppStore.getState().chatMessages.at(-1).streamState, 'failed');
-  assert.equal(useAppStore.getState().chatMessages.at(-1).text, '合成错误，请重试');
+  assert.equal(useAppStore.getState().chatMessages.at(-1).text, '', 'errors are separate from reply content');
+  assert.equal(useAppStore.getState().chatMessages.at(-1).errorText, '合成错误，请重试');
   assert.equal(useAppStore.getState().chatLoading, false);
   operation = useAppStore.getState().sendMessage('合成 Agent 失败');
   while (streams.length < 4) await tick();
@@ -113,7 +114,8 @@ try {
   streams[3].push({ type: 'agent_done', sessionId: 'synthetic-session', runId: 'synthetic-run', status: 'failed' });
   streams[3].close(); await operation;
   assert.equal(useAppStore.getState().chatMessages.at(-1).streamState, 'failed', 'normal transport finish cannot relabel a failed Agent reply');
-  assert.equal(useAppStore.getState().chatMessages.at(-1).text, '合成 Agent 错误正文');
+  assert.equal(useAppStore.getState().chatMessages.at(-1).text, '', 'error deltas do not become answer content');
+  assert.equal(useAppStore.getState().chatMessages.at(-1).errorText, '合成 Agent 错误');
   await tick(); useAppStore.setState(initial, true);
   console.log(JSON.stringify({ ok: true, networkMocked: true, deterministicPresentation: true, unicode: true, completionBoundMs: 900, rawStoreIntact: true, canonicalReplacement: true, stop: true, failure: true, historyWire: true }));
 } finally { await vite.close(); dom.window.close(); }
