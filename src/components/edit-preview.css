@@ -25,29 +25,34 @@
 .edit-preview-workspace button:disabled { cursor: not-allowed; opacity: .45; }
 .edit-preview-workspace .nf-edit-primary { background: var(--color-jelly-blue, #3f7898); color: #fff; font-weight: 500; }
 .edit-preview-workspace .nf-edit-primary:hover { background: color-mix(in srgb, var(--color-jelly-blue, #3f7898) 90%, #000); color: #fff; }
-.edit-preview-workspace .nf-edit-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; min-height: 70px; padding: 12px 20px; border-bottom: 1px solid var(--edit-line); }
+.edit-preview-workspace .nf-edit-header { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; min-height: 70px; padding: 12px 20px; border-bottom: 1px solid var(--edit-line); }
 .edit-preview-workspace .nf-edit-identity { min-width: 0; flex: 1; }
 .edit-preview-workspace .nf-edit-heading { display: flex; align-items: center; gap: 7px; }
-.edit-preview-workspace .nf-edit-heading > svg { color: var(--color-jelly-blue-deep); flex: none; }
 .edit-preview-workspace .nf-edit-heading h1 { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 600; }
 .edit-preview-workspace .nf-edit-meta { display: flex; align-items: center; gap: 7px; margin-top: 3px; color: var(--edit-muted); font-size: 11px; }
 .edit-preview-workspace .nf-edit-meta > span { flex: none; }
 .edit-preview-workspace .nf-edit-meta .nf-writing-label { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 400; color: var(--edit-muted); }
 .edit-preview-workspace .nf-edit-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.edit-preview-workspace .nf-edit-more { position: relative; }
+.edit-preview-workspace .nf-edit-more-trigger { width: 32px; padding-inline: 0; }
+.edit-preview-workspace .nf-edit-menu { position: absolute; z-index: 20; top: calc(100% + 7px); right: 0; width: 176px; }
+.edit-preview-workspace .nf-edit-menu .nf-soft-menu-item { font-size: 12px; }
 .edit-preview-workspace .nf-edit-scroll { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 18px 24px 30px; }
 .edit-preview-workspace .nf-edit-frame { width: min(100%, var(--edit-reading-width)); margin-inline: auto; }
-.edit-preview-workspace .nf-edit-reviewbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 20px; }
-.edit-preview-workspace :is(.nf-edit-views, .nf-edit-tools) { display: flex; align-items: center; gap: 3px; }
-.edit-preview-workspace .nf-edit-views .nf-edit-button[aria-pressed="true"] { background: var(--edit-soft); color: var(--edit-text); font-weight: 500; }
-.edit-preview-workspace .nf-edit-tools .nf-edit-button[aria-expanded="true"] { background: var(--edit-soft); color: var(--edit-text); }
-.edit-preview-workspace .nf-edit-tools .nf-edit-button[data-error] { color: var(--nf-ui-danger); }
-.edit-preview-workspace .nf-edit-tools .nf-edit-button[aria-controls="edit-preview-summary"][aria-expanded="true"] > svg { transform: rotate(180deg); }
+.edit-preview-workspace .nf-edit-reviewbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+.edit-preview-workspace .nf-edit-summary { display: flex; align-items: flex-start; flex: 1; min-width: 0; color: var(--edit-muted); font-size: 12px; }
+.edit-preview-workspace .nf-edit-summary > p { min-width: 0; margin: 0; padding-block: 7px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.edit-preview-workspace .nf-edit-summary > .nf-edit-summary-list { flex: 1; min-width: 0; padding-block: 5px; }
+.edit-preview-workspace .nf-edit-summary-toggle { flex: none; width: 32px; padding-inline: 0; }
+.edit-preview-workspace .nf-edit-summary-toggle[aria-expanded="true"] > svg { transform: rotate(180deg); }
+.edit-preview-workspace .nf-edit-reviewbar > .nf-edit-button { flex: none; }
+.edit-preview-workspace .nf-edit-reviewbar > .nf-edit-button[aria-pressed="true"] { background: var(--edit-soft); color: var(--edit-text); }
 .edit-preview-workspace .nf-edit-auxiliary { margin: 0 0 24px; padding: 12px 14px; border-radius: 10px; background: color-mix(in srgb, var(--edit-soft) 70%, transparent); color: var(--edit-muted); font-size: 12px; }
 .edit-preview-workspace .nf-edit-auxiliary p { margin: 0; }
 .edit-preview-workspace .nf-edit-summary-list { margin: 0; padding-left: 17px; list-style: disc; line-height: 1.8; overflow-wrap: anywhere; }
 .edit-preview-workspace .nf-edit-summary-list li + li { margin-top: 4px; }
 .edit-preview-workspace .nf-edit-summary-list li::marker { color: var(--color-jelly-blue-deep); }
-.edit-preview-workspace .nf-edit-history-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.edit-preview-workspace .nf-edit-history-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .edit-preview-workspace .nf-edit-history-heading h2 { margin: 0; color: var(--edit-text); font-size: 12px; font-weight: 500; }
 .edit-preview-workspace .nf-edit-history-error { color: var(--nf-ui-danger); }
 .edit-preview-workspace .nf-edit-revisions { max-height: 240px; overflow-y: auto; overscroll-behavior: contain; }
@@ -59,8 +64,10 @@
 .edit-preview-workspace .nf-edit-error { margin-bottom: 14px; padding: 10px 12px; border-radius: 9px; background: var(--nf-ui-danger-soft); color: var(--nf-ui-danger); font-size: 12px; overflow-wrap: anywhere; }
 .edit-preview-workspace .edit-preview-result { width: 100%; margin-inline: auto; padding: 4px 0 24px; animation: edit-preview-enter var(--nf-motion-enter, 180ms) ease; }
 .edit-preview-workspace .nf-edit-compare { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
+.edit-preview-workspace .nf-edit-compare-tabs { display: flex; gap: 4px; margin-bottom: -12px; }
+.edit-preview-workspace .nf-edit-compare-tabs [aria-selected="true"] { background: var(--edit-soft); color: var(--edit-text); }
 .edit-preview-workspace .nf-edit-compare > section { min-width: 0; }
-.edit-preview-workspace .nf-edit-compare > section > h2 { margin: 0 0 18px; padding-bottom: 9px; border-bottom: 1px solid var(--edit-line); color: var(--edit-muted); font-size: 12px; font-weight: 500; }
+.edit-preview-workspace .nf-edit-compare > section > h2 { display: none; margin: 0 0 18px; padding-bottom: 9px; border-bottom: 1px solid var(--edit-line); color: var(--edit-muted); font-size: 12px; font-weight: 500; }
 .edit-preview-workspace .nf-edit-diff-summary { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; color: var(--edit-muted); font-size: 11px; }
 .edit-preview-workspace .nf-edit-diff-scroll { max-width: 100%; overflow-x: auto; border: 1px solid var(--edit-line); border-radius: 9px; }
 .edit-preview-workspace .nf-edit-diff-row { display: grid; min-width: 560px; grid-template-columns: 42px 42px 28px minmax(0, 1fr); border-bottom: 1px solid var(--edit-line); color: var(--edit-text); font: 400 12px/1.7 ui-monospace, monospace; }
@@ -78,22 +85,35 @@
 .edit-preview-workspace .nf-edit-composer textarea::placeholder { color: var(--edit-muted); }
 .edit-preview-workspace .nf-edit-adjust:not(:disabled) { background: var(--color-jelly-blue, #3f7898); color: white; }
 .edit-preview-workspace .nf-edit-adjust:disabled { opacity: .65; }
+.edit-preview-workspace .nf-edit-undo-row { width: min(100%, 820px); margin: 4px auto -4px; }
+.edit-preview-workspace .nf-edit-undo-row .nf-edit-button { padding-inline: 3px; font-size: 11px; }
 .theme-dark .edit-preview-workspace.document-canvas .note-content .code-toolbar-actions { background: var(--edit-soft) !important; border-color: var(--edit-line) !important; box-shadow: 0 6px 16px rgb(0 0 0 / 20%) !important; }
 .theme-dark .edit-preview-workspace.document-canvas .note-content :is(.code-language-trigger, .code-copy-button) { color: var(--edit-muted) !important; }
 @keyframes edit-preview-enter { from { opacity: 0; } to { opacity: 1; } }
-@container (min-width: 960px) { .edit-preview-workspace .nf-edit-compare { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; } }
+@container (min-width: 960px) {
+  .edit-preview-workspace .nf-edit-compare { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+  .edit-preview-workspace .nf-edit-compare-tabs { display: none; }
+  .edit-preview-workspace .nf-edit-compare > section > h2 { display: block; }
+}
+@container (max-width: 959.98px) {
+  .edit-preview-workspace .nf-edit-compare[data-side="new"] #edit-compare-old,
+  .edit-preview-workspace .nf-edit-compare[data-side="old"] #edit-compare-new { display: none; }
+}
 @container (max-width: 520px) {
-  .edit-preview-workspace .nf-edit-header { padding: 10px 12px; }
+  .edit-preview-workspace .nf-edit-header { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 10px 12px; }
+  .edit-preview-workspace .nf-edit-identity { padding-right: 44px; }
+  .edit-preview-workspace .nf-edit-actions { justify-content: flex-end; }
+  .edit-preview-workspace .nf-edit-more { position: absolute; top: 8px; right: 12px; }
   .edit-preview-workspace .nf-edit-scroll { padding: 12px 16px 24px; }
   .edit-preview-workspace .nf-edit-reviewbar { gap: 6px; margin-bottom: 16px; }
-  .edit-preview-workspace .nf-edit-views { width: 100%; }
-  .edit-preview-workspace .nf-edit-views .nf-edit-button { flex: 1; padding-inline: 6px; }
-  .edit-preview-workspace .nf-edit-tools { width: 100%; justify-content: space-between; }
   .edit-preview-workspace .nf-edit-footer { padding: 10px 16px; }
   .edit-preview-workspace .nf-edit-auxiliary { padding: 10px; }
 }
 @media (pointer: coarse) {
   .edit-preview-workspace .nf-edit-button, .edit-preview-workspace .nf-edit-revision { min-height: 44px; }
+  .edit-preview-workspace .nf-edit-more-trigger, .edit-preview-workspace .nf-edit-summary-toggle { width: 44px; }
+  .edit-preview-workspace .nf-edit-summary > p { padding-block: 13px; }
+  .edit-preview-workspace .nf-edit-summary > .nf-edit-summary-list { padding-block: 11px; }
   .edit-preview-workspace .nf-edit-composer textarea { min-height: 24px; max-height: 96px; margin-block: 10px; font-size: 16px; line-height: 24px; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -101,7 +121,7 @@
   .edit-preview-workspace .nf-edit-button { transition: none; }
 }
 @media (forced-colors: active) {
-  .edit-preview-workspace .nf-edit-views .nf-edit-button[aria-pressed="true"], .edit-preview-workspace .nf-edit-revision[aria-current="true"] { outline: 1px solid Highlight; outline-offset: -1px; }
+  .edit-preview-workspace .nf-edit-button[aria-pressed="true"], .edit-preview-workspace .nf-edit-button[aria-selected="true"], .edit-preview-workspace .nf-edit-revision[aria-current="true"] { outline: 1px solid Highlight; outline-offset: -1px; }
   .edit-preview-workspace .nf-edit-composer:focus-within { outline: 1px solid Highlight; box-shadow: none; }
   .edit-preview-workspace .nf-edit-composer textarea:focus-visible { outline: 2px solid Highlight; }
 }

@@ -696,13 +696,14 @@ try {
     },
   });
   const editHtml = await renderClient(React.createElement(EditPreviewWorkspace));
-  assert.match(editHtml, /修改预览/);
+  assert.match(editHtml, /预览中，尚未写入笔记/);
   assert.doesNotMatch(editHtml, /旧内容/);
   assert.match(editHtml, /修改后正文/);
   assert.match(editHtml, /对照原文/);
-  assert.match(editHtml, /详细差异/);
+  assert.match(editHtml, /更多预览操作/);
+  assert.doesNotMatch(editHtml, /详细差异/);
   assert.match(editHtml, /新内容/);
-  assert.match(editHtml, /应用修改/);
+  assert.match(editHtml, /应用到笔记/);
 
   useAppStore.setState({
     treeData: [note],
