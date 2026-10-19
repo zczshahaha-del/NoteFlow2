@@ -44,7 +44,7 @@ class DraftBriefTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(record["topic"], "《两小儿辩日》教案")
         self.assertEqual(record["draftConfig"]["rawRequest"], "不可变原始请求")
         self.assertEqual(record["draftConfig"]["generationBrief"]["requirements"], "重点设计课堂提问")
-        self.assertEqual(record["draftConfig"]["bodyInstruction"], "")
+        self.assertEqual(record["draftConfig"]["bodyInstruction"], "旧全文要求")
         self.assertNotIn("generationJob", record["draftConfig"])
         self.assertFalse(record["includeCode"])
         self.assertEqual(initialize.await_args.kwargs["topic"], "《两小儿辩日》教案")
@@ -72,6 +72,19 @@ class DraftBriefTests(unittest.IsolatedAsyncioTestCase):
                 await drafts.update_draft("brief-draft", self.payload(), CurrentUser(id="other", email="other@example.invalid", display_name="other"))
         self.assertEqual(error.exception.status_code, 404)
 
+    async def test_confirmed_task_cannot_be_replaced_with_another_topic(self):
+        with patch.object(drafts, "AsyncSessionLocal", self.sessions), patch.object(drafts, "initialize_draft_graph", AsyncMock(return_value=True)):
+            await drafts.update_draft("brief-draft", self.payload(), self.user)
+            for key, value in (("title", "加法笔记"), ("requirements", "另一份文档")):
+                payload = self.payload()
+                setattr(payload.generationBrief, key, value)
+                with self.assertRaises(HTTPException) as error:
+                    await drafts.update_draft("brief-draft", payload, self.user)
+                self.assertEqual(error.exception.status_code, 409)
+            result = await drafts.update_draft("brief-draft", self.payload(), self.user)
+        self.assertEqual(result["draft"]["draftConfig"]["bodyInstruction"], "旧全文要求")
+        self.assertEqual(result["draft"]["topic"], "《两小儿辩日》教案")
+
     async def test_saved_or_generating_draft_rejects_new_outline(self):
         for status in ("saved", "generating", "canceled"):
             async with self.sessions() as db:
@@ -87,14 +100,17 @@ class DraftBriefTests(unittest.IsolatedAsyncioTestCase):
         async with self.sessions() as db:
             draft = await db.get(NoteDraft, "brief-draft")
             draft.topic = "《两小儿辩日》教案"
-            draft.draft_config = {"generationBrief": {"title": draft.topic, "requirements": "课堂讨论", "rawRequest": "原话"}}
+            draft.draft_config = {"generationBrief": {"title": draft.topic, "requirements": "一课时，课堂讨论", "rawRequest": "原话"}, "bodyInstruction": "改成两课时，附板书设计"}
             section = await db.get(NoteDraftSection, "old-section")
             model = AsyncMock(side_effect=["## 教学过程\n教师引导学生讨论。", "## 教学过程\n学生讨论并归纳观点。"])
             with patch.object(draft_worker, "_complete_with_retry", model):
                 result = await draft_worker._generate_section(draft, section)
             self.assertIn("学生讨论", result)
             for call in model.await_args_list:
-                self.assertIn("当前生成要求：课堂讨论", call.args[0][1]["content"])
+                self.assertIn("当前生成要求：一课时，课堂讨论", call.args[0][1]["content"])
+                self.assertIn("改成两课时，附板书设计", call.args[0][1]["content"])
+                self.assertIn("相同条件有明确修改时，正文采用本次补充", call.args[0][1]["content"])
+                self.assertIn("不自动重排章节", call.args[0][1]["content"])
                 self.assertNotIn("技术课程作者", call.args[0][0]["content"])
 
     def test_cleared_requirements_are_not_replaced_with_old_request(self):

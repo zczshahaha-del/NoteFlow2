@@ -49,7 +49,7 @@ import { isMemoryEnabled } from "../services/memories";
 import { handleRenderedCodeBlockAction, renderChatMarkdown } from "../utils/chatMarkdown";
 import { useConfirmDialog } from "./ConfirmDialog";
 import "./draft-workspace.css";
-import { buildDraftGenerationRequest, type DraftBrief } from "../utils/draftBrief";
+import { buildBodySupplement, buildDraftGenerationRequest, type DraftBrief } from "../utils/draftBrief";
 
 const AUTO_NOTE_TYPE = "智能笔记";
 const AUTO_WRITING_TONE = "根据用户需求自动匹配";
@@ -627,6 +627,12 @@ export default function AIDraftWorkspace() {
       submittedBrief?.title || (isFeedback && currentDraftTopic ? currentDraftTopic : topicOverride || topic)
     );
     if (!cleanTopicValue || isBusy || activeRequestRef.current) return;
+    // The chat card confirms a new task once. Further structure changes belong
+    // to this workspace and never replace its original task with a new topic.
+    if (submittedBrief && draft) {
+      if (messageId) editDraftBrief?.(messageId, {requestPending:false});
+      return;
+    }
 
     const currentOutline = draft?.outline || streamingOutline;
     const controller = new AbortController();
@@ -634,7 +640,7 @@ export default function AIDraftWorkspace() {
     setTopic(cleanTopicValue);
     setBusyMode("outline");
     setErrorText("");
-    setStatusText(feedbackText.trim() ? "正在根据你的反馈重写学习笔记大纲。" : "正在生成学习笔记大纲。");
+    setStatusText(feedbackText.trim() ? "正在根据你的反馈调整大纲。" : "正在规划大纲。");
     setStreamingOutline("");
 
     try {
@@ -825,9 +831,7 @@ export default function AIDraftWorkspace() {
         const includeCode = baseDraft.includeCode || requestWantsCode(rawRequest);
         const includeExercises = baseDraft.includeExercises || requestWantsExercises(rawRequest);
         const bodyInstruction = (baseDraft.bodyInstruction || "").trim();
-        const bodyInstructionContext = bodyInstruction
-          ? `\n\n全文写作要求（适用于每一个章节）：\n${bodyInstruction}\n如果与本章单独要求冲突，以本章要求为准。`
-          : "";
+        const bodyInstructionContext = buildBodySupplement(bodyInstruction);
 
         const revisionContext = instruction.trim() && section.content.trim()
           ? `\n\n当前本章正文：\n${section.content.trim()}\n\n用户对本章的修改要求：${instruction.trim()}\n请在保留正确内容的基础上完整重写本章。`
@@ -1179,7 +1183,7 @@ export default function AIDraftWorkspace() {
     if (regenerateGenerated) {
       if (!instruction || generatedCount === 0 || draft.status === "generating") return;
       const approved = await confirm({
-        title: `按全文要求重写 ${generatedCount} 个已生成章节？`,
+        title: `按正文补充要求重写 ${generatedCount} 个章节？`,
         description: "已生成章节会重新进入生成队列，现有正文会保留到新正文生成完成。这个操作会产生新的模型调用。",
         confirmText: "开始重写",
         cancelText: "暂不重写",
@@ -1202,13 +1206,13 @@ export default function AIDraftWorkspace() {
       setBodyInstructionOpen(false);
       setStatusText(
         regenerateGenerated
-          ? "已应用新的全文要求，正在后台逐章重写。旧正文会在对应章节生成完成后替换。"
+          ? "已应用正文补充要求，正在逐章重写，完成后替换对应正文。"
           : instruction
-            ? "全文要求已保存，将应用于后续章节。"
-            : "全文要求已清空。"
+            ? "正文补充要求已保存，将与最初要求一起用于后续章节。"
+            : "正文补充要求已清空，后续章节仍遵循最初要求。"
       );
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "保存全文要求失败");
+      setErrorText(error instanceof Error ? error.message : "保存正文补充要求失败");
     } finally {
       setBusyMode("idle");
     }
@@ -1310,6 +1314,10 @@ export default function AIDraftWorkspace() {
     : 0;
   const generatedSectionCount = activeSections.filter((section) => section.content.trim()).length;
   const bodyInstructionChanged = bodyInstructionDraft.trim() !== (draft?.bodyInstruction ?? "").trim();
+  const confirmedBrief = draft?.draftConfig?.generationBrief as DraftBrief | undefined;
+  const initialRequirements = confirmedBrief
+    ? String(confirmedBrief.requirements || "").trim()
+    : String(draft?.draftConfig?.rawRequest || "").trim();
   return (
     <>
       <div className="nf-draft-workspace fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="AI 笔记草稿工作台">
@@ -1328,7 +1336,7 @@ export default function AIDraftWorkspace() {
               </h1>
             </div>
 
-            <div className="nf-draft-toolbar hidden items-center gap-2 md:flex">
+            <div className="nf-draft-toolbar flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -1336,7 +1344,7 @@ export default function AIDraftWorkspace() {
                   setMoreMenuOpen(false);
                 }}
                 disabled={!draft || isBusy || draft.status === "generating"}
-                className="nf-draft-action inline-flex h-9 items-center gap-1.5 px-3 disabled:opacity-45"
+                className="nf-draft-action nf-draft-desktop-action inline-flex h-9 items-center gap-1.5 px-3 disabled:opacity-45"
               >
                 <ListTree size={14} />
                 目录管理
@@ -1352,9 +1360,10 @@ export default function AIDraftWorkspace() {
                   className="nf-draft-action inline-flex h-9 items-center gap-1.5 px-3 disabled:opacity-45"
                   aria-expanded={bodyInstructionOpen}
                   aria-haspopup="dialog"
+                  aria-label="正文补充要求"
                 >
                   <FileText size={14} />
-                  全文要求
+                  <span className="hidden sm:inline">正文补充</span>
                   {draft?.bodyInstruction?.trim() && (
                     <span className="h-1.5 w-1.5 rounded-full bg-jelly-blue" aria-label="已设置" />
                   )}
@@ -1362,35 +1371,41 @@ export default function AIDraftWorkspace() {
 
                 {bodyInstructionOpen && draft && (
                   <div
-                    className="nf-draft-panel nf-draft-requirements absolute right-0 top-11 z-40 w-[360px] p-4 text-left"
+                    className="nf-draft-panel nf-draft-requirements absolute right-0 top-11 z-40 w-[380px] p-5 text-left"
                     role="dialog"
-                    aria-label="全文写作要求"
+                    aria-label="正文补充要求"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-[13px] font-semibold text-jelly-text">全文写作要求</p>
+                        <p className="text-[14px] font-semibold text-jelly-text">正文补充要求</p>
                         <p className="mt-1 text-[11px] leading-relaxed text-jelly-text-muted">
-                          统一控制所有章节的语气、深度、篇幅和示例风格。
+                          补充正文的写法，最初要求会继续保留。
                         </p>
                       </div>
-                      {(draft.bodyInstruction || "").trim() && (
-                        <span className="shrink-0 rounded-full bg-jelly-blue-pale px-2 py-1 text-[10px] text-jelly-blue-deep">
-                          已设置
-                        </span>
-                      )}
+                      <button type="button" className="nf-draft-close" aria-label="关闭正文补充要求"
+                        onClick={() => {setBodyInstructionOpen(false);bodyInstructionRef.current?.querySelector("button")?.focus();}}>
+                        <X size={16} />
+                      </button>
                     </div>
+                    <div className="nf-draft-initial-requirements">
+                      <span>最初要求</span>
+                      <p>{initialRequirements || "未额外指定，将按笔记主题生成。"}</p>
+                    </div>
+                    <label htmlFor="draft-body-supplement" className="nf-draft-supplement-label">正文怎么写 <span>选填</span></label>
                     <textarea
+                      id="draft-body-supplement"
                       value={bodyInstructionDraft}
                       onChange={(event) => setBodyInstructionDraft(event.target.value)}
-                      placeholder="例如：偏实战、少讲空泛概念，每章提供一个完整示例，面向初学者…"
-                      className="nf-draft-field mt-3 min-h-[112px] w-full resize-none px-3 py-2.5 leading-relaxed"
+                      placeholder="例如：提问写具体些，附参考回答和板书设计…"
+                      className="nf-draft-field mt-2 min-h-[100px] w-full resize-y px-3 py-2.5 leading-relaxed"
                       maxLength={4000}
-                      aria-label="全文写作要求"
+                      aria-label="正文补充要求"
                     />
                     <p className="mt-1.5 text-[10px] text-jelly-text-muted">
-                      {draft.status === "generating" ? "保存后从下一章开始生效。" : "章节要求与全文要求冲突时，以章节要求为准。"}
+                      {draft.status === "generating" ? "保存后从下一章开始生效。" : "保存后用于后续正文；已有内容和大纲保持不变。"}
                     </p>
-                    <div className="mt-3 flex items-center justify-end gap-2">
+                    <p className="mt-1 text-[10px] text-jelly-text-muted">明确修改同一条件时以本次补充为准，单章要求优先。</p>
+                    <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
                       {generatedSectionCount > 0 && (
                         <button
                           type="button"
@@ -1408,7 +1423,7 @@ export default function AIDraftWorkspace() {
                         disabled={!bodyInstructionChanged || isBusy}
                         className="nf-draft-action nf-draft-primary inline-flex h-8 items-center px-3 disabled:opacity-40"
                       >
-                        应用到后续章节
+                        保存补充
                       </button>
                     </div>
                   </div>
@@ -1420,7 +1435,7 @@ export default function AIDraftWorkspace() {
                   type="button"
                   onClick={() => void stopBackgroundGeneration()}
                   disabled={isBusy}
-                  className="nf-draft-action nf-draft-danger inline-flex h-9 items-center gap-1.5 px-3 disabled:opacity-50"
+                  className="nf-draft-action nf-draft-desktop-action nf-draft-danger inline-flex h-9 items-center gap-1.5 px-3 disabled:opacity-50"
                 >
                   <Square size={12} fill="currentColor" />
                   停止生成
@@ -1430,7 +1445,7 @@ export default function AIDraftWorkspace() {
                   type="button"
                   onClick={() => void generateAllSections()}
                   disabled={!canGenerateSections || isBusy}
-                  className="nf-draft-action inline-flex h-9 items-center gap-1.5 px-3 disabled:opacity-50"
+                  className="nf-draft-action nf-draft-desktop-action inline-flex h-9 items-center gap-1.5 px-3 disabled:opacity-50"
                 >
                   <Wand2 size={14} />
                   全部生成
@@ -1440,12 +1455,12 @@ export default function AIDraftWorkspace() {
                 type="button"
                 onClick={openSaveDialog}
                 disabled={!canSave || isBusy}
-                className="nf-draft-action nf-draft-primary inline-flex h-9 items-center gap-1.5 px-3.5 disabled:cursor-not-allowed disabled:opacity-40"
+                className="nf-draft-action nf-draft-desktop-action nf-draft-primary inline-flex h-9 items-center gap-1.5 px-3.5 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Save size={14} />
                 保存为笔记
               </button>
-              <div ref={moreMenuRef} className="relative">
+              <div ref={moreMenuRef} className="nf-draft-desktop-action relative">
                 <button
                   type="button"
                   onClick={() => setMoreMenuOpen((open) => !open)}

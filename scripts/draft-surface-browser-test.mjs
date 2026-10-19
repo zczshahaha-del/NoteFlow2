@@ -16,7 +16,7 @@ const entry = `import React from 'react'; import {createRoot} from 'react-dom/cl
 import Draft from ${JSON.stringify(component)};
 const root=createRoot(document.getElementById('root'));
 let revision=0;
-const makeDraft=(status='outline_ready')=>({id:'synthetic-draft',topic:'Redis 学习笔记',title:'Redis 学习笔记',categoryId:null,bodyInstruction:'',draftConfig:{},outline:'## 认识 Redis',assembledContent:status==='assembled'?'# Redis 学习笔记\\n合成正文':'',status,
+const makeDraft=(status='outline_ready')=>({id:'synthetic-draft',topic:'Redis 学习笔记',title:'Redis 学习笔记',categoryId:null,bodyInstruction:'',draftConfig:{generationBrief:{title:'Redis 学习笔记',requirements:'面向初学者，重点讲缓存场景',rawRequest:'生成 Redis 学习笔记'}},outline:'## 认识 Redis',assembledContent:status==='assembled'?'# Redis 学习笔记\\n合成正文':'',status,
 sections:[{id:'s1',title:'认识 Redis',sortOrder:0,level:2,outlineText:'## 认识 Redis',content:'## 缓存的基础\\n\\n这是用于离线组件检查的合成正文。',status:status==='generating'?'generating':'generated'},
 {id:'s2',title:'数据类型与常用命令',sortOrder:1,level:2,outlineText:'## 数据类型与常用命令',content:'## 常用命令\\n\\n字符串、列表与集合。',status:'generated'},
 {id:'s3',title:'过期策略与持久化',sortOrder:2,level:2,outlineText:'## 过期策略与持久化',content:'',status:'outline_only'}]});
@@ -68,7 +68,7 @@ try {
     const shell=page.locator('.nf-draft-shell');
     await shell.locator('.nf-draft-revision').waitFor();await page.waitForTimeout(220);
     const measure=()=>shell.evaluate(n=>{const r=n.getBoundingClientRect(),s=getComputedStyle(n),close=n.querySelector('.nf-draft-close'),c=getComputedStyle(close),outline=n.querySelector('aside');return {width:r.width,height:r.height,docWidth:document.documentElement.scrollWidth,border:s.borderWidth,background:s.backgroundColor,sidebarWidth:outline.getBoundingClientRect().width,close:{width:close.getBoundingClientRect().width,height:close.getBoundingClientRect().height,background:c.backgroundColor,radius:c.borderRadius,icon:getComputedStyle(close.querySelector('svg')).width},toolbar:getComputedStyle(n.querySelector('.nf-draft-toolbar')).display,lines:[n.querySelector('header'),outline,n.querySelector('.nf-draft-section-bar'),n.querySelector('footer')].map(e=>getComputedStyle(e).borderWidth)}});
-    const initial=await measure();assert.equal(initial.docWidth,mobile?320:1440);assert.equal(initial.width,mobile?288:1240);assert.equal(initial.height,mobile?768:880);assert.equal(initial.border,'0px');assert.ok(initial.lines.every(x=>x==='0px'));assert.equal(initial.close.background,'rgba(0, 0, 0, 0)');assert.equal(initial.close.icon,'18px');assert.equal(initial.close.radius,'10px');assert.equal(initial.close.width,mobile?44:34);assert.equal(initial.toolbar,mobile?'none':'flex');if(!mobile)assert.equal(initial.sidebarWidth,282);
+    const initial=await measure();assert.equal(initial.docWidth,mobile?320:1440);assert.equal(initial.width,mobile?288:1240);assert.equal(initial.height,mobile?768:880);assert.equal(initial.border,'0px');assert.ok(initial.lines.every(x=>x==='0px'));assert.equal(initial.close.background,'rgba(0, 0, 0, 0)');assert.equal(initial.close.icon,'18px');assert.equal(initial.close.radius,'10px');assert.equal(initial.close.width,mobile?44:34);assert.equal(initial.toolbar,'flex');if(!mobile)assert.equal(initial.sidebarWidth,282);
     const buttons=await shell.locator('button').evaluateAll(nodes=>nodes.filter(n=>n.getBoundingClientRect().width>0).map(n=>{const r=n.getBoundingClientRect(),p=n.closest('main').getBoundingClientRect();return {width:r.width,height:r.height,inside:r.left>=p.left && r.right<=p.right && r.top>=p.top && r.bottom<=p.bottom}}));
     assert.ok(buttons.every(b=>b.inside));if(mobile)assert.ok(buttons.every(b=>b.height>=44));
     await shell.getByRole('button',{name:'编辑',exact:true}).focus();await page.keyboard.press('Tab');assert.ok(await shell.getByRole('button',{name:'确认',exact:true}).evaluate(n=>n.matches(':focus-visible') && getComputedStyle(n).outlineStyle==='solid'));
@@ -87,9 +87,24 @@ try {
     const rows=shell.getByRole('navigation',{name:'草稿章节目录'}).getByRole('button');await rows.nth(2).click();await shell.getByRole('button',{name:'生成正文',exact:true}).waitFor();await rows.nth(0).click();
     await shell.getByRole('button',{name:'编辑',exact:true}).click();await shell.getByRole('textbox',{name:'编辑 认识 Redis'}).fill('## 离线修改\n\n合成内容。');await shell.getByRole('button',{name:'保存修改',exact:true}).click();await shell.getByText('离线修改',{exact:true}).waitFor();
     await shell.getByRole('button',{name:'确认',exact:true}).click();await page.waitForFunction(()=>window.draftTest.api.draft.sections[0].status==='confirmed');
+    await shell.getByRole('button',{name:'正文补充要求',exact:true}).click();const requirements=page.getByRole('dialog',{name:'正文补充要求',exact:true});
+    await requirements.getByText('面向初学者，重点讲缓存场景',{exact:true}).waitFor();
+    await requirements.getByRole('textbox').fill('每章增加一个完整示例');
+    const reqGeometry=await requirements.evaluate(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,width:innerWidth,height:innerHeight}});
+    assert(reqGeometry.left>=0 && reqGeometry.right<=reqGeometry.width && reqGeometry.bottom<=reqGeometry.height);
+    await requirements.evaluate(async el=>{await Promise.all(el.getAnimations().map(animation=>animation.finished.catch(()=>{})))});
+    if(process.env.NOTEFLOW_DRAFT_SCREENSHOT_DIR)await page.screenshot({path:process.env.NOTEFLOW_DRAFT_SCREENSHOT_DIR+'/supplement-'+(mobile?'mobile':'desktop')+'.png'});
+    await requirements.getByRole('button',{name:'保存补充',exact:true}).click();await requirements.waitFor({state:'detached'});
+    assert.equal(await page.evaluate(()=>window.draftTest.api.draft.draftConfig.generationBrief.requirements),'面向初学者，重点讲缓存场景');
+    assert.equal(await page.evaluate(()=>window.draftTest.api.draft.bodyInstruction),'每章增加一个完整示例');
+    assert.equal(await page.evaluate(()=>window.draftTest.api.calls.some(c=>c.name==='generateAllDraftSections')),false,'saving a supplement must not rewrite existing body');
+    await shell.getByRole('button',{name:'正文补充要求',exact:true}).click();assert.equal(await requirements.getByRole('textbox').inputValue(),'每章增加一个完整示例');
+    await requirements.getByRole('textbox').fill('未保存的改动');await requirements.getByRole('button',{name:'关闭正文补充要求',exact:true}).click();
+    await shell.getByRole('button',{name:'正文补充要求',exact:true}).click();assert.equal(await requirements.getByRole('textbox').inputValue(),'每章增加一个完整示例');
+    await requirements.getByRole('textbox').fill('');await requirements.getByRole('button',{name:'保存补充',exact:true}).click();await requirements.waitFor({state:'detached'});
+    assert.equal(await page.evaluate(()=>window.draftTest.api.draft.bodyInstruction),'');
+    assert.equal(await page.evaluate(()=>window.draftTest.api.draft.draftConfig.generationBrief.requirements),'面向初学者，重点讲缓存场景');
     if(!mobile){
-      await shell.getByRole('button',{name:'全文要求',exact:true}).click();const requirements=page.getByRole('dialog',{name:'全文写作要求',exact:true});
-      await requirements.getByRole('textbox').fill('只使用合成测试要求');await requirements.getByRole('button',{name:'应用到后续章节',exact:true}).click();await requirements.waitFor({state:'detached'});
       await shell.getByRole('button',{name:'目录管理',exact:true}).click();const manager=page.getByRole('dialog',{name:'目录管理',exact:true});
       await manager.getByRole('button',{name:'下移章节 认识 Redis',exact:true}).click();await page.waitForFunction(()=>window.draftTest.api.calls.some(c=>c.name==='updateNoteDraft' && c.args[1].sectionOrder));
       await manager.getByRole('button',{name:'删除章节 数据类型与常用命令',exact:true}).click();await manager.getByRole('button',{name:/数据类型与常用命令.*恢复/}).click();

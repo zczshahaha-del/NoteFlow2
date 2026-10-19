@@ -486,10 +486,15 @@ async def update_draft(
             if not brief["title"].strip():
                 raise HTTPException(status_code=400, detail="标题不能为空")
             config = dict(draft.draft_config or {})
+            existing_brief = config.get("generationBrief")
+            if isinstance(existing_brief, dict) and any(
+                str(existing_brief.get(key) or "").strip() != str(brief.get(key) or "").strip()
+                for key in ("title", "requirements")
+            ):
+                raise HTTPException(status_code=409, detail="大纲已生成，请在工作台调整当前草稿；新主题请新建草稿")
             brief["rawRequest"] = str(config.get("rawRequest") or brief["rawRequest"])
             config["generationBrief"] = brief
             config["rawRequest"] = brief["rawRequest"]
-            config["bodyInstruction"] = ""
             config.pop("generationJob", None)
             draft.draft_config = config
             draft.topic = brief["title"].strip()

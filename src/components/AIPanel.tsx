@@ -487,9 +487,10 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
         : "历史草稿";
 
     return <DraftBriefCard brief={{title: card.title ?? context?.title ?? card.seed, requirements: card.requirements ?? "", rawRequest: card.rawRequest || card.seed}}
-      generatedBrief={card.generatedBrief} current={isCurrent} busy={Boolean(context?.busy || context?.stage === "generating" || context?.stage === "saving")}
-      pending={Boolean(isCurrent && (card.requestPending || draftCommand?.brief))} hasOutline={Boolean(context?.id || card.draftId)}
-      hasBody={Boolean(context?.hasBody || context?.completedSections)} label={flow.label} error={context?.errorText} historicalAction={historicalAction}
+      current={isCurrent} busy={Boolean(context?.busy || context?.stage === "generating" || context?.stage === "saving")}
+      pending={Boolean(isCurrent && (card.requestPending || draftCommand?.brief))} hasOutline={Boolean(context?.id || card.draftId || card.generatedBrief)}
+      canOpen={Boolean(context?.id && context.stage !== "configuring")}
+      label={isCurrent && !context?.id && (card.draftId || card.generatedBrief) ? "正在恢复…" : flow.label} error={context?.errorText} historicalAction={historicalAction}
       onEdit={patch => editDraftBrief?.(messageId, patch)} onGenerate={() => generateDraftBrief?.(messageId)} onOpen={openPendingDraft} />;
   };
 

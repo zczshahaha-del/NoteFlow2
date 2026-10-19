@@ -178,11 +178,11 @@ assert.match(aiPanel, /document\.addEventListener\("mousedown", closeOnOutsideCl
 assert.doesNotMatch(aiPanel, /draftFallbackAnchorRef/);
 assert.doesNotMatch(aiPanel, /fallbackDraftAnchor/);
 assert.match(aiPanel, /renderDraftConversationCard\(msg\.draftCard, msg\.id\)/);
-assert.match(aiPanel, /hasOutline=\{Boolean\(context\?\.id \|\| card\.draftId\)\}/);
-assert.match(draftBriefCard, /大纲生成中…/);
-assert.match(draftBriefCard, /重新生成大纲/);
+assert.match(aiPanel, /hasOutline=\{Boolean\(context\?\.id \|\| card\.draftId \|\| card\.generatedBrief\)\}/);
+assert.match(draftBriefCard, /生成大纲中…/);
+assert.match(draftBriefCard, /重试生成大纲/);
 assert.match(aiPanel, /generateDraftBrief\?\.\(messageId\)/);
-assert.match(draftBriefCard, /if \(hasOutline && !changed\) \{onOpen\(\); return;\}/);
+assert.match(draftBriefCard, /onClick=\{summary \? onOpen : generate\}/);
 assert.equal(aiPanel.includes("笔记索引 ·"), false);
 assert.equal(aiPanel.includes("listIndexJobs"), false);
 assert.match(aiPanel, /aria-label="收起 AI 助手"/);
@@ -243,9 +243,9 @@ for (const requiredDraftControl of [
   "按新要求调整大纲",
   "按要求重新规划",
   "放弃草稿",
-  "全文要求",
-  "全文写作要求",
-  "应用到后续章节",
+  "正文补充要求",
+  "最初要求",
+  "保存补充",
   "重写已生成章节",
   "目录管理",
   "保存位置",
@@ -305,7 +305,7 @@ assert.doesNotMatch(aiDraftWorkspace, /draft-control-no-focus-ring/);
 assert.match(aiDraftWorkspace, /bodyInstruction: instruction/);
 assert.match(aiDraftWorkspace, /source: "generation_stopped"/);
 assert.match(aiDraftWorkspace, /status: stoppedStatus/);
-assert.match(aiDraftWorkspace, /正在后台逐章重写/);
+assert.match(aiDraftWorkspace, /正在逐章重写/);
 assert.match(aiDraftWorkspace, /aria-haspopup="dialog"/);
 assert.match(styles, /\.draft-modal-shell \.draft-control-no-focus-ring:focus[\s\S]*?outline: none !important;[\s\S]*?box-shadow: none !important;/);
 assert.match(directoryTree, /const handleNewFolder[\s\S]*?setNewFolderOpen\(true\);/);

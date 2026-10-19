@@ -181,12 +181,8 @@ async def _complete_with_retry(messages: list[dict], *, max_tokens: int, tempera
 async def _generate_section(draft: NoteDraft, section: NoteDraftSection) -> str:
     raw_request = _raw_request(draft)
     body_instruction = _body_instruction(draft)
-    generation_request = raw_request
-    if body_instruction:
-        generation_request = (
-            f"{raw_request}\n\n全文写作要求（适用于每一个章节）：\n{body_instruction}\n"
-            "如果章节单独要求与全文要求冲突，以章节单独要求为准。"
-        )
+    from app.services.draft_brief import body_supplement
+    generation_request = raw_request + body_supplement(body_instruction)
     provider_context = (
         "本产品当前可用的模型接口是 DeepSeek 的 OpenAI 兼容 API"
         f"（base URL: {cfg.DEEPSEEK_BASE_URL}，model: {cfg.DEEPSEEK_MODEL}）。"
@@ -229,8 +225,7 @@ async def _generate_section(draft: NoteDraft, section: NoteDraftSection) -> str:
 请作为中文文档编辑，按用户要求的文档用途复核并直接重写下面这一节正文。
 
 文档主题：{draft.topic}
-生成需求（当前标题和要求优先于来源原话）：{raw_request}
-全文写作要求：{body_instruction or "无额外全文要求"}
+生成需求（包含最初要求与正文补充，本章单独要求优先）：{generation_request}
 本节目标：{_section_outline(section)}
 运行环境约束：{provider_context}
 

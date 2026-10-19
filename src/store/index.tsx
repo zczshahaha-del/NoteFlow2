@@ -942,8 +942,16 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   },
 
   editDraftBrief: (messageId, patch) => {
-    set(state => ({ chatMessages: state.chatMessages.map(message => message.id === messageId && message.draftCard && !["resolved", "cancelled"].includes(message.draftCard.status || "")
-      ? { ...message, draftCard: { ...message.draftCard, ...patch } } : message) }));
+    set(state => ({ chatMessages: state.chatMessages.map(message => {
+      const card = message.draftCard;
+      if (message.id !== messageId || !card || ["resolved", "cancelled"].includes(card.status || "")) return message;
+      const updates = { ...patch };
+      if (card.generatedBrief || card.draftId || card.requestPending) {
+        delete updates.title;
+        delete updates.requirements;
+      }
+      return { ...message, draftCard: { ...card, ...updates } };
+    }) }));
   },
 
   generateDraftBrief: (messageId) => {
@@ -954,7 +962,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     const index = draftConversationIndex(state.chatMessages, owner);
     const message = state.chatMessages[index];
     const card = message?.draftCard;
-    if (!card || message.id !== messageId || card.requestPending || state.draftCommand || state.activeDraftContext?.busy) return;
+    if (!card || message.id !== messageId || card.generatedBrief || card.draftId || state.activeDraftContext?.id || card.requestPending || state.draftCommand || state.activeDraftContext?.busy) return;
     const brief = { title: (card.title ?? state.activeDraftContext?.title ?? card.seed).trim(), requirements: (card.requirements ?? "").trim(),
       rawRequest: card.rawRequest || (typeof checkpoint?.payload?.rawRequest === "string" ? checkpoint.payload.rawRequest : card.seed) };
     if (!brief.title) return;

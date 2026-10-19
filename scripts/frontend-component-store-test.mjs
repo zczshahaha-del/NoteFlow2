@@ -187,8 +187,13 @@ try {
   assert.equal(useAppStore.getState().draftCommand.id,briefCommand.id,"double click must not queue another request");
   useAppStore.getState().editDraftBrief(briefMessageId,{requirements:"后来输入"});
   assert.equal(briefCommand.brief.requirements,"突出课堂讨论","submitted snapshot must stay immutable");
-  useAppStore.getState().editDraftBrief(briefMessageId,{title:"测试主题",requirements:"",requestPending:false});
+  assert.equal(useAppStore.getState().chatMessages.at(-1).draftCard.requirements,"突出课堂讨论","pending fields cannot drift from submitted request");
+  useAppStore.getState().editDraftBrief(briefMessageId,{requestPending:false,generatedBrief:briefCommand.brief});
   useAppStore.setState({draftCommand:null});
+  useAppStore.getState().editDraftBrief(briefMessageId,{title:"加法笔记",requirements:"换个主题"});
+  useAppStore.getState().generateDraftBrief(briefMessageId);
+  assert.equal(useAppStore.getState().chatMessages.at(-1).draftCard.title,"《两小儿辩日》教案","confirmed card keeps its task");
+  assert.equal(useAppStore.getState().draftCommand,null,"confirmed card cannot start another outline task");
   useAppStore.getState().dismissDraftWorkspace();
   assert.equal(useAppStore.getState().centerMode, "note");
   assert.equal(useAppStore.getState().draftSeed, "测试主题");

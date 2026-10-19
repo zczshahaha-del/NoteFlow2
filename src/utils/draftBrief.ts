@@ -18,3 +18,8 @@ export function buildDraftGenerationRequest(brief: DraftBrief): string {
 export function sameDraftBrief(a: DraftBrief, b?: DraftBrief | null): boolean {
   return Boolean(b && a.title.trim() === b.title.trim() && a.requirements.trim() === b.requirements.trim());
 }
+
+export function buildBodySupplement(instruction: string): string {
+  if (!instruction.trim()) return "";
+  return `\n\n正文补充要求（在最初要求基础上，适用于每章正文）：\n${instruction.trim()}\n相同条件有明确修改时，正文采用本次补充；本章单独要求优先。保持当前笔记主题和大纲结构，不自动重排章节。`;
+}
