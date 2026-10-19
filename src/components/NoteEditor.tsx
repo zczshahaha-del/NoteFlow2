@@ -33,7 +33,7 @@ import { useHeadingGroups } from "../hooks/useHeadingGroups";
 import { attachmentMarkdown, uploadAttachment } from "../services/attachments";
 import { OperationFeedback } from './OperationFeedback';
 import { getNoteOutline, type NoteSectionRecord } from "../services/notes";
-import { documentFolderPath, hasMatchingDocumentTitle } from "../utils/documentHeader";
+import { hasMatchingDocumentTitle } from "../utils/documentHeader";
 import { getDocumentHeadings, getDocumentNumberedHeadings, getEditorMarkdown, type TiptapHeading } from "../editor/documentCache";
 
 const VersionHistoryPanel = lazy(() => import("./VersionHistoryPanel"));
@@ -505,7 +505,6 @@ function NoteEditorDocument({ onReady, presented = true }: {
           : indexStatus === "outdated"
             ? "待更新"
             : "待解析";
-  const folders = useMemo(() => selectedFileId ? documentFolderPath(treeData, selectedFileId) : [], [treeData, selectedFileId]);
   const matchingBodyTitle = hasMatchingDocumentTitle(titleDraft, documentState?.doc?.firstChild);
 
   if (!selectedFile) {
@@ -633,7 +632,7 @@ function NoteEditorDocument({ onReady, presented = true }: {
           <div className="min-h-0 flex-1">
             <div ref={setDocumentScroller} className="document-scroll h-full overflow-y-auto px-7 pb-32 pt-20 sm:px-10 xl:px-0">
               <article className="note-page mx-auto max-w-[780px]">
-                <DocumentHeader note={selectedFile} folders={folders} title={titleDraft}
+                <DocumentHeader note={selectedFile} title={titleDraft}
                   onTitleChange={setTitleDraft}
                   onTitleEditingChange={editing => { titleEditingRef.current = editing; }}
                   onTitleCommit={(value) => {
@@ -641,7 +640,7 @@ function NoteEditorDocument({ onReady, presented = true }: {
                     setTitleDraft(name);
                     if (name !== selectedFile.name.replace(/\.md$/i, "")) updateNodeName(selectedFile.id, name + ".md");
                   }}
-                  matchingBodyTitle={matchingBodyTitle} bodyEditing={bodyEditing} saveStatus={noteSaveState.status} />
+                  matchingBodyTitle={matchingBodyTitle} bodyEditing={bodyEditing} />
                 {(noteSaveState.status === 'error' || noteSaveState.status === 'offline') && <div className="nf-note-feedback">
                   <OperationFeedback onRetry={() => retryNoteSave(selectedFile.id)} retryLabel={noteSaveState.status === 'offline' ? '立即同步' : '重试保存'}>
                     <strong>{noteSaveState.status === 'offline' ? '正文已留在本机，等待同步' : '正文未能同步到服务器'}</strong>

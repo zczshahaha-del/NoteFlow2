@@ -112,6 +112,9 @@ assert.doesNotMatch(
 assert.match(editor, /getDocumentNumberedHeadings\(editor\.state\.doc\)/);
 assert.doesNotMatch(editor, /setHeadingNumbering|showHeadingNumbers|HEADING_NUMBERING_STORAGE_KEY/);
 assert.doesNotMatch(documentHeader, /文档显示设置|显示章节编号|menuitemcheckbox/);
+assert.doesNotMatch(documentHeader, /document-location|document-save-state|saveStatus|updatedAt|更新于/);
+assert.match(documentHeader, /<time className="document-meta-date" dateTime=\{note.createdAt/);
+assert.match(editor, /noteSaveState.status === 'error' \|\| noteSaveState.status === 'offline'/);
 assert.match(chapterRail, /headingLabel\(heading\)/);
 assert.match(outlinePanel, /aria-label=\{headingLabel\(h\)\}/);
 assert.match(editor, /headings=\{visibleHeadings\}/);

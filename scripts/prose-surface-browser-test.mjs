@@ -178,16 +178,20 @@ try {
     await page.waitForFunction(() => document.querySelector('.note-entry')?.dataset.ready === 'true');
     await page.evaluate(async () => { await Promise.all(document.getAnimations().filter(a=>a.effect?.getComputedTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{}))); });
     await page.evaluate(() => document.fonts.ready);
-    const dates=page.locator('.document-meta-date');assert.equal(await dates.count(),2);
+    const dates=page.locator('.document-meta-date');assert.equal(await dates.count(),1);
     const dateGeometry=await dates.evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().toJSON()));
     assert(dateGeometry.every(n=>n.x>=0 && n.x+n.width<=width),'Each full date stays inside the reading surface');
-    if(width<768)assert(dateGeometry[1].y>=dateGeometry[0].y+dateGeometry[0].height,'Mobile dates use intentional separate rows');
+    assert.match(await dates.textContent(),/^创建于 /);
+    assert.equal(await page.locator('.document-location,.document-save-state').count(),0);
     assert.equal(await page.getByRole('button',{name:'文档显示设置',exact:true}).count(),0);
-    const savePosition=await page.locator('.document-save-state').boundingBox();
-    for(const count of [1,0,2]) {
-      await page.evaluate(count=>{const {slice,api}=window.proseTest;const node=slice.treeData[0];node.createdAt=count?'2026-07-22T15:50:00+08:00':null;node.updatedAt=count===2?'2026-08-18T09:14:00+08:00':null;api.render();},count);
-      await page.waitForFunction(count=>document.querySelectorAll('.document-meta-date').length===count,count);
-      const position=await page.locator('.document-save-state').boundingBox();assert.equal(position.x,savePosition.x);assert.equal(position.y,savePosition.y,'Metadata availability must not move the save status');
+    for(const metadata of [
+      {createdAt:'2026-07-22T15:50:00+08:00',updatedAt:null,count:1},
+      {createdAt:null,updatedAt:'2026-08-18T09:14:00+08:00',count:0},
+      {createdAt:'2026-07-22T15:50:00+08:00',updatedAt:'2026-08-18T09:14:00+08:00',count:1},
+    ]) {
+      await page.evaluate(({createdAt,updatedAt})=>{const {slice,api}=window.proseTest;Object.assign(slice.treeData[0],{createdAt,updatedAt});api.render();},metadata);
+      await page.waitForFunction(count=>document.querySelectorAll('.document-meta-date').length===count,metadata.count);
+      assert.equal(await page.locator('.document-meta-row').count(),metadata.count,'No empty metadata row when creation time is absent');
     }
     if (width < 768) {
       const header = await page.getByRole('toolbar', {name:'笔记导航'}).boundingBox();

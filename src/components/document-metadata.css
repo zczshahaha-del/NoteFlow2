@@ -1,8 +1,5 @@
 /* Auxiliary header only; no prose, code or editor-node styling. */
-.document-header { min-width: 0; }
-.document-location { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 24px; margin-bottom: 12px; color: var(--nf-ui-muted); font-size: 12px; line-height: 20px; }
-.document-location > svg, .document-location > span:first-of-type { flex-shrink: 0; }
-.document-location-path { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.document-header { min-width: 0; margin-bottom: 28px; }
 .document-title-field { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .document-title-field .document-title { width: 100%; min-width: 0; border: 0; background: transparent; padding: 4px 0; }
 .document-title-hint { flex-shrink: 0; color: var(--nf-ui-muted); font-size: 12px; }
@@ -10,26 +7,11 @@
   font-size: 14px !important; font-weight: 500 !important; line-height: 24px !important; color: var(--nf-ui-text) !important;
 }
 .document-canvas .document-header .document-meta-row {
-  display: flex !important; align-items: flex-start; gap: 12px; min-height: 32px;
-  margin-top: 12px !important; margin-bottom: 28px !important;
+  display: flex !important; align-items: flex-start;
+  margin-top: 12px !important; margin-bottom: 0 !important;
   color: var(--nf-ui-muted) !important; font-size: 12px !important; font-weight: 400 !important; line-height: 20px !important;
 }
-.document-meta-summary { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 4px 16px; flex: 1; min-width: 0; padding-top: 6px; }
-.document-save-state { display: flex; align-items: center; gap: 6px; width: 112px; flex-shrink: 0; min-height: 20px; white-space: nowrap; }
-.document-save-dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-.document-save-state[data-save-status="error"], .document-save-state[data-save-status="offline"] { color: var(--nf-ui-danger); }
-.document-meta-dates {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-}
 .document-meta-date { white-space: nowrap; }
-@media (max-width: 767px) {
-  .document-meta-summary { flex-direction: column; }
-  .document-meta-dates { flex-direction: column; align-items: flex-start; }
-}
 @media (pointer: coarse) {
   .document-title-field .document-title { min-height: 44px; }
   .document-canvas .document-header[data-title-mode="body"] .document-title { font-size: 16px !important; }

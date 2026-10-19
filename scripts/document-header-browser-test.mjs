@@ -18,11 +18,11 @@ Object.defineProperty(window,'localStorage',{value:{getItem(key){if(key==='notef
 const root=createRoot(document.getElementById('root'));
 const note={id:'note',type:'file',name:${JSON.stringify(title+'.md')},createdAt:'2026-07-22T15:50:00+08:00',updatedAt:'2026-10-15T09:14:00+08:00',indexStatus:'indexed'};
 const folders=()=>[{id:'f1',type:'folder',name:'全栈开发',children:[{id:'f2',type:'folder',name:'学习笔记',children:[note]}]}];
-const api={renames:[],updates:[],editor:null,render(){root.render(React.createElement(React.StrictMode,null,React.createElement(NoteEditor)))},
+const api={renames:[],updates:[],retries:[],editor:null,render(){root.render(React.createElement(React.StrictMode,null,React.createElement(NoteEditor)))},
 move(root){slice.treeData=root?[note]:folders();api.render()},status(status){slice.noteSaveState={status};api.render()}};
 const slice={selectedFileId:'note',treeData:folders(),fileContents:{note:${JSON.stringify(markdown)}},noteSaveState:{status:'saved'},pendingEditorSelection:null,pendingSourceFocus:null,
 updateNodeName(id,name){api.renames.push({id,name});note.name=name;api.render()},updateFileContent(id,content){api.updates.push({id,content});slice.fileContents[id]=content;api.render()},
-retryNoteSave(){throw Error('Unexpected retry')},reindexNote(){throw Error('Unexpected reindex')},addSelectionToChat(){},clearPendingEditorSelection(){},clearPendingSourceFocus(){},setActiveEditorSectionId(){}};
+retryNoteSave(id){api.retries.push(id)},reindexNote(){throw Error('Unexpected reindex')},addSelectionToChat(){},clearPendingEditorSelection(){},clearPendingSourceFocus(){},setActiveEditorSectionId(){}};
 window.headerTest={api,slice,note,original:${JSON.stringify(markdown)},legacyNumberReads:()=>legacyNumberReads};api.render();`;
 const bundled=await build({configFile:false,logLevel:'silent',plugins:[{name:'header-isolated',enforce:'pre',
 resolveId(id,importer){if(id==='virtual:header')return '\0header';if(id==='../store/selectors'&&(importer===component||importer?.endsWith('/VersionHistoryPanel.tsx')))return '\0store';if(id==='../services/notes'&&(importer===component||importer?.endsWith('/VersionHistoryPanel.tsx')))return '\0notes';if(id==='../services/attachments'&&importer===component)return '\0attachments';},
@@ -45,19 +45,41 @@ try{
   const header=page.locator('.document-header');
   if(!baseline){
    assert.equal(await header.getAttribute('data-title-mode'),'body');assert.equal(await input.evaluate(n=>getComputedStyle(n).fontSize),width===320?'16px':'14px');
-   assert.equal(await page.locator('.note-content h1').textContent(),title);assert.equal(await page.locator('.document-location').getAttribute('aria-label'),'笔记位置：知识库 / 全栈开发 / 学习笔记');
-   assert.equal(await page.locator('.document-save-state').textContent(),'正文已同步');assert.equal(await page.locator('.document-meta-date').count(),2);
+   assert.equal(await page.locator('.note-content h1').textContent(),title);
+   assert.equal(await page.locator('.document-location,.document-save-state').count(),0);
+   assert.equal(await page.locator('.document-meta-date').count(),1);
+   assert.equal(await page.locator('time.document-meta-date').getAttribute('datetime'),'2026-07-22T15:50:00+08:00');
+   assert.equal(await page.locator('.document-meta-date').textContent(),'创建于 2026-07-22 15:50');
+   assert.equal(await header.getByText(/知识库|全栈开发|正文自动保存|更新于/).count(),0);
    assert.equal(await page.evaluate(()=>window.headerTest.api.updates.length),0);assert.equal(await page.evaluate(()=>window.headerTest.slice.fileContents.note),markdown);
    await page.evaluate(()=>{window.headerOriginalEditor=window.headerTest.api.editor;window.headerOriginalDoc=window.headerTest.api.editor.state.doc});
    assert.equal(await page.getByRole('button',{name:'文档显示设置',exact:true}).count(),0,'No empty numbering-settings menu');
-   const anchor=await page.locator('.document-save-state').boundingBox();
+   const anchor=await page.locator('.document-meta-date').boundingBox();
    const bodyTop=await page.locator('.note-content').boundingBox();
    for(const status of ['idle','unsaved','saving','offline','error','saved']){
-    await page.evaluate(s=>window.headerTest.api.status(s),status);await page.waitForFunction(s=>document.querySelector('.document-save-state')?.dataset.saveStatus===s,status);
-    assert.deepEqual(await page.locator('.document-save-state').boundingBox(),anchor,'Save states keep stable geometry');
+    await page.evaluate(s=>window.headerTest.api.status(s),status);await settle(page);
+    assert.deepEqual(await page.locator('.document-meta-date').boundingBox(),anchor,'Saving never adds a status row or shifts the creation time');
+    assert.equal(await page.locator('.document-save-state').count(),0);
+    const exceptional=['error','offline'].includes(status);
+    assert.equal(await page.locator('.nf-note-feedback [role="alert"]').count(),exceptional?1:0,'Only sync failures show actionable feedback');
+    if(exceptional){
+      const label=status==='offline'?'立即同步':'重试保存';
+      await page.getByRole('button',{name:label,exact:true}).click();
+      assert.deepEqual(await page.evaluate(()=>window.headerTest.api.retries),status==='offline'?['note']:['note','note']);
+    }
     if(!['error','offline'].includes(status))assert.equal((await page.locator('.note-content').boundingBox()).y,bodyTop.y,'Routine save state must not shift prose; exceptional retry feedback remains visible');
     assert(await page.evaluate(()=>window.headerTest.api.editor===window.headerOriginalEditor&&window.headerTest.api.editor.state.doc===window.headerOriginalDoc));
    }
+   await page.evaluate(()=>{window.headerTest.note.updatedAt='2026-10-20T21:30:00+08:00';window.headerTest.api.render()});await settle(page);
+   assert.equal(await page.locator('.document-meta-date').textContent(),'创建于 2026-07-22 15:50');
+   assert.equal((await page.locator('.note-content').boundingBox()).y,bodyTop.y,'An updated timestamp must not move the prose');
+   assert.equal(await page.evaluate(()=>window.headerTest.note.updatedAt),'2026-10-20T21:30:00+08:00','Do not remove update metadata from the model');
+   for(const createdAt of [null,'invalid-time']){
+     await page.evaluate(value=>{window.headerTest.note.createdAt=value;window.headerTest.api.render()},createdAt);await settle(page);
+     assert.equal(await page.locator('.document-meta-row').count(),0,'No blank date row or fallback to updated time');
+     assert(await input.isVisible());
+   }
+   await page.evaluate(()=>{window.headerTest.note.createdAt='2026-07-22T15:50:00+08:00';window.headerTest.api.render()});await settle(page);
    await page.screenshot({path:join(output,'header-'+width+'.png')});
   }
   await input.focus();await input.press('End');await input.pressSequentially(' 新版本');
@@ -98,11 +120,12 @@ try{
   await input.focus();await input.press('Tab');await page.waitForFunction(()=>document.querySelector('.document-header').dataset.titleMode==='body');
   assert.equal(await page.locator('.note-content h1').getAttribute('data-heading-number'),'1.','Numbering is always on');
   assert.equal(await page.evaluate(()=>window.headerTest.legacyNumberReads()),0,'Old disabled preference is no longer consulted');
-  await page.evaluate(()=>window.headerTest.api.move(true));await page.waitForFunction(()=>document.querySelector('.document-location').getAttribute('aria-label')==='笔记位置：知识库');
+  await page.evaluate(()=>window.headerTest.api.move(true));await settle(page);
+  assert.equal(await page.locator('.document-location').count(),0);
   assert(await page.evaluate(()=>window.headerTest.api.editor===window.headerOriginalEditor));
   await page.evaluate(()=>{window.headerTest.api.move(false);window.headerTest.slice.treeData[0].name='长文件夹'.repeat(30);window.headerTest.api.render()});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);
-  await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));await settle(page);assert.equal(await page.locator('.document-location').evaluate(n=>getComputedStyle(n).color),'rgb(167, 176, 188)');
+  await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));await settle(page);assert.equal(await page.locator('.document-meta-row').evaluate(n=>getComputedStyle(n).color),'rgb(167, 176, 188)');
   await page.screenshot({path:join(output,'header-'+width+'-dark.png')});
   await page.emulateMedia({reducedMotion:'reduce'});await input.focus();await input.press('Escape');assert.equal(await page.getByRole('menu').count(),0);
   const nestedSource='## 模型接口与API调用基础\n\n### 1. 准备工作\n\n### 2. 使用 SDK\n\n### 自动子节\n\n## 提示工程\n\n结尾';
@@ -123,7 +146,7 @@ try{
   assert.equal(await page.evaluate(()=>window.headerTest.api.editor.getMarkdown()),nestedSource);
   assert.equal(await page.evaluate(()=>window.headerTest.api.updates.length),updatesBefore,'Display correction must never save rewritten headings');
   await page.screenshot({path:join(output,'numbering-'+width+'.png')});
-  assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);reports.push({width,compactDuplicateTitle:true,originalH1Preserved:true,folderPath:true,saveStateGeometry:true,renameOnCommit:true,spaces:true,escapeCancel:true,imeGuards:true,emptyFallback:true,noResizeUnderCaret:true,undo:true,numberingAlwaysOn:true,noEmptyMenu:true,nestedManualNumbers:true,proseOutlineAgree:true,sourceUnchanged:true,rootMove:true,dark:true,reducedMotion:true});await context.close();
+  assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);reports.push({width,compactDuplicateTitle:true,originalH1Preserved:true,noBreadcrumb:true,createdTimeOnly:true,updatedMetadataPreserved:true,noBlankDateRow:true,silentNormalSave:true,errorOfflineRetry:true,saveStateGeometry:true,renameOnCommit:true,spaces:true,escapeCancel:true,imeGuards:true,emptyFallback:true,noResizeUnderCaret:true,undo:true,numberingAlwaysOn:true,noEmptyMenu:true,nestedManualNumbers:true,proseOutlineAgree:true,sourceUnchanged:true,rootMove:true,dark:true,reducedMotion:true});await context.close();
  }
  console.log(JSON.stringify({ok:true,actualEditorAndHeader:true,syntheticOnly:true,networkBlocked:true,output,reports},null,2));
 }finally{await browser.close();}

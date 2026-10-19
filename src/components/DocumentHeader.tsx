@@ -1,32 +1,20 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { ChevronRight, Folder } from "lucide-react";
 import type { FileNode } from "../types";
 import { formatDocumentTime } from "../utils/documentTime";
 import "./document-metadata.css";
 
 interface DocumentHeaderProps {
   note: FileNode;
-  folders: string[];
   title: string;
   onTitleChange: (title: string) => void;
   onTitleCommit: (title: string) => void;
   onTitleEditingChange: (editing: boolean) => void;
   matchingBodyTitle: boolean;
   bodyEditing: boolean;
-  saveStatus: "idle" | "unsaved" | "saving" | "saved" | "offline" | "error";
 }
 
-const saveLabels = {
-  idle: "正文自动保存",
-  unsaved: "正文待保存",
-  saving: "正在保存正文…",
-  saved: "正文已同步",
-  offline: "正文仅存本机",
-  error: "正文未同步",
-};
-
-export default function DocumentHeader({ note, folders, title, onTitleChange, onTitleCommit, onTitleEditingChange,
-  matchingBodyTitle, bodyEditing, saveStatus }: DocumentHeaderProps) {
+export default function DocumentHeader({ note, title, onTitleChange, onTitleCommit, onTitleEditingChange,
+  matchingBodyTitle, bodyEditing }: DocumentHeaderProps) {
   const titleId = useId();
   const [titleFocused, setTitleFocused] = useState(false);
   const [compactTitle, setCompactTitle] = useState(matchingBodyTitle);
@@ -36,15 +24,8 @@ export default function DocumentHeader({ note, folders, title, onTitleChange, on
   useEffect(() => {
     if (!titleFocused && !bodyEditing) setCompactTitle(matchingBodyTitle);
   }, [matchingBodyTitle, titleFocused, bodyEditing]);
-  const location = ["知识库", ...folders].join(" / ");
   const created = formatDocumentTime(note.createdAt);
-  const updated = formatDocumentTime(note.updatedAt);
   return <header className="document-header" data-title-mode={compactTitle ? "body" : "document"}>
-    <div className="document-location" aria-label={`笔记位置：${location}`} title={location}>
-      <Folder size={13} aria-hidden="true" />
-      <span>知识库</span>
-      {folders.length > 0 && <><ChevronRight size={12} aria-hidden="true" /><span className="document-location-path">{folders.join(" / ")}</span></>}
-    </div>
     <div className="document-title-field">
       {compactTitle && <label htmlFor={titleId} className="document-title-hint">文档名</label>}
       <input id={titleId} value={title} aria-label="文档标题" className="document-title"
@@ -72,16 +53,8 @@ export default function DocumentHeader({ note, folders, title, onTitleChange, on
           setTitleFocused(false);
         }} />
     </div>
-    <div className="document-meta-row">
-      <div className="document-meta-summary">
-        <span className="document-save-state" data-save-status={saveStatus} aria-live="polite" aria-atomic="true">
-          <span className="document-save-dot" aria-hidden="true" />{saveLabels[saveStatus]}
-        </span>
-        <div className="document-meta-dates">
-          {created && <span className="document-meta-date">创建于 {created}</span>}
-          {updated && <span className="document-meta-date">更新于 {updated}</span>}
-        </div>
-      </div>
-    </div>
+    {created && <div className="document-meta-row">
+      <time className="document-meta-date" dateTime={note.createdAt ?? undefined}>创建于 {created}</time>
+    </div>}
   </header>;
 }
