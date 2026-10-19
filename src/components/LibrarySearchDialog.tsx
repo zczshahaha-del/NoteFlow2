@@ -22,7 +22,7 @@ type SearchFunction = typeof searchNotes;
 
 type NoteMetadata = {
   path: string;
-  updatedAt: string | null;
+  createdAt: string | null;
 };
 
 type SearchResultGroup = {
@@ -31,7 +31,7 @@ type SearchResultGroup = {
   matches: ChatSource[];
   primary: ChatSource;
   path: string;
-  updatedAt: string | null;
+  createdAt: string | null;
   labels: string[];
 };
 
@@ -58,7 +58,7 @@ function collectNoteMetadata(
     if (node.type === "file") {
       result.set(node.id, {
         path: parents.join(" / ") || "知识库",
-        updatedAt: node.updatedAt ?? node.createdAt ?? null,
+        createdAt: node.createdAt ?? null,
       });
       return;
     }
@@ -105,7 +105,7 @@ function groupSearchResults(
       matches,
       primary,
       path: noteMetadata?.path ?? "知识库",
-      updatedAt: noteMetadata?.updatedAt ?? null,
+      createdAt: noteMetadata?.createdAt ?? null,
       labels,
     };
   }).filter((group) => Boolean(group.primary));
@@ -583,7 +583,7 @@ export default function LibrarySearchDialog({
             <div id="library-search-results" role="listbox" aria-label="搜索结果">
               {groups.map((group, index) => {
                 const active = index === activeIndex;
-                const updatedDate = formatDocumentTime(group.updatedAt).split(" ")[0];
+                const createdDate = formatDocumentTime(group.createdAt).split(" ")[0];
                 const location = [
                   group.path,
                   group.primary.sectionTitle ?? "",
@@ -610,7 +610,7 @@ export default function LibrarySearchDialog({
                         <span className="nf-search-labels">{group.labels.join(" · ")}</span>
                       </span>
                       <span className="nf-search-location">
-                        {location}{updatedDate && ` · 更新于 ${updatedDate}`}
+                        {location}{createdDate && ` · 创建于 ${createdDate}`}
                       </span>
                       <span className="nf-search-snippet">
                         {highlightTerms(snippets[index], normalizedQuery)}

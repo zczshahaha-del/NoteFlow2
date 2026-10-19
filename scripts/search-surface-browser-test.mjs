@@ -17,7 +17,11 @@ import SearchDialog from ${JSON.stringify(component)};
 const root=createRoot(document.getElementById('root'));
 const pending=[]; let open=false,selected=null;
 const search=(query,options)=>new Promise((resolve,reject)=>pending.push({query,options,resolve,reject}));
-const tree=[{id:'sample-redis',name:'Redis',type:'file',updatedAt:'2026-10-01T00:00:00Z'}];
+const tree=[
+ {id:'sample-redis',name:'Redis',type:'file',createdAt:'2026-09-10T00:00:00Z',updatedAt:'2026-10-01T00:00:00Z'},
+ {id:'sample-1',name:'仅有更新时间',type:'file',updatedAt:'2026-10-02T00:00:00Z'},
+ {id:'sample-2',name:'无效创建时间',type:'file',createdAt:'invalid',updatedAt:'2026-10-03T00:00:00Z'}
+];
 const render=()=>root.render(React.createElement(SearchDialog,{open,treeData:tree,searchNotesFn:search,onClose(){open=false;render()},onSelect(source){selected=source}}));
 window.searchTest={get pending(){return pending},get selected(){return selected},show(){open=true;render()},resolve(rows){pending.at(-1).resolve({results:rows})},reject(){pending.at(-1).reject(new Error('合成搜索错误'))}};
 document.getElementById('trigger').onclick=()=>window.searchTest.show(); render();`;
@@ -35,7 +39,7 @@ const markdownSnippet='**Redis** 缓存：用 `GOPRIVATE` 配合 [Git 文档](ht
 const row = (index) => ({ noteId: index ? 'sample-'+index : 'sample-redis', noteTitle: index ? 'Python 的面试常见问题 '+index : 'Redis', sectionId: 'section-'+index, sectionTitle: '缓存基础', sourceType: 'chunk_content', snippet: index?'如何用 Redis 缓存热点数据？需要考虑过期策略与数据一致性。':markdownSnippet, retrievalChannels: ['content'] });
 try {
   for (const {width,mobile} of [{width:1280,mobile:false},{width:736,mobile:true},{width:320,mobile:true}]) {
-    const context = await browser.newContext({ viewport: {width,height:mobile?640:720}, isMobile:mobile, hasTouch:mobile, deviceScaleFactor:1 });
+    const context = await browser.newContext({ viewport: {width,height:mobile?640:720}, timezoneId:'Asia/Shanghai', isMobile:mobile, hasTouch:mobile, deviceScaleFactor:1 });
     await context.route('**/*', (route) => route.abort());
     const page = await context.newPage(); page.on('pageerror', (error) => errors.push(String(error)));
     await page.setContent(`<html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css}</style></head><body><div id="root"></div><button id="trigger">搜索入口</button><script type="module">${source}</script></body></html>`);
@@ -69,6 +73,9 @@ try {
     const results=await geometry(); assert.equal(results.y,initial.y); assert.ok(results.height>initial.height); assert.ok(results.bottom<=results.viewHeight-15); assert.equal(results.clipped,false);
     assert.equal(await page.locator('.nf-search-summary').textContent(),'2 篇笔记 · 3 处命中');
     assert.equal(await page.locator('[role="status"]').count(),0);
+    assert.equal(await page.locator('.nf-search-location').first().textContent(),'知识库 / 缓存基础 · 创建于 2026-09-10');
+    assert.equal(await page.locator('.nf-search-location').nth(1).textContent(),'知识库 / 缓存基础','Missing creation time must not fall back to update time');
+    assert.equal(await page.getByText(/更新于/).count(),0);
     const snippet=page.locator('.nf-search-snippet').first();
     assert.equal(await snippet.textContent(),'Redis 缓存：用 GOPRIVATE 配合 Git 文档；尾段 常见错误：不要公开 API_KEY。');
     assert.equal(await snippet.locator('mark').first().textContent(),'Redis','Highlight is applied after Markdown is converted to text');
@@ -88,6 +95,8 @@ try {
     await page.waitForFunction(()=>window.searchTest.pending.length===2);
     await page.evaluate((rows)=>window.searchTest.resolve(rows), Array.from({length:20},(_,i)=>row(i))); await page.waitForTimeout(280);
     const long=await geometry(); assert.ok(long.bottom<=long.viewHeight-15); assert.ok(long.bodyScroll>long.bodyClient); assert.equal(long.clipped,false);
+    assert.equal(await page.locator('.nf-search-location').nth(2).textContent(),'知识库 / 缓存基础','Invalid creation time must not fall back to update time');
+    assert.equal(await page.locator('.nf-search-location').nth(3).textContent(),'知识库 / 缓存基础','Unknown metadata must not invent a timestamp');
     await page.locator('.nf-search-input').press('End');
     for(let i=0;i<19;i++) await page.locator('.nf-search-input').press('ArrowDown');
     assert.equal(await page.locator('.nf-search-input').getAttribute('aria-activedescendant'),'library-search-result-19');
