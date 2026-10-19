@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { FileText } from "lucide-react";
 import type { DraftBrief } from "../utils/draftBrief";
 import "./draft-brief-card.css";
@@ -22,7 +22,6 @@ export default function DraftBriefCard({ brief, current, busy, pending, hasOutli
   historicalAction, onEdit, onGenerate, onOpen }: Props) {
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const requirementsRef = useRef<HTMLTextAreaElement>(null);
-  const hintId = useId();
   const [emptyError, setEmptyError] = useState(false);
   const summary = hasOutline || !current;
   const locked = busy || pending;
@@ -60,10 +59,10 @@ export default function DraftBriefCard({ brief, current, busy, pending, hasOutli
   return (
     <section className="nf-draft-brief-card" data-stage={summary ? "ready" : "brief"} aria-label="AI 笔记草稿">
       <header className="nf-draft-brief-header">
-        <span className="nf-draft-brief-brand"><FileText size={14} strokeWidth={1.6} />笔记草稿</span>
-        <span className="nf-draft-brief-status" role="status">
-          {!current ? historicalAction : pending ? "正在规划…" : busy ? label : hasOutline ? label : "待确认"}
-        </span>
+        <span className="nf-draft-brief-brand"><FileText size={12} strokeWidth={1.6} />AI 草稿</span>
+        {(!current || locked || hasOutline) && <span className="nf-draft-brief-status" role="status">
+          {!current ? historicalAction : pending ? "正在规划…" : label}
+        </span>}
       </header>
 
       {summary ? (
@@ -83,11 +82,10 @@ export default function DraftBriefCard({ brief, current, busy, pending, hasOutli
               }
             }} />
           <div className="nf-draft-brief-requirements">
-            <textarea ref={requirementsRef} aria-label="草稿要求" aria-describedby={hintId}
+            <textarea ref={requirementsRef} aria-label="草稿要求" aria-description="用于规划大纲和生成正文"
               value={brief.requirements} maxLength={2000} rows={1} disabled={locked}
-              placeholder="这份笔记有什么要求？（选填）"
+              placeholder="补充要求…"
               onChange={event => onEdit({ requirements: event.target.value })} />
-            <p id={hintId} className="nf-draft-brief-hint">用于规划大纲和生成正文</p>
           </div>
         </div>
       )}

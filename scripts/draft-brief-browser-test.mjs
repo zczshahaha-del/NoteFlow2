@@ -55,8 +55,16 @@ try {
     assert.equal(await card.getByText('先看大纲，再生成正文').count(),0);
     assert.equal(await card.locator('footer svg').count(),0);
     const initialGeometry=await card.evaluate(el=>({height:el.getBoundingClientRect().height,width:el.getBoundingClientRect().width}));
-    assert(initialGeometry.height<260,'empty brief remains compact');
+    assert(initialGeometry.height<180,'initial brief remains a small card');
     await card.screenshot({path:path.join(output,'card-'+width+'.png')});
+    const buttonTop=await button(card,'生成大纲').evaluate(el=>el.getBoundingClientRect().top);
+    await requirements.click();
+    const focusedStyle=await requirements.evaluate(el=>({outline:getComputedStyle(el).outlineStyle,border:getComputedStyle(el).borderWidth}));
+    assert.equal(focusedStyle.outline,'none','text editing must not show the global thick outline');
+    assert.equal(focusedStyle.border,'0px');
+    assert.equal(await card.getByText('用于规划大纲和生成正文',{exact:true}).count(),0,'no redundant visible explanation, including on focus');
+    assert.equal(await button(card,'生成大纲').evaluate(el=>el.getBoundingClientRect().top),buttonTop,'focusing requirements must not move the action');
+    await card.screenshot({path:path.join(output,'card-focused-'+width+'.png')});
     await title.fill('');await button(card,'生成大纲').click();await card.getByText('请先填写标题。').waitFor();
     await title.fill('《两小儿辩日》教学设计');
     await title.dispatchEvent('keydown',{key:'Enter',isComposing:true});
