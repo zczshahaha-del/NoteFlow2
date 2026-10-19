@@ -25,6 +25,14 @@ replace(text,status='streaming',sources){chat.chatMessages=chat.chatMessages.map
 history(text){chat.chatLoading=false;chat.chatMessages=[{id:'loaded-'+(++key),role:'assistant',text}];this.render()},
 clear(){chat.chatLoading=false;chat.chatMessages=[];this.render()}};
 api.renames=[];chat.renameChatSession=async(id,title)=>{api.renames.push({id,title})};
+api.deletes=[];chat.deleteChatSession=async id=>{
+  api.deletes.push(id);
+  if(api.holdDelete){api.holdDelete=false;await new Promise(resolve=>api.finishDelete=resolve)}
+  if(api.failDelete){api.failDelete=false;throw Error('合成删除失败')}
+  chat.chatSessions=chat.chatSessions.filter(session=>session.id!==id);
+  if(agent.agentSessionId===id)agent.agentSessionId=chat.chatSessions[0]?.id??null;
+  api.render();
+};
 api.retries=[];chat.retryChatReply=id=>{api.retries.push(id)};
 chat.stopGeneration=()=>{api.stops++;chat.chatLoading=false;chat.chatMessages=chat.chatMessages.map(m=>m.streamState==='streaming'?{...m,streamState:'stopped'}:m);api.render()};
 // In-memory clipboard substitute: no system clipboard access in browser tests.
@@ -198,6 +206,42 @@ try{
     await page.getByRole('textbox',{name:'消息输入框'}).focus();
     await page.keyboard.press('Escape');await historyMenu.waitFor({state:'detached'});
     assert.equal(await historyTrigger.evaluate(n=>document.activeElement===n),true);
+    // Deleting is list management, not selection: retain the menu, query and focus.
+    await historyTrigger.click();await historySearch.fill('资料');
+    const deleteDialog=page.getByRole('dialog',{name:'删除对话',exact:true});
+    const openDelete=async title=>{await historyMenu.getByRole('button',{name:'删除'+title,exact:true}).click();await deleteDialog.waitFor();assert.equal(await historyTrigger.getAttribute('aria-expanded'),'true')};
+    await openDelete('资料整理');
+    assert(await deleteDialog.getByRole('button',{name:'取消',exact:true}).evaluate(n=>document.activeElement===n));
+    await page.keyboard.press('Shift+Tab');assert(await deleteDialog.getByRole('button',{name:'删除',exact:true}).evaluate(n=>document.activeElement===n));
+    await page.keyboard.press('Tab');assert(await deleteDialog.getByRole('button',{name:'取消',exact:true}).evaluate(n=>document.activeElement===n));
+    await page.keyboard.press('Escape');await deleteDialog.waitFor({state:'detached'});
+    await historySearch.evaluate(n=>new Promise(resolve=>requestAnimationFrame(()=>resolve(document.activeElement===n)))).then(focused=>assert(focused));
+    assert.equal(await historySearch.inputValue(),'资料');
+    await openDelete('资料整理');await deleteDialog.getByRole('button',{name:'取消',exact:true}).click();await deleteDialog.waitFor({state:'detached'});
+    assert.equal(await historyTrigger.getAttribute('aria-expanded'),'true','Clicking cancel is not an outside click');
+    await openDelete('资料整理');await page.evaluate(()=>window.presentationTest.failDelete=true);
+    await deleteDialog.getByRole('button',{name:'删除',exact:true}).click();await deleteDialog.getByText('合成删除失败',{exact:true}).waitFor();
+    assert.equal(await historyTrigger.getAttribute('aria-expanded'),'true');assert.equal(await historyMenu.locator('.nf-history-row').count(),1,'Failure retains the row');
+    await page.evaluate(()=>window.presentationTest.holdDelete=true);
+    await deleteDialog.getByRole('button',{name:'删除',exact:true}).click();
+    await page.waitForFunction(()=>Boolean(window.presentationTest.finishDelete));
+    assert(await deleteDialog.getByRole('button',{name:'删除',exact:true}).isDisabled());
+    await page.keyboard.press('Escape');assert.equal(await deleteDialog.count(),1,'Busy deletion cannot be dismissed and submitted twice');
+    await page.evaluate(()=>window.presentationTest.finishDelete());await deleteDialog.waitFor({state:'detached'});
+    assert.equal(await historyTrigger.getAttribute('aria-expanded'),'true');assert.equal(await historySearch.inputValue(),'资料');
+    await historyMenu.getByText('没有找到对话',{exact:true}).waitFor();
+    await page.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='搜索历史对话');
+    await historySearch.fill('');
+    await page.evaluate(()=>{const a=window.presentationTest;a.chat.chatSessions.push({id:'history-next',title:'后续对话',updatedAt:'2026-10-10T02:50:00+08:00'});a.render()});
+    await openDelete('当前对话');await deleteDialog.getByRole('button',{name:'删除',exact:true}).click();await deleteDialog.waitFor({state:'detached'});
+    assert.equal(await page.evaluate(()=>window.presentationTest.agent.agentSessionId),'history-next');
+    assert.equal(await historyTrigger.getAttribute('aria-expanded'),'true','Automatic fallback after deleting the active chat must not dismiss history');
+    if(process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR)await page.locator('#root').screenshot({path:process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR+'/history-delete-retained-'+(mobile?'mobile':'desktop')+'.png'});
+    await openDelete('后续对话');await deleteDialog.getByRole('button',{name:'删除',exact:true}).click();await deleteDialog.waitFor({state:'detached'});
+    await historyMenu.getByText('没有找到对话',{exact:true}).waitFor();
+    assert.equal(await historyTrigger.getAttribute('aria-expanded'),'true','An empty history stays open with the new-chat entry');
+    assert.deepEqual(await page.evaluate(()=>window.presentationTest.deletes),['history-other','history-other','history-current','history-next']);
+    await page.getByRole('textbox',{name:'消息输入框'}).click();await historyMenu.waitFor({state:'detached'});
     await page.evaluate(()=>{const a=window.presentationTest;a.agent.agentSessionId=null;a.chat.chatSessions=[];a.render()});
     const full='这是模拟整段数据到达时的连续输出。'.repeat(18)+'👩🏽‍💻🇨🇳e\u0301👨‍👩‍👧‍👦结束。';
     await page.evaluate(()=>window.presentationTest.begin(10));
@@ -527,22 +571,23 @@ try{
       Object.assign(a.draft,{draftSeed:'合成写作',activeDraftContext:{id:'new',title:'合成写作',topic:'合成写作',stage:'assembled',busy:false,errorText:'',statusText:'',totalSections:2,completedSections:2},
         openPendingDraft(){a.openedDraft=(a.openedDraft||0)+1}});a.render()});
     const draftCards=page.getByRole('region',{name:'AI 笔记草稿',exact:true});
-    await draftCards.nth(1).getByRole('button',{name:'查看草稿',exact:true}).waitFor();
-    assert.equal(await draftCards.nth(0).locator('.nf-writing-label').textContent(),'已保存为笔记');
-    assert.equal(await draftCards.nth(1).locator('.nf-writing-label').textContent(),'草稿待保存');
-    await draftCards.nth(1).getByRole('button',{name:'查看草稿',exact:true}).click();
+    await draftCards.nth(1).getByRole('button',{name:'打开草稿',exact:true}).waitFor();
+    assert.equal(await draftCards.nth(0).getByRole('status').textContent(),'已完成');
+    assert.equal(await draftCards.nth(1).getByRole('status').textContent(),'草稿待保存');
+    await draftCards.nth(1).getByRole('button',{name:'打开草稿',exact:true}).click();
     assert.equal(await page.evaluate(()=>window.presentationTest.openedDraft),1);
     await page.evaluate(()=>{const a=window.presentationTest;a.draft.activeDraftContext={...a.draft.activeDraftContext,stage:'saving',busy:true};a.render()});
     await draftCards.nth(1).getByText('正在保存为笔记',{exact:true}).waitFor();
-    assert.equal(await draftCards.nth(0).locator('.nf-writing-label').textContent(),'已保存为笔记');
+    assert.equal(await draftCards.nth(0).getByRole('status').textContent(),'已完成');
     await page.evaluate(()=>{const a=window.presentationTest;a.draft.activeDraftContext={...a.draft.activeDraftContext,stage:'assembled',busy:false,errorText:'合成保存失败，草稿已保留'};a.render()});
     await draftCards.nth(1).getByText('合成保存失败，草稿已保留',{exact:true}).waitFor();
     assert.equal(await draftCards.nth(1).getByRole('button',{name:'重新生成大纲',exact:true}).count(),0);
     if(process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR)await page.locator('#root').screenshot({path:process.env.NOTEFLOW_CHAT_SCREENSHOT_DIR+'/writing-stages-'+(mobile?'mobile':'desktop')+'.png'});
     await page.evaluate(()=>{const a=window.presentationTest;a.chat.chatMessages=a.chat.chatMessages.map(m=>m.id==='current-card'?{...m,draftCard:{...m.draftCard,status:'resolved'}}:m);a.draft.activeDraftContext=null;a.render()});
-    await page.waitForFunction(()=>[...document.querySelectorAll('.nf-writing-label')].every(n=>n.textContent==='已保存为笔记'));
-    assert.equal(await draftCards.getByRole('button',{name:'查看草稿',exact:true}).count(),0);
-    reports.push({mobile,historySearchSoftFocus:true,historySearchStyle,historySearchFilter:true,historySearchFocusReturn:true,historyImeEscapeCloses,singleChunkTyping:true,stats,stop:true,completedTailStop:true,switchHistory:true,canonicalReplacement:true,markdownActions:true,reducedMotion:true,backgroundFlush:true,readingPosition:true,inputStable:true,scrollSurface,wideContentLocalScroll:true,jumpGeometry,jumpStable:true,bothRoleCopy:true,smallHoverCopy:true,timeTogether:true,copyKeyboard:true,copyTooltip:true,tooltipDelayHoverBridge:true,tooltipNoLayoutShift:true,tooltipEscapeScrollResize:true,tooltipReducedMotionForcedColors:true,pendingCopyFocus:true,copyFeedbackStable:true,copyFailureRetry:true,copyFallback:true});
+    await page.waitForFunction(()=>{const labels=[...document.querySelectorAll('.nf-draft-brief-status')];return labels.length===2&&labels.every(n=>n.textContent==='已完成')});
+    assert.equal(await draftCards.getByRole('button',{name:'打开草稿',exact:true}).count(),0);
+    for(const card of await draftCards.all())assert(await card.getByRole('button',{name:'已完成',exact:true}).isDisabled());
+    reports.push({mobile,historyDeleteRetainsMenu:true,deleteCancelFocus:true,deleteQueryRetained:true,deleteFailureRetry:true,deleteActiveFallback:true,deleteLastKeepsEmptyList:true,deleteKeyboard:true,historySearchSoftFocus:true,historySearchStyle,historySearchFilter:true,historySearchFocusReturn:true,historyImeEscapeCloses,singleChunkTyping:true,stats,stop:true,completedTailStop:true,switchHistory:true,canonicalReplacement:true,markdownActions:true,reducedMotion:true,backgroundFlush:true,readingPosition:true,inputStable:true,scrollSurface,wideContentLocalScroll:true,jumpGeometry,jumpStable:true,bothRoleCopy:true,smallHoverCopy:true,timeTogether:true,copyKeyboard:true,copyTooltip:true,tooltipDelayHoverBridge:true,tooltipNoLayoutShift:true,tooltipEscapeScrollResize:true,tooltipReducedMotionForcedColors:true,pendingCopyFocus:true,copyFeedbackStable:true,copyFailureRetry:true,copyFallback:true});
     await context.close();
   }
   // China message time is independent of the browser's timezone and supports old UTC responses.

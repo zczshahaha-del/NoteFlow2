@@ -523,6 +523,8 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
       historyComposingRef.current = false;
       return;
     }
+    // The confirmation is a child operation, not an outside-menu dismissal.
+    if (deletingSessionId) return;
     const closeOnOutsideClick = (event: MouseEvent) => {
       if (!historyMenuRef.current?.contains(event.target as Node)) {
         setHistoryOpen(false);
@@ -543,7 +545,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
       document.removeEventListener("mousedown", closeOnOutsideClick, true);
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [historyOpen]);
+  }, [historyOpen, deletingSessionId]);
 
   const cancelHistoryRename = () => {
     setEditingSessionId(null);
@@ -604,14 +606,20 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
     }
   };
 
+  const returnToHistory = () => {
+    setDeletingSessionId(null);
+    requestAnimationFrame(() => {
+      historyMenuRef.current?.querySelector<HTMLInputElement>('.nf-history-menu[data-open="true"] input[aria-label="搜索历史对话"]')?.focus({ preventScroll: true });
+    });
+  };
+
   const handleDeleteChat = async () => {
     if (!deletingSessionId || sessionActionBusy) return;
     setSessionActionBusy(true);
     setSessionActionError("");
     try {
       await deleteChatSession(deletingSessionId);
-      setDeletingSessionId(null);
-      setHistoryOpen(false);
+      returnToHistory();
     } catch (error) {
       setSessionActionError(error instanceof Error ? error.message : "删除对话失败");
     } finally {
@@ -1419,7 +1427,22 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
       </div>
 
       {deletingSessionId && (
-        <div className="fixed inset-0 z-[120] grid place-items-center bg-[#26343d]/20 p-5 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-label="删除对话">
+        <div className="fixed inset-0 z-[120] grid place-items-center bg-[#26343d]/20 p-5 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-label="删除对话"
+          onKeyDown={(event) => {
+            if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+            if (event.key === "Escape") {
+              event.preventDefault();
+              event.stopPropagation();
+              if (!sessionActionBusy) returnToHistory();
+            } else if (event.key === "Tab") {
+              const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));
+              const first = buttons[0], last = buttons[buttons.length - 1];
+              if (!first || (event.shiftKey && document.activeElement === first) || (!event.shiftKey && document.activeElement === last)) {
+                event.preventDefault();
+                (event.shiftKey ? last : first)?.focus();
+              }
+            }
+          }}>
           <div className="w-full max-w-sm rounded-2xl border border-[#dfe5e9] bg-white p-5 shadow-[0_24px_70px_rgba(25,39,50,0.22)]">
             <div className="flex items-start gap-3">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#fff1ef] text-jelly-red"><Trash2 size={19} /></span>
@@ -1432,7 +1455,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
             </div>
             {sessionActionError && <p className="mt-3 text-[12px] text-jelly-red">{sessionActionError}</p>}
             <div className="mt-5 flex justify-end gap-2">
-              <button type="button" onClick={() => setDeletingSessionId(null)} disabled={sessionActionBusy} className="h-9 rounded-xl border border-[#dfe5e9] px-4 text-[13px] font-medium text-jelly-text-soft hover:bg-[#f6f8fa] disabled:opacity-50">取消</button>
+              <button type="button" autoFocus onClick={returnToHistory} disabled={sessionActionBusy} className="h-9 rounded-xl border border-[#dfe5e9] px-4 text-[13px] font-medium text-jelly-text-soft hover:bg-[#f6f8fa] disabled:opacity-50">取消</button>
               <button type="button" onClick={() => void handleDeleteChat()} disabled={sessionActionBusy} className="inline-flex h-9 items-center rounded-xl bg-jelly-red px-4 text-[13px] font-semibold text-white hover:brightness-95 disabled:opacity-50">
                 {sessionActionBusy && <Loader2 size={14} className="mr-1.5 animate-spin" />}
                 删除
