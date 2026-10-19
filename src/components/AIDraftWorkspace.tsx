@@ -395,6 +395,7 @@ export default function AIDraftWorkspace() {
   const bodyInstructionRef = useRef<HTMLDivElement | null>(null);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
   const sectionInstructionRef = useRef<HTMLTextAreaElement | null>(null);
+  const outlineInstructionRef = useRef<HTMLTextAreaElement | null>(null);
   const { confirm, confirmDialog } = useConfirmDialog();
 
   const isBusy = busyMode !== "idle";
@@ -435,6 +436,24 @@ export default function AIDraftWorkspace() {
     field.style.overflowY = field.scrollHeight > maxHeight ? "auto" : "hidden";
   }, []);
   useLayoutEffect(fitSectionInstruction, [fitSectionInstruction, sectionInstruction, selectedSection?.id, Boolean(selectedSection?.content), centerMode]);
+  useLayoutEffect(() => {
+    const field = outlineInstructionRef.current;
+    if (!field) return;
+    const fit = () => {
+      const lineHeight = Number.parseFloat(getComputedStyle(field).lineHeight) || 22;
+      field.style.height = `${lineHeight}px`;
+      field.style.height = `${Math.min(lineHeight * 4, Math.max(lineHeight, field.scrollHeight))}px`;
+      field.style.overflowY = field.scrollHeight > lineHeight * 4 ? "auto" : "hidden";
+    };
+    fit();
+    if (typeof ResizeObserver === "undefined") return;
+    let width = field.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (width !== field.clientWidth) { width = field.clientWidth; fit(); }
+    });
+    observer.observe(field);
+    return () => observer.disconnect();
+  }, [outlineInstruction, directoryManagerOpen]);
   useEffect(() => {
     const field = sectionInstructionRef.current;
     if (!field || typeof ResizeObserver === "undefined") return;
@@ -1714,7 +1733,7 @@ export default function AIDraftWorkspace() {
                 <div className="space-y-2">
                   {activeSections.map((section, index) => (
                     <div key={section.id} className="nf-draft-directory-row flex min-h-[48px] items-center gap-2 px-3 py-2">
-                      <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#f1f5f7] text-[10px] text-jelly-text-muted">
+                      <span className="nf-draft-directory-index">
                         {index + 1}
                       </span>
                       {renamingSectionId === section.id ? (
@@ -1730,9 +1749,9 @@ export default function AIDraftWorkspace() {
                           autoFocus
                         />
                       ) : (
-                        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-jelly-text">{section.title}</span>
+                        <span className="nf-draft-directory-name min-w-0 flex-1 truncate text-[13px] font-medium text-jelly-text" title={section.title}>{section.title}</span>
                       )}
-                      <div className="flex shrink-0 items-center gap-0.5">
+                      <div className="nf-draft-directory-actions flex shrink-0 items-center gap-0.5">
                         <button
                           type="button"
                           onClick={() => void moveSection(section.id, -1)}
@@ -1787,21 +1806,22 @@ export default function AIDraftWorkspace() {
                   ))}
                 </div>
 
-                <div className="mt-3 flex items-center gap-2">
+                <div className="nf-draft-inline-entry nf-draft-add-entry">
                   <input
                     value={newSectionTitle}
                     onChange={(event) => setNewSectionTitle(event.target.value)}
                     onKeyDown={(event) => {
-                      if (event.key === "Enter") void addOutlineSection();
+                      if (event.key === "Enter" && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) void addOutlineSection();
                     }}
                     placeholder="添加一级章节"
-                    className="nf-draft-field h-9 min-w-0 flex-1 px-3"
+                    aria-label="添加一级章节"
+                    className="nf-draft-field nf-draft-inline-field"
                   />
                   <button
                     type="button"
                     onClick={() => void addOutlineSection()}
                     disabled={!newSectionTitle.trim() || isBusy}
-                    className="nf-draft-action inline-flex h-9 shrink-0 items-center gap-1.5 px-3 disabled:opacity-40"
+                    className="nf-draft-action nf-draft-revision-submit inline-flex gap-1 disabled:opacity-40"
                   >
                     <Plus size={14} />
                     添加
@@ -1827,27 +1847,31 @@ export default function AIDraftWorkspace() {
                   </div>
                 )}
 
-                <div className="mt-5 pt-4">
-                  <p className="text-[12px] font-semibold text-jelly-text">按新要求调整大纲</p>
-                  <p className="mt-1 text-[11px] text-jelly-text-muted">说明需要增删或强化的内容，AI 会重新规划全部章节。</p>
-                  <textarea
-                    value={outlineInstruction}
-                    onChange={(event) => setOutlineInstruction(event.target.value)}
-                    placeholder="例如：减少基础内容，增加两个实战章节…"
-                    className="nf-draft-field mt-2 min-h-[72px] w-full resize-none px-3 py-2.5 leading-relaxed"
-                  />
-                  <div className="mt-2 flex justify-end">
+                <section className="nf-draft-outline-adjust" aria-label="按新要求调整大纲">
+                  <label htmlFor="draft-outline-instruction">AI 调整大纲</label>
+                  <div className="nf-draft-inline-entry">
+                    <textarea
+                      id="draft-outline-instruction"
+                      ref={outlineInstructionRef}
+                      value={outlineInstruction}
+                      onChange={(event) => setOutlineInstruction(event.target.value)}
+                      placeholder="如何调整大纲…"
+                      aria-label="大纲调整要求"
+                      aria-description="将重新规划全部章节；已有正文需要确认后才会替换。"
+                      rows={1}
+                      className="nf-draft-field nf-draft-inline-field"
+                    />
                     <button
                       type="button"
                       onClick={() => void reviseOutlineWithInstruction()}
                       disabled={!outlineInstruction.trim() || isBusy}
-                      className="nf-draft-action nf-draft-primary inline-flex h-9 items-center justify-center gap-1.5 px-3.5 disabled:opacity-40"
+                      aria-label="按要求重新规划"
+                      className="nf-draft-action nf-draft-primary nf-draft-revision-submit disabled:opacity-40"
                     >
-                      <RefreshCcw size={13} />
-                      按要求重新规划
+                      重新规划
                     </button>
                   </div>
-                </div>
+                </section>
               </div>
             </section>
           </div>

@@ -116,7 +116,7 @@ try {
     if(width===1280) {
       await button(shell,'目录管理').click();
       const manager=page.getByRole('dialog',{name:'目录管理',exact:true});
-      await manager.getByPlaceholder('例如：减少基础内容，增加两个实战章节…').fill('保留主题，增加课堂提问环节');
+      await manager.getByRole('textbox',{name:'大纲调整要求',exact:true}).fill('保留主题，增加课堂提问环节');
       const dialog=page.getByRole('dialog',{name:'按新要求重做大纲？',exact:true});
       await button(manager,'按要求重新规划').click();await button(dialog,'保留正文').click();
       assert(await page.evaluate(()=>window.briefTest.draft.sections[0].content.includes('板书设计')));
