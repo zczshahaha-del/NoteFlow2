@@ -1,15 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircle2,
+  ChevronDown,
   FileText,
   GitCompareArrows,
   History,
   Loader2,
-  RefreshCcw,
   Sparkles,
   Undo2,
   Wand2,
-  X,
 } from "lucide-react";
 import { useChatSlice, useEditorSlice } from "../store/selectors";
 import {
@@ -64,12 +63,38 @@ export default function EditPreviewWorkspace() {
   const [revisionLoading, setRevisionLoading] = useState(false);
   const [revisionOwnerId, setRevisionOwnerId] = useState("");
   const [revisionReload, setRevisionReload] = useState(0);
+  const [auxiliaryPanel, setAuxiliaryPanel] = useState<"summary" | "history" | null>(null);
+  const revisionInputRef = useRef<HTMLTextAreaElement>(null);
+  const summaryTriggerRef = useRef<HTMLButtonElement>(null);
+  const historyTriggerRef = useRef<HTMLButtonElement>(null);
+  const busy = chatLoading || operation !== null;
 
   const diff = useMemo(
     () => viewMode === "diff" ? diffMarkdownLines(activeEditPreview?.oldContent ?? "", activeEditPreview?.newContent ?? "") : null,
     [viewMode, activeEditPreview?.newContent, activeEditPreview?.oldContent]
   );
-  useEffect(() => { setViewMode("result"); }, [activeEditPreview?.id]);
+  useEffect(() => { setViewMode("result"); setAuxiliaryPanel(null); }, [activeEditPreview?.id]);
+
+  useLayoutEffect(() => {
+    const input = revisionInputRef.current;
+    if (!input) return;
+    const resize = () => {
+      input.style.height = "0px";
+      const maximum = parseFloat(window.getComputedStyle(input).maxHeight) || 88;
+      const height = input.scrollHeight;
+      input.style.height = `${Math.min(height, maximum)}px`;
+      input.style.overflowY = height > maximum ? "auto" : "hidden";
+    };
+    resize();
+    let width = input.clientWidth;
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => {
+      if (input.clientWidth === width) return;
+      width = input.clientWidth;
+      resize();
+    });
+    observer?.observe(input);
+    return () => observer?.disconnect();
+  }, [revisionText, activeEditPreview?.id]);
 
   useEffect(() => {
     if (!activeEditPreview?.id) {
@@ -103,24 +128,35 @@ export default function EditPreviewWorkspace() {
       : null;
 
   const restoreRevision = useCallback(async (revisionId: string) => {
-    if (!revisionId || chatLoading || !revisionsReady || !revisions.some(revision => revision.id === revisionId)) return;
+    if (!revisionId || busy || !revisionsReady || !revisions.some(revision => revision.id === revisionId)) return;
+    const initiator = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const fromHistory = !!initiator?.closest("#edit-preview-history");
+    const previewId = activeEditPreview?.id;
     setOperation("restore");
     try { await restoreEditPreviewRevisionRequest(revisionId); }
     catch { /* Store exposes the failure; keep the existing preview. */ }
-    finally { setOperation(null); }
-  }, [chatLoading, revisionsReady, revisions, restoreEditPreviewRevisionRequest]);
+    finally {
+      setOperation(null);
+      requestAnimationFrame(() => {
+        const trigger = historyTriggerRef.current;
+        if (!fromHistory || (document.activeElement !== document.body && document.activeElement !== initiator) || trigger?.closest("[data-preview-id]")?.getAttribute("data-preview-id") !== previewId) return;
+        trigger?.focus({ preventScroll: true });
+      });
+    }
+  }, [activeEditPreview?.id, busy, revisionsReady, revisions, restoreEditPreviewRevisionRequest]);
 
   const handleRevise = useCallback(() => {
     const text = revisionText.trim();
-    if (!text || chatLoading) return;
+    if (!text || busy) return;
     setOperation("revise");
     void reviseEditPreviewRequest(text).then(success => {
       if (success) setRevisionText(current => current.trim() === text ? "" : current);
     }).finally(() => setOperation(null));
-  }, [chatLoading, reviseEditPreviewRequest, revisionText]);
+  }, [busy, reviseEditPreviewRequest, revisionText]);
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
       if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
         handleRevise();
@@ -128,6 +164,14 @@ export default function EditPreviewWorkspace() {
     },
     [handleRevise]
   );
+
+  const closeAuxiliaryPanel = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key !== "Escape" || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+    event.preventDefault();
+    event.stopPropagation();
+    (auxiliaryPanel === "summary" ? summaryTriggerRef : historyTriggerRef).current?.focus({ preventScroll: true });
+    setAuxiliaryPanel(null);
+  };
 
   if (!activeEditPreview) {
     return (
@@ -161,206 +205,87 @@ export default function EditPreviewWorkspace() {
     : operation === "revise" ? "正在调整预览" : operation === "restore" ? "正在恢复预览版本" : "AI 正在处理";
 
   return (
-    <main className="edit-preview-workspace document-canvas nf-prose-refined flex min-w-0 flex-1 flex-col bg-jelly-bg">
-      <div className="shrink-0 border-b border-jelly-border bg-white px-4 py-3 sm:px-5">
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <Wand2 size={17} strokeWidth={1.8} className="text-jelly-blue-deep" />
-              <h1 className="truncate text-sm font-semibold text-jelly-text">
-                AI 修改预览
-              </h1>
-              <span className="rounded-md border border-jelly-blue/20 bg-jelly-blue-pale px-2 py-1 text-[12px] font-medium text-jelly-blue-deep">
-                {targetTypeLabel(activeEditPreview.targetType)}
-              </span>
+    <main className="edit-preview-workspace document-canvas nf-prose-refined flex min-w-0 flex-1 flex-col" data-preview-id={activeEditPreview.id} data-view-mode={viewMode} onKeyDown={auxiliaryPanel ? closeAuxiliaryPanel : undefined}>
+      <header className="nf-edit-header">
+        <div className="nf-edit-identity">
+          <div className="nf-edit-heading"><Wand2 size={16} aria-hidden="true" /><h1>修改预览</h1></div>
+          <div className="nf-edit-meta">
+            <span>{targetTypeLabel(activeEditPreview.targetType)}</span><span aria-hidden="true">·</span>
+            <AIWritingStatus compact kind="edit" step={operation === "apply" ? 2 : 1} label={busy ? operationLabel : "修改待确认"} />
+          </div>
+        </div>
+        <div className="nf-edit-actions">
+          <button type="button" className="nf-edit-button" disabled={busy}
+            onClick={() => { if (busy) return; setOperation("cancel"); void cancelEditPreviewRequest().finally(() => setOperation(null)); }}>取消</button>
+          <button type="button" className="nf-edit-button nf-edit-primary" disabled={busy}
+            onClick={() => { if (busy) return; setOperation("apply"); void applyEditPreviewRequest().finally(() => setOperation(null)); }}>
+            {operation === "apply" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <CheckCircle2 size={14} aria-hidden="true" />}应用修改
+          </button>
+        </div>
+      </header>
+
+      <div className="nf-edit-scroll">
+        <div className="nf-edit-frame">
+          {editPreviewError && <div role="alert" className="nf-edit-error">{editPreviewError}</div>}
+          <div className="nf-edit-reviewbar">
+            <div className="nf-edit-views" role="group" aria-label="预览查看方式">
+              <button type="button" className="nf-edit-button" onClick={() => setViewMode("result")} aria-pressed={viewMode === "result"}>修改后</button>
+              <button type="button" className="nf-edit-button" onClick={() => setViewMode("compare")} aria-pressed={viewMode === "compare"}>对照原文</button>
+              <button type="button" className="nf-edit-button" onClick={() => setViewMode("diff")} aria-pressed={viewMode === "diff"}><GitCompareArrows size={14} aria-hidden="true" />详细差异</button>
             </div>
-            <div className="mt-2"><AIWritingStatus kind="edit" step={operation === "apply" ? 2 : 1}
-              label={chatLoading || operation ? operationLabel : "修改待确认"}
-              hint="正式笔记尚未改变，应用后才会保存并更新索引。" /></div>
+            <div className="nf-edit-tools">
+              <button ref={summaryTriggerRef} type="button" className="nf-edit-button" aria-expanded={auxiliaryPanel === "summary"} aria-controls={auxiliaryPanel === "summary" ? "edit-preview-summary" : undefined}
+                onClick={() => setAuxiliaryPanel(current => current === "summary" ? null : "summary")}>
+                修改说明<ChevronDown size={13} aria-hidden="true" />
+              </button>
+              <button ref={historyTriggerRef} type="button" className="nf-edit-button" aria-expanded={auxiliaryPanel === "history"} aria-controls={auxiliaryPanel === "history" ? "edit-preview-history" : undefined} data-error={!!revisionError || undefined}
+                onClick={() => setAuxiliaryPanel(current => current === "history" ? null : "history")}>
+                <History size={14} aria-hidden="true" />版本记录
+              </button>
+            </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => { setOperation("cancel"); void cancelEditPreviewRequest().finally(() => setOperation(null)); }}
-              disabled={chatLoading}
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-jelly-border bg-white px-3 text-[13px] font-medium text-jelly-text-soft transition-colors hover:border-jelly-red/30 hover:bg-jelly-red-bg hover:text-jelly-red disabled:cursor-not-allowed disabled:opacity-55"
-            >
-              <X size={15} strokeWidth={1.9} />
-              取消
-            </button>
-            <button
-              type="button"
-              onClick={() => { setOperation("apply"); void applyEditPreviewRequest().finally(() => setOperation(null)); }}
-              disabled={chatLoading}
-              className="inline-flex h-9 items-center gap-2 rounded-md bg-jelly-blue px-3 text-[13px] font-semibold text-white shadow-[0_2px_8px_rgba(122,175,207,0.22)] transition-colors hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-55"
-            >
-              {chatLoading ? (
-                <Loader2 size={15} strokeWidth={1.9} className="animate-spin" />
-              ) : (
-                <CheckCircle2 size={15} strokeWidth={1.9} />
-              )}
-              应用修改
-            </button>
-          </div>
-        </div>
-      </div>
 
-      {editPreviewError && (
-        <div
-          role="alert"
-          className="mx-5 mt-4 rounded-md border border-jelly-red/30 bg-jelly-red-bg px-4 py-3 text-[13px] leading-relaxed text-jelly-red"
-        >
-          {editPreviewError}
-        </div>
-      )}
+          {auxiliaryPanel === "summary" && <section id="edit-preview-summary" className="nf-edit-auxiliary" aria-label="修改说明">
+            {activeEditPreview.changeSummary.length > 0 ? <ul className="nf-edit-summary-list">{activeEditPreview.changeSummary.map((item, index) => <li key={index + "-" + item}>{item}</li>)}</ul> : <p>AI 暂未返回修改说明。</p>}
+          </section>}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-        <div className="mb-4 rounded-md border border-jelly-border bg-white px-4 py-3">
-          <div className="mb-2 flex items-center gap-2 text-[12px] font-semibold text-jelly-text">
-            <Sparkles size={14} strokeWidth={1.8} className="text-jelly-blue-deep" />
-            修改摘要
-          </div>
-          {activeEditPreview.changeSummary.length > 0 ? (
-            <ul className="space-y-1 text-[13px] leading-relaxed text-jelly-text-soft">
-              {activeEditPreview.changeSummary.map((item, index) => (
-                <li key={`${item}-${index}`} className="flex gap-2">
-                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-jelly-blue" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-[13px] text-jelly-text-muted">AI 暂未返回摘要。</p>
-          )}
-        </div>
+          {auxiliaryPanel === "history" && <section id="edit-preview-history" className="nf-edit-auxiliary" aria-label="预览版本">
+            <div className="nf-edit-history-heading"><h2>预览版本</h2><button type="button" className="nf-edit-button" onClick={() => undoRevision && void restoreRevision(undoRevision.id)} disabled={!undoRevision || busy || !revisionsReady}><Undo2 size={14} aria-hidden="true" />撤销上次调整</button></div>
+            {revisionLoading ? <p role="status">正在读取版本…</p> : revisionError ? <div role="alert" className="nf-edit-history-error">{revisionError}<button type="button" className="nf-edit-button" disabled={busy} onClick={() => setRevisionReload(value => value + 1)}>重试读取</button></div> : revisions.length === 0 ? <p>暂无可恢复的预览版本。</p> : <div className="nf-edit-revisions">
+              {revisions.map((revision, index) => {
+                const current = index === currentRevisionIndex;
+                const date = revision.createdAt ? new Date(revision.createdAt) : null;
+                const time = date && !Number.isNaN(date.getTime()) ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+                return <button type="button" className="nf-edit-revision" key={revision.id} aria-label={current ? "第 " + (index + 1) + " 版，当前预览" : "恢复第 " + (index + 1) + " 版"} aria-current={current ? "true" : undefined} disabled={current || busy || !revisionsReady} onClick={() => void restoreRevision(revision.id)}>
+                  <span className="nf-edit-revision-name">第 {index + 1} 版<span>{revision.source === "generated" ? "初始生成" : "继续调整"}{time && " · " + time}</span></span><span className="nf-edit-revision-action">{current ? "当前" : "恢复"}</span>
+                </button>;
+              })}
+            </div>}
+          </section>}
 
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex overflow-hidden rounded-md border border-jelly-border bg-white">
-            <button type="button" onClick={() => setViewMode("result")} aria-pressed={viewMode === "result"}
-              className={`h-8 px-3 text-[12px] ${viewMode === "result" ? "bg-jelly-blue-pale font-semibold text-jelly-blue-deep" : "text-jelly-text-soft hover:bg-jelly-surface"}`}>
-              修改后
-            </button>
-            <button type="button" onClick={() => setViewMode("compare")} aria-pressed={viewMode === "compare"}
-              className={`h-8 px-3 text-[12px] ${viewMode === "compare" ? "bg-jelly-blue-pale font-semibold text-jelly-blue-deep" : "text-jelly-text-soft hover:bg-jelly-surface"}`}>
-              对照原文
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("diff")}
-              aria-pressed={viewMode === "diff"}
-              className={`flex h-8 items-center gap-1.5 px-3 text-[12px] ${viewMode === "diff" ? "bg-jelly-blue-pale font-semibold text-jelly-blue-deep" : "text-jelly-text-soft hover:bg-jelly-surface"}`}
-            >
-              <GitCompareArrows size={14} strokeWidth={1.8} /> 详细差异
-            </button>
-          </div>
-          {diff && <div className="flex items-center gap-2 text-[11px]">
-            <span className="rounded-md bg-jelly-green-bg px-2 py-1 text-jelly-green">+{diff.added} 行</span>
-            <span className="rounded-md bg-jelly-red-bg px-2 py-1 text-jelly-red">-{diff.removed} 行</span>
-            {diff.simplified && <span className="text-jelly-text-muted">长文已使用精简对比</span>}
+          {viewMode === "result" ? <section className="edit-preview-result" aria-label="修改后正文"><PreviewMarkdown content={activeEditPreview.newContent} /></section> : viewMode === "diff" && diff ? <section className="nf-edit-diff" aria-label="详细差异正文">
+            <div className="nf-edit-diff-summary"><span>+{diff.added} 行</span><span>−{diff.removed} 行</span>{diff.simplified && <span>长文已使用精简对比</span>}</div>
+            <div className="nf-edit-diff-scroll" role="region" tabIndex={0} aria-label="左右滚动查看完整差异">
+              <div className="nf-edit-diff-row nf-edit-diff-heading"><span>旧</span><span>新</span><span /><span>内容</span></div>
+              {diff.rows.map((row, index) => <div key={row.kind + "-" + row.oldLine + "-" + row.newLine + "-" + index} className="nf-edit-diff-row" data-kind={row.kind}>
+                <span>{row.oldLine ?? ""}</span><span>{row.newLine ?? ""}</span><span>{row.kind === "add" ? "+" : row.kind === "remove" ? "−" : ""}</span><span>{row.text || " "}</span>
+              </div>)}
+            </div>
+          </section> : <div className="nf-edit-compare">
+            <section aria-label="原文对照"><h2>原文</h2><PreviewMarkdown content={activeEditPreview.oldContent} /></section>
+            <section aria-label="修改后对照"><h2>修改后</h2><PreviewMarkdown content={activeEditPreview.newContent} /></section>
           </div>}
         </div>
-
-        {viewMode === "result" ? (
-          <section className="edit-preview-result" aria-label="修改后正文">
-            <PreviewMarkdown content={activeEditPreview.newContent} />
-          </section>
-        ) : viewMode === "diff" && diff ? (
-          <section className="min-h-[420px] overflow-hidden rounded-md border border-jelly-border bg-white">
-            <div className="grid grid-cols-[42px_42px_28px_minmax(0,1fr)] border-b border-jelly-border bg-jelly-surface px-1 py-2 text-[11px] font-medium text-jelly-text-muted">
-              <span className="text-center">旧</span>
-              <span className="text-center">新</span>
-              <span />
-              <span>内容</span>
-            </div>
-            <div className="max-h-[62vh] overflow-auto font-mono text-[12px] leading-5">
-              {diff.rows.map((row, index) => (
-                <div
-                  key={`${row.kind}-${row.oldLine ?? "x"}-${row.newLine ?? "x"}-${index}`}
-                  className={`grid min-w-[560px] grid-cols-[42px_42px_28px_minmax(0,1fr)] border-b border-jelly-border/50 px-1 ${row.kind === "add" ? "bg-jelly-green-bg text-jelly-green" : row.kind === "remove" ? "bg-jelly-red-bg text-jelly-red" : "text-jelly-text-soft"}`}
-                >
-                  <span className="select-none border-r border-jelly-border/60 pr-2 text-right text-jelly-text-muted">{row.oldLine ?? ""}</span>
-                  <span className="select-none border-r border-jelly-border/60 pr-2 text-right text-jelly-text-muted">{row.newLine ?? ""}</span>
-                  <span className="select-none text-center font-semibold">{row.kind === "add" ? "+" : row.kind === "remove" ? "−" : ""}</span>
-                  <span className="whitespace-pre-wrap break-words px-2">{row.text || " "}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : (
-          <div className="grid min-h-[420px] grid-cols-1 gap-4 xl:grid-cols-2">
-            <section className="min-h-0 rounded-md border border-jelly-border bg-white">
-              <div className="border-b border-jelly-border px-4 py-2.5">
-                <h2 className="text-[13px] font-semibold text-jelly-text">原文</h2>
-              </div>
-              <div className="max-h-[62vh] overflow-y-auto px-4 py-3">
-                <PreviewMarkdown content={activeEditPreview.oldContent} />
-              </div>
-            </section>
-
-            <section className="min-h-0 rounded-md border border-jelly-blue/25 bg-white">
-              <div className="border-b border-jelly-blue/15 bg-jelly-blue-pale px-4 py-2.5">
-                <h2 className="text-[13px] font-semibold text-jelly-blue-deep">修改后</h2>
-              </div>
-              <div className="max-h-[62vh] overflow-y-auto px-4 py-3">
-                <PreviewMarkdown content={activeEditPreview.newContent} />
-              </div>
-            </section>
-          </div>
-        )}
       </div>
 
-      <div className="shrink-0 border-t border-jelly-border bg-white px-4 py-3 sm:px-5">
-        <div className="mb-2 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => undoRevision && void restoreRevision(undoRevision.id)}
-            disabled={!undoRevision || chatLoading || !revisionsReady}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-jelly-border bg-white px-3 text-[12px] text-jelly-text-soft hover:bg-jelly-blue-pale hover:text-jelly-blue-deep disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Undo2 size={14} strokeWidth={1.8} /> 撤销上次调整
-          </button>
-          <label className="flex min-w-0 items-center gap-1.5 text-[12px] text-jelly-text-muted">
-            <History size={14} strokeWidth={1.8} />
-            <span className="shrink-0">恢复旧版</span>
-            <select
-              value={currentRevisionIndex >= 0 ? revisions[currentRevisionIndex]?.id : ""}
-              onChange={(event) => void restoreRevision(event.target.value)}
-              disabled={revisions.length === 0 || chatLoading || !revisionsReady}
-              className="h-8 min-w-0 max-w-[260px] rounded-md border border-jelly-border bg-white px-2 text-[12px] text-jelly-text-soft outline-none disabled:opacity-50"
-            >
-              <option value="">选择预览版本</option>
-              {revisions.map((revision, index) => (
-                <option key={revision.id} value={revision.id}>
-                  {index + 1}. {revision.source === "generated" ? "初始生成" : "继续调整"}{revision.createdAt ? ` · ${new Date(revision.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-          {revisionError && <span className="text-[11px] text-jelly-amber">{revisionError} <button type="button" onClick={() => setRevisionReload(value => value + 1)} disabled={chatLoading} className="underline">重试读取</button></span>}
-        </div>
-        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-end">
-          <textarea
-            value={revisionText}
-            onChange={(event) => setRevisionText(event.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="继续调整这份预览，例如：再通俗一点，补一个项目例子..."
-            className="min-h-16 flex-1 resize-none rounded-md border border-jelly-border bg-white px-3 py-2 text-[13px] leading-relaxed text-jelly-text outline-none transition-colors placeholder:text-jelly-text-muted"
-          />
-          <button
-            type="button"
-            onClick={handleRevise}
-            disabled={!revisionText.trim() || chatLoading}
-            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-jelly-border bg-white px-3 text-[13px] font-medium text-jelly-text-soft transition-colors hover:border-jelly-blue/25 hover:bg-jelly-blue-pale hover:text-jelly-blue-deep disabled:cursor-not-allowed disabled:opacity-55"
-          >
-            {chatLoading ? (
-              <Loader2 size={15} strokeWidth={1.9} className="animate-spin" />
-            ) : (
-              <RefreshCcw size={15} strokeWidth={1.9} />
-            )}
-            调整预览
+      <footer className="nf-edit-footer">
+        <div className="nf-edit-composer">
+          <textarea ref={revisionInputRef} rows={1} value={revisionText} onChange={event => setRevisionText(event.target.value)} onKeyDown={handleKeyDown} placeholder="还想怎么调整？" aria-label="继续调整预览" aria-description="Ctrl 或 Command 加 Enter 提交。只调整预览，应用后才写入笔记。" />
+          <button type="button" className="nf-edit-button nf-edit-adjust" onClick={handleRevise} disabled={!revisionText.trim() || busy} aria-label="调整预览">
+            {operation === "revise" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Wand2 size={14} aria-hidden="true" />}调整
           </button>
         </div>
-      </div>
+      </footer>
     </main>
   );
 }
