@@ -1,0 +1,108 @@
+<div id="nf-brief-preview" class="viz-carousel viz-dotted-background" aria-label="标题与要求卡片设计" data-previous-label="上一款" data-next-label="下一款">
+  <section data-variant="轻纸一体" aria-label="轻纸一体卡片"><div class="nfb-stage" data-design="paper"></div></section>
+  <section data-variant="柔和分区" aria-label="柔和分区卡片" hidden><div class="nfb-stage" data-design="soft"></div></section>
+</div>
+<template id="nfb-template">
+  <div class="nfb-chat">
+    <div class="nfb-request">给我生成一份关于两小儿辩日的一份教案</div>
+    <p class="nfb-response">先整理一份教案大纲，你可以调整标题和要求。</p>
+    <section class="nfb-card" aria-label="可编辑的笔记生成卡片">
+      <header class="nfb-heading"><span class="nfb-brand">AI 草稿</span><span class="nfb-status" role="status">待生成大纲</span></header>
+      <div class="nfb-fields">
+        <label class="nfb-title-label"><span class="nfb-label">标题</span><input class="nfb-title" aria-label="标题" value="《两小儿辩日》教案" maxlength="160" autocomplete="off" /></label>
+        <label class="nfb-requirement-label"><span class="nfb-label">要求 <span class="nfb-optional">选填</span></span><textarea class="nfb-requirements" aria-label="要求" maxlength="2000" rows="3" placeholder="希望怎么写？&#10;可以补充适用年级、课时或教学重点。"></textarea></label>
+        <p class="nfb-error" role="alert" hidden>请先填写标题。</p>
+        <p class="nfb-changed" role="status" hidden>要求已调整，原大纲保持不变。</p>
+        <div class="nfb-outline" hidden><p class="nfb-outline-title"></p><p class="nfb-outline-requirements"></p><ol><li>教学目标与重难点</li><li>情境导入与初读感知</li><li>研读对话与探究讨论</li><li>课堂小结与课后作业</li></ol></div>
+      </div>
+      <footer class="nfb-footer"><span class="nfb-footer-note">先看大纲，再生成正文</span><button class="nfb-action cursor-interaction" type="button">生成大纲 <span aria-hidden="true">↗</span></button></footer>
+    </section>
+  </div>
+</template>
+<style>
+  #nf-brief-preview { color-scheme:light dark; }
+  #nf-brief-preview .nfb-stage { --nfb-paper:light-dark(#fff,#1a232c);--nfb-ink:light-dark(#293845,#e1e9ef);--nfb-muted:light-dark(#778590,#a4b1bc);--nfb-edge:light-dark(#e4e9ed,#35434e);--nfb-fill:light-dark(#f6f8f9,#222f3b);--nfb-focus:light-dark(#436d8a,#a4cde7);--nfb-button:light-dark(#426d8b,#a9cee5);--nfb-button-text:light-dark(#fff,#172a38);--nfb-radius:20px;--nfb-padding:26px;--nfb-error:light-dark(#a03d3d,#ffb6b6);padding:28px 24px;min-height:570px;color:var(--nfb-ink);font:14px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif; }
+  #nf-brief-preview .nfb-stage * { box-sizing:border-box; }
+  #nf-brief-preview [hidden] { display:none!important; }
+  #nf-brief-preview .nfb-chat { width:100%;max-width:560px;margin:auto; }
+  #nf-brief-preview .nfb-request { width:fit-content;max-width:90%;margin:0 0 27px auto;background:var(--nfb-fill);padding:11px 16px;border-radius:17px 17px 5px 17px; }
+  #nf-brief-preview .nfb-response { margin:0 0 16px;font-size:14px; }
+  #nf-brief-preview .nfb-card { background:var(--nfb-paper);border:1px solid var(--nfb-edge);border-radius:var(--nfb-radius);box-shadow:0 3px 7px light-dark(#243e5103,#00000010),0 16px 38px -18px light-dark(#34516b26,#00000050);overflow:hidden; }
+  #nf-brief-preview .nfb-heading { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:22px var(--nfb-padding) 0; }
+  #nf-brief-preview .nfb-brand { font-size:12px;letter-spacing:.07em;font-weight:500;color:var(--nfb-focus); }
+  #nf-brief-preview .nfb-status { font-size:11px;color:var(--nfb-muted); }
+  #nf-brief-preview .nfb-fields { padding:22px var(--nfb-padding) 20px; }
+  #nf-brief-preview .nfb-label { display:flex;align-items:center;gap:8px;color:var(--nfb-muted);font-size:12px; }
+  #nf-brief-preview .nfb-optional { font-size:11px;opacity:.85; }
+  #nf-brief-preview input,#nf-brief-preview textarea { display:block;width:100%;min-width:0;box-sizing:border-box;color:var(--nfb-ink);font-family:inherit;background:var(--nfb-paper);border:1px solid transparent;border-radius:7px; }
+  #nf-brief-preview .nfb-title { font-size:22px;font-weight:500;line-height:1.65;padding:6px 0;margin-top:3px; }
+  #nf-brief-preview .nfb-requirement-label { display:block;border-top:1px solid var(--nfb-edge);margin-top:18px;padding-top:20px; }
+  #nf-brief-preview .nfb-requirements { font-size:14px;line-height:1.85;min-height:86px;resize:none;padding:9px 0 0;margin-top:4px;overflow:hidden; }
+  #nf-brief-preview .nfb-requirements::placeholder { color:var(--nfb-muted);opacity:1; }
+  #nf-brief-preview .nfb-footer { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;padding:16px var(--nfb-padding);border-top:1px solid var(--nfb-edge); }
+  #nf-brief-preview .nfb-footer-note { color:var(--nfb-muted);font-size:11px; }
+  #nf-brief-preview .nfb-action { display:flex;align-items:center;justify-content:center;gap:14px;margin-left:auto;padding:10px 17px;min-height:40px;border:0;border-radius:10px;background:var(--nfb-button);color:var(--nfb-button-text);font-family:inherit;font-size:13px;line-height:1.5;font-weight:500;transition:filter 140ms; }
+  #nf-brief-preview .nfb-action:hover { filter:brightness(.95); }
+  #nf-brief-preview .nfb-error { color:var(--nfb-error);font-size:12px;margin:10px 0 0; }
+  #nf-brief-preview .nfb-changed { color:var(--nfb-focus);font-size:12px;margin:10px 0 0; }
+  #nf-brief-preview .nfb-outline { border-top:1px solid var(--nfb-edge);padding-top:16px;margin-top:16px;font-size:13px; }
+  #nf-brief-preview .nfb-outline-title { margin:0;font-weight:500;overflow-wrap:anywhere; }
+  #nf-brief-preview .nfb-outline-requirements { color:var(--nfb-muted);white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0; }
+  #nf-brief-preview .nfb-outline ol { padding-left:20px;margin:12px 0 0; }
+  #nf-brief-preview .nfb-outline li { padding:3px 0; }
+  #nf-brief-preview [data-design="soft"] .nfb-heading { padding-bottom:17px;border-bottom:1px solid var(--nfb-edge); }
+  #nf-brief-preview [data-design="soft"] .nfb-fields { padding-top:20px; }
+  #nf-brief-preview [data-design="soft"] .nfb-title { font-size:18px;background:var(--nfb-fill);padding:10px 13px;margin-top:8px;border-radius:10px; }
+  #nf-brief-preview [data-design="soft"] .nfb-requirement-label { border-top:0;margin-top:18px;padding-top:0; }
+  #nf-brief-preview [data-design="soft"] .nfb-requirements { background:var(--nfb-fill);border-radius:10px;padding:11px 13px;margin-top:8px;min-height:105px; }
+  #nf-brief-preview [data-design="soft"] .nfb-footer { border-top:0;flex-direction:column-reverse;gap:10px;padding-top:0; }
+  #nf-brief-preview [data-design="soft"] .nfb-action { width:100%; }
+  @media(max-width:440px) {
+    #nf-brief-preview .nfb-stage { --nfb-padding:18px;padding:20px 8px;min-height:650px; }
+    #nf-brief-preview .nfb-title { font-size:19px; }
+    #nf-brief-preview .nfb-requirements { font-size:16px; }
+    #nf-brief-preview .nfb-footer-note { max-width:100%; }
+  }
+  @media(pointer:coarse) { #nf-brief-preview .nfb-action { min-height:44px; } }
+  @media(prefers-reduced-motion:reduce) { #nf-brief-preview .nfb-action { transition:none; } }
+</style>
+<script>
+(() => {
+  const root=document.getElementById('nf-brief-preview');
+  const template=document.getElementById('nfb-template');
+  const version='draft-brief-v1';
+  let revision=0;
+  const views=[];
+  const persist=()=>{revision++;window.openai?.setWidgetState?.({modelContent:{design:version,views:views.map(v=>({design:v.design,title:v.title.value,requirements:v.requirements.value,generated:Boolean(v.generated)}))},privateContent:{version,revision,views:views.map(v=>({title:v.title.value,requirements:v.requirements.value,generated:v.generated}))}})?.catch(()=>{});};
+  root.querySelectorAll('.nfb-stage').forEach(stage=>{
+    stage.append(template.content.cloneNode(true));
+    const q=className=>stage.querySelector('.nfb-'+className);
+    const v={design:stage.dataset.design,title:q('title'),requirements:q('requirements'),generated:null};
+    views.push(v);
+    const fit=()=>{v.requirements.style.height='auto';v.requirements.style.height=v.requirements.scrollHeight+'px';};
+    const render=()=>{
+      const changed=Boolean(v.generated&&(v.generated.title!==v.title.value.trim()||v.generated.requirements!==v.requirements.value.trim()));
+      q('changed').hidden=!changed;
+      q('changed').textContent='标题或要求已调整，原大纲保持不变。';
+      q('status').textContent=changed?'待重新生成':v.generated?'大纲待确认':'待生成大纲';
+      q('action').textContent=changed?'重新生成大纲':v.generated?'查看大纲':'生成大纲 ↗';
+      fit();
+    };
+    [v.title,v.requirements].forEach(input=>{input.addEventListener('input',()=>{q('error').hidden=true;render();});input.addEventListener('blur',persist);});
+    v.title.addEventListener('keydown',event=>{if(event.isComposing||event.keyCode===229)return;if(event.key==='Enter'){event.preventDefault();v.requirements.focus();}});
+    q('action').addEventListener('click',()=>{
+      const title=v.title.value.trim();
+      if(!title){q('error').hidden=false;v.title.focus();return;}
+      const next={title,requirements:v.requirements.value.trim()};
+      if(v.generated&&JSON.stringify(next)===JSON.stringify(v.generated)){q('outline').hidden=!q('outline').hidden;q('action').textContent=q('outline').hidden?'查看大纲':'收起大纲';return;}
+      v.generated=next;q('outline-title').textContent=next.title;q('outline-requirements').textContent=next.requirements;q('outline').hidden=false;render();q('action').textContent='收起大纲';persist();
+    });
+    v.restore=data=>{if(!data||document.activeElement===v.title||document.activeElement===v.requirements)return;if(typeof data.title==='string')v.title.value=data.title.slice(0,160);if(typeof data.requirements==='string')v.requirements.value=data.requirements.slice(0,2000);if(data.generated&&typeof data.generated.title==='string'&&typeof data.generated.requirements==='string')v.generated={title:data.generated.title.slice(0,160),requirements:data.generated.requirements.slice(0,2000)};q('outline-title').textContent=v.generated?.title||'';q('outline-requirements').textContent=v.generated?.requirements||'';q('outline').hidden=true;render();};
+    render();
+    if(globalThis.Tweak){const settings={radius:20};const tweak=new Tweak({container:q('card'),onChange:()=>stage.style.setProperty('--nfb-radius',settings.radius+'px')});tweak.addSlider(settings,'radius',{label:'卡片圆角',min:12,max:24,step:2,unit:'px'});}
+  });
+  const restore=state=>{const s=state?.privateContent;if(s?.version!==version||!Array.isArray(s.views))return;const r=Number.isSafeInteger(s.revision)?s.revision:0;if(r<revision||(r===revision&&revision>0))return;revision=r;views.forEach((v,i)=>v.restore(s.views[i]));};
+  restore(window.openai?.widgetState);
+  window.addEventListener('openai:set_globals',event=>restore(event.detail?.globals?.widgetState));
+})();
+</script>
