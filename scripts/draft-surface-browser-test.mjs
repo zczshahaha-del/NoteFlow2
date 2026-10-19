@@ -58,8 +58,8 @@ const source=scripts[0].code.replaceAll('</script','<\\/script');
 const browser=await chromium.launch({executablePath:process.env.NOTEFLOW_BROWSER_EXECUTABLE || undefined,headless:true});
 const errors=[],requests=[],reports=[];
 try {
-  for(const mobile of [false,true]) {
-    const context=await browser.newContext({viewport:mobile?{width:320,height:800}:{width:1440,height:1000},isMobile:mobile,hasTouch:mobile,deviceScaleFactor:1});
+  for(const {width,height,mobile} of [{width:1440,height:1000,mobile:false},{width:960,height:900,mobile:false},{width:736,height:900,mobile:true},{width:320,height:800,mobile:true}]) {
+    const context=await browser.newContext({viewport:{width,height},isMobile:mobile,hasTouch:mobile,deviceScaleFactor:1});
     await context.route('**/*',route=>{requests.push(route.request().url());return route.abort()});
     const page=await context.newPage();page.on('pageerror',err=>{errors.push(String(err));console.error('offline draft pageerror:',String(err))});
     await page.setContent('<html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>'+css+'</style></head><body><div id="root"></div><script type="module">'+source+'</script></body></html>');
@@ -68,7 +68,7 @@ try {
     const shell=page.locator('.nf-draft-shell');
     await shell.locator('.nf-draft-revision').waitFor();await page.waitForTimeout(220);
     const measure=()=>shell.evaluate(n=>{const r=n.getBoundingClientRect(),s=getComputedStyle(n),close=n.querySelector('.nf-draft-close'),c=getComputedStyle(close),outline=n.querySelector('aside');return {width:r.width,height:r.height,docWidth:document.documentElement.scrollWidth,border:s.borderWidth,background:s.backgroundColor,sidebarWidth:outline.getBoundingClientRect().width,close:{width:close.getBoundingClientRect().width,height:close.getBoundingClientRect().height,background:c.backgroundColor,radius:c.borderRadius,icon:getComputedStyle(close.querySelector('svg')).width},toolbar:getComputedStyle(n.querySelector('.nf-draft-toolbar')).display,lines:[n.querySelector('header'),outline,n.querySelector('.nf-draft-section-bar'),n.querySelector('footer')].map(e=>getComputedStyle(e).borderWidth)}});
-    const initial=await measure();assert.equal(initial.docWidth,mobile?320:1440);assert.equal(initial.width,mobile?288:1240);assert.equal(initial.height,mobile?768:880);assert.equal(initial.border,'0px');assert.ok(initial.lines.every(x=>x==='0px'));assert.equal(initial.close.background,'rgba(0, 0, 0, 0)');assert.equal(initial.close.icon,'18px');assert.equal(initial.close.radius,'10px');assert.equal(initial.close.width,mobile?44:34);assert.equal(initial.toolbar,'flex');if(!mobile)assert.equal(initial.sidebarWidth,282);
+    const initial=await measure();assert.equal(initial.docWidth,width);assert.equal(initial.width,Math.min(1240,width-(width>=640?48:32)));assert.equal(initial.height,Math.min(880,height-(width>=640?48:32)));assert.equal(initial.border,'0px');assert.ok(initial.lines.every(x=>x==='0px'));assert.equal(initial.close.background,'rgba(0, 0, 0, 0)');assert.equal(initial.close.icon,'18px');assert.equal(initial.close.radius,'10px');assert.equal(initial.close.width,mobile?44:34);assert.equal(initial.toolbar,'flex');if(!mobile)assert.equal(initial.sidebarWidth,282);
     const buttons=await shell.locator('button').evaluateAll(nodes=>nodes.filter(n=>n.getBoundingClientRect().width>0).map(n=>{const r=n.getBoundingClientRect(),p=n.closest('main').getBoundingClientRect();return {width:r.width,height:r.height,inside:r.left>=p.left && r.right<=p.right && r.top>=p.top && r.bottom<=p.bottom}}));
     assert.ok(buttons.every(b=>b.inside));if(mobile)assert.ok(buttons.every(b=>b.height>=44));
     assert.equal(await shell.getByRole('button',{name:'编辑',exact:true}).count(),0);
@@ -79,6 +79,30 @@ try {
     assert.equal(await field.getAttribute('placeholder'),'告诉 AI 如何修改…');
     const inputGeometry=await revision.evaluate(el=>{const r=el.getBoundingClientRect(),button=el.querySelector('button').getBoundingClientRect();return {height:r.height,width:r.width,rightGap:r.right-button.right,sameRow:button.top>=r.top&&button.bottom<=r.bottom}});
     assert.equal(inputGeometry.height,mobile?52:44);assert(inputGeometry.width<=640);assert(inputGeometry.sameRow);assert(inputGeometry.rightGap<=6);
+    const alignment=await shell.evaluate(n=>{
+      const frames=[...n.querySelectorAll('.nf-draft-reading')].map(el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return {left:r.left+parseFloat(s.paddingLeft),right:r.right-parseFloat(s.paddingRight)}});
+      const revision=n.querySelector('.nf-draft-revision').getBoundingClientRect(),actions=n.querySelector('.nf-draft-footer-actions').getBoundingClientRect();
+      return {frames,inputLeft:revision.left,inputTop:revision.top,inputBottom:revision.bottom,actionsLeft:actions.left,actionsTop:actions.top,actionsBottom:actions.bottom,actionsRight:actions.right,headerHeight:n.querySelector('header').getBoundingClientRect().height};
+    });
+    for(const frame of alignment.frames){assert(Math.abs(frame.left-alignment.frames[0].left)<1);assert(Math.abs(frame.right-alignment.frames[0].right)<1)}
+    assert(Math.abs(alignment.inputLeft-alignment.frames[0].left)<1,'Revision starts on the same text column as the chapter title and prose');
+    assert(Math.abs(alignment.actionsRight-alignment.frames[0].right)<1,'Footer actions end at the text column, not the modal edge');
+    if(!mobile){assert(alignment.actionsLeft>=alignment.frames[0].left+inputGeometry.width);assert(Math.abs(alignment.inputTop-alignment.actionsTop)<1,'Input and actions share one row')}
+    else assert(alignment.actionsTop>=alignment.inputBottom,'Narrow view wraps actions below without overlap');
+    assert(alignment.headerHeight<=84,'Header no longer stacks a separate stage, steps, hint and progress strip');
+    assert.equal(await shell.locator('.nf-draft-stage ol,.nf-draft-stage .nf-writing-hint,.nf-draft-progress-fill').count(),0);
+    assert.equal(await shell.getByRole('progressbar',{name:'草稿正文生成进度'}).getAttribute('aria-valuetext'),'已生成 2 / 3 章');
+    assert.equal(await shell.locator('aside').getByRole('button',{name:'目录管理',exact:true}).count(),1);
+    assert.equal(await shell.locator('header').getByRole('button',{name:'目录管理',exact:true}).count(),0);
+    await shell.locator('aside').getByRole('button',{name:'目录管理',exact:true}).click();
+    const managerEntry=page.getByRole('dialog',{name:'目录管理',exact:true});
+    await managerEntry.waitFor();
+    const managerBounds=await managerEntry.locator('.nf-draft-panel').boundingBox();
+    assert(managerBounds.x>=0&&managerBounds.x+managerBounds.width<=width,'Relocated directory manager fits every viewport');
+    await managerEntry.locator('header').getByRole('button',{name:'关闭目录管理',exact:true}).click();
+    await managerEntry.waitFor({state:'detached'});
+    await shell.locator('header h1').click();
+    if(process.env.NOTEFLOW_DRAFT_SCREENSHOT_DIR)await page.screenshot({path:process.env.NOTEFLOW_DRAFT_SCREENSHOT_DIR+'/workbench-'+width+'.png'});
     assert.equal(await shell.locator('.nf-writing-label').textContent(),'正文待完善');
     await field.fill('关闭重开后保留的合成修改要求');
     assert.equal(await field.evaluate(n=>getComputedStyle(n).outlineStyle),'none');
@@ -133,7 +157,7 @@ try {
     await page.evaluate(()=>window.draftTest.api.show('assembled'));await shell.locator('.nf-draft-revision').waitFor();await page.waitForTimeout(50);
     await shell.locator('footer').getByRole('button',{name:'保存为笔记',exact:true}).click();
     const save=page.getByRole('dialog',{name:'保存为笔记',exact:true});await save.waitFor();
-    const centered=await save.locator('.nf-draft-panel').evaluate(n=>{const r=n.getBoundingClientRect();return {width:r.width,x:r.x,y:r.y,offset:Math.abs((r.left+r.right)/2-innerWidth/2)}});assert.ok(centered.offset<1);assert.equal(centered.width,mobile?288:460);
+    const centered=await save.locator('.nf-draft-panel').evaluate(n=>{const r=n.getBoundingClientRect();return {width:r.width,x:r.x,y:r.y,offset:Math.abs((r.left+r.right)/2-innerWidth/2)}});assert.ok(centered.offset<1);assert.equal(centered.width,Math.min(460,width-32));
     await save.getByRole('textbox',{name:'笔记标题'}).fill('');assert.ok(await save.getByRole('button',{name:'确认保存',exact:true}).isDisabled());
     await save.getByRole('textbox',{name:'笔记标题'}).fill('离线保存验证');
     await page.evaluate(()=>window.draftTest.api.failNext='saveDraftToNotes');
@@ -169,7 +193,7 @@ try {
       await page.evaluate(()=>window.draftTest.api.show('outline_ready'));await shell.waitFor();
     }
     await shell.locator('.nf-draft-close').click();await shell.waitFor({state:'detached'});assert.ok(await page.evaluate(()=>window.draftTest.api.calls.some(c=>c.name==='dismissDraftWorkspace')));
-    reports.push({mobile,initial,centered,manualEditRemoved:true,confirmation:!mobile,directoryCRUD:!mobile,failureRetry:!mobile,dismissReopenPreservesInput:true,saveFailureRetry:true,savingDistinct:true,discardFailureRetry:!mobile,terminalOutcome:true,saveMock:true,stopMock:true,dark:true,reducedMotion:true});await context.close();
+    reports.push({width,mobile,initial,alignment,centered,compactHeader:true,sharedReadingColumn:true,footerSingleDesktopRow:true,directoryByOutline:true,manualEditRemoved:true,confirmation:!mobile,directoryCRUD:!mobile,failureRetry:!mobile,dismissReopenPreservesInput:true,saveFailureRetry:true,savingDistinct:true,discardFailureRetry:!mobile,terminalOutcome:true,saveMock:true,stopMock:true,dark:true,reducedMotion:true});await context.close();
   }
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
   console.log(JSON.stringify({ok:true,offlineProductionComponent:true,syntheticServices:true,networkBlocked:true,reports,errors},null,2));

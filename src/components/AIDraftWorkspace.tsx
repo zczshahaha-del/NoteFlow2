@@ -1308,25 +1308,22 @@ export default function AIDraftWorkspace() {
 
         <main className="draft-modal-shell nf-draft-shell relative flex h-[min(880px,calc(100vh-32px))] w-[min(1240px,calc(100vw-32px))] min-h-0 flex-col overflow-hidden sm:h-[min(880px,calc(100vh-48px))] sm:w-[min(1240px,calc(100vw-48px))]">
           <header className="nf-draft-header flex min-h-[64px] shrink-0 items-center gap-4 px-5 sm:px-7">
-            <div className="min-w-0 flex-1">
+            <div className="nf-draft-heading min-w-0 flex-1">
               <h1 className="nf-draft-title truncate">
                 {cleanTitle(topic)}
               </h1>
+              <div className="nf-draft-stage">
+                <AIWritingStatus compact label={busyMode === "cancel" ? "正在放弃草稿" : writingStatus.label}
+                  step={writingStatus.step} />
+                {activeSections.length > 0 && <span className="nf-draft-progress" role="progressbar"
+                  aria-label="草稿正文生成进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}
+                  aria-valuetext={`已生成 ${completedSections} / ${activeSections.length} 章`}>
+                  {completedSections} / {activeSections.length} 章
+                </span>}
+              </div>
             </div>
 
             <div className="nf-draft-toolbar flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setDirectoryManagerOpen(true);
-                  setMoreMenuOpen(false);
-                }}
-                disabled={!draft || isBusy || draft.status === "generating"}
-                className="nf-draft-action nf-draft-desktop-action inline-flex h-9 items-center gap-1.5 px-3 disabled:opacity-45"
-              >
-                <ListTree size={14} />
-                目录管理
-              </button>
               <div ref={bodyInstructionRef} className="relative">
                 <button
                   type="button"
@@ -1477,24 +1474,15 @@ export default function AIDraftWorkspace() {
             </button>
           </header>
 
-          <div className="nf-draft-stage shrink-0 px-5 pb-3 sm:px-7">
-            <AIWritingStatus label={busyMode === "cancel" ? "正在放弃草稿" : writingStatus.label}
-              step={writingStatus.step} hint={writingStage === "generating" && statusText ? statusText : writingStatus.hint} />
-          </div>
-
-          {activeSections.length > 0 && (
-            <div className="nf-draft-progress h-1 shrink-0" role="progressbar" aria-label="草稿正文生成进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
-              <div className="nf-draft-progress-fill h-full transition-[width] duration-500" style={{ width: `${progress}%` }} />
-            </div>
-          )}
-
           <div className="flex min-h-0 flex-1 flex-col md:flex-row">
             <aside className="nf-draft-outline flex h-[168px] shrink-0 flex-col md:h-auto md:w-[282px]">
               <div className="flex shrink-0 items-center justify-between px-5 pb-3 pt-5">
                 <p className="nf-draft-section-title">大纲目录</p>
-                <span className="nf-draft-count text-[11px]">
-                  {activeSections.length} 章
-                </span>
+                <button type="button" className="nf-draft-action nf-draft-icon grid place-items-center"
+                  aria-label="目录管理" title="目录管理" disabled={!draft || isBusy || draft.status === "generating"}
+                  onClick={() => { setDirectoryManagerOpen(true); setMoreMenuOpen(false); }}>
+                  <ListTree size={16} />
+                </button>
               </div>
 
               <nav className="min-h-0 flex-1 overflow-y-auto px-3 pb-4" aria-label="草稿章节目录">
@@ -1532,35 +1520,37 @@ export default function AIDraftWorkspace() {
             </aside>
 
             <section className="nf-draft-main flex min-h-0 min-w-0 flex-1 flex-col">
-              <div className="nf-draft-section-bar flex min-h-[58px] shrink-0 items-center justify-between gap-3 px-5 sm:px-7">
-                <div className="min-w-0">
-                  <h2 className="nf-draft-section-title truncate">
-                    {selectedSection?.title || (busyMode === "outline" ? "正在准备章节" : "选择一个章节")}
-                  </h2>
-                </div>
-                {selectedSection?.status === "generating" && (
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-jelly-blue-pale px-2.5 py-1 text-[11px] text-jelly-blue-deep">
-                      <Loader2 size={12} className="animate-spin" />
-                      生成中
-                    </span>
-                    {busyMode === "section" && (
-                      <button
-                        type="button"
-                        onClick={stopActiveRequest}
-                        className="nf-draft-action nf-draft-danger inline-flex h-8 items-center gap-1.5 px-2.5"
-                        aria-label={`停止生成 ${selectedSection.title}`}
-                      >
-                        <Square size={11} fill="currentColor" />
-                        停止生成
-                      </button>
-                    )}
+              <div className="nf-draft-section-bar shrink-0">
+                <div className="nf-draft-reading flex min-h-[58px] items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="nf-draft-section-title truncate">
+                      {selectedSection?.title || (busyMode === "outline" ? "正在准备章节" : "选择一个章节")}
+                    </h2>
                   </div>
-                )}
+                  {selectedSection?.status === "generating" && (
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-jelly-blue-pale px-2.5 py-1 text-[11px] text-jelly-blue-deep">
+                        <Loader2 size={12} className="animate-spin" />
+                        生成中
+                      </span>
+                      {busyMode === "section" && (
+                        <button
+                          type="button"
+                          onClick={stopActiveRequest}
+                          className="nf-draft-action nf-draft-danger inline-flex h-8 items-center gap-1.5 px-2.5"
+                          aria-label={`停止生成 ${selectedSection.title}`}
+                        >
+                          <Square size={11} fill="currentColor" />
+                          停止生成
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto">
-                <div className="mx-auto w-full max-w-[820px] px-6 py-7 sm:px-10 sm:py-10">
+                <div className="nf-draft-reading py-7 sm:py-10">
                   {errorText && (
                     <div role="alert" className="mb-5 rounded-lg border border-jelly-red/25 bg-jelly-red-bg px-3 py-2 text-[12px] leading-relaxed text-jelly-red">
                       {errorText}
@@ -1608,9 +1598,32 @@ export default function AIDraftWorkspace() {
                 </div>
               </div>
 
-              <footer className="nf-draft-footer shrink-0 px-4 py-3 sm:px-6">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
+              <footer className="nf-draft-footer shrink-0">
+                <div className="nf-draft-reading nf-draft-footer-inner">
+                  {selectedSection?.content.trim() && (
+                    <div className="nf-draft-revision">
+                      <textarea
+                        id="draft-section-instruction"
+                        ref={sectionInstructionRef}
+                        value={sectionInstruction}
+                        onChange={(event) => setSectionInstruction(event.target.value)}
+                        placeholder="告诉 AI 如何修改…"
+                        aria-label="告诉 AI 如何修改"
+                        rows={1}
+                        className="nf-draft-field"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void generateOneSection(selectedSection, sectionInstruction)}
+                        disabled={!sectionInstruction.trim() || isBusy || draft?.status === "generating"}
+                        aria-label="按要求修改"
+                        className="nf-draft-action nf-draft-revision-submit disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        修改
+                      </button>
+                    </div>
+                  )}
+                  <div className="nf-draft-footer-actions">
                     {selectedSection?.content.trim() ? (
                       <>
                         <button
@@ -1635,9 +1648,6 @@ export default function AIDraftWorkspace() {
                         )}
                       </>
                     ) : null}
-                  </div>
-
-                  <div className="flex items-center gap-2">
                     {draft?.status === "generating" ? (
                       <button
                         type="button"
@@ -1671,30 +1681,6 @@ export default function AIDraftWorkspace() {
                     ) : null}
                   </div>
                 </div>
-
-                {selectedSection?.content.trim() && (
-                  <div className="nf-draft-revision">
-                    <textarea
-                      id="draft-section-instruction"
-                      ref={sectionInstructionRef}
-                      value={sectionInstruction}
-                      onChange={(event) => setSectionInstruction(event.target.value)}
-                      placeholder="告诉 AI 如何修改…"
-                      aria-label="告诉 AI 如何修改"
-                      rows={1}
-                      className="nf-draft-field"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => void generateOneSection(selectedSection, sectionInstruction)}
-                      disabled={!sectionInstruction.trim() || isBusy || draft?.status === "generating"}
-                      aria-label="按要求修改"
-                      className="nf-draft-action nf-draft-primary nf-draft-revision-submit disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      修改
-                    </button>
-                  </div>
-                )}
               </footer>
             </section>
           </div>

@@ -107,6 +107,12 @@ try {
     assert(sectionRequest.extraRequest.includes('改成两课时，增加板书设计。'));
     assert(sectionRequest.extraRequest.includes('正文采用本次补充'));
     assert(sectionRequest.extraRequest.includes('不自动重排章节'));
+    const beforeRevision=await page.evaluate(()=>window.briefTest.requests.length);
+    await shell.getByRole('textbox',{name:'告诉 AI 如何修改',exact:true}).fill('补充两组课堂提问');
+    await button(shell,'按要求修改').click();
+    await page.waitForFunction(count=>window.briefTest.requests.length>count,beforeRevision);
+    await page.waitForFunction(()=>document.querySelector('#draft-section-instruction')?.value==='');
+    assert((await page.evaluate(()=>window.briefTest.requests.at(-1))).extraRequest.includes('补充两组课堂提问'));
     if(width===1280) {
       await button(shell,'目录管理').click();
       const manager=page.getByRole('dialog',{name:'目录管理',exact:true});
