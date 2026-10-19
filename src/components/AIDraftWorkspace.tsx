@@ -396,6 +396,7 @@ export default function AIDraftWorkspace() {
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
   const sectionInstructionRef = useRef<HTMLTextAreaElement | null>(null);
   const outlineInstructionRef = useRef<HTMLTextAreaElement | null>(null);
+  const supplementInputRef = useRef<HTMLTextAreaElement | null>(null);
   const { confirm, confirmDialog } = useConfirmDialog();
 
   const isBusy = busyMode !== "idle";
@@ -454,6 +455,27 @@ export default function AIDraftWorkspace() {
     observer.observe(field);
     return () => observer.disconnect();
   }, [outlineInstruction, directoryManagerOpen]);
+  useLayoutEffect(() => {
+    const field = supplementInputRef.current;
+    if (!field) return;
+    const fit = () => {
+      const style = getComputedStyle(field);
+      const lineHeight = Number.parseFloat(style.lineHeight) || 22;
+      const padding = Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom);
+      const minHeight = lineHeight * 2 + padding, maxHeight = lineHeight * 6 + padding;
+      field.style.height = `${minHeight}px`;
+      field.style.height = `${Math.min(maxHeight, Math.max(minHeight, field.scrollHeight))}px`;
+      field.style.overflowY = field.scrollHeight > maxHeight ? "auto" : "hidden";
+    };
+    fit();
+    if (typeof ResizeObserver === "undefined") return;
+    let width = field.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (width !== field.clientWidth) { width = field.clientWidth; fit(); }
+    });
+    observer.observe(field);
+    return () => observer.disconnect();
+  }, [bodyInstructionDraft, bodyInstructionOpen]);
   useEffect(() => {
     const field = sectionInstructionRef.current;
     if (!field || typeof ResizeObserver === "undefined") return;
@@ -499,6 +521,7 @@ export default function AIDraftWorkspace() {
       return;
     }
     const closeOnOutsideClick = (event: MouseEvent) => {
+      if (event.target instanceof Element && event.target.closest(".nf-draft-confirmation")) return;
       if (!bodyInstructionRef.current?.contains(event.target as Node)) {
         setBodyInstructionOpen(false);
       }
@@ -1186,7 +1209,10 @@ export default function AIDraftWorkspace() {
         cancelText: "暂不重写",
         tone: "primary",
       });
-      if (!approved) return;
+      if (!approved) {
+        requestAnimationFrame(() => supplementInputRef.current?.focus({ preventScroll: true }));
+        return;
+      }
     }
 
     setBusyMode("revise");
@@ -1365,17 +1391,12 @@ export default function AIDraftWorkspace() {
 
                 {bodyInstructionOpen && draft && (
                   <div
-                    className="nf-draft-panel nf-draft-requirements absolute right-0 top-11 z-40 w-[380px] p-5 text-left"
+                    className="nf-draft-panel nf-draft-requirements absolute right-0 top-11 z-40 text-left"
                     role="dialog"
                     aria-label="正文补充要求"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-[14px] font-semibold text-jelly-text">正文补充要求</p>
-                        <p className="mt-1 text-[11px] leading-relaxed text-jelly-text-muted">
-                          补充正文的写法，最初要求会继续保留。
-                        </p>
-                      </div>
+                    <div className="nf-draft-supplement-header">
+                      <h2>正文补充</h2>
                       <button type="button" className="nf-draft-close" aria-label="关闭正文补充要求"
                         onClick={() => {setBodyInstructionOpen(false);bodyInstructionRef.current?.querySelector("button")?.focus();}}>
                         <X size={16} />
@@ -1383,31 +1404,32 @@ export default function AIDraftWorkspace() {
                     </div>
                     <div className="nf-draft-initial-requirements">
                       <span>最初要求</span>
-                      <p>{initialRequirements || "未额外指定，将按笔记主题生成。"}</p>
+                      <p>{initialRequirements || "未设置"}</p>
                     </div>
-                    <label htmlFor="draft-body-supplement" className="nf-draft-supplement-label">正文怎么写 <span>选填</span></label>
+                    <label htmlFor="draft-body-supplement" className="sr-only">正文补充要求</label>
                     <textarea
                       id="draft-body-supplement"
+                      ref={supplementInputRef}
                       value={bodyInstructionDraft}
                       onChange={(event) => setBodyInstructionDraft(event.target.value)}
-                      placeholder="例如：提问写具体些，附参考回答和板书设计…"
-                      className="nf-draft-field mt-2 min-h-[100px] w-full resize-y px-3 py-2.5 leading-relaxed"
+                      placeholder="补充正文写法…"
+                      className="nf-draft-field nf-draft-supplement-field"
+                      rows={2}
                       maxLength={4000}
                       aria-label="正文补充要求"
+                      aria-description="选填。在最初要求的基础上补充正文写法；同一条件以本次补充为准，单章要求优先。保存不改大纲与已有正文，重写已有章节需再次确认。"
                     />
-                    <p className="mt-1.5 text-[10px] text-jelly-text-muted">
-                      {draft.status === "generating" ? "保存后从下一章开始生效。" : "保存后用于后续正文；已有内容和大纲保持不变。"}
+                    <p className="nf-draft-supplement-hint">
+                      {draft.status === "generating" ? "保存后从下一章起生效" : "保存补充不会改动已有正文"}
                     </p>
-                    <p className="mt-1 text-[10px] text-jelly-text-muted">明确修改同一条件时以本次补充为准，单章要求优先。</p>
-                    <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+                    <div className="nf-draft-supplement-actions">
                       {generatedSectionCount > 0 && (
                         <button
                           type="button"
                           onClick={() => void saveBodyInstruction(true)}
                           disabled={!bodyInstructionDraft.trim() || isBusy || draft.status === "generating"}
-                          className="nf-draft-action inline-flex h-8 items-center gap-1.5 px-3 disabled:opacity-40"
+                          className="nf-draft-action inline-flex items-center px-2.5 disabled:opacity-40"
                         >
-                          <RefreshCcw size={12} />
                           重写已生成章节
                         </button>
                       )}
@@ -1415,7 +1437,7 @@ export default function AIDraftWorkspace() {
                         type="button"
                         onClick={() => void saveBodyInstruction(false)}
                         disabled={!bodyInstructionChanged || isBusy}
-                        className="nf-draft-action nf-draft-primary inline-flex h-8 items-center px-3 disabled:opacity-40"
+                        className="nf-draft-action nf-draft-primary inline-flex items-center px-3 disabled:opacity-40"
                       >
                         保存补充
                       </button>
