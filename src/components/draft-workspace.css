@@ -90,7 +90,6 @@
 .nf-draft-initial-requirements > p { margin: 5px 0 0; max-height: 120px; overflow-y: auto; color: var(--draft-text); font-size: 12px; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; }
 .nf-draft-workspace .nf-draft-supplement-label { display:flex; gap:8px; align-items:center; color:var(--draft-text); font-size:12px; }
 .nf-draft-supplement-label > span { color: var(--draft-muted); font-size: 10px; }
-.nf-draft-workspace .nf-draft-body-editor { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .nf-draft-workspace #draft-section-instruction { background: transparent; padding: 0; min-height: 52px; max-height: 104px; resize: none; overflow-y: hidden; font-size: var(--nf-font-control, 13px); }
 .nf-draft-workspace .nf-draft-action:focus-visible,
 .nf-draft-workspace .nf-draft-close:focus-visible,

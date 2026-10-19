@@ -71,7 +71,8 @@ try {
     const initial=await measure();assert.equal(initial.docWidth,mobile?320:1440);assert.equal(initial.width,mobile?288:1240);assert.equal(initial.height,mobile?768:880);assert.equal(initial.border,'0px');assert.ok(initial.lines.every(x=>x==='0px'));assert.equal(initial.close.background,'rgba(0, 0, 0, 0)');assert.equal(initial.close.icon,'18px');assert.equal(initial.close.radius,'10px');assert.equal(initial.close.width,mobile?44:34);assert.equal(initial.toolbar,'flex');if(!mobile)assert.equal(initial.sidebarWidth,282);
     const buttons=await shell.locator('button').evaluateAll(nodes=>nodes.filter(n=>n.getBoundingClientRect().width>0).map(n=>{const r=n.getBoundingClientRect(),p=n.closest('main').getBoundingClientRect();return {width:r.width,height:r.height,inside:r.left>=p.left && r.right<=p.right && r.top>=p.top && r.bottom<=p.bottom}}));
     assert.ok(buttons.every(b=>b.inside));if(mobile)assert.ok(buttons.every(b=>b.height>=44));
-    await shell.getByRole('button',{name:'编辑',exact:true}).focus();await page.keyboard.press('Tab');assert.ok(await shell.getByRole('button',{name:'确认',exact:true}).evaluate(n=>n.matches(':focus-visible') && getComputedStyle(n).outlineStyle==='solid'));
+    assert.equal(await shell.getByRole('button',{name:'编辑',exact:true}).count(),0);
+    await shell.getByRole('button',{name:'重新生成',exact:true}).focus();await page.keyboard.press('Tab');assert.ok(await shell.getByRole('button',{name:'确认',exact:true}).evaluate(n=>n.matches(':focus-visible') && getComputedStyle(n).outlineStyle==='solid'));
     const field=page.locator('#draft-section-instruction');assert.equal(await field.evaluate(n=>getComputedStyle(n).resize),'none');
     assert.equal(await shell.locator('.nf-writing-label').textContent(),'正文待完善');
     await field.fill('关闭重开后保留的合成修改要求');
@@ -85,7 +86,7 @@ try {
     assert.ok(await shell.getByRole('button',{name:'按要求修改',exact:true}).isDisabled());
     await field.dispatchEvent('keydown',{key:'Escape',isComposing:true});assert.equal(await shell.count(),1);
     const rows=shell.getByRole('navigation',{name:'草稿章节目录'}).getByRole('button');await rows.nth(2).click();await shell.getByRole('button',{name:'生成正文',exact:true}).waitFor();await rows.nth(0).click();
-    await shell.getByRole('button',{name:'编辑',exact:true}).click();await shell.getByRole('textbox',{name:'编辑 认识 Redis'}).fill('## 离线修改\n\n合成内容。');await shell.getByRole('button',{name:'保存修改',exact:true}).click();await shell.getByText('离线修改',{exact:true}).waitFor();
+    await shell.getByText('缓存的基础',{exact:true}).waitFor();
     await shell.getByRole('button',{name:'确认',exact:true}).click();await page.waitForFunction(()=>window.draftTest.api.draft.sections[0].status==='confirmed');
     await shell.getByRole('button',{name:'正文补充要求',exact:true}).click();const requirements=page.getByRole('dialog',{name:'正文补充要求',exact:true});
     await requirements.getByText('面向初学者，重点讲缓存场景',{exact:true}).waitFor();
@@ -162,7 +163,7 @@ try {
       await page.evaluate(()=>window.draftTest.api.show('outline_ready'));await shell.waitFor();
     }
     await shell.locator('.nf-draft-close').click();await shell.waitFor({state:'detached'});assert.ok(await page.evaluate(()=>window.draftTest.api.calls.some(c=>c.name==='dismissDraftWorkspace')));
-    reports.push({mobile,initial,centered,editing:true,confirmation:!mobile,directoryCRUD:!mobile,failureRetry:!mobile,dismissReopenPreservesInput:true,saveFailureRetry:true,savingDistinct:true,discardFailureRetry:!mobile,terminalOutcome:true,saveMock:true,stopMock:true,dark:true,reducedMotion:true});await context.close();
+    reports.push({mobile,initial,centered,manualEditRemoved:true,confirmation:!mobile,directoryCRUD:!mobile,failureRetry:!mobile,dismissReopenPreservesInput:true,saveFailureRetry:true,savingDistinct:true,discardFailureRetry:!mobile,terminalOutcome:true,saveMock:true,stopMock:true,dark:true,reducedMotion:true});await context.close();
   }
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
   console.log(JSON.stringify({ok:true,offlineProductionComponent:true,syntheticServices:true,networkBlocked:true,reports,errors},null,2));

@@ -374,11 +374,9 @@ export default function AIDraftWorkspace() {
   const [draft, setDraft] = useState<NoteDraftRecord | null>(null);
   const [streamingOutline, setStreamingOutline] = useState("");
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
-  const [sectionEditContent, setSectionEditContent] = useState("");
   const [busyMode, setBusyMode] = useState<BusyMode>("idle");
   const [statusText, setStatusText] = useState("");
   const [errorText, setErrorText] = useState("");
-  const [sectionEditing, setSectionEditing] = useState(false);
   const [outlineInstruction, setOutlineInstruction] = useState("");
   const [sectionInstruction, setSectionInstruction] = useState("");
   const [newSectionTitle, setNewSectionTitle] = useState("");
@@ -434,7 +432,7 @@ export default function AIDraftWorkspace() {
     field.style.height = `${Math.min(104, Math.max(52, field.scrollHeight))}px`;
     field.style.overflowY = field.scrollHeight > 104 ? "auto" : "hidden";
   }, []);
-  useLayoutEffect(fitSectionInstruction, [fitSectionInstruction, sectionInstruction, sectionEditing, selectedSection?.id, Boolean(selectedSection?.content), centerMode]);
+  useLayoutEffect(fitSectionInstruction, [fitSectionInstruction, sectionInstruction, selectedSection?.id, Boolean(selectedSection?.content), centerMode]);
   useEffect(() => {
     const field = sectionInstructionRef.current;
     if (!field || typeof ResizeObserver === "undefined") return;
@@ -445,7 +443,7 @@ export default function AIDraftWorkspace() {
     });
     observer.observe(field);
     return () => observer.disconnect();
-  }, [fitSectionInstruction, sectionEditing, selectedSection?.id, Boolean(selectedSection?.content), centerMode]);
+  }, [fitSectionInstruction, selectedSection?.id, Boolean(selectedSection?.content), centerMode]);
 
   useEffect(() => {
     if (!initialTopic || taskSeedRef.current === initialTopic) return;
@@ -459,7 +457,6 @@ export default function AIDraftWorkspace() {
     setDraft(null);
     setStreamingOutline("");
     setSelectedSectionId(null);
-    setSectionEditContent("");
     setBusyMode("idle");
     setStatusText("正在根据你的要求生成大纲…");
     setErrorText("");
@@ -472,8 +469,6 @@ export default function AIDraftWorkspace() {
   }, [draft, initialTopic, isBusy]);
 
   useEffect(() => {
-    setSectionEditContent(selectedSection?.content ?? "");
-    setSectionEditing(false);
     setSectionInstruction("");
   }, [selectedSection?.id]);
 
@@ -1033,25 +1028,6 @@ export default function AIDraftWorkspace() {
     }
   }, [draft, isBusy, replaceDraft, selectedSection]);
 
-  const saveSectionEdit = useCallback(async () => {
-    if (!draft || !selectedSection || isBusy) return;
-    setBusyMode("revise");
-    setErrorText("");
-    try {
-      const nextDraft = await updateDraftSection(draft.id, selectedSection.id, {
-        content: sectionEditContent,
-        status: "needs_revision",
-        source: "revise_section",
-      });
-      replaceDraft(nextDraft);
-      setStatusText(`${selectedSection.title} 已保存为待确认修改。`);
-    } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "保存小节修改失败");
-    } finally {
-      setBusyMode("idle");
-    }
-  }, [draft, isBusy, replaceDraft, sectionEditContent, selectedSection]);
-
   const deleteSection = useCallback(async (section = selectedSection) => {
     if (!draft || !section || isBusy) return;
     setBusyMode("revise");
@@ -1599,13 +1575,6 @@ export default function AIDraftWorkspace() {
                         AI 正在规划一级章节。准备完成后，点击左侧章节即可生成和查看正文。
                       </p>
                     </div>
-                  ) : sectionEditing && selectedSection ? (
-                    <textarea
-                      value={sectionEditContent}
-                      onChange={(event) => setSectionEditContent(event.target.value)}
-                      className="nf-draft-field nf-draft-body-editor min-h-[520px] w-full resize-y p-5 leading-7"
-                      aria-label={`编辑 ${selectedSection.title}`}
-                    />
                   ) : selectedSection?.content ? (
                     <div
                       className="note-content draft-note-content"
@@ -1650,21 +1619,6 @@ export default function AIDraftWorkspace() {
                         >
                           <RefreshCcw size={13} />
                           重新生成
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (sectionEditing) {
-                              void saveSectionEdit().then(() => setSectionEditing(false));
-                            } else {
-                              setSectionEditing(true);
-                            }
-                          }}
-                          disabled={isBusy || !selectedSection.content.trim()}
-                          className="nf-draft-action inline-flex h-9 items-center gap-1.5 px-3 disabled:opacity-45"
-                        >
-                          <Pencil size={13} />
-                          {sectionEditing ? "保存修改" : "编辑"}
                         </button>
                         {selectedSection.status !== "confirmed" && selectedSection.content.trim() && (
                           <button
@@ -1716,7 +1670,7 @@ export default function AIDraftWorkspace() {
                   </div>
                 </div>
 
-                {selectedSection?.content.trim() && !sectionEditing && (
+                {selectedSection?.content.trim() && (
                   <div className="nf-draft-revision mt-3 flex items-end gap-2 p-2.5">
                     <div className="min-w-0 flex-1">
                       <label htmlFor="draft-section-instruction" className="mb-1 block text-[10px] font-semibold text-jelly-text-muted">
