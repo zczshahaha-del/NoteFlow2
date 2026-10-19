@@ -45,6 +45,15 @@ async def fallback_resume(_state, plan: TurnPlan, answer: str) -> TurnPlan:
 
 
 class TurnPlannerTest(unittest.TestCase):
+    def test_document_title_preserves_internal_book_punctuation(self) -> None:
+        for title in ("《两小儿辩日》教案", "《两小儿辩日》 教案", "比较《甲》和《乙》"):
+            with self.subTest(title=title):
+                plan = validate_turn_plan(TurnPlan(
+                    primary_intent=PrimaryIntent.NOTE_CREATE,
+                    intent_parameters=IntentParameters(topic=title), confidence=0.95,
+                ))
+                self.assertEqual(plan.intent_parameters.topic, title)
+
     def test_ask_notes_is_a_hard_mode_rule(self) -> None:
         plan = asyncio.run(plan_turn_smart(
             question="Redis 有哪些持久化方式",

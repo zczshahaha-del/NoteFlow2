@@ -298,7 +298,13 @@ def plan_from_llm_payload(
 def _normalize_topic_field(value: object) -> str | None:
     """Normalize presentation only; semantic intent remains model-owned."""
 
-    topic = _clean(value, 160).strip("《》“”\"' ")
+    topic = _clean(value, 160)
+    # Remove only a complete outer quotation. strip(chars) corrupts work
+    # names inside titles such as 《两小儿辩日》教案 or 比较《甲》和《乙》.
+    for opening, closing in (("“", "”"), ('"', '"'), ("'", "'")):
+        if topic.startswith(opening) and topic.endswith(closing) and len(topic) > 1:
+            topic = topic[1:-1].strip()
+            break
     if len(topic) > 1 and topic.endswith("的"):
         topic = topic[:-1].rstrip()
     if topic.replace(" ", "").casefold() in {"go语言", "golang"}:
@@ -447,6 +453,7 @@ def _planner_messages(
 7. memory_layers 表示记忆层，只能包含 semantic、episodic。
 8. memory_key 使用规范键，例如 identity.name、profile.age、profile.height、lifestyle.sleep_schedule。
 9. memory_query 是检索语句；memory_types 可在无法给出精确 memory_key 时辅助检索。
+创建文档时：topic 是简洁完整的文档标题，保留作品名称内部的书名号及用户要求的文档形式，例如「《两小儿辩日》教案」，不要只返回课文名。requirements 只整理用户明确提出的写作要求，不重复整句创建命令；未指定年级、课时等不自行补造，没额外要求可为空。教案、纪要、教程等按用户用途理解，不统一改成技术课程。
 10. 只返回符合以下 JSON Schema 的 JSON 对象，不要 markdown：
 {_planner_schema_text()}
 """.strip()

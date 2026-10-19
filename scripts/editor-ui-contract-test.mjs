@@ -7,6 +7,7 @@ const chapterRail = readFileSync(new URL("../src/components/ChapterRail.tsx", im
 const outlineNavigation = readFileSync(new URL("../src/utils/outlineNavigation.ts", import.meta.url), "utf8");
 const tiptapExtensions = readFileSync(new URL("../src/editor/tiptapExtensions.ts", import.meta.url), "utf8");
 const aiPanel = readFileSync(new URL("../src/components/AIPanel.tsx", import.meta.url), "utf8");
+const draftBriefCard = readFileSync(new URL("../src/components/DraftBriefCard.tsx", import.meta.url), "utf8");
 const conversationStyles = readFileSync(new URL("../src/components/ai-conversation.css", import.meta.url), "utf8");
 const generationStatus = readFileSync(new URL("../src/components/ChatGenerationStatus.tsx", import.meta.url), "utf8");
 const aiDraftWorkspace = readFileSync(new URL("../src/components/AIDraftWorkspace.tsx", import.meta.url), "utf8");
@@ -177,10 +178,11 @@ assert.match(aiPanel, /document\.addEventListener\("mousedown", closeOnOutsideCl
 assert.doesNotMatch(aiPanel, /draftFallbackAnchorRef/);
 assert.doesNotMatch(aiPanel, /fallbackDraftAnchor/);
 assert.match(aiPanel, /renderDraftConversationCard\(msg\.draftCard, msg\.id\)/);
-assert.match(aiPanel, /outlineCanOpen/);
-assert.match(aiPanel, /大纲生成中…/);
-assert.match(aiPanel, /重新生成大纲/);
-assert.match(aiPanel, /requestDraftCommand\("generate_outline"\)/);
+assert.match(aiPanel, /hasOutline=\{Boolean\(context\?\.id \|\| card\.draftId\)\}/);
+assert.match(draftBriefCard, /大纲生成中…/);
+assert.match(draftBriefCard, /重新生成大纲/);
+assert.match(aiPanel, /generateDraftBrief\?\.\(messageId\)/);
+assert.match(draftBriefCard, /if \(hasOutline && !changed\) \{onOpen\(\); return;\}/);
 assert.equal(aiPanel.includes("笔记索引 ·"), false);
 assert.equal(aiPanel.includes("listIndexJobs"), false);
 assert.match(aiPanel, /aria-label="收起 AI 助手"/);

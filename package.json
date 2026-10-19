@@ -52,6 +52,7 @@
     "test:search-ui": "node scripts/search-surface-browser-test.mjs",
     "test:draft-ui": "node scripts/draft-surface-browser-test.mjs",
     "test:draft-lifecycle": "node scripts/draft-lifecycle-test.mjs",
+    "test:draft-brief": "node scripts/draft-brief-browser-test.mjs",
     "test:ai-writing-flow": "node --experimental-strip-types scripts/ai-writing-flow-test.ts",
     "test:e2e-runtime": "node scripts/run-python.mjs server/tests/runtime_e2e.py",
     "test:pwa": "node scripts/pwa-installability-test.mjs",

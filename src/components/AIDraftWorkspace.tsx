@@ -49,6 +49,7 @@ import { isMemoryEnabled } from "../services/memories";
 import { handleRenderedCodeBlockAction, renderChatMarkdown } from "../utils/chatMarkdown";
 import { useConfirmDialog } from "./ConfirmDialog";
 import "./draft-workspace.css";
+import { buildDraftGenerationRequest, type DraftBrief } from "../utils/draftBrief";
 
 const AUTO_NOTE_TYPE = "智能笔记";
 const AUTO_WRITING_TONE = "根据用户需求自动匹配";
@@ -114,22 +115,7 @@ function flattenFolders(nodes: FileNode[], prefix = ""): FolderOption[] {
 }
 
 function cleanDraftTopic(seed: string): string {
-  const source = seed.trim();
-  const quotedTitle = source.match(/《\s*([^》]{2,80})\s*》/u)?.[1]?.trim();
-  if (quotedTitle) return quotedTitle;
-
-  const requestTitle = source.match(
-    /(?:生成|创建|新建|写|整理)(?:一篇|一个|一份|份)?(?:关于)?\s*([^，。！？,.!?]{2,80}?(?:学习笔记|面试笔记|复习笔记|项目笔记|笔记|教程))/u
-  )?.[1]?.trim();
-  if (requestTitle) return requestTitle;
-
-  const firstClause = source
-    .replace(/^(?:帮我|请|麻烦|给我|我想要|我想|我要|需要你)?\s*/u, "")
-    .replace(/^(?:生成|创建|新建|写一篇|写一个|写一份|写份|整理一篇|整理一个)\s*/u, "")
-    .split(/[，。！？,.!?]/u)[0]
-    .replace(/^关于\s*/u, "")
-    .trim();
-  return firstClause || source || "未命名学习笔记";
+  return seed.trim() || "未命名笔记";
 }
 
 function cleanTitle(value: string): string {
@@ -358,6 +344,8 @@ export default function AIDraftWorkspace() {
     consumeDraftCommand,
     setActiveDraftContext,
     pendingCheckpoint,
+    draftBriefApprovalRequired,
+    editDraftBrief,
   } = useDraftSlice();
   const { treeData, reloadWorkspace } = useWorkspaceSlice();
   const folders = useMemo(() => flattenFolders(treeData), [treeData]);
@@ -569,6 +557,7 @@ export default function AIDraftWorkspace() {
         errorText: errorText || (draft?.status === "failed" ? jobError : ""),
         completedSections,
         totalSections: sections.length,
+        hasBody: sections.some(section => Boolean(section.content.trim())),
       }
     );
   }, [draft, errorText, isBusy, setActiveDraftContext, statusText, topic, writingStage]);
@@ -631,15 +620,14 @@ export default function AIDraftWorkspace() {
     }
   }, [draft]);
 
-  const createOutline = useCallback(async (feedbackText = "", topicOverride = "") => {
+  const createOutline = useCallback(async (feedbackText = "", topicOverride = "", submittedBrief?: DraftBrief, messageId?: string) => {
     const isFeedback = Boolean(feedbackText.trim());
     const currentDraftTopic = draft ? (draft.topic || draft.title || topic) : "";
     const cleanTopicValue = cleanTitle(
-      isFeedback && currentDraftTopic ? currentDraftTopic : topicOverride || topic
+      submittedBrief?.title || (isFeedback && currentDraftTopic ? currentDraftTopic : topicOverride || topic)
     );
-    if (!cleanTopicValue || isBusy) return;
+    if (!cleanTopicValue || isBusy || activeRequestRef.current) return;
 
-    activeRequestRef.current?.abort();
     const currentOutline = draft?.outline || streamingOutline;
     const controller = new AbortController();
     activeRequestRef.current = controller;
@@ -651,17 +639,23 @@ export default function AIDraftWorkspace() {
 
     try {
       let outline = "";
-      const currentInputRequest = topic.trim();
       const persistedRawRequest = rawRequestFromDraft(
         draft,
         checkpointRawRequest || draftSeed || topicOverride || cleanTopicValue
       );
-      const rawRequest = isFeedback
-        ? persistedRawRequest || currentInputRequest || cleanTopicValue
-        : currentInputRequest || persistedRawRequest || cleanTopicValue;
-      const smartRequirement = buildSmartRequirement(cleanTopicValue, feedbackText, currentOutline, rawRequest);
-      const includeCode = requestWantsCode(rawRequest);
-      const includeExercises = requestWantsExercises(rawRequest);
+      const rawRequest = submittedBrief?.rawRequest || persistedRawRequest || cleanTopicValue;
+      const savedBrief = draft?.draftConfig?.generationBrief as DraftBrief | undefined;
+      const generationBrief = submittedBrief || savedBrief;
+      const smartRequirement = generationBrief
+        ? buildDraftGenerationRequest(generationBrief) + (isFeedback ? `\n\n用户最新反馈：${feedbackText}\n当前大纲：\n${currentOutline}` : "")
+        : buildSmartRequirement(cleanTopicValue, feedbackText, currentOutline, rawRequest);
+      const effectiveRequirements = generationBrief ? `${generationBrief.title}\n${generationBrief.requirements}` : rawRequest;
+      const includeCode = requestWantsCode(effectiveRequirements);
+      const includeExercises = requestWantsExercises(effectiveRequirements);
+      if (submittedBrief && pendingCheckpoint?.checkpointType === "draft_workspace") {
+        await bindAgentCheckpoint(pendingCheckpoint.id, {payload:{draftBrief:submittedBrief,manualOutline:true}});
+        if (controller.signal.aborted || activeRequestRef.current !== controller) return;
+      }
       await generateNoteStream({
         mode: "outline",
         topic: cleanTopicValue,
@@ -673,7 +667,7 @@ export default function AIDraftWorkspace() {
         includeExercises,
         extraRequest: smartRequirement,
         memoryEnabled: isMemoryEnabled(),
-        maxTokens: getMaxTokens(rawRequest),
+        maxTokens: getMaxTokens(effectiveRequirements),
         temperature: 0.35,
         signal: controller.signal,
         onDelta: (delta) => {
@@ -695,6 +689,7 @@ export default function AIDraftWorkspace() {
             status: "outline_ready",
             assembledContent: "",
             sections: makeSectionPayloads(outline),
+            ...(generationBrief ? {generationBrief,includeCode,includeExercises} : {}),
           })
         : await createNoteDraft({
             title: cleanTopicValue,
@@ -711,6 +706,7 @@ export default function AIDraftWorkspace() {
               source: "note_draft_tool",
               trigger: draftSeed,
               rawRequest,
+              ...(generationBrief ? {generationBrief} : {}),
               includeCode,
               includeExercises,
             },
@@ -720,8 +716,11 @@ export default function AIDraftWorkspace() {
 
       if (controller.signal.aborted || activeRequestRef.current !== controller) return;
       replaceDraft(created);
+      if (messageId && submittedBrief) editDraftBrief?.(messageId, {generatedBrief:submittedBrief});
       if (!draft && pendingCheckpoint?.checkpointType === "draft_workspace") {
-        await bindAgentCheckpoint(pendingCheckpoint.id, { draftId: created.id }).catch(() => null);
+        await bindAgentCheckpoint(pendingCheckpoint.id, { draftId: created.id, ...(submittedBrief ? {payload:{draftBrief:submittedBrief,generatedBrief:submittedBrief,manualOutline:true}} : {}) });
+      } else if (submittedBrief && pendingCheckpoint?.checkpointType === "draft_workspace") {
+        await bindAgentCheckpoint(pendingCheckpoint.id, {draftId:created.id,payload:{draftBrief:submittedBrief,generatedBrief:submittedBrief,manualOutline:true}});
       }
       if (controller.signal.aborted || activeRequestRef.current !== controller) return;
       setStreamingOutline("");
@@ -732,6 +731,7 @@ export default function AIDraftWorkspace() {
       setErrorText(outlineGenerationError(error));
       setStatusText("");
     } finally {
+      if (messageId) editDraftBrief?.(messageId, {requestPending:false});
       if (activeRequestRef.current === controller) {
         activeRequestRef.current = null;
         setBusyMode("idle");
@@ -750,6 +750,7 @@ export default function AIDraftWorkspace() {
     streamingOutline,
     topic,
     pendingCheckpoint,
+    editDraftBrief,
   ]);
 
   useEffect(() => {
@@ -758,6 +759,7 @@ export default function AIDraftWorkspace() {
       : null;
     if (
       draft ||
+      draftBriefApprovalRequired ||
       draftCommand ||
       isBusy ||
       autoOutlineStartedRef.current ||
@@ -773,7 +775,7 @@ export default function AIDraftWorkspace() {
       void createOutline("", initialTopic);
     });
     return () => { canceled = true; };
-  }, [checkpointMatchesCurrentSeed, createOutline, draft, draftCommand, draftSeed, initialTopic, isBusy, pendingCheckpoint]);
+  }, [checkpointMatchesCurrentSeed, createOutline, draft, draftCommand, draftSeed, initialTopic, isBusy, pendingCheckpoint, draftBriefApprovalRequired]);
 
   useEffect(() => {
     if (
@@ -789,7 +791,9 @@ export default function AIDraftWorkspace() {
       const currentDraftTopic = draft ? draft.topic || draft.title || topic : "";
       void createOutline(
         draftCommand.action === "regenerate_outline" ? draftCommand.feedback : "",
-        currentDraftTopic || draftCommand.seed
+        draftCommand.brief?.title || currentDraftTopic || draftCommand.seed,
+        draftCommand.brief,
+        draftCommand.messageId,
       );
     });
     return () => { canceled = true; };
@@ -839,7 +843,7 @@ export default function AIDraftWorkspace() {
           headingLevel: AUTO_HEADING_LEVEL,
           includeCode,
           includeExercises,
-          extraRequest: `${buildSmartRequirement(baseDraft.topic || topic, "", "", rawRequest)}${bodyInstructionContext}${revisionContext}`,
+          extraRequest: `${baseDraft.draftConfig?.generationBrief ? buildDraftGenerationRequest(baseDraft.draftConfig.generationBrief as DraftBrief) : buildSmartRequirement(baseDraft.topic || topic, "", "", rawRequest)}${bodyInstructionContext}${revisionContext}`,
           memoryEnabled: isMemoryEnabled(),
           outlinePlan: `${buildSectionOutline(section)}${revisionContext}`,
           maxTokens: getMaxTokens(rawRequest || baseDraft.topic || topic),

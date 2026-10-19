@@ -43,11 +43,17 @@ def _session_out(session: ChatSession) -> dict:
 
 def _draft_card_out(checkpoint: AgentCheckpoint) -> dict:
     payload = dict(checkpoint.payload or {})
+    brief = payload.get("draftBrief") if isinstance(payload.get("draftBrief"), dict) else {}
     return {
         "seed": str(payload.get("seed") or "AI 笔记草稿"),
         "checkpointId": checkpoint.id,
         "draftId": payload.get("draftId"),
         "status": checkpoint.status,
+        "title": brief.get("title") or payload.get("seed") or "AI 笔记草稿",
+        "requirements": str(brief.get("requirements") or ""),
+        "rawRequest": str(brief.get("rawRequest") or payload.get("rawRequest") or ""),
+        "manualOutline": bool(payload.get("manualOutline")),
+        "generatedBrief": payload.get("generatedBrief"),
     }
 
 

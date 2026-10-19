@@ -95,8 +95,13 @@ class AgentDraftCreateTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("message_metadata", create_checkpoint.await_args.kwargs)
         self.assertEqual(
             complete_run.await_args.kwargs["message_metadata"],
-            {"draftCard": {"seed": "Python", "checkpointId": "checkpoint-python"}},
+            {"draftCard": {"seed": "Python", "checkpointId": "checkpoint-python", "title": "Python",
+                "requirements": "生成一份 Python 学习笔记", "rawRequest": "帮我生成一份 Python 学习笔记", "manualOutline": True}},
         )
+        checkpoint_payload = create_checkpoint.await_args.kwargs["payload"]
+        self.assertEqual(checkpoint_payload["rawRequest"], "帮我生成一份 Python 学习笔记")
+        self.assertTrue(checkpoint_payload["manualOutline"])
+        self.assertEqual(checkpoint_payload["draftBrief"]["requirements"], "生成一份 Python 学习笔记")
 
 
 if __name__ == "__main__":

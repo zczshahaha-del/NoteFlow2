@@ -54,7 +54,7 @@ def build_note_generate_prompt(req: NoteGenerateRequest) -> str:
     exercise_rule = (
         "Include practice questions with answers and explanations at the end."
         if req.includeExercises
-        else "Do not add practice questions."
+        else "Do not add an unrelated exercise appendix. Include classroom activities or assignments when required by the requested document purpose."
     )
     extra_rule = ""
     if req.extraRequest and req.extraRequest.strip():
@@ -93,6 +93,7 @@ def build_note_generate_prompt(req: NoteGenerateRequest) -> str:
         return (
             f"Return Simplified Chinese Markdown.\n"
             f"Create only the top-level table of contents for the user's note request.\n"
+            f"Respect the requested document purpose: a lesson plan is a teaching design, not an explanatory study note; a meeting record is not a tutorial. Do not invent unspecified grade levels or class durations. Current confirmed title and requirements override conflicting provenance text.\n"
             f"Before writing, silently infer the user's real learning goal from the full request, not only from isolated keywords. "
             f"If a topic can mean several things, choose the interpretation that best matches the user's wording. "
             f"For example, wording like “应用开发 / application development / 做应用 / 项目” normally means building usable software with existing capabilities, not a course about training models from scratch, unless the user explicitly asks for model training. "

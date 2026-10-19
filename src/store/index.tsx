@@ -10,7 +10,8 @@ import type {
 } from "../types";
 import { findFileById, initialWorkspaceTree } from "../workspaceTree";
 import { askAIStream } from "../services/aiStream";
-import { updateDraftConversation, type DraftOutcome, type DraftWritingStage } from "../utils/aiWritingFlow";
+import { draftConversationIndex, updateDraftConversation, type DraftOutcome, type DraftWritingStage } from "../utils/aiWritingFlow";
+import type { DraftBrief } from "../utils/draftBrief";
 import type { ChatPageState } from "../services/aiStream";
 import {
   clearKnowledgeBase,
@@ -111,6 +112,8 @@ interface DraftCommand {
   action: "generate_outline" | "regenerate_outline" | "generate_all" | "stop" | "cancel";
   seed: string;
   feedback: string;
+  brief?: DraftBrief;
+  messageId?: string;
 }
 
 interface ChatSelectionContext {
@@ -131,6 +134,7 @@ interface ActiveDraftContext {
   errorText: string;
   completedSections: number;
   totalSections: number;
+  hasBody?: boolean;
 }
 
 interface NoteSaveState {
@@ -172,6 +176,8 @@ interface AppState {
   openPendingEditPreview: () => void;
   setActiveDraftContext: (context: ActiveDraftContext | null) => void;
   requestDraftCommand: (action: DraftCommand["action"], feedback?: string) => void;
+  editDraftBrief: (messageId: string, patch: { title?: string; requirements?: string; generatedBrief?: DraftBrief; requestPending?: boolean }) => void;
+  generateDraftBrief: (messageId: string) => void;
   consumeDraftCommand: (id: string) => void;
   addSelectionToChat: (selection: { text: string; noteId?: string | null; noteTitle?: string }) => void;
   clearChatSelection: () => void;
@@ -787,8 +793,8 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           {
             ...newChatMessageMetadata(),
             role: "assistant",
-            text: "好，我会先整理一份大纲。准备好后，你可以打开查看和调整。",
-            draftCard: { seed: trimmedSeed },
+            text: "你可以先调整卡片里的标题和要求，再生成大纲。",
+            draftCard: { seed: trimmedSeed, title: trimmedSeed, requirements: "", rawRequest: trimmedSeed, manualOutline: true },
           },
         ]
       : [];
@@ -803,7 +809,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
             topic: trimmedSeed,
             stage: "configuring",
             busy: false,
-            statusText: "正在根据你的要求生成大纲…",
+            statusText: "等待确认标题和要求",
             errorText: "",
             completedSections: 0,
             totalSections: 0,
@@ -933,6 +939,28 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         feedback,
       },
     });
+  },
+
+  editDraftBrief: (messageId, patch) => {
+    set(state => ({ chatMessages: state.chatMessages.map(message => message.id === messageId && message.draftCard && !["resolved", "cancelled"].includes(message.draftCard.status || "")
+      ? { ...message, draftCard: { ...message.draftCard, ...patch } } : message) }));
+  },
+
+  generateDraftBrief: (messageId) => {
+    const state = get();
+    const checkpoint = state.pendingCheckpoint ?? state.agentTask?.checkpoint;
+    const owner = { checkpointId: checkpoint?.checkpointType === "draft_workspace" ? checkpoint.id : null,
+      draftId: state.activeDraftContext?.id, seed: state.draftSeed || state.activeDraftContext?.topic || "" };
+    const index = draftConversationIndex(state.chatMessages, owner);
+    const message = state.chatMessages[index];
+    const card = message?.draftCard;
+    if (!card || message.id !== messageId || card.requestPending || state.draftCommand || state.activeDraftContext?.busy) return;
+    const brief = { title: (card.title ?? state.activeDraftContext?.title ?? card.seed).trim(), requirements: (card.requirements ?? "").trim(),
+      rawRequest: card.rawRequest || (typeof checkpoint?.payload?.rawRequest === "string" ? checkpoint.payload.rawRequest : card.seed) };
+    if (!brief.title) return;
+    set({ chatMessages: state.chatMessages.map(item => item.id === messageId ? {...item, draftCard:{...item.draftCard!,requestPending:true}} : item),
+      draftCommand: { id: `draft-brief-${newChatMessageMetadata().id}`, action: "generate_outline", seed: state.draftSeed,
+      feedback: "", brief, messageId } });
   },
 
   addSelectionToChat: (selection) => {
@@ -1764,7 +1792,10 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
               message.id === assistantMsg.id
                 ? {
                     ...message,
-                    draftCard: { seed, checkpointId },
+                    draftCard: { seed, checkpointId, title: typeof payload.draftBrief === "object" && payload.draftBrief ? String((payload.draftBrief as Record<string, unknown>).title || seed) : seed,
+                      requirements: typeof payload.draftBrief === "object" && payload.draftBrief ? String((payload.draftBrief as Record<string, unknown>).requirements || "") : "",
+                      rawRequest: typeof payload.rawRequest === "string" ? payload.rawRequest : text,
+                      manualOutline: Boolean(payload.manualOutline) },
                   }
                 : message
             ),

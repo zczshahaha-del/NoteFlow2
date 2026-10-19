@@ -42,6 +42,7 @@ import ChatMessageActions from "./ChatMessageActions";
 import { useChatPresentation } from "../hooks/useChatPresentation";
 import SoftMenu from "./SoftMenu";
 import "./ai-conversation.css";
+import DraftBriefCard from "./DraftBriefCard";
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
@@ -391,7 +392,9 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
     closeDraft,
     openPendingEditPreview,
     openPendingDraft,
-    requestDraftCommand,
+    editDraftBrief,
+    generateDraftBrief,
+    draftCommand,
   } = useDraftSlice();
   const { agentSessionId, agentTask, agentRunHistory, agentTaskDetailOpen } = useAgentSlice();
   const [input, setInput] = useState("");
@@ -462,11 +465,6 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
   );
   const currentNoteTitle = selectedFile?.name.replace(/\.md$/i, "") ?? "";
   const draftCardVisible = activeCheckpoint?.checkpointType === "draft_workspace" || Boolean(activeDraftContext);
-  const outlineGenerating = !activeDraftContext || activeDraftContext.stage === "configuring";
-  const outlineFailed = activeDraftContext?.stage === "failed" && !activeDraftContext.id;
-  const outlineCanOpen = Boolean(
-    activeDraftContext && !outlineGenerating && (!outlineFailed || activeDraftContext.id)
-  );
   const activeDraftMessageId = chatMessages[draftConversationIndex(chatMessages, {
     checkpointId: activeCheckpoint?.checkpointType === "draft_workspace" ? activeCheckpoint.id : null,
     draftId: activeDraftContext?.id,
@@ -475,7 +473,7 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
   const renderDraftConversationCard = (
     card: NonNullable<ChatMessage["draftCard"]>,
     messageId: string,
-    className = "mt-3 w-[92%]"
+    _className = ""
   ) => {
     const isCurrent = Boolean(
       draftCardVisible && messageId === activeDraftMessageId
@@ -488,58 +486,11 @@ export default function AIPanel({ onCollapse }: { onCollapse?: () => void }) {
         ? "已取消"
         : "历史草稿";
 
-    return (
-    <section className={`${className} overflow-hidden rounded-2xl border border-[#dfe7ec] bg-[#fbfcfd] shadow-[0_8px_24px_rgba(45,65,80,0.06)]`} aria-label="AI 笔记草稿">
-      <div className="px-4 pb-3 pt-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold tracking-wide text-[#748694]">AI 笔记草稿</p>
-            <h3 className="mt-1 truncate text-[14px] font-semibold text-jelly-text">
-              {context?.title || card.seed}
-            </h3>
-          </div>
-          {context?.totalSections ? (
-            <span className="shrink-0 rounded-full bg-[#eef7fb] px-2 py-1 text-[10px] font-semibold text-jelly-blue-deep">
-              {context.stage === "generating" || context.stage === "assembled"
-                ? `${context.completedSections}/${context.totalSections}`
-                : `${context.totalSections} 章`}
-            </span>
-          ) : null}
-        </div>
-        <div className="mt-2"><AIWritingStatus label={flow.label} step={flow.step} compact error={Boolean(context?.errorText)}
-          hint={context?.errorText || (context?.stage === "generating" ? context.statusText || flow.hint : flow.hint)} /></div>
-        {context?.totalSections ? (
-          <div className="mt-3 h-1 overflow-hidden rounded-full bg-[#e7eef2]">
-            <div
-              className="h-full rounded-full bg-jelly-blue transition-[width] duration-300"
-              style={{ width: `${Math.round((context.completedSections / context.totalSections) * 100)}%` }}
-            />
-          </div>
-        ) : null}
-      </div>
-      <button
-        type="button"
-        onClick={() => {
-          if (!isCurrent) return;
-          if (outlineFailed) {
-            requestDraftCommand("generate_outline");
-            return;
-          }
-          openPendingDraft();
-        }}
-        disabled={!isCurrent || centerMode === "draft" || outlineGenerating || (!outlineFailed && !outlineCanOpen)}
-        className="flex h-10 w-full items-center justify-center border-t border-[#e8edf0] bg-white text-[12px] font-semibold text-jelly-blue-deep transition-colors hover:bg-[#f2f8fb] disabled:cursor-not-allowed disabled:text-jelly-text-muted"
-      >
-        {!isCurrent
-          ? historicalAction
-          : outlineFailed
-          ? "重新生成大纲"
-          : outlineGenerating
-            ? "大纲生成中…"
-            : activeDraftContext?.stage === "outline_ready" ? "查看大纲" : "查看草稿"}
-      </button>
-    </section>
-    );
+    return <DraftBriefCard brief={{title: card.title ?? context?.title ?? card.seed, requirements: card.requirements ?? "", rawRequest: card.rawRequest || card.seed}}
+      generatedBrief={card.generatedBrief} current={isCurrent} busy={Boolean(context?.busy || context?.stage === "generating" || context?.stage === "saving")}
+      pending={Boolean(isCurrent && (card.requestPending || draftCommand?.brief))} hasOutline={Boolean(context?.id || card.draftId)}
+      hasBody={Boolean(context?.hasBody || context?.completedSections)} label={flow.label} error={context?.errorText} historicalAction={historicalAction}
+      onEdit={patch => editDraftBrief?.(messageId, patch)} onGenerate={() => generateDraftBrief?.(messageId)} onOpen={openPendingDraft} />;
   };
 
   useEffect(() => {

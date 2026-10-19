@@ -98,6 +98,9 @@ export interface DraftUpdatePayload {
   bodyInstruction?: string;
   regenerateGenerated?: boolean;
   sectionOrder?: string[];
+  generationBrief?: import("../utils/draftBrief").DraftBrief;
+  includeCode?: boolean;
+  includeExercises?: boolean;
 }
 
 export interface DraftSectionUpdatePayload {

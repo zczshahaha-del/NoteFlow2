@@ -67,6 +67,12 @@ export interface ChatMessage {
     checkpointId?: string | null;
     draftId?: string | null;
     status?: string | null;
+    title?: string;
+    requirements?: string;
+    rawRequest?: string;
+    manualOutline?: boolean;
+    generatedBrief?: import("./utils/draftBrief").DraftBrief | null;
+    requestPending?: boolean;
   };
   createdAt?: string | null;
 }

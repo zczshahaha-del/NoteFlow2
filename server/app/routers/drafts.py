@@ -22,6 +22,7 @@ from app.repositories.index_jobs import IndexJobRepository
 from app.repositories.notes import NoteRepository
 from app.agent.write_runtime import authorize_draft_save, initialize_draft_graph, resume_draft_generation
 from app.services.markdown_index import index_note_now
+from app.services.draft_brief import DraftBrief, generation_request
 from app.utils import random_id
 
 router = APIRouter(tags=["drafts"])
@@ -88,6 +89,9 @@ class DraftUpdatePayload(BaseModel):
     bodyInstruction: Optional[str] = None
     regenerateGenerated: bool = False
     sectionOrder: Optional[list[str]] = None
+    generationBrief: Optional[DraftBrief] = None
+    includeCode: Optional[bool] = None
+    includeExercises: Optional[bool] = None
 
 
 class DraftSectionUpdatePayload(BaseModel):
@@ -472,7 +476,29 @@ async def update_draft(
     user: CurrentUser = Depends(get_current_user),
 ):
     async with AsyncSessionLocal() as session:
-        draft = await _get_draft(session, user.id, draft_id)
+        draft = await DraftRepository(session).get_for_update(user.id, draft_id) if payload.generationBrief else await _get_draft(session, user.id, draft_id)
+        if draft is None:
+            raise HTTPException(status_code=404, detail="draft not found")
+        if payload.generationBrief is not None:
+            if draft.status in {"generating", "saved", "canceled"}:
+                raise HTTPException(status_code=409, detail="草稿当前状态不允许重新生成大纲")
+            brief = payload.generationBrief.model_dump()
+            if not brief["title"].strip():
+                raise HTTPException(status_code=400, detail="标题不能为空")
+            config = dict(draft.draft_config or {})
+            brief["rawRequest"] = str(config.get("rawRequest") or brief["rawRequest"])
+            config["generationBrief"] = brief
+            config["rawRequest"] = brief["rawRequest"]
+            config["bodyInstruction"] = ""
+            config.pop("generationJob", None)
+            draft.draft_config = config
+            draft.topic = brief["title"].strip()
+            draft.title = _clean_title(brief["title"])
+            draft.extra_request = generation_request(brief)
+            if payload.includeCode is not None:
+                draft.include_code = payload.includeCode
+            if payload.includeExercises is not None:
+                draft.include_exercises = payload.includeExercises
         if payload.categoryId is not None:
             await _ensure_category(session, user.id, payload.categoryId)
         if payload.title is not None:
@@ -489,6 +515,13 @@ async def update_draft(
             await _replace_sections(session, draft, payload.sections)
             if payload.status is None:
                 draft.status = "outline_ready"
+        if payload.generationBrief is not None and payload.outline is not None:
+            draft.graph_thread_id = f"draft-{random_id()}"
+            initialized = await initialize_draft_graph(user_id=user.id, thread_id=draft.graph_thread_id,
+                draft_id=draft.id, topic=draft.topic, outline=draft.outline)
+            if not initialized:
+                await session.rollback()
+                raise HTTPException(status_code=503, detail="LangGraph 草稿流程初始化失败，请稍后重试")
         if payload.sectionOrder is not None:
             sections = await _get_sections(session, user.id, draft.id)
             active_sections = [section for section in sections if section.deleted_at is None]

@@ -1309,15 +1309,15 @@ async def chat(
                     str((context_plan.draft_request or {}).get("brief") or ""),
                     2000,
                 ).strip()
-                draft_raw_request = planned_brief or payload.question
+                draft_raw_request = payload.question
                 draft_memory_context = ""
                 draft_memories: list[dict] = []
                 if memory_enabled and context_plan.context_plan.get("read_user_memory"):
                     _, draft_memories = await _query_memories_for_agent(user.id, payload.question, payload.history)
                     draft_memory_context = _memory_context_from_records(draft_memories)
                 answer = (
-                    f"好，我会先为《{draft_seed or '这篇'}》整理一份大纲。"
-                    "准备好后，你可以打开完整查看和调整。"
+                    f"我会为你整理{draft_seed or '这份笔记'}的大纲。"
+                    "你可以先调整卡片里的标题和要求，再开始生成。"
                 )
                 checkpoint = await _create_checkpoint(
                     user_id=user.id,
@@ -1329,6 +1329,8 @@ async def chat(
                         "seed": draft_seed,
                         "rawRequest": draft_raw_request,
                         "draftRequest": context_plan.draft_request,
+                        "manualOutline": True,
+                        "draftBrief": {"title": draft_seed, "requirements": planned_brief, "rawRequest": draft_raw_request},
                         "memoryContext": draft_memory_context,
                         "runtime": draft_runtime,
                     },
@@ -1354,6 +1356,10 @@ async def chat(
                         "draftCard": {
                             "seed": draft_seed,
                             "checkpointId": checkpoint["id"],
+                            "title": draft_seed,
+                            "requirements": planned_brief,
+                            "rawRequest": draft_raw_request,
+                            "manualOutline": True,
                         }
                     },
                 )
@@ -1367,6 +1373,8 @@ async def chat(
                             "seed": draft_seed,
                             "rawRequest": draft_raw_request,
                             "draftRequest": context_plan.draft_request,
+                            "manualOutline": True,
+                            "draftBrief": {"title": draft_seed, "requirements": planned_brief, "rawRequest": draft_raw_request},
                             "memoryContext": draft_memory_context,
                             "checkpointId": checkpoint["id"],
                             "checkpoint": checkpoint,
