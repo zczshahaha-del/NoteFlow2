@@ -428,9 +428,11 @@ export default function AIDraftWorkspace() {
   const fitSectionInstruction = useCallback(() => {
     const field = sectionInstructionRef.current;
     if (!field) return;
-    field.style.height = "52px";
-    field.style.height = `${Math.min(104, Math.max(52, field.scrollHeight))}px`;
-    field.style.overflowY = field.scrollHeight > 104 ? "auto" : "hidden";
+    const lineHeight = Number.parseFloat(getComputedStyle(field).lineHeight) || 22;
+    const maxHeight = lineHeight * 4;
+    field.style.height = `${lineHeight}px`;
+    field.style.height = `${Math.min(maxHeight, Math.max(lineHeight, field.scrollHeight))}px`;
+    field.style.overflowY = field.scrollHeight > maxHeight ? "auto" : "hidden";
   }, []);
   useLayoutEffect(fitSectionInstruction, [fitSectionInstruction, sectionInstruction, selectedSection?.id, Boolean(selectedSection?.content), centerMode]);
   useEffect(() => {
@@ -1671,28 +1673,25 @@ export default function AIDraftWorkspace() {
                 </div>
 
                 {selectedSection?.content.trim() && (
-                  <div className="nf-draft-revision mt-3 flex items-end gap-2 p-2.5">
-                    <div className="min-w-0 flex-1">
-                      <label htmlFor="draft-section-instruction" className="mb-1 block text-[10px] font-semibold text-jelly-text-muted">
-                        告诉 AI 如何修改
-                      </label>
-                      <textarea
-                        id="draft-section-instruction"
-                        ref={sectionInstructionRef}
-                        value={sectionInstruction}
-                        onChange={(event) => setSectionInstruction(event.target.value)}
-                        placeholder="例如：增加一个可运行示例，把概念解释得更适合初学者…"
-                        className="nf-draft-field min-h-[52px] w-full resize-none leading-relaxed"
-                      />
-                    </div>
+                  <div className="nf-draft-revision">
+                    <textarea
+                      id="draft-section-instruction"
+                      ref={sectionInstructionRef}
+                      value={sectionInstruction}
+                      onChange={(event) => setSectionInstruction(event.target.value)}
+                      placeholder="告诉 AI 如何修改…"
+                      aria-label="告诉 AI 如何修改"
+                      rows={1}
+                      className="nf-draft-field"
+                    />
                     <button
                       type="button"
                       onClick={() => void generateOneSection(selectedSection, sectionInstruction)}
                       disabled={!sectionInstruction.trim() || isBusy || draft?.status === "generating"}
-                      className="nf-draft-action nf-draft-primary inline-flex h-9 shrink-0 items-center gap-1.5 px-3 disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label="按要求修改"
+                      className="nf-draft-action nf-draft-primary nf-draft-revision-submit disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      <Wand2 size={13} />
-                      按要求修改
+                      修改
                     </button>
                   </div>
                 )}

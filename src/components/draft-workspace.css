@@ -80,8 +80,15 @@
 .nf-draft-workspace .nf-draft-marker[data-state="generating"] { color: var(--draft-text); }
 .nf-draft-workspace .nf-draft-progress { margin: 0 16px; background: var(--draft-soft); height: 3px; }
 .nf-draft-workspace .nf-draft-progress-fill { background: var(--draft-muted); }
-.nf-draft-workspace .nf-draft-revision { border: 0; border-radius: var(--nf-radius-menu, 14px); background: var(--draft-soft); }
-.nf-draft-workspace .nf-draft-revision label { color: var(--draft-muted); font-size: var(--nf-font-caption, 12px); font-weight: 500; }
+.nf-draft-workspace .nf-draft-revision {
+  display:flex; align-items:center; gap:8px; width:100%; max-width:640px; margin:10px auto 0; padding:6px 6px 6px 12px;
+  border:0; border-radius:12px; background:var(--draft-soft);
+}
+.nf-draft-workspace .nf-draft-revision:focus-within { box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--draft-muted) 35%, transparent); }
+.nf-draft-workspace .nf-draft-revision-submit {
+  display:inline-flex; align-items:center; justify-content:center; align-self:flex-end; flex:none;
+  height:32px; min-height:32px; padding:0 11px; border-radius:8px; font-size:12px; line-height:1;
+}
 .nf-draft-workspace .nf-draft-field { border: 0; border-radius: 10px; background: var(--draft-soft); color: var(--draft-text); font: 400 14px/1.6 var(--nf-font-ui, system-ui, sans-serif); box-shadow: none; }
 .nf-draft-workspace .nf-draft-field::placeholder { color: var(--draft-muted); opacity: .8; }
 .nf-draft-workspace .nf-draft-requirements { max-height: min(660px, calc(100dvh - 160px)); overflow-y: auto; }
@@ -90,7 +97,13 @@
 .nf-draft-initial-requirements > p { margin: 5px 0 0; max-height: 120px; overflow-y: auto; color: var(--draft-text); font-size: 12px; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; }
 .nf-draft-workspace .nf-draft-supplement-label { display:flex; gap:8px; align-items:center; color:var(--draft-text); font-size:12px; }
 .nf-draft-supplement-label > span { color: var(--draft-muted); font-size: 10px; }
-.nf-draft-workspace #draft-section-instruction { background: transparent; padding: 0; min-height: 52px; max-height: 104px; resize: none; overflow-y: hidden; font-size: var(--nf-font-control, 13px); }
+.nf-draft-workspace #draft-section-instruction {
+  display:block; flex:1; width:100%; min-width:0; height:22px; min-height:22px; max-height:88px;
+  border:0; border-radius:0; background:transparent; padding:0; resize:none; overflow-y:hidden;
+  font-size:var(--nf-font-control, 13px); line-height:22px;
+}
+.nf-draft-workspace #draft-section-instruction:focus,
+.nf-draft-workspace #draft-section-instruction:focus-visible { outline:none; box-shadow:none; }
 .nf-draft-workspace .nf-draft-action:focus-visible,
 .nf-draft-workspace .nf-draft-close:focus-visible,
 .nf-draft-workspace .nf-draft-chapter:focus-visible,
@@ -102,13 +115,13 @@
   .nf-draft-workspace .nf-draft-icon { width: 44px; height: 44px; }
   .nf-draft-workspace .nf-draft-field,
   .nf-draft-workspace #draft-section-instruction { font-size: 16px; }
+  .nf-draft-workspace .nf-draft-revision { padding:4px 4px 4px 12px; }
+  .nf-draft-workspace .nf-draft-revision-submit { height:44px; min-height:44px; min-width:44px; }
+  .nf-draft-workspace #draft-section-instruction { height:24px; min-height:24px; max-height:96px; line-height:24px; }
 }
 @media (max-width: 767px) {
   .nf-draft-workspace .nf-draft-desktop-action { display: none; }
   .nf-draft-workspace .nf-draft-requirements { position:fixed; top:82px; left:16px; right:16px; width:auto; max-height:calc(100dvh - 110px); }
-  .nf-draft-workspace .nf-draft-revision { flex-wrap: wrap; }
-  .nf-draft-workspace .nf-draft-revision > div { flex-basis: 100%; }
-  .nf-draft-workspace .nf-draft-revision > button { margin-left: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
   .nf-draft-workspace .nf-draft-shell,
