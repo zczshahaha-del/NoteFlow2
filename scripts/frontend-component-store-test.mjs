@@ -1355,7 +1355,9 @@ try {
   assert.equal(document.getElementById('root').inert, true);
   assert.equal(document.body.style.overflow, 'hidden');
   assert.equal(surfaceInput().getAttribute('aria-expanded'), 'false');
-  assert.equal(searchSurface().querySelector('.nf-search-body').textContent, '输入笔记标题、章节名或正文关键词。');
+  assert.equal(searchSurface().querySelector('.nf-search-body').textContent, '');
+  assert.equal(searchSurface().querySelector('#library-search-hint').textContent, '输入笔记标题、章节名或正文关键词。');
+  assert.equal(searchSurface().querySelector('.nf-search-input').getAttribute('aria-describedby'), 'library-search-hint');
   assert.equal(searchSurface().querySelectorAll('svg').length, 2);
   assert.equal(searchSurface().querySelector('.nf-search-scope').textContent, '全部');
 

@@ -290,7 +290,8 @@ export default function LibrarySearchDialog({
     if (!visible || !open) return;
     const measure = () => {
       const height = bodyRef.current?.getBoundingClientRect().height;
-      if (height) setContentHeight(height);
+      // An empty search body is a valid zero-height state after clearing results.
+      if (height !== undefined) setContentHeight(height);
     };
     measure();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
@@ -477,6 +478,7 @@ export default function LibrarySearchDialog({
         aria-labelledby="library-search-title"
       >
         <h2 id="library-search-title" className="sr-only">搜索全部笔记</h2>
+        <p id="library-search-hint" className="sr-only">输入笔记标题、章节名或正文关键词。</p>
 
         <div className="nf-search-field">
           <Search size={17} strokeWidth={1.65} aria-hidden="true" />
@@ -490,6 +492,7 @@ export default function LibrarySearchDialog({
             className="nf-search-input"
             placeholder="搜索标题、章节和正文"
             aria-label="搜索全部笔记"
+            aria-describedby="library-search-hint"
             role="combobox"
             aria-autocomplete="list"
             aria-expanded={groups.length > 0 && !loading && !searchPending && !compositionActive}
@@ -542,11 +545,7 @@ export default function LibrarySearchDialog({
 
         <div className="nf-search-viewport" style={{ height: contentHeight }}>
           <div ref={bodyRef} className="nf-search-body">
-          {!inputValue.trim() ? (
-            <p className="nf-search-hint">
-              输入笔记标题、章节名或正文关键词。
-            </p>
-          ) : compositionActive ? (
+          {!inputValue.trim() ? null : compositionActive ? (
             <div className="nf-search-wait" role="status">继续完成输入</div>
           ) : searchPending ? (
             <div className="nf-search-wait" role="status">
@@ -627,7 +626,10 @@ export default function LibrarySearchDialog({
           )}
           </div>
         </div>
-        <div className="nf-search-footer"><span>↑ ↓ 选择 · Enter 打开</span><span>Esc 关闭</span></div>
+        <div className="nf-search-footer">
+          <span className="nf-search-key-hint"><kbd>↑</kbd><kbd>↓</kbd><span>选择</span><kbd>Enter</kbd><span>打开</span></span>
+          <span className="nf-search-key-hint"><kbd>Esc</kbd><span>关闭</span></span>
+        </div>
       </section>
     </div>,
     document.body
