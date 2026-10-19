@@ -13,6 +13,7 @@ import { FileText, RotateCcw, Search, X } from "lucide-react";
 import { searchNotes, type NoteSearchScope } from "../services/notes";
 import type { ChatSource, FileNode } from "../types";
 import { formatDocumentTime } from "../utils/documentTime";
+import { searchSnippetText } from "../utils/searchSnippetText";
 import "./library-search.css";
 
 const SEARCH_DEBOUNCE_MS = 340;
@@ -201,6 +202,7 @@ export default function LibrarySearchDialog({
     () => groupSearchResults(resultsAreCurrent ? results : [], noteMetadata),
     [noteMetadata, results, resultsAreCurrent]
   );
+  const snippets = useMemo(() => groups.map(group => searchSnippetText(groupSnippet(group))), [groups]);
 
   useEffect(() => {
     setActiveIndex(groups.length > 0 ? 0 : -1);
@@ -611,7 +613,7 @@ export default function LibrarySearchDialog({
                         {location}{updatedDate && ` · 更新于 ${updatedDate}`}
                       </span>
                       <span className="nf-search-snippet">
-                        {highlightTerms(groupSnippet(group), normalizedQuery)}
+                        {highlightTerms(snippets[index], normalizedQuery)}
                       </span>
                       {group.matches.length > 1 && (
                         <span className="nf-search-more">

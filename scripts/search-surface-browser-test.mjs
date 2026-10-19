@@ -31,7 +31,8 @@ assert.equal(scripts.length, 1, 'offline test must be self-contained');
 const source = scripts[0].code.replaceAll('</script', '<\\/script');
 const browser = await chromium.launch({ executablePath: process.env.NOTEFLOW_BROWSER_EXECUTABLE || undefined, headless: true });
 const reports = [], errors = [];
-const row = (index) => ({ noteId: index ? 'sample-'+index : 'sample-redis', noteTitle: index ? 'Python 的面试常见问题 '+index : 'Redis', sectionId: 'section-'+index, sectionTitle: '缓存基础', sourceType: 'chunk_content', snippet: '如何用 Redis 缓存热点数据？需要考虑过期策略与数据一致性。', retrievalChannels: ['content'] });
+const markdownSnippet='**Redis** 缓存：用 `GOPRIVATE` 配合 [Git 文档](https://example.invalid/git)；尾段 ``` > **常见错误**：不要公开 API_KEY。<img src="https://example.invalid/image" onerror="alert(1)">';
+const row = (index) => ({ noteId: index ? 'sample-'+index : 'sample-redis', noteTitle: index ? 'Python 的面试常见问题 '+index : 'Redis', sectionId: 'section-'+index, sectionTitle: '缓存基础', sourceType: 'chunk_content', snippet: index?'如何用 Redis 缓存热点数据？需要考虑过期策略与数据一致性。':markdownSnippet, retrievalChannels: ['content'] });
 try {
   for (const {width,mobile} of [{width:1280,mobile:false},{width:736,mobile:true},{width:320,mobile:true}]) {
     const context = await browser.newContext({ viewport: {width,height:mobile?640:720}, isMobile:mobile, hasTouch:mobile, deviceScaleFactor:1 });
@@ -68,13 +69,21 @@ try {
     const results=await geometry(); assert.equal(results.y,initial.y); assert.ok(results.height>initial.height); assert.ok(results.bottom<=results.viewHeight-15); assert.equal(results.clipped,false);
     assert.equal(await page.locator('.nf-search-summary').textContent(),'2 篇笔记 · 3 处命中');
     assert.equal(await page.locator('[role="status"]').count(),0);
+    const snippet=page.locator('.nf-search-snippet').first();
+    assert.equal(await snippet.textContent(),'Redis 缓存：用 GOPRIVATE 配合 Git 文档；尾段 常见错误：不要公开 API_KEY。');
+    assert.equal(await snippet.locator('mark').first().textContent(),'Redis','Highlight is applied after Markdown is converted to text');
+    assert.equal(await snippet.locator('a,img,script,pre,code,strong').count(),0,'Search previews never insert rich HTML or nested interactive links');
     if(process.env.NOTEFLOW_SEARCH_SCREENSHOT_DIR){
       await page.screenshot({path:process.env.NOTEFLOW_SEARCH_SCREENSHOT_DIR+'/search-'+width+'-results.png'});
       await page.locator('.nf-search-dialog').screenshot({path:process.env.NOTEFLOW_SEARCH_SCREENSHOT_DIR+'/search-panel-'+width+'-results.png'});
     }
     await page.locator('.nf-search-input').press('ArrowDown'); assert.equal(await page.locator('.nf-search-input').getAttribute('aria-activedescendant'),'library-search-result-1');
+    await page.locator('.nf-search-input').press('ArrowUp');
     await page.locator('.nf-search-input').press('Enter'); await page.waitForFunction(()=>!document.querySelector('.nf-library-search'));
-    assert.equal(await page.evaluate(()=>window.searchTest.selected.noteId),'sample-1'); assert.equal(await page.evaluate(()=>document.activeElement.id),'trigger');
+    assert.equal(await page.evaluate(()=>window.searchTest.selected.noteId),'sample-redis');
+    assert.equal(await page.evaluate(()=>window.searchTest.selected.sectionId),'section-0');
+    assert.equal(await page.evaluate(()=>window.searchTest.selected.snippet),markdownSnippet,'Selecting a readable preview still returns the unchanged original source');
+    assert.equal(await page.evaluate(()=>document.activeElement.id),'trigger');
     await page.locator('#trigger').click(); await page.locator('.nf-search-input').fill('更多结果');
     await page.waitForFunction(()=>window.searchTest.pending.length===2);
     await page.evaluate((rows)=>window.searchTest.resolve(rows), Array.from({length:20},(_,i)=>row(i))); await page.waitForTimeout(280);
