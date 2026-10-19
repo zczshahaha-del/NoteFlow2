@@ -35,11 +35,9 @@ import { OperationFeedback } from './OperationFeedback';
 import { getNoteOutline, type NoteSectionRecord } from "../services/notes";
 import { documentFolderPath, hasMatchingDocumentTitle } from "../utils/documentHeader";
 import { getDocumentHeadings, getDocumentNumberedHeadings, getEditorMarkdown, type TiptapHeading } from "../editor/documentCache";
-import { setHeadingNumbering } from "../editor/headingDecorations";
 
 const VersionHistoryPanel = lazy(() => import("./VersionHistoryPanel"));
 const extensions = createNoteFlowTiptapExtensions();
-const HEADING_NUMBERING_STORAGE_KEY = "noteflow:show-heading-numbers";
 const selectionToolbarAppendTo = () => document.body;
 const selectionToolbarShouldShow = ({
   editor,
@@ -57,15 +55,6 @@ const selectionToolbarOptions = {
   flip: false,
   shift: { padding: 12 },
 } as const;
-
-function loadHeadingNumberingPreference(): boolean {
-  if (typeof window === "undefined") return true;
-  try {
-    return window.localStorage.getItem(HEADING_NUMBERING_STORAGE_KEY) !== "false";
-  } catch {
-    return true;
-  }
-}
 
 const emptyHeadings: TiptapHeading[] = [];
 
@@ -311,7 +300,6 @@ function NoteEditorDocument({ onReady, presented = true }: {
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
   const [bodyEditing, setBodyEditing] = useState(false);
-  const [showHeadingNumbers, setShowHeadingNumbers] = useState(loadHeadingNumberingPreference);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkDraft, setLinkDraft] = useState("");
   const [uploadError, setUploadError] = useState('');
@@ -473,20 +461,13 @@ function NoteEditorDocument({ onReady, presented = true }: {
     () => editor && !editor.isDestroyed ? getDocumentNumberedHeadings(editor.state.doc) : [],
     [editor, headings]
   );
-  const visibleHeadings = useMemo(() => showHeadingNumbers
-    ? numberedHeadings
-    : numberedHeadings.map((heading) => ({ ...heading, displayNumber: "" })),
-  [numberedHeadings, showHeadingNumbers]);
+  const visibleHeadings = numberedHeadings;
   const activeId = useReadingHeading(editor, documentScroller, headings);
   const headingGroups = useHeadingGroups(visibleHeadings, activeId);
   const headingPositions = useMemo(
     () => new Map(headings.map((heading) => [heading.id, heading.position])),
     [headings]
   );
-  useEffect(() => {
-    if (!editor || editor.isDestroyed) return;
-    setHeadingNumbering(editor, showHeadingNumbers);
-  }, [editor, showHeadingNumbers]);
   useEffect(() => {
     setBackendSections([]);
     setActiveEditorSectionId(null);
@@ -660,14 +641,7 @@ function NoteEditorDocument({ onReady, presented = true }: {
                     setTitleDraft(name);
                     if (name !== selectedFile.name.replace(/\.md$/i, "")) updateNodeName(selectedFile.id, name + ".md");
                   }}
-                  matchingBodyTitle={matchingBodyTitle} bodyEditing={bodyEditing} saveStatus={noteSaveState.status}
-                  showHeadingNumbers={showHeadingNumbers}
-                  onToggleHeadingNumbers={() => {
-                    const nextValue = !showHeadingNumbers;
-                    setShowHeadingNumbers(nextValue);
-                    try { window.localStorage.setItem(HEADING_NUMBERING_STORAGE_KEY, String(nextValue)); }
-                    catch { /* Keep this session's preference when storage is unavailable. */ }
-                  }} />
+                  matchingBodyTitle={matchingBodyTitle} bodyEditing={bodyEditing} saveStatus={noteSaveState.status} />
                 {(noteSaveState.status === 'error' || noteSaveState.status === 'offline') && <div className="nf-note-feedback">
                   <OperationFeedback onRetry={() => retryNoteSave(selectedFile.id)} retryLabel={noteSaveState.status === 'offline' ? '立即同步' : '重试保存'}>
                     <strong>{noteSaveState.status === 'offline' ? '正文已留在本机，等待同步' : '正文未能同步到服务器'}</strong>

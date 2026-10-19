@@ -182,12 +182,12 @@ try {
     const dateGeometry=await dates.evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().toJSON()));
     assert(dateGeometry.every(n=>n.x>=0 && n.x+n.width<=width),'Each full date stays inside the reading surface');
     if(width<768)assert(dateGeometry[1].y>=dateGeometry[0].y+dateGeometry[0].height,'Mobile dates use intentional separate rows');
-    const settings=page.getByRole('button',{name:'文档显示设置',exact:true});
-    const menuPosition=await settings.boundingBox();
+    assert.equal(await page.getByRole('button',{name:'文档显示设置',exact:true}).count(),0);
+    const savePosition=await page.locator('.document-save-state').boundingBox();
     for(const count of [1,0,2]) {
       await page.evaluate(count=>{const {slice,api}=window.proseTest;const node=slice.treeData[0];node.createdAt=count?'2026-07-22T15:50:00+08:00':null;node.updatedAt=count===2?'2026-08-18T09:14:00+08:00':null;api.render();},count);
       await page.waitForFunction(count=>document.querySelectorAll('.document-meta-date').length===count,count);
-      const position=await settings.boundingBox();assert.equal(position.x,menuPosition.x);assert.equal(position.y,menuPosition.y,'Metadata availability must not move the settings target');
+      const position=await page.locator('.document-save-state').boundingBox();assert.equal(position.x,savePosition.x);assert.equal(position.y,savePosition.y,'Metadata availability must not move the save status');
     }
     if (width < 768) {
       const header = await page.getByRole('toolbar', {name:'笔记导航'}).boundingBox();

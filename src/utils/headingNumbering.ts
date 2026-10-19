@@ -5,6 +5,7 @@ export interface HeadingForNumbering {
 
 export type NumberedHeading<T extends HeadingForNumbering> = T & {
   displayNumber: string;
+  numberJoinsText: boolean;
   hasManualNumber: boolean;
   hierarchyDepth: number;
 };
@@ -35,6 +36,23 @@ export function numberHeadings<T extends HeadingForNumbering>(
     const depth = Math.max(0, Math.min(5, heading.level - baseLevel));
     const manualParts = parseManualNumber(heading.text);
 
+    // A local numeral in a child heading belongs to that level, not to the
+    // root counter. Complete its ancestry visually; keep the source editable.
+    if (manualParts?.length === 1 && depth > 0) {
+      for (let index = 0; index < depth; index += 1) {
+        if (counters[index] === 0) counters[index] = 1;
+      }
+      counters[depth] = manualParts[0];
+      counters.fill(0, depth + 1);
+      return {
+        ...heading,
+        displayNumber: depth < maxNumberedDepth ? `${counters.slice(0, depth).join(".")}.` : "",
+        numberJoinsText: true,
+        hasManualNumber: true,
+        hierarchyDepth: depth,
+      };
+    }
+
     if (manualParts) {
       manualParts.slice(0, counters.length).forEach((value, index) => {
         counters[index] = value;
@@ -45,6 +63,7 @@ export function numberHeadings<T extends HeadingForNumbering>(
       return {
         ...heading,
         displayNumber: "",
+        numberJoinsText: false,
         hasManualNumber: true,
         hierarchyDepth: Math.min(5, manualParts.length - 1),
       };
@@ -69,8 +88,13 @@ export function numberHeadings<T extends HeadingForNumbering>(
     return {
       ...heading,
       displayNumber,
+      numberJoinsText: false,
       hasManualNumber: false,
       hierarchyDepth: depth,
     };
   });
+}
+
+export function headingLabel(heading: HeadingForNumbering & { displayNumber?: string; numberJoinsText?: boolean }): string {
+  return `${heading.displayNumber ?? ""}${heading.displayNumber && !heading.numberJoinsText ? " " : ""}${heading.text}`;
 }

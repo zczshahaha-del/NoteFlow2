@@ -26,19 +26,11 @@
   gap: 4px 12px;
 }
 .document-meta-date { white-space: nowrap; }
-.document-meta-menu { position: relative; flex-shrink: 0; align-self: flex-start; }
-.document-header .document-view-menu-trigger { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: var(--nf-radius-icon); color: var(--nf-ui-muted); background: transparent; transition: background-color var(--nf-motion-feedback); }
-.document-header .document-view-menu-trigger:hover { background: var(--nf-ui-soft); color: var(--nf-ui-text); }
-.document-header .document-view-menu-trigger:focus-visible { outline: 2px solid var(--nf-ui-focus); outline-offset: 2px; }
 @media (max-width: 767px) {
   .document-meta-summary { flex-direction: column; }
   .document-meta-dates { flex-direction: column; align-items: flex-start; }
 }
 @media (pointer: coarse) {
-  .document-header .document-view-menu-trigger { width: 44px; height: 44px; }
   .document-title-field .document-title { min-height: 44px; }
   .document-canvas .document-header[data-title-mode="body"] .document-title { font-size: 16px !important; }
-}
-@media (forced-colors: active) {
-  .document-header .document-view-menu-trigger:focus-visible { outline-color: Highlight; }
 }

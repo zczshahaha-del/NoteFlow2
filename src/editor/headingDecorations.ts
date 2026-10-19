@@ -1,14 +1,10 @@
-import { Extension, type Editor } from "@tiptap/core";
+import { Extension } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { getDocumentNumberedHeadings } from "./documentCache.ts";
 
-interface HeadingDisplayState {
-  enabled: boolean;
-  decorations: DecorationSet;
-}
-const headingDisplayKey = new PluginKey<HeadingDisplayState>("noteFlowHeadingDisplay");
+const headingDisplayKey = new PluginKey<DecorationSet>("noteFlowHeadingDisplay");
 const decorationCache = new WeakMap<ProseMirrorNode, DecorationSet>();
 
 function buildHeadingDecorations(doc: ProseMirrorNode): DecorationSet {
@@ -18,6 +14,7 @@ function buildHeadingDecorations(doc: ProseMirrorNode): DecorationSet {
     .filter(heading => heading.displayNumber)
     .map(heading => Decoration.node(heading.position, heading.position + heading.nodeSize, {
       "data-heading-number": heading.displayNumber,
+      ...(heading.numberJoinsText ? { "data-heading-number-join": "true" } : {}),
     })));
   decorationCache.set(doc, decorations);
   return decorations;
@@ -28,26 +25,16 @@ function buildHeadingDecorations(doc: ProseMirrorNode): DecorationSet {
 export const HeadingDisplay = Extension.create({
   name: "noteFlowHeadingDisplay",
   addProseMirrorPlugins() {
-    return [new Plugin<HeadingDisplayState>({
+    return [new Plugin<DecorationSet>({
       key: headingDisplayKey,
       state: {
-        init: (_, state) => ({ enabled: true, decorations: buildHeadingDecorations(state.doc) }),
-        apply: (transaction, previous) => {
-          const setting: unknown = transaction.getMeta(headingDisplayKey);
-          const enabled = typeof setting === "boolean" ? setting : previous.enabled;
-          if (!transaction.docChanged && enabled === previous.enabled) return previous;
-          return { enabled, decorations: enabled ? buildHeadingDecorations(transaction.doc) : DecorationSet.empty };
-        },
+        init: (_, state) => buildHeadingDecorations(state.doc),
+        apply: (transaction, previous) => transaction.docChanged ? buildHeadingDecorations(transaction.doc) : previous,
       },
       props: {
-        decorations: state => headingDisplayKey.getState(state)?.decorations ?? DecorationSet.empty,
-        attributes: state => ({ class: headingDisplayKey.getState(state)?.enabled ? "heading-numbering-enabled" : "" }),
+        decorations: state => headingDisplayKey.getState(state) ?? DecorationSet.empty,
+        attributes: { class: "heading-numbering-enabled" },
       },
     })];
   },
 });
-
-export function setHeadingNumbering(editor: Editor, enabled: boolean): void {
-  if (editor.isDestroyed || headingDisplayKey.getState(editor.state)?.enabled === enabled) return;
-  editor.view.dispatch(editor.state.tr.setMeta(headingDisplayKey, enabled).setMeta("addToHistory", false));
-}

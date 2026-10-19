@@ -3,6 +3,7 @@ export interface OutlineHeading {
   level: number;
   text: string;
   displayNumber?: string;
+  numberJoinsText?: boolean;
   hierarchyDepth?: number;
 }
 export interface OutlineNode { item: OutlineHeading; key: string; depth: number; children: OutlineNode[] }

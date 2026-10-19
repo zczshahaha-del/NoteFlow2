@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { ChevronRight, ChevronsLeft, ListTree } from "lucide-react";
 import type { HeadingGroups } from "../hooks/useHeadingGroups";
 import type { OutlineHeading as HeadingItem } from "../utils/outlineNavigation";
+import { headingLabel } from "../utils/headingNumbering";
 import "./chapter-navigation.css";
 
 export default function OutlinePanel({
@@ -96,6 +97,7 @@ export default function OutlinePanel({
                 <button
                   type="button"
                   data-heading-id={h.id}
+                  aria-label={headingLabel(h)}
                   aria-current={activeId === h.id ? "location" : undefined}
                   className={`document-outline-heading
                     min-w-0 flex-1 truncate rounded-md border-l-[3px] py-1.5 pr-2 text-left transition-colors duration-100
@@ -113,7 +115,7 @@ export default function OutlinePanel({
                   onClick={() => onHeadingClick(h.id)}
                 >
                   {h.displayNumber && (
-                    <span className="mr-1.5 tabular-nums text-jelly-text-muted" aria-hidden="true">
+                    <span className={`${h.numberJoinsText ? "" : "mr-1.5"} tabular-nums text-jelly-text-muted`} aria-hidden="true">
                       {h.displayNumber}
                     </span>
                   )}

@@ -13,6 +13,8 @@ const baseline=process.env.NOTEFLOW_HEADER_BASELINE==='1';
 const title='知识库学习笔记';
 const markdown='# '+title+'\n\n保留 **重点** 与 `inline`。\n\n## 正文章节\n\n```go\nfunc main() { println("color") }\n```';
 const entry=`import React from 'react';import {createRoot} from 'react-dom/client';import NoteEditor from ${JSON.stringify(component)};
+let legacyNumberReads=0;
+Object.defineProperty(window,'localStorage',{value:{getItem(key){if(key==='noteflow:show-heading-numbers'){legacyNumberReads++;return 'false'}return null},setItem(){},removeItem(){}}});
 const root=createRoot(document.getElementById('root'));
 const note={id:'note',type:'file',name:${JSON.stringify(title+'.md')},createdAt:'2026-07-22T15:50:00+08:00',updatedAt:'2026-10-15T09:14:00+08:00',indexStatus:'indexed'};
 const folders=()=>[{id:'f1',type:'folder',name:'全栈开发',children:[{id:'f2',type:'folder',name:'学习笔记',children:[note]}]}];
@@ -21,7 +23,7 @@ move(root){slice.treeData=root?[note]:folders();api.render()},status(status){sli
 const slice={selectedFileId:'note',treeData:folders(),fileContents:{note:${JSON.stringify(markdown)}},noteSaveState:{status:'saved'},pendingEditorSelection:null,pendingSourceFocus:null,
 updateNodeName(id,name){api.renames.push({id,name});note.name=name;api.render()},updateFileContent(id,content){api.updates.push({id,content});slice.fileContents[id]=content;api.render()},
 retryNoteSave(){throw Error('Unexpected retry')},reindexNote(){throw Error('Unexpected reindex')},addSelectionToChat(){},clearPendingEditorSelection(){},clearPendingSourceFocus(){},setActiveEditorSectionId(){}};
-window.headerTest={api,slice,note,original:${JSON.stringify(markdown)}};api.render();`;
+window.headerTest={api,slice,note,original:${JSON.stringify(markdown)},legacyNumberReads:()=>legacyNumberReads};api.render();`;
 const bundled=await build({configFile:false,logLevel:'silent',plugins:[{name:'header-isolated',enforce:'pre',
 resolveId(id,importer){if(id==='virtual:header')return '\0header';if(id==='../store/selectors'&&(importer===component||importer?.endsWith('/VersionHistoryPanel.tsx')))return '\0store';if(id==='../services/notes'&&(importer===component||importer?.endsWith('/VersionHistoryPanel.tsx')))return '\0notes';if(id==='../services/attachments'&&importer===component)return '\0attachments';},
 load(id){if(id==='\0header')return entry;if(id==='\0store')return 'export const useEditorSlice=()=>window.headerTest.slice;';if(id==='\0notes')return 'export const getNoteOutline=async()=>({sections:[]});export const listNoteVersions=async()=>[];';if(id==='\0attachments')return 'export const attachmentMarkdown=()=>"";export const uploadAttachment=()=>{throw Error("Unexpected upload")};';
@@ -47,11 +49,12 @@ try{
    assert.equal(await page.locator('.document-save-state').textContent(),'正文已同步');assert.equal(await page.locator('.document-meta-date').count(),2);
    assert.equal(await page.evaluate(()=>window.headerTest.api.updates.length),0);assert.equal(await page.evaluate(()=>window.headerTest.slice.fileContents.note),markdown);
    await page.evaluate(()=>{window.headerOriginalEditor=window.headerTest.api.editor;window.headerOriginalDoc=window.headerTest.api.editor.state.doc});
-   const anchor=await page.getByRole('button',{name:'文档显示设置',exact:true}).boundingBox();
+   assert.equal(await page.getByRole('button',{name:'文档显示设置',exact:true}).count(),0,'No empty numbering-settings menu');
+   const anchor=await page.locator('.document-save-state').boundingBox();
    const bodyTop=await page.locator('.note-content').boundingBox();
    for(const status of ['idle','unsaved','saving','offline','error','saved']){
     await page.evaluate(s=>window.headerTest.api.status(s),status);await page.waitForFunction(s=>document.querySelector('.document-save-state')?.dataset.saveStatus===s,status);
-    assert.deepEqual(await page.getByRole('button',{name:'文档显示设置',exact:true}).boundingBox(),anchor,'Save state must not move the menu target');
+    assert.deepEqual(await page.locator('.document-save-state').boundingBox(),anchor,'Save states keep stable geometry');
     if(!['error','offline'].includes(status))assert.equal((await page.locator('.note-content').boundingBox()).y,bodyTop.y,'Routine save state must not shift prose; exceptional retry feedback remains visible');
     assert(await page.evaluate(()=>window.headerTest.api.editor===window.headerOriginalEditor&&window.headerTest.api.editor.state.doc===window.headerOriginalDoc));
    }
@@ -90,20 +93,37 @@ try{
   const top=await header.boundingBox();await page.evaluate(()=>window.headerTest.api.editor.chain().setTextSelection(2).insertContent('改').run());
   await page.waitForFunction(()=>document.querySelector('.note-content h1').textContent.startsWith('知改'));
   assert.equal(await header.getAttribute('data-title-mode'),'body');assert.equal((await header.boundingBox()).height,top.height);
-  await page.getByRole('button',{name:'文档显示设置',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.document-header').dataset.titleMode==='document');
-  await page.getByRole('menuitemcheckbox',{name:/显示章节编号/}).press('Escape');
+  await input.focus();await input.press('Tab');await page.waitForFunction(()=>document.querySelector('.document-header').dataset.titleMode==='document');
   await page.evaluate(()=>window.headerTest.api.editor.chain().focus().undo().run());
-  await page.getByRole('button',{name:'文档显示设置',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.document-header').dataset.titleMode==='body');
-  const numbers=page.getByRole('menuitemcheckbox',{name:/显示章节编号/});const checked=await numbers.getAttribute('aria-checked');await numbers.click();
-  await page.getByRole('button',{name:'文档显示设置',exact:true}).click();assert.notEqual(await numbers.getAttribute('aria-checked'),checked);await numbers.press('Escape');
+  await input.focus();await input.press('Tab');await page.waitForFunction(()=>document.querySelector('.document-header').dataset.titleMode==='body');
+  assert.equal(await page.locator('.note-content h1').getAttribute('data-heading-number'),'1.','Numbering is always on');
+  assert.equal(await page.evaluate(()=>window.headerTest.legacyNumberReads()),0,'Old disabled preference is no longer consulted');
   await page.evaluate(()=>window.headerTest.api.move(true));await page.waitForFunction(()=>document.querySelector('.document-location').getAttribute('aria-label')==='笔记位置：知识库');
   assert(await page.evaluate(()=>window.headerTest.api.editor===window.headerOriginalEditor));
   await page.evaluate(()=>{window.headerTest.api.move(false);window.headerTest.slice.treeData[0].name='长文件夹'.repeat(30);window.headerTest.api.render()});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);
   await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));await settle(page);assert.equal(await page.locator('.document-location').evaluate(n=>getComputedStyle(n).color),'rgb(167, 176, 188)');
   await page.screenshot({path:join(output,'header-'+width+'-dark.png')});
-  await page.emulateMedia({reducedMotion:'reduce'});await page.getByRole('button',{name:'文档显示设置',exact:true}).click();await numbers.press('Escape');assert.equal(await page.getByRole('menu').count(),0);
-  assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);reports.push({width,compactDuplicateTitle:true,originalH1Preserved:true,folderPath:true,saveStateGeometry:true,renameOnCommit:true,spaces:true,escapeCancel:true,imeGuards:true,emptyFallback:true,noResizeUnderCaret:true,undo:true,menuRetained:true,rootMove:true,dark:true,reducedMotion:true});await context.close();
+  await page.emulateMedia({reducedMotion:'reduce'});await input.focus();await input.press('Escape');assert.equal(await page.getByRole('menu').count(),0);
+  const nestedSource='## 模型接口与API调用基础\n\n### 1. 准备工作\n\n### 2. 使用 SDK\n\n### 自动子节\n\n## 提示工程\n\n结尾';
+  const updatesBefore=await page.evaluate(()=>window.headerTest.api.updates.length);
+  await page.evaluate(content=>{window.headerTest.slice.fileContents.note=content;window.headerTest.api.render()},nestedSource);
+  await page.waitForFunction(()=>document.querySelector('.note-content h3')?.textContent==='1. 准备工作');
+  assert.deepEqual(await page.locator('.note-content h2,.note-content h3').evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n,'::before').content.replaceAll('"','')+(n.dataset.headingNumberJoin?'':' ')+n.textContent)),
+    ['1. 模型接口与API调用基础','1.1. 准备工作','1.2. 使用 SDK','1.3 自动子节','2. 提示工程']);
+  assert.equal(await page.locator('.note-content h3').first().evaluate(n=>getComputedStyle(n,'::before').marginRight),'0px','Ancestry joins the source without a visual gap');
+  if(width>=768){
+    await page.getByRole('button',{name:'展开章节目录',exact:true}).click();
+    assert.deepEqual(await page.locator('.chapter-rail-label').allTextContents(),['1. 模型接口与API调用基础','1.1. 准备工作','1.2. 使用 SDK','1.3 自动子节','2. 提示工程']);
+  }else{
+    await page.getByRole('button',{name:'展开目录',exact:true}).click();
+    assert.deepEqual(await page.locator('.document-outline-heading').allTextContents(),['1.模型接口与API调用基础','1.1. 准备工作','1.2. 使用 SDK','1.3自动子节','2.提示工程']);
+    assert.equal(await page.getByRole('button',{name:'1.1. 准备工作',exact:true}).count(),1);
+  }
+  assert.equal(await page.evaluate(()=>window.headerTest.api.editor.getMarkdown()),nestedSource);
+  assert.equal(await page.evaluate(()=>window.headerTest.api.updates.length),updatesBefore,'Display correction must never save rewritten headings');
+  await page.screenshot({path:join(output,'numbering-'+width+'.png')});
+  assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);reports.push({width,compactDuplicateTitle:true,originalH1Preserved:true,folderPath:true,saveStateGeometry:true,renameOnCommit:true,spaces:true,escapeCancel:true,imeGuards:true,emptyFallback:true,noResizeUnderCaret:true,undo:true,numberingAlwaysOn:true,noEmptyMenu:true,nestedManualNumbers:true,proseOutlineAgree:true,sourceUnchanged:true,rootMove:true,dark:true,reducedMotion:true});await context.close();
  }
  console.log(JSON.stringify({ok:true,actualEditorAndHeader:true,syntheticOnly:true,networkBlocked:true,output,reports},null,2));
 }finally{await browser.close();}

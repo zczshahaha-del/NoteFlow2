@@ -98,16 +98,13 @@ try {
     const selection = await phase(page, async () => { for (let i=0;i<40;i++) await page.keyboard.press('ArrowLeft'); });
     assert.equal(selection.updates, 0);assert.equal(selection.serializations, 0);assert.equal(selection.highlightParses, 0);
     assert.equal(await editor.textContent(), original);
-    const menu = await phase(page, async () => {
-      const trigger=page.getByRole('button',{name:'文档显示设置',exact:true});
+    const headerFocus = await phase(page, async () => {
+      const title=page.getByRole('textbox',{name:'文档标题',exact:true});
       for(let i=0;i<5;i++) {
-        await trigger.click();await page.getByRole('menuitemcheckbox',{name:/显示章节编号/}).waitFor();
-        await page.keyboard.press('Tab');
-        await page.waitForFunction(() => document.activeElement?.getAttribute('role') === 'menuitemcheckbox');
-        await page.keyboard.press('Escape');await page.getByRole('menuitemcheckbox',{name:/显示章节编号/}).waitFor({state:'detached'});
+        await title.focus();await title.press('Escape');
       }
     });
-    assert.equal(menu.updates,0);assert.equal(menu.highlightParses,0);
+    assert.equal(headerFocus.updates,0);assert.equal(headerFocus.highlightParses,0);
     await page.evaluate(() => { window.editorPerf.editor.commands.focus('end'); });
     const typing = await phase(page, async () => { await page.keyboard.type('performance-check'); });
     assert.equal(typing.updates, 'performance-check'.length, 'Keep immediate per-input save updates');
@@ -115,7 +112,7 @@ try {
     assert((await editor.textContent()).endsWith('performance-check'));
     assert((await page.evaluate(() => window.proseTest.slice.fileContents['perf-note'])).endsWith('performance-check'));
     assert.equal(await editor.evaluate(el => el.contains(document.activeElement)),true);
-    console.log(JSON.stringify({width,selection,menu,typing}));
+    console.log(JSON.stringify({width,selection,headerFocus,typing}));
     // Selection formatting must stay reactive when the whole editor stops
     // rerendering on every caret move. These affect synthetic data only.
     await page.evaluate(() => { const e=window.editorPerf.editor;e.commands.setTextSelection({from:e.state.doc.content.size-18,to:e.state.doc.content.size-1}); });
@@ -134,10 +131,6 @@ try {
     }
     // Display-only numbering is not a document edit and must refresh after
     // text input, heading creation and deletion.
-    await page.getByRole('button',{name:'文档显示设置',exact:true}).click();
-    await page.getByRole('menuitemcheckbox',{name:/显示章节编号/}).click();
-    await page.waitForFunction(() => !document.querySelector('.note-content').classList.contains('heading-numbering-enabled'));
-    await page.getByRole('button',{name:'文档显示设置',exact:true}).click();await page.getByRole('menuitemcheckbox',{name:/显示章节编号/}).click();
     await page.waitForFunction(() => document.querySelector('.note-content').classList.contains('heading-numbering-enabled'));
     await page.evaluate(() => { const e=window.editorPerf.editor;e.commands.setTextSelection(e.state.doc.content.size-1);e.commands.toggleHeading({level:2}); });
     await settled(page);
@@ -171,12 +164,12 @@ try {
     if(process.env.NOTEFLOW_PERF_BASELINE !== '1') {
       assert.equal(selection.renders,0,'Caret moves inside one section should not rerender NoteEditor');
       assert.equal(selection.headingScans,0);assert.equal(selection.numberingPasses,0);assert.equal(selection.headingDomPasses,0);
-      assert.equal(menu.headingScans,0);assert.equal(menu.numberingPasses,0);assert.equal(menu.headingDomPasses,0);assert.equal(menu.serializations,0);
+      assert.equal(headerFocus.headingScans,0);assert.equal(headerFocus.numberingPasses,0);assert.equal(headerFocus.headingDomPasses,0);assert.equal(headerFocus.serializations,0);
       assert.equal(typing.serializations,typing.updates,'Serialize each new document once, not again after save');
       assert.equal(typing.headingScans,typing.updates,'Scan headings once per changed document');
       assert.equal(typing.headingDomPasses,typing.updates,'Rebuild heading decorations once per document, never on unrelated rerenders');
     }
-    reports.push({width,sourceCharacters:markdown.length,headings:80,codeBlocks:20,selection,menu,typing,formattingUndo:true,numberingRefreshed,externalContent:true,noteSwitch:true,errors,requests});
+    reports.push({width,sourceCharacters:markdown.length,headings:80,codeBlocks:20,selection,headerFocus,typing,formattingUndo:true,numberingRefreshed,externalContent:true,noteSwitch:true,errors,requests});
     await context.close();
   }
   writeFileSync(join(output,'results.json'),JSON.stringify(reports,null,2));

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { ChevronRight } from "lucide-react";
 import type { HeadingGroups } from "../hooks/useHeadingGroups";
 import type { OutlineHeading } from "../utils/outlineNavigation";
+import { headingLabel } from "../utils/headingNumbering";
 import "./chapter-navigation.css";
 
 export default function ChapterRail({ headings, activeId, onHeadingClick, groups }: {
@@ -66,7 +67,7 @@ export default function ChapterRail({ headings, activeId, onHeadingClick, groups
       {rows.map(({ node, depth }) => {
         const heading = node.item;
         const expandable = grouped && node.children.length > 0;
-        const label = `${heading.displayNumber ? `${heading.displayNumber} ` : ""}${heading.text}`;
+        const label = headingLabel(heading);
         const item = <button type="button" className={`chapter-rail-item ${activeId === heading.id ? "is-active" : ""}`}
           data-heading-id={heading.id} aria-current={activeId === heading.id ? "location" : undefined}
           onClick={() => onHeadingClick(heading.id)} title={label}
