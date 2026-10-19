@@ -1393,34 +1393,34 @@ export default function AIDraftWorkspace() {
                   <div
                     className="nf-draft-panel nf-draft-requirements absolute right-0 top-11 z-40 text-left"
                     role="dialog"
-                    aria-label="正文补充要求"
+                    aria-label="补充写作要求"
                   >
                     <div className="nf-draft-supplement-header">
-                      <h2>正文补充</h2>
+                      <h2>补充写作要求</h2>
                       <button type="button" className="nf-draft-close" aria-label="关闭正文补充要求"
                         onClick={() => {setBodyInstructionOpen(false);bodyInstructionRef.current?.querySelector("button")?.focus();}}>
                         <X size={16} />
                       </button>
                     </div>
                     <div className="nf-draft-initial-requirements">
-                      <span>最初要求</span>
+                      <span>创建时的要求</span>
                       <p>{initialRequirements || "未设置"}</p>
                     </div>
-                    <label htmlFor="draft-body-supplement" className="sr-only">正文补充要求</label>
+                    <label htmlFor="draft-body-supplement" className="sr-only">还希望怎么写</label>
                     <textarea
                       id="draft-body-supplement"
                       ref={supplementInputRef}
                       value={bodyInstructionDraft}
                       onChange={(event) => setBodyInstructionDraft(event.target.value)}
-                      placeholder="补充正文写法…"
+                      placeholder="还希望怎么写？例如：多举例、少用术语"
                       className="nf-draft-field nf-draft-supplement-field"
                       rows={2}
                       maxLength={4000}
-                      aria-label="正文补充要求"
-                      aria-description="选填。在最初要求的基础上补充正文写法；同一条件以本次补充为准，单章要求优先。保存不改大纲与已有正文，重写已有章节需再次确认。"
+                      aria-label="还希望怎么写"
+                      aria-description="选填。在创建时要求的基础上补充正文写法；同一条件以本次补充为准，单章要求优先。仅用于后续生成不改大纲与已有正文；重写已有正文需再次确认。"
                     />
                     <p className="nf-draft-supplement-hint">
-                      {draft.status === "generating" ? "保存后从下一章起生效" : "保存补充不会改动已有正文"}
+                      {draft.status === "generating" ? "原要求继续保留，补充从下一章起生效。" : "原要求继续保留，已有正文不会自动改写。"}
                     </p>
                     <div className="nf-draft-supplement-actions">
                       {generatedSectionCount > 0 && (
@@ -1430,7 +1430,7 @@ export default function AIDraftWorkspace() {
                           disabled={!bodyInstructionDraft.trim() || isBusy || draft.status === "generating"}
                           className="nf-draft-action inline-flex items-center px-2.5 disabled:opacity-40"
                         >
-                          重写已生成章节
+                          重写已有正文
                         </button>
                       )}
                       <button
@@ -1439,7 +1439,7 @@ export default function AIDraftWorkspace() {
                         disabled={!bodyInstructionChanged || isBusy}
                         className="nf-draft-action nf-draft-primary inline-flex items-center px-3 disabled:opacity-40"
                       >
-                        保存补充
+                        仅用于后续生成
                       </button>
                     </div>
                   </div>

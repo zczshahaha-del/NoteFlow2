@@ -95,10 +95,10 @@ try {
     await button(card,'打开草稿').click();
     const shell=page.getByRole('dialog',{name:'AI 笔记草稿工作台',exact:true});
     await shell.waitFor();await button(shell,'正文补充要求').click();
-    const supplement=page.getByRole('dialog',{name:'正文补充要求',exact:true});
+    const supplement=page.getByRole('dialog',{name:'补充写作要求',exact:true});
     await supplement.getByText('用一课时完成，重点安排课堂讨论。',{exact:true}).waitFor();
     await supplement.getByRole('textbox').fill('改成两课时，增加板书设计。');
-    await button(supplement,'保存补充').click();await supplement.waitFor({state:'detached'});
+    await button(supplement,'仅用于后续生成').click();await supplement.waitFor({state:'detached'});
     assert.equal(await page.evaluate(()=>window.briefTest.requests.length),2,'saving a supplement never calls the model');
     await button(shell,'生成正文').click();
     await page.waitForFunction(()=>window.briefTest.draft.sections[0].content.includes('板书设计'));
