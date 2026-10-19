@@ -1,0 +1,160 @@
+<div id="nf-draft-title-preview" class="viz-carousel viz-dotted-background" aria-label="草稿标题编辑方式" data-previous-label="上一种" data-next-label="下一种">
+  <section data-variant="点击编辑" aria-label="点击编辑草稿标题"><div class="nfdt-stage" data-editor="quiet"></div></section>
+  <section data-variant="直接输入" aria-label="直接输入草稿标题" hidden><div class="nfdt-stage" data-editor="field"></div></section>
+</div>
+<template id="nfdt-chat-template">
+  <div class="nfdt-chat">
+    <header class="nfdt-header"><span>知流 AI</span><span class="nfdt-muted">对话</span></header>
+    <div class="nfdt-thread">
+      <div class="nfdt-user">给我生成一份关于两小儿辩日的一份教案</div>
+      <p class="nfdt-answer">我会先整理教案大纲。你可以修改下面的标题，再开始生成。</p>
+      <section class="nfdt-card" aria-label="教案草稿">
+        <div class="nfdt-card-main">
+          <div class="nfdt-eyebrow"><span>AI 草稿</span><span class="nfdt-phase" aria-live="polite">待生成大纲</span></div>
+          <button class="nfdt-title-button cursor-interaction" type="button" aria-label="编辑草稿标题"><span class="nfdt-title-text">《两小儿辩日》教案</span><span class="nfdt-edit-label">编辑</span></button>
+          <form class="nfdt-edit-form" hidden>
+            <label class="nfdt-field-label">标题<input class="nfdt-title-input" aria-label="草稿标题" maxlength="160" value="《两小儿辩日》教案" autocomplete="off" /></label>
+            <div class="nfdt-edit-actions"><span class="nfdt-edit-hint">Enter 确认 · Esc 取消</span><button class="nfdt-cancel cursor-interaction" type="button">取消</button><button class="nfdt-save cursor-interaction" type="button">完成</button></div>
+          </form>
+          <p class="nfdt-error" role="alert" hidden>请填写标题，原大纲不会被修改。</p>
+          <p class="nfdt-summary"><span class="nfdt-muted">拟定结构</span><br />教学目标、教学重难点、教学过程与课后作业。</p>
+          <p class="nfdt-notice" role="status" hidden>标题已修改，已有大纲保持不变。</p>
+          <div class="nfdt-outline" hidden>
+            <div class="nfdt-outline-header"><span>大纲预览</span><span class="nfdt-muted">6 个部分</span></div>
+            <p class="nfdt-outline-title"></p>
+            <ol><li>教材理解与教学目标</li><li>教学重点与难点</li><li>情境导入与初读感知</li><li>研读对话与探究讨论</li><li>课堂小结与板书设计</li><li>课后作业与教学反思</li></ol>
+          </div>
+        </div>
+        <footer class="nfdt-card-footer"><span class="nfdt-footer-hint">生成前可修改标题</span><button class="nfdt-generate cursor-interaction" type="button">生成大纲 <span aria-hidden="true">→</span></button></footer>
+      </section>
+      <p class="nfdt-followup nfdt-muted" hidden>继续补充要求，就能调整这份大纲。</p>
+    </div>
+  </div>
+</template>
+<style>
+  #nf-draft-title-preview { color-scheme:light dark; }
+  #nf-draft-title-preview .nfdt-stage {
+    --nfdt-paper:light-dark(#fdfdfc,#151b23);--nfdt-card:light-dark(#ffffff,#1c2530);--nfdt-ink:light-dark(#283541,#e1e7ed);--nfdt-muted:light-dark(#71808c,#a1afbc);--nfdt-edge:light-dark(#e2e8ec,#34424f);--nfdt-soft:light-dark(#f1f4f6,#26323e);--nfdt-blue:light-dark(#386c8d,#a5cee6);--nfdt-blue-fill:light-dark(#edf5fa,#253e50);--nfdt-error:light-dark(#a13a3a,#ffb7af);--nfdt-radius:16px;
+    padding:24px 16px;min-height:600px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;color:var(--nfdt-ink);font-size:15px;line-height:1.7;
+  }
+  #nf-draft-title-preview .nfdt-stage * { box-sizing:border-box; }
+  #nf-draft-title-preview [hidden] { display:none !important; }
+  #nf-draft-title-preview button,#nf-draft-title-preview input { font:inherit; }
+  #nf-draft-title-preview button { border:0; }
+  #nf-draft-title-preview .nfdt-chat { max-width:600px;margin:auto;background:var(--nfdt-paper);border:1px solid var(--nfdt-edge);border-radius:20px;box-shadow:0 12px 40px light-dark(#25374708,#00000020);overflow:hidden; }
+  #nf-draft-title-preview .nfdt-header { height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--nfdt-edge);font-weight:500; }
+  #nf-draft-title-preview .nfdt-header .nfdt-muted { font-size:13px;font-weight:400; }
+  #nf-draft-title-preview .nfdt-thread { padding:28px 24px 32px; }
+  #nf-draft-title-preview .nfdt-muted { color:var(--nfdt-muted); }
+  #nf-draft-title-preview .nfdt-user { width:fit-content;max-width:90%;margin:0 0 28px auto;padding:11px 16px;border-radius:17px 17px 5px 17px;background:var(--nfdt-soft);overflow-wrap:anywhere; }
+  #nf-draft-title-preview .nfdt-answer { margin:0 0 16px; }
+  #nf-draft-title-preview .nfdt-card { background:var(--nfdt-card);border:1px solid var(--nfdt-edge);border-radius:var(--nfdt-radius);overflow:hidden; }
+  #nf-draft-title-preview .nfdt-card-main { padding:20px 20px 18px; }
+  #nf-draft-title-preview .nfdt-eyebrow { display:flex;justify-content:space-between;gap:12px;color:var(--nfdt-muted);font-size:12px;margin-bottom:9px; }
+  #nf-draft-title-preview .nfdt-phase { color:var(--nfdt-blue); }
+  #nf-draft-title-preview .nfdt-title-button { display:flex;align-items:baseline;gap:12px;width:100%;padding:0;text-align:left;background:transparent;color:var(--nfdt-ink);border-radius:5px; }
+  #nf-draft-title-preview .nfdt-title-text { font-size:20px;font-weight:500;line-height:1.5;overflow-wrap:anywhere;min-width:0; }
+  #nf-draft-title-preview .nfdt-edit-label { margin-left:auto;white-space:nowrap;font-size:12px;color:var(--nfdt-muted); }
+  #nf-draft-title-preview .nfdt-title-button:hover .nfdt-edit-label { color:var(--nfdt-blue); }
+  #nf-draft-title-preview .nfdt-field-label { display:block;font-size:12px;color:var(--nfdt-muted); }
+  #nf-draft-title-preview .nfdt-title-input { width:100%;min-width:0;display:block;margin-top:6px;border:1px solid var(--nfdt-edge);border-radius:8px;padding:10px 12px;background:var(--nfdt-paper);color:var(--nfdt-ink);font-size:16px; }
+  #nf-draft-title-preview .nfdt-edit-actions { display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap; }
+  #nf-draft-title-preview .nfdt-edit-hint { margin-right:auto;color:var(--nfdt-muted);font-size:11px; }
+  #nf-draft-title-preview .nfdt-edit-actions button { font-size:12px;padding:5px 10px;border-radius:6px;background:transparent;color:var(--nfdt-muted); }
+  #nf-draft-title-preview .nfdt-edit-actions .nfdt-save { background:var(--nfdt-blue-fill);color:var(--nfdt-blue); }
+  #nf-draft-title-preview .nfdt-summary { font-size:13px;margin:16px 0 0;line-height:1.9; }
+  #nf-draft-title-preview .nfdt-summary .nfdt-muted { font-size:12px; }
+  #nf-draft-title-preview .nfdt-card-footer { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 20px;border-top:1px solid var(--nfdt-edge); }
+  #nf-draft-title-preview .nfdt-footer-hint { font-size:12px;color:var(--nfdt-muted); }
+  #nf-draft-title-preview .nfdt-generate { background:var(--nfdt-blue-fill);color:var(--nfdt-blue);border-radius:8px;padding:8px 12px;font-size:13px;font-weight:500;white-space:nowrap; }
+  #nf-draft-title-preview .nfdt-generate:disabled { opacity:.5;cursor:default; }
+  #nf-draft-title-preview .nfdt-error { font-size:12px;color:var(--nfdt-error);margin:10px 0 0; }
+  #nf-draft-title-preview .nfdt-notice { color:var(--nfdt-blue);font-size:12px;margin:14px 0 0; }
+  #nf-draft-title-preview .nfdt-outline { border-top:1px solid var(--nfdt-edge);padding-top:16px;margin-top:18px;font-size:13px; }
+  #nf-draft-title-preview .nfdt-outline-header { display:flex;justify-content:space-between;gap:8px;font-size:12px; }
+  #nf-draft-title-preview .nfdt-outline-title { margin:9px 0;font-weight:500;overflow-wrap:anywhere; }
+  #nf-draft-title-preview .nfdt-outline ol { padding-left:22px;margin:0; }
+  #nf-draft-title-preview .nfdt-outline li { padding:3px 0; }
+  #nf-draft-title-preview .nfdt-followup { margin:14px 0 0;font-size:13px; }
+  @media(max-width:440px) {
+    #nf-draft-title-preview .nfdt-stage { padding:12px 4px;min-height:780px; }
+    #nf-draft-title-preview .nfdt-thread { padding:22px 14px; }
+    #nf-draft-title-preview .nfdt-header { padding:0 16px; }
+    #nf-draft-title-preview .nfdt-card-main { padding:16px 14px; }
+    #nf-draft-title-preview .nfdt-card-footer { padding:12px 14px;flex-wrap:wrap; }
+    #nf-draft-title-preview .nfdt-generate { margin-left:auto;white-space:normal; }
+    #nf-draft-title-preview .nfdt-title-text { font-size:18px; }
+  }
+  @media(pointer:coarse) {
+    #nf-draft-title-preview .nfdt-title-button { min-height:44px; }
+    #nf-draft-title-preview .nfdt-generate,#nf-draft-title-preview .nfdt-edit-actions button { min-height:44px; }
+  }
+</style>
+<script>
+(() => {
+  const root = document.getElementById('nf-draft-title-preview');
+  const template = document.getElementById('nfdt-chat-template');
+  const version = 'draft-title-preview-v1';
+  const initial = '《两小儿辩日》教案';
+  const models = [];
+  let revision = 0;
+  const saveState = () => {
+    if (!window.openai?.setWidgetState) return;
+    revision += 1;
+    window.openai.setWidgetState({modelContent:{design:version, views:models.map(m=>({style:m.style,title:m.title,outlineTitle:m.outlineTitle,stage:m.outlineTitle?'大纲已生成':'生成前'}))},privateContent:{version,revision,views:models.map(m=>({title:m.title,outlineTitle:m.outlineTitle}))}}).catch(()=>{});
+  };
+  root.querySelectorAll('.nfdt-stage').forEach(stage => {
+    stage.append(template.content.cloneNode(true));
+    const q = name => stage.querySelector('.nfdt-' + name);
+    const m = {style:stage.dataset.editor,title:initial,outlineTitle:'',editing:false};
+    models.push(m);
+    const input = q('title-input');
+    const form = q('edit-form');
+    const button = q('title-button');
+    const always = m.style === 'field';
+    const render = () => {
+      const changed = Boolean(m.outlineTitle && m.outlineTitle !== m.title);
+      q('title-text').textContent = m.title;
+      button.hidden = always || m.editing;
+      form.hidden = !always && !m.editing;
+      q('edit-actions').hidden = always;
+      q('outline').hidden = !m.outlineTitle;
+      q('outline-title').textContent = m.outlineTitle;
+      q('notice').hidden = !changed;
+      q('followup').hidden = !m.outlineTitle;
+      q('phase').textContent = changed?'标题待同步':m.outlineTitle?'大纲已生成':'待生成大纲';
+      q('generate').textContent = changed?'按新标题重新生成':m.outlineTitle?'收起大纲':'生成大纲 →';
+      q('footer-hint').textContent = m.outlineTitle?'修改标题不会自动重写':'生成前可修改标题';
+      if (!m.editing && document.activeElement !== input) input.value = m.title;
+    };
+    const commit = () => {
+      const next = input.value.trim();
+      q('error').hidden = Boolean(next);
+      if (!next) return false;
+      m.title = next;m.editing = false;render();saveState();return true;
+    };
+    button.addEventListener('click', () => {m.editing=true;input.value=m.title;render();input.focus();input.select();});
+    form.addEventListener('submit', event => {event.preventDefault();if(commit() && !always) button.focus();});
+    q('save').addEventListener('click', () => {if(commit() && !always)button.focus();});
+    input.addEventListener('keydown', event => {
+      if(event.isComposing || event.keyCode === 229) return;
+      if(event.key === 'Enter') {event.preventDefault();if(commit() && !always) button.focus();}
+      if(event.key === 'Escape') {event.preventDefault();input.value=m.title;m.editing=false;q('error').hidden=true;render();if(!always)button.focus();}
+    });
+    input.addEventListener('input',()=>{q('error').hidden=true;});
+    input.addEventListener('blur',()=>{if(always)commit();});
+    q('cancel').addEventListener('click',()=>{m.editing=false;input.value=m.title;q('error').hidden=true;render();button.focus();});
+    q('generate').addEventListener('click',()=>{
+      if((m.editing || always) && !commit()) {input.focus();return;}
+      if(m.outlineTitle === m.title && !q('outline').hidden) {q('outline').hidden=true;q('generate').textContent='查看大纲';return;}
+      m.outlineTitle=m.title;render();saveState();
+    });
+    m.apply = value => {if(m.editing || document.activeElement===input || !value || typeof value.title !== 'string' || !value.title.trim())return;m.title=value.title.trim().slice(0,160);m.outlineTitle=typeof value.outlineTitle==='string'?value.outlineTitle.slice(0,160):'';m.editing=false;input.value=m.title;render();};
+    render();
+    if(globalThis.Tweak) {const appearance={radius:16};const tweak=new Tweak({container:q('card'),onChange:()=>stage.style.setProperty('--nfdt-radius',appearance.radius+'px')});tweak.addSlider(appearance,'radius',{label:'卡片圆角',min:10,max:22,step:2,unit:'px'});}
+  });
+  const restore = state => {const data=state?.privateContent;if(data?.version!==version || !Array.isArray(data.views))return;const next=Number.isSafeInteger(data.revision)?data.revision:0;if(next<revision)return;revision=next;models.forEach((m,i)=>m.apply(data.views[i]));};
+  restore(window.openai?.widgetState);
+  window.addEventListener('openai:set_globals',event=>{if(event.detail?.globals?.widgetState)restore(event.detail.globals.widgetState);});
+})();
+</script>
