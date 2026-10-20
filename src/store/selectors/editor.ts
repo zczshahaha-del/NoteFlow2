@@ -1,6 +1,7 @@
 import { useShallow } from "zustand/react/shallow";
 
 import { useAppStore } from "..";
+import { currentEditPreviewDraft } from "../editPreviewDrafts";
 
 export function useEditorSlice() {
   return useAppStore(useShallow((state) => ({
@@ -18,6 +19,10 @@ export function useEditorSlice() {
     restoreNoteVersion: state.restoreNoteVersion,
     activeEditPreview: state.activeEditPreview,
     editPreviewError: state.editPreviewError,
+    editPreviewDraft: currentEditPreviewDraft(state.activeEditPreview, state.activeEditPreview ? state.editPreviewDrafts[state.activeEditPreview.id] : undefined),
+    updateEditPreviewDraft: state.updateEditPreviewDraft,
+    flushEditPreviewDraft: state.flushEditPreviewDraft,
+    flushAllEditPreviewDrafts: state.flushAllEditPreviewDrafts,
     createEditPreviewRequest: state.createEditPreviewRequest,
     reviseEditPreviewRequest: state.reviseEditPreviewRequest,
     restoreEditPreviewRevisionRequest: state.restoreEditPreviewRevisionRequest,

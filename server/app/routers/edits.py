@@ -3,11 +3,11 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.database import AsyncSessionLocal
 from app.deps import CurrentUser, get_current_user
 from app.models.db import (
@@ -62,6 +62,11 @@ class EditPreviewPayload(BaseModel):
 class RevisePreviewPayload(BaseModel):
     instruction: str
     memoryEnabled: bool = True
+
+
+class UpdatePreviewContentPayload(BaseModel):
+    newContent: str
+    expectedUpdatedAt: str = Field(min_length=1)
 
 
 class RestorePreviewRevisionPayload(BaseModel):
@@ -162,8 +167,10 @@ async def _get_note(session, user_id: str, note_id: str) -> Note:
     return note
 
 
-async def _get_preview(session, user_id: str, edit_id: str) -> NoteEditPreview:
-    preview = await EditRepository(session).get(user_id, edit_id)
+async def _get_preview(session, user_id: str, edit_id: str, *, for_update: bool = False) -> NoteEditPreview:
+    repository = EditRepository(session)
+    get_preview = repository.get_for_update if for_update else repository.get
+    preview = await get_preview(user_id, edit_id)
     if preview is None:
         raise HTTPException(status_code=404, detail="edit preview not found")
     return preview
@@ -684,6 +691,42 @@ async def list_edit_preview_revisions(
         return {"revisions": [_edit_revision_out(item) for item in revisions]}
 
 
+@router.patch("/note-edit-previews/{edit_id}/content")
+async def update_preview_content(
+    edit_id: str,
+    payload: UpdatePreviewContentPayload,
+    user: CurrentUser = Depends(get_current_user),
+):
+    async with AsyncSessionLocal() as session:
+        preview = await EditRepository(session).get_for_update(user.id, edit_id)
+        if preview is None:
+            raise HTTPException(status_code=404, detail="edit preview not found")
+        if preview.status != "preview":
+            raise HTTPException(status_code=409, detail="edit preview is not active")
+        await _get_note(session, user.id, preview.note_id)
+        if preview.target_type == "delete":
+            raise HTTPException(status_code=409, detail="删除预览不能手动编辑，请放弃后重新选择修改方式。")
+
+        # A retry after a lost response is harmless if the exact text is already
+        # current. Do not create duplicate revisions or replace its summary.
+        if payload.newContent == preview.new_content:
+            return {"preview": _edit_out(preview)}
+        if payload.expectedUpdatedAt != _dt(preview.updated_at):
+            raise HTTPException(
+                status_code=409,
+                detail="预览已在其他位置更新，手动修改已保留，请重新打开核对。",
+            )
+
+        preview.new_content = payload.newContent
+        preview.change_summary = ["手动调整预览正文"]
+        now = datetime.utcnow()
+        preview.updated_at = max(now, preview.updated_at + timedelta(microseconds=1)) if preview.updated_at else now
+        session.add(_make_edit_revision(preview, source="manual"))
+        await session.commit()
+        await session.refresh(preview)
+        return {"preview": _edit_out(preview)}
+
+
 @router.post("/note-edit-previews/{edit_id}/restore-revision")
 async def restore_edit_preview_revision(
     edit_id: str,
@@ -691,7 +734,7 @@ async def restore_edit_preview_revision(
     user: CurrentUser = Depends(get_current_user),
 ):
     async with AsyncSessionLocal() as session:
-        preview = await _get_preview(session, user.id, edit_id)
+        preview = await _get_preview(session, user.id, edit_id, for_update=True)
         if preview.status != "preview":
             raise HTTPException(status_code=409, detail="edit preview is not active")
         revision = await EditRepository(session).get_revision(user.id, edit_id, payload.revisionId)
@@ -726,7 +769,8 @@ async def revise_preview(
         if preview.status != "preview":
             raise HTTPException(status_code=409, detail="edit preview is not active")
         note = await _get_note(session, user.id, preview.note_id)
-        preview.old_content = _resolve_selected_content(note.content or "", preview.old_content or "")
+        expected_updated_at = preview.updated_at
+        original_content = _resolve_selected_content(note.content or "", preview.old_content or "")
         memory_context = ""
         if await _effective_memory_enabled(session, user.id, payload.memoryEnabled):
             memory_context = await build_memory_context(
@@ -739,11 +783,23 @@ async def revise_preview(
         result = await revise_edit_preview(
             note_title=note.title,
             target_type=preview.target_type,
-            original_content=preview.old_content,
+            original_content=original_content,
             current_preview=preview.new_content,
             instruction=payload.instruction,
             memory_context=memory_context,
         )
+        # The model runs outside a row lock. Re-read and lock before publishing
+        # so a manual edit, restore, cancellation or another AI result wins over
+        # an older in-flight generation rather than being silently overwritten.
+        await session.refresh(preview, with_for_update=True)
+        if preview.status != "preview":
+            raise HTTPException(status_code=409, detail="edit preview is not active")
+        if preview.updated_at != expected_updated_at:
+            raise HTTPException(
+                status_code=409,
+                detail="预览在生成期间已更新，本次 AI 调整未覆盖，请检查当前修改稿后重试。",
+            )
+        preview.old_content = original_content
         preview.new_content = result.new_content
         preview.change_summary = result.change_summary
         preview.instruction = f"{preview.instruction}\n\n继续调整：{payload.instruction.strip()}"
@@ -815,7 +871,7 @@ async def cancel_preview(
     user: CurrentUser = Depends(get_current_user),
 ):
     async with AsyncSessionLocal() as session:
-        preview = await _get_preview(session, user.id, edit_id)
+        preview = await _get_preview(session, user.id, edit_id, for_update=True)
         if preview.status != "preview":
             raise HTTPException(status_code=409, detail="edit preview is not active")
         await _ensure_edit_graph(preview, user.id)

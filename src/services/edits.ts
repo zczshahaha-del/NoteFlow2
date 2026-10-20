@@ -60,6 +60,26 @@ export async function getEditPreview(editId: string): Promise<NoteEditPreviewRec
   return data.preview;
 }
 
+export async function saveEditPreviewContent(
+  editId: string,
+  newContent: string,
+  expectedUpdatedAt: string
+): Promise<NoteEditPreviewRecord> {
+  const response = await apiFetch(`/api/note-edit-previews/${encodeURIComponent(editId)}/content`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ newContent, expectedUpdatedAt }),
+  });
+  if (!response.ok) {
+    const message = await readApiError(response);
+    throw new Error(response.status === 409
+      ? `预览已在其他操作中变化，手动稿仍保留在此处。请核对服务器版本后再保存。${message ? `（${message}）` : ""}`
+      : message);
+  }
+  const data = await readApiJson<{ preview: NoteEditPreviewRecord }>(response);
+  return data.preview;
+}
+
 export async function listEditPreviewRevisions(
   editId: string
 ): Promise<NoteEditPreviewRevisionRecord[]> {

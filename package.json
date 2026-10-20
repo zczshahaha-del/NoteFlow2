@@ -43,6 +43,8 @@
     "test:wiki-links": "node --experimental-strip-types scripts/wiki-links-test.ts",
     "test:knowledge-import": "node --experimental-strip-types scripts/knowledge-import-test.ts",
     "test:markdown-diff": "node --experimental-strip-types scripts/markdown-diff-test.ts",
+    "test:markdown-review": "node --experimental-strip-types scripts/markdown-review-test.ts",
+    "test:edit-preview-draft": "node scripts/edit-preview-draft-store-test.mjs",
     "test:offline-conflict": "node --experimental-strip-types scripts/offline-conflict-test.ts",
     "test:frontend": "node scripts/frontend-component-store-test.mjs",
     "test:chat-presentation": "node scripts/chat-presentation-test.mjs",

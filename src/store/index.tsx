@@ -43,9 +43,11 @@ import {
   getEditPreview,
   restoreEditPreviewRevision,
   reviseEditPreview,
+  saveEditPreviewContent,
   type EditTargetType,
   type NoteEditPreviewRecord,
 } from "../services/edits";
+import { createEditPreviewDraftSaver, currentEditPreviewDraft, type EditPreviewDraft } from "./editPreviewDrafts";
 import {
   createMemory,
   extractMemory,
@@ -166,6 +168,10 @@ interface AppState {
   chatSelection: ChatSelectionContext | null;
   activeEditPreview: NoteEditPreviewRecord | null;
   editPreviewError: string;
+  editPreviewDrafts: Record<string, EditPreviewDraft>;
+  updateEditPreviewDraft: (content: string) => void;
+  flushEditPreviewDraft: (previewId?: string) => Promise<void>;
+  flushAllEditPreviewDrafts: () => Promise<void>;
   pendingCheckpoint: AgentCheckpointRecord | null;
   pendingSourceFocus: ChatSource | null;
   pendingEditorSelection: EditorSelectionRequest | null;
@@ -738,6 +744,31 @@ async function syncNoteContentBeforeAiEdit(noteId: string) {
     (latest.noteSaveStates[noteId]?.status ?? latest.noteSaveState.status) !== 'saved') throw new Error('正文尚未同步完成，请重试后再应用 AI 修改。');
 }
 
+let editPreviewDraftGeneration = 0;
+const retainedEditPreviewDrafts = new Map<string | null, Record<string, EditPreviewDraft>>();
+
+function withoutEditPreviewDraft(drafts: Record<string, EditPreviewDraft>, id: string) {
+  const { [id]: removed, ...remaining } = drafts;
+  void removed;
+  return remaining;
+}
+
+const editPreviewDraftSaver = createEditPreviewDraftSaver({
+  read: (id) => useAppStore.getState().editPreviewDrafts[id],
+  update: (id, generation, patch, preview) => useAppStore.setState((state) => {
+    const draft = state.editPreviewDrafts[id];
+    if (!draft || draft.generation !== generation) return state;
+    return {
+      editPreviewDrafts: { ...state.editPreviewDrafts, [id]: { ...draft, ...patch } },
+      ...(state.activeEditPreview?.id === id ? {
+        ...(preview ? { activeEditPreview: preview } : {}),
+        editPreviewError: patch.error ?? state.editPreviewError,
+      } : {}),
+    };
+  }),
+  save: saveEditPreviewContent,
+});
+
 export const useAppStore = create<InternalAppState>((set, get) => ({
   hydratedUserId: null,
   serverSyncReady: false,
@@ -748,6 +779,36 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   chatSelection: null,
   activeEditPreview: null,
   editPreviewError: "",
+  editPreviewDrafts: {},
+  updateEditPreviewDraft: (content) => {
+    const state = get();
+    const preview = state.activeEditPreview;
+    if (!preview || preview.targetType === "delete" || preview.status !== "preview" || state.chatLoading) return;
+    const previous = currentEditPreviewDraft(preview, state.editPreviewDrafts[preview.id]);
+    if (content === (previous?.content ?? preview.newContent)) return;
+    const savedContent = previous?.savedContent ?? preview.newContent;
+    set({
+      editPreviewDrafts: { ...state.editPreviewDrafts, [preview.id]: {
+        content,
+        savedContent,
+        expectedUpdatedAt: previous?.expectedUpdatedAt ?? preview.updatedAt,
+        status: previous?.status === "saving" ? "saving" : content === savedContent && !previous?.saveUncertain ? "saved" : "unsaved",
+        error: "",
+        saveUncertain: previous?.saveUncertain ?? false,
+        generation: previous?.generation ?? ++editPreviewDraftGeneration,
+      } },
+      editPreviewError: "",
+    });
+  },
+  flushEditPreviewDraft: async (previewId) => {
+    const id = previewId ?? get().activeEditPreview?.id;
+    if (id) await editPreviewDraftSaver.flush(id);
+  },
+  flushAllEditPreviewDrafts: async () => {
+    const results = await Promise.allSettled(Object.keys(get().editPreviewDrafts).map(id => editPreviewDraftSaver.flush(id)));
+    const failed = results.find(result => result.status === "rejected");
+    if (failed?.status === "rejected") throw failed.reason;
+  },
   pendingCheckpoint: null,
   pendingSourceFocus: null,
   pendingEditorSelection: null,
@@ -1057,6 +1118,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   reviseEditPreviewRequest: async (instruction) => {
     const preview = get().activeEditPreview;
     if (!preview || get().chatLoading) return false;
+    const ownerId = get().hydratedUserId;
     const userMsg: ChatMessage = { ...newChatMessageMetadata(), role: "user", text: instruction };
     const assistantMsg: ChatMessage = {
       ...newChatMessageMetadata(),
@@ -1071,7 +1133,10 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       editPreviewError: "",
     }));
     try {
+      await get().flushEditPreviewDraft(preview.id);
+      if (get().hydratedUserId !== ownerId || get().activeEditPreview?.id !== preview.id) return false;
       const nextPreview = await reviseEditPreview(preview.id, instruction, isMemoryEnabled());
+      if (get().hydratedUserId !== ownerId) return false;
       const checkpoint = get().pendingCheckpoint;
       let nextCheckpoint: AgentCheckpointRecord | null = checkpoint;
       if (checkpoint?.checkpointType === "edit_preview") {
@@ -1081,10 +1146,9 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         }).catch(() => checkpoint);
       }
       set((current) => ({
-        activeEditPreview: nextPreview,
-        editPreviewError: "",
-        pendingCheckpoint: nextCheckpoint,
-        agentTask: taskWithCheckpoint(current.agentTask, nextCheckpoint),
+        ...(current.activeEditPreview?.id === preview.id ? { activeEditPreview: nextPreview, editPreviewError: "" } : {}),
+        editPreviewDrafts: withoutEditPreviewDraft(current.editPreviewDrafts, preview.id),
+        ...(current.activeEditPreview?.id === preview.id ? { pendingCheckpoint: nextCheckpoint, agentTask: taskWithCheckpoint(current.agentTask, nextCheckpoint) } : {}),
         chatMessages: current.chatMessages.map((message) =>
           message.id === assistantMsg.id
             ? { ...message, text: "预览已更新。请在中间区域确认修改效果。" }
@@ -1093,30 +1157,39 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       }));
       return true;
     } catch (error) {
+      if (get().hydratedUserId !== ownerId) return false;
       const text = error instanceof Error ? error.message : "继续调整失败";
       set((current) => ({
-        editPreviewError: text,
+        ...(current.activeEditPreview?.id === preview.id ? { editPreviewError: text } : {}),
         chatMessages: current.chatMessages.map((message) =>
           message.id === assistantMsg.id ? { ...message, text } : message
         ),
       }));
       return false;
     } finally {
-      set({ chatLoading: false });
+      if (get().hydratedUserId === ownerId) set({ chatLoading: false });
     }
   },
 
   restoreEditPreviewRevisionRequest: async (revisionId) => {
     const preview = get().activeEditPreview;
     if (!preview || get().chatLoading) return;
+    const ownerId = get().hydratedUserId;
     set({ chatLoading: true, editPreviewError: "" });
     try {
+      await get().flushEditPreviewDraft(preview.id);
+      if (get().hydratedUserId !== ownerId || get().activeEditPreview?.id !== preview.id) return;
       const nextPreview = await restoreEditPreviewRevision(preview.id, revisionId);
-      set({ activeEditPreview: nextPreview, centerMode: "edit", editPreviewError: "" });
+      if (get().hydratedUserId !== ownerId) return;
+      set(current => ({
+        ...(current.activeEditPreview?.id === preview.id ? { activeEditPreview: nextPreview, centerMode: "edit", editPreviewError: "" } : {}),
+        editPreviewDrafts: withoutEditPreviewDraft(current.editPreviewDrafts, preview.id),
+      }));
     } catch (error) {
+      if (get().hydratedUserId !== ownerId) return;
       const text = error instanceof Error ? error.message : "恢复预览版本失败";
       set((current) => ({
-        editPreviewError: text,
+        ...(current.activeEditPreview?.id === preview.id ? { editPreviewError: text } : {}),
         chatMessages: [
           ...current.chatMessages,
           { ...newChatMessageMetadata(), role: "assistant", text },
@@ -1124,18 +1197,22 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       }));
       throw error;
     } finally {
-      set({ chatLoading: false });
+      if (get().hydratedUserId === ownerId) set({ chatLoading: false });
     }
   },
 
   applyEditPreviewRequest: async () => {
     const preview = get().activeEditPreview;
     if (!preview || get().chatLoading) return;
+    const ownerId = get().hydratedUserId;
     set({ chatLoading: true, editPreviewError: "" });
     try {
+      await get().flushEditPreviewDraft(preview.id);
+      if (get().hydratedUserId !== ownerId || get().activeEditPreview?.id !== preview.id) return;
       await syncNoteContentBeforeAiEdit(preview.noteId);
       const result = await applyEditPreview(preview.id);
       const current = get();
+      if (current.hydratedUserId !== ownerId) return;
       const checkpoint = current.pendingCheckpoint;
       if (checkpoint?.checkpointType === "edit_preview") {
         void resolveAgentCheckpoint(checkpoint.id, "resolved", {
@@ -1146,18 +1223,20 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           .catch(() => null);
       }
       set({
-        activeEditPreview: null,
-        editPreviewError: "",
-        pendingCheckpoint: null,
-        agentTask: taskWithCheckpoint(current.agentTask, null),
-        centerMode: "note",
-        activeDraftContext: null,
-        selectedFileId: result.note.id,
+        ...(current.activeEditPreview?.id === preview.id ? { activeEditPreview: null, editPreviewError: "" } : {}),
+        editPreviewDrafts: withoutEditPreviewDraft(current.editPreviewDrafts, preview.id),
+        ...(current.activeEditPreview?.id === preview.id ? {
+          pendingCheckpoint: null,
+          agentTask: taskWithCheckpoint(current.agentTask, null),
+          centerMode: "note",
+          activeDraftContext: null,
+          selectedFileId: result.note.id,
+        } : {}),
         fileContents: { ...current.fileContents, [result.note.id]: result.note.content },
         treeData: replaceNoteRecordInTree(current.treeData, result.note),
-        noteSaveState: noteSaveState("saved"),
+        ...(current.selectedFileId === result.note.id ? { noteSaveState: noteSaveState("saved") } : {}),
         noteSaveStates: { ...current.noteSaveStates, [result.note.id]: noteSaveState('saved') },
-        pendingEditorSelection: {
+        ...(current.activeEditPreview?.id === preview.id ? { pendingEditorSelection: {
           id: `editor-selection-${Date.now()}`,
           noteId: result.note.id,
           markdown: result.preview.newContent,
@@ -1167,7 +1246,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
             result.preview.targetType === "insert"
               ? "select"
               : "caret-start",
-        },
+        } } : {}),
         chatMessages: [
           ...current.chatMessages,
           {
@@ -1179,21 +1258,23 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       });
       persistLocalCurrentState();
     } catch (error) {
+      if (get().hydratedUserId !== ownerId) return;
       const text = error instanceof Error ? error.message : "应用修改失败，正式笔记未变化";
       set((current) => ({
-        editPreviewError: text,
+        ...(current.activeEditPreview?.id === preview.id ? { editPreviewError: text } : {}),
         chatMessages: [
           ...current.chatMessages,
           { ...newChatMessageMetadata(), role: "assistant", text },
         ],
       }));
     } finally {
-      set({ chatLoading: false });
+      if (get().hydratedUserId === ownerId) set({ chatLoading: false });
     }
   },
 
   cancelEditPreviewRequest: async () => {
     const current = get();
+    const ownerId = current.hydratedUserId;
     const preview = current.activeEditPreview;
     const checkpoint = current.pendingCheckpoint ?? current.agentTask?.checkpoint ?? null;
     const editPreviewId = preview?.id ?? editPreviewIdFromCheckpoint(checkpoint);
@@ -1201,6 +1282,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     set({ chatLoading: true, editPreviewError: "" });
     try {
       await cancelEditPreview(editPreviewId);
+      if (get().hydratedUserId !== ownerId) return;
       if (checkpoint?.checkpointType === "edit_preview") {
         void resolveAgentCheckpoint(checkpoint.id, "cancelled", {
           editPreviewId,
@@ -1209,12 +1291,14 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           .catch(() => null);
       }
       set((current) => ({
-        activeEditPreview: null,
-        editPreviewError: "",
-        pendingCheckpoint: null,
-        agentTask: taskWithCheckpoint(current.agentTask, null),
-        centerMode: "note",
-        activeDraftContext: null,
+        ...(current.activeEditPreview?.id === editPreviewId ? { activeEditPreview: null, editPreviewError: "" } : {}),
+        editPreviewDrafts: withoutEditPreviewDraft(current.editPreviewDrafts, editPreviewId),
+        ...(current.activeEditPreview?.id === editPreviewId || !current.activeEditPreview ? {
+          pendingCheckpoint: null,
+          agentTask: taskWithCheckpoint(current.agentTask, null),
+          centerMode: "note",
+          activeDraftContext: null,
+        } : {}),
         chatMessages: [
           ...current.chatMessages,
           {
@@ -1225,13 +1309,17 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         ],
       }));
     } catch (error) {
-      set({ editPreviewError: error instanceof Error ? error.message : "取消失败，请重试；预览已保留。" });
+      if (get().hydratedUserId === ownerId && get().activeEditPreview?.id === editPreviewId) {
+        set({ editPreviewError: error instanceof Error ? error.message : "取消失败，请重试；预览已保留。" });
+      }
     } finally {
-      set({ chatLoading: false });
+      if (get().hydratedUserId === ownerId) set({ chatLoading: false });
     }
   },
 
   closeEditPreview: () => {
+    const previewId = get().activeEditPreview?.id;
+    if (previewId) void get().flushEditPreviewDraft(previewId).catch(() => undefined);
     set((state) => ({
       activeEditPreview: null,
       editPreviewError: "",
@@ -1505,6 +1593,8 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
   },
 
   hydrate: (userId) => {
+    retainedEditPreviewDrafts.set(get().hydratedUserId, get().editPreviewDrafts);
+    const retainedDrafts = retainedEditPreviewDrafts.get(userId) ?? {};
     workspaceEpoch += 1;
     clearScheduledNoteSave();
     noteSavesInFlight.clear();
@@ -1522,6 +1612,11 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       draftCommand: null,
       activeDraftContext: null,
       activeEditPreview: null,
+      editPreviewDrafts: Object.fromEntries(Object.entries(retainedDrafts).map(([id, draft]) => [id, {
+        ...draft,
+        generation: ++editPreviewDraftGeneration,
+        status: draft.status === "saving" ? "unsaved" : draft.status,
+      }])),
       pendingSourceFocus: null,
       pendingEditorSelection: null,
       selectedFileId: snapshot.selectedFileId,
@@ -1726,6 +1821,8 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     });
 
     try {
+      const previewId = get().activeEditPreview?.id ?? editPreviewIdFromCheckpoint(get().pendingCheckpoint);
+      if (previewId) await get().flushEditPreviewDraft(previewId);
       const latest = get();
       const selectedFile = latest.selectedFileId
         ? findFileById(latest.treeData, latest.selectedFileId)
@@ -1870,7 +1967,11 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           const editId =
             typeof payload.editPreviewId === "string" ? payload.editPreviewId : get().activeEditPreview?.id;
           if (!editId) return;
+          const actionOwnerId = get().hydratedUserId;
+          const startingPreviewId = get().activeEditPreview?.id;
           try {
+            await get().flushEditPreviewDraft(editId);
+            if (get().hydratedUserId !== actionOwnerId) return;
             const noteId =
               typeof payload.noteId === "string" ? payload.noteId : get().activeEditPreview?.noteId;
             if (noteId) {
@@ -1878,18 +1979,23 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
             }
             const result = await applyEditPreview(editId);
             const current = get();
+            if (current.hydratedUserId !== actionOwnerId) return;
+            const ownsView = current.activeEditPreview?.id === startingPreviewId && (!startingPreviewId || startingPreviewId === editId);
             set({
-              activeEditPreview: null,
-              pendingCheckpoint: null,
-              agentTask: taskWithCheckpoint(current.agentTask, null),
-              centerMode: "note",
-              activeDraftContext: null,
-              selectedFileId: result.note.id,
+              ...(ownsView ? {
+                activeEditPreview: null,
+                pendingCheckpoint: null,
+                agentTask: taskWithCheckpoint(current.agentTask, null),
+                centerMode: "note",
+                activeDraftContext: null,
+                selectedFileId: result.note.id,
+              } : {}),
+              editPreviewDrafts: withoutEditPreviewDraft(current.editPreviewDrafts, editId),
               fileContents: { ...current.fileContents, [result.note.id]: result.note.content },
               treeData: replaceNoteRecordInTree(current.treeData, result.note),
-              noteSaveState: noteSaveState("saved"),
+              ...(current.selectedFileId === result.note.id ? { noteSaveState: noteSaveState("saved") } : {}),
               noteSaveStates: { ...current.noteSaveStates, [result.note.id]: noteSaveState('saved') },
-              pendingEditorSelection: {
+              ...(ownsView ? { pendingEditorSelection: {
                 id: `editor-selection-${Date.now()}`,
                 noteId: result.note.id,
                 markdown: result.preview.newContent,
@@ -1899,7 +2005,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
                   result.preview.targetType === "insert"
                     ? "select"
                     : "caret-start",
-              },
+              } } : {}),
               chatMessages: current.chatMessages.map((message) =>
                 message.id === assistantMsg.id
                   ? { ...message, text: "修改已应用到正式笔记，并已保存旧版本和更新索引。" }
@@ -1914,8 +2020,10 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
               }).catch(() => null);
             }
           } catch (error) {
+            if (get().hydratedUserId !== actionOwnerId) return;
             const errorText = error instanceof Error ? error.message : "应用修改失败，正式笔记未变化";
             set((current) => ({
+              ...(current.activeEditPreview?.id === editId ? { editPreviewError: errorText } : {}),
               agentTask: taskWithRunStatus(current.agentTask, current.agentTask?.run.id ?? "", "failed"),
               chatMessages: current.chatMessages.map((message) =>
                 message.id === assistantMsg.id ? { ...message, text: errorText } : message
@@ -1932,14 +2040,20 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           const editId =
             typeof payload.editPreviewId === "string" ? payload.editPreviewId : get().activeEditPreview?.id;
           if (!editId) return;
+          const actionOwnerId = get().hydratedUserId;
+          const startingPreviewId = get().activeEditPreview?.id;
           try {
             await cancelEditPreview(editId);
+            if (get().hydratedUserId !== actionOwnerId) return;
             set((current) => ({
-              activeEditPreview: null,
-              pendingCheckpoint: null,
-              agentTask: taskWithCheckpoint(current.agentTask, null),
-              centerMode: "note",
-              activeDraftContext: null,
+              ...(current.activeEditPreview?.id === startingPreviewId && (!startingPreviewId || startingPreviewId === editId) ? {
+                activeEditPreview: null,
+                pendingCheckpoint: null,
+                agentTask: taskWithCheckpoint(current.agentTask, null),
+                centerMode: "note",
+                activeDraftContext: null,
+              } : {}),
+              editPreviewDrafts: withoutEditPreviewDraft(current.editPreviewDrafts, editId),
               chatMessages: current.chatMessages.map((message) =>
                 message.id === assistantMsg.id
                   ? { ...message, text: "已取消本次修改预览，正式笔记没有变化。" }
@@ -1950,6 +2064,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
               await resolveAgentCheckpoint(checkpointId, "cancelled", { editPreviewId: editId }).catch(() => null);
             }
           } catch (error) {
+            if (get().hydratedUserId !== actionOwnerId) return;
             const errorText = error instanceof Error ? error.message : "取消修改预览失败";
             set((current) => ({
               chatMessages: current.chatMessages.map((message) =>
@@ -1965,12 +2080,18 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
             typeof payload.editPreviewId === "string" ? payload.editPreviewId : get().activeEditPreview?.id;
           const instruction = typeof payload.instruction === "string" ? payload.instruction : text;
           if (!editId) return;
+          const actionOwnerId = get().hydratedUserId;
+          const startingPreviewId = get().activeEditPreview?.id;
           try {
+            await get().flushEditPreviewDraft(editId);
+            if (get().hydratedUserId !== actionOwnerId) return;
             const nextPreview = await reviseEditPreview(editId, instruction, isMemoryEnabled());
+            if (get().hydratedUserId !== actionOwnerId) return;
             set((current) => ({
-              centerMode: "edit",
-              activeEditPreview: nextPreview,
-              activeDraftContext: null,
+              ...(current.activeEditPreview?.id === startingPreviewId && (!startingPreviewId || startingPreviewId === editId) ? {
+                centerMode: "edit", activeEditPreview: nextPreview, activeDraftContext: null,
+              } : {}),
+              editPreviewDrafts: withoutEditPreviewDraft(current.editPreviewDrafts, editId),
               chatMessages: current.chatMessages.map((message) =>
                 message.id === assistantMsg.id
                   ? { ...message, text: "预览已更新。请在中间区域确认修改效果。" }
@@ -1990,8 +2111,10 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
               }
             }
           } catch (error) {
+            if (get().hydratedUserId !== actionOwnerId) return;
             const errorText = error instanceof Error ? error.message : "继续调整失败";
             set((current) => ({
+              ...(current.activeEditPreview?.id === editId ? { editPreviewError: errorText } : {}),
               chatMessages: current.chatMessages.map((message) =>
                 message.id === assistantMsg.id ? { ...message, text: errorText } : message
               ),
@@ -2807,6 +2930,41 @@ export function AppProvider({
   useEffect(() => {
     if (hydratedUserId !== userId) return;
     void loadStructuredWorkspace(userId);
+  }, [hydratedUserId, userId]);
+
+  useEffect(() => {
+    if (hydratedUserId !== userId) return;
+    const flush = () => {
+      if (useAppStore.getState().hydratedUserId === userId) {
+        void useAppStore.getState().flushAllEditPreviewDrafts().catch(() => undefined);
+      }
+    };
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      const state = useAppStore.getState();
+      if (state.hydratedUserId !== userId || !Object.values(state.editPreviewDrafts)
+        .some(draft => draft.content !== draft.savedContent || draft.saveUncertain || draft.status === "saving")) return;
+      flush();
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    const onVisibility = () => { if (document.visibilityState === "hidden") flush(); };
+    const unsubscribe = useAppStore.subscribe((state, previous) => {
+      const previousId = previous.activeEditPreview?.id;
+      if (state.hydratedUserId === userId && previous.hydratedUserId === userId && previousId &&
+        (state.activeEditPreview?.id !== previousId || (previous.centerMode === "edit" && state.centerMode !== "edit"))) {
+        void state.flushEditPreviewDraft(previousId).catch(() => undefined);
+      }
+    });
+    window.addEventListener("beforeunload", beforeUnload);
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      unsubscribe();
+      window.removeEventListener("beforeunload", beforeUnload);
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVisibility);
+      flush();
+    };
   }, [hydratedUserId, userId]);
 
   // Preserve the old safety net for rollback / bulk state changes, without
