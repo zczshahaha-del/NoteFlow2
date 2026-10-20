@@ -28,6 +28,7 @@
 .edit-preview-workspace .nf-edit-identity { min-width: 0; flex: 1; }
 .edit-preview-workspace .nf-edit-heading { display: flex; align-items: center; gap: 7px; }
 .edit-preview-workspace .nf-edit-heading h1 { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 600; }
+.edit-preview-workspace .nf-edit-scope { margin: 3px 0 0; color: var(--edit-muted); font-size: 12px; overflow-wrap: anywhere; }
 .edit-preview-workspace .nf-edit-meta { display: flex; align-items: center; gap: 7px; margin-top: 3px; color: var(--edit-muted); font-size: 11px; }
 .edit-preview-workspace .nf-edit-meta > span { flex: none; }
 .edit-preview-workspace .nf-edit-meta .nf-writing-label { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 400; color: var(--edit-muted); }
@@ -65,6 +66,13 @@
 .edit-preview-workspace .edit-preview-result[hidden] { display: none; }
 .edit-preview-workspace .nf-edit-document { min-height: 120px; }
 .edit-preview-workspace .nf-edit-document:focus-visible { outline: none; }
+.edit-preview-workspace .nf-edit-document .nf-edit-inline-review { margin: 12px 0 4px; padding: 0; border: 0; font-family: var(--nf-font-ui, system-ui, sans-serif); }
+.edit-preview-workspace .nf-edit-document .nf-edit-inline-review:not([data-kind="equal"]) { border: 0; padding: 0; }
+.edit-preview-workspace .nf-edit-document .nf-edit-inline-review + :is(p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote) { margin-top: 6px; }
+.edit-preview-workspace .nf-edit-inline-review .nf-edit-change-heading { margin: 0; }
+.edit-preview-workspace .nf-edit-inline-review .nf-edit-original { margin: 6px 0 12px; }
+.edit-preview-workspace .nf-edit-changed-text { border-left: 2px solid color-mix(in srgb, var(--color-jelly-blue) 35%, var(--edit-line)); padding-left: 14px; }
+.edit-preview-workspace .nf-edit-changed-text[data-change-kind="add"] { border-left-color: var(--color-jelly-green); }
 .edit-preview-workspace .nf-edit-review-block { margin-bottom: 28px; min-width: 0; }
 .edit-preview-workspace .nf-edit-review-block:not([data-kind="equal"]) { border-left: 2px solid color-mix(in srgb, var(--color-jelly-blue) 35%, var(--edit-line)); padding-left: 16px; }
 .edit-preview-workspace .nf-edit-review-block[data-kind="add"] { border-left-color: var(--color-jelly-green); }

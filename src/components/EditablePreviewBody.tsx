@@ -3,13 +3,16 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { EditorState } from "@tiptap/pm/state";
 import { createNoteFlowTiptapExtensions } from "../editor/tiptapExtensions";
 import { getEditorMarkdown } from "../editor/documentCache";
+import { PreviewReview, updatePreviewReview } from "../editor/previewReview";
 
-const extensions = createNoteFlowTiptapExtensions();
+const extensions = [...createNoteFlowTiptapExtensions(), PreviewReview];
 
 /** An isolated document: editing here never invokes the note autosave pipeline. */
-export default function EditablePreviewBody({ previewId, content, disabled, onChange, onBlur }: {
+export default function EditablePreviewBody({ previewId, content, oldContent, showComparison, disabled, onChange, onBlur }: {
   previewId: string;
   content: string;
+  oldContent: string;
+  showComparison: boolean;
   disabled: boolean;
   onChange: (content: string) => void;
   onBlur: () => void;
@@ -17,6 +20,7 @@ export default function EditablePreviewBody({ previewId, content, disabled, onCh
   const callbacks = useRef({ onChange, onBlur });
   callbacks.current = { onChange, onBlur };
   const localContent = useRef(content);
+  const expandedOriginals = useRef(new Set<string>());
   const editor = useEditor({
     extensions,
     content,
@@ -56,5 +60,16 @@ export default function EditablePreviewBody({ previewId, content, disabled, onCh
     editor.view.updateState(EditorState.create({ schema: editor.schema, doc, plugins: editor.state.plugins }));
   }, [editor, content]);
 
-  return <EditorContent editor={editor} />;
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    // Keep composition and typing synchronous; comparison is decorative work.
+    const timer = window.setTimeout(() => {
+      if (!editor.isDestroyed && !editor.view.composing) updatePreviewReview(editor, oldContent, content, showComparison, expandedOriginals.current);
+    }, showComparison ? 120 : 0);
+    return () => window.clearTimeout(timer);
+  }, [editor, oldContent, content, showComparison]);
+
+  return <div role={showComparison ? "region" : undefined} aria-label={showComparison ? "段落对照" : undefined}>
+    <EditorContent editor={editor} />
+  </div>;
 }

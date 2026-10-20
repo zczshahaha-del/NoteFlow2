@@ -1,9 +1,7 @@
 import { useMemo } from "react";
 import { handleRenderedCodeBlockAction, renderChatMarkdown } from "../utils/chatMarkdown";
 
-/** Read-only review text: language labels describe the source; only copy acts. */
-export default function PreviewMarkdown({ content, context = "" }: { content: string; context?: string }) {
-  const html = useMemo(() => {
+export function renderPreviewMarkdown(content: string, context = "") {
     const template = document.createElement("template");
     template.innerHTML = renderChatMarkdown(`${context}\n\n${content}`, 0, { scrollTables: true });
     template.content.querySelectorAll(".code-language-menu").forEach(menu => {
@@ -13,7 +11,11 @@ export default function PreviewMarkdown({ content, context = "" }: { content: st
       menu.replaceWith(label);
     });
     return template.innerHTML;
-  }, [content, context]);
+}
+
+/** Read-only review text: language labels describe the source; only copy acts. */
+export default function PreviewMarkdown({ content, context = "" }: { content: string; context?: string }) {
+  const html = useMemo(() => renderPreviewMarkdown(content, context), [content, context]);
   return <div className="note-content chat-markdown max-w-none" dangerouslySetInnerHTML={{ __html: html }}
     onClick={event => { void handleRenderedCodeBlockAction(event.target, event.currentTarget); }} />;
 }

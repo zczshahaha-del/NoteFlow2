@@ -81,9 +81,11 @@ try {
     assert.equal(await page.getByRole('menuitem').count(),0);
     assert.equal(await page.getByRole('region',{name:'预览版本',exact:true}).count(),0);
     const geometry=await page.evaluate(()=>{const r=n=>{const b=document.querySelector(n).getBoundingClientRect();return {left:b.left,right:b.right,top:b.top,bottom:b.bottom,height:b.height}};return {header:r('.nf-edit-header'),bar:r('[aria-label="修改说明"]'),result:r('.edit-preview-result'),footer:r('.nf-edit-footer'),composer:r('.nf-edit-composer'),scroll:r('.nf-edit-scroll')}});
-    assert(geometry.header.height<=(width===320?120:80));assert(geometry.footer.height<=90);
+    // One extra compact line identifies the write boundary; keep it visible.
+    assert.match(await page.locator('.nf-edit-scope').innerText(),/本次范围：这一小节/);
+    assert(geometry.header.height<=(width===320?140:100));assert(geometry.footer.height<=90);
     assert(Math.abs(geometry.bar.left-geometry.result.left)<=1);assert(Math.abs(geometry.composer.left-geometry.result.left)<=1);assert(Math.abs(geometry.composer.right-geometry.result.right)<=1);
-    assert(geometry.result.top<220,'The document should begin near the top, not below a large summary card');
+    assert(geometry.result.top<240,'The scope line must not turn into a large instruction panel');
     const instruction=page.getByRole('textbox',{name:'继续修改预览',exact:true});
     assert.equal(await instruction.getAttribute('placeholder'),'告诉 AI 还需要怎么改…');
     assert.equal(await instruction.evaluate(n=>Math.round(n.getBoundingClientRect().height)),width===1280?22:24);
@@ -123,7 +125,8 @@ try {
     const compare=page.getByRole('button',{name:'对照原文',exact:true});assert.equal(await compare.getAttribute('aria-pressed'),'false');
     await compare.click();const collapseCompare=page.getByRole('button',{name:'收起对照',exact:true});assert.equal(await collapseCompare.getAttribute('aria-pressed'),'true');
     const review=page.getByRole('region',{name:'段落对照',exact:true});await review.waitFor();
-    assert.equal(await editor.isVisible(),false,'The same editing document is hidden while reviewing, not replaced by two complete documents');
+    assert.equal(await editor.isVisible(),true,'Comparison adds references to the same visible editing document');
+    assert.equal(await editor.getAttribute('contenteditable'),'true','Looking at originals must not make the draft read-only');
     assert.equal(await page.getByRole('tablist',{name:'对照内容',exact:true}).count(),0);
     assert.match(await review.innerText(),/修改后的合成内容/);
     const changed=review.locator('.nf-edit-review-block[data-kind="replace"],.nf-edit-review-block[data-kind="remove"]').first().getByRole('button').first();await changed.waitFor();
@@ -137,6 +140,14 @@ try {
     assert(blockGeometry.length>=2);assert(blockGeometry.every(r=>Math.abs(r.left-blockGeometry[0].left)<1&&Math.abs(r.right-blockGeometry[0].right)<1),'Paragraph review always follows one reading column');
     await screenshot('compare');
     await changed.click();await nearbyOriginal.waitFor({state:'detached'});
+    await editor.focus();await editor.press(process.platform==='darwin'?'Meta+ArrowDown':'Control+End');
+    await page.keyboard.insertText(' 对照中直接手改');
+    await page.waitForFunction(()=>window.previewTest.state().editPreviewDrafts['synthetic-preview']?.content.includes('对照中直接手改'));
+    const reviewDraft=await page.evaluate(()=>window.previewTest.state().editPreviewDrafts['synthetic-preview'].content);
+    assert(!reviewDraft.includes('原来的合成内容')&&!reviewDraft.includes('查看原文'),'Reference widgets must never enter the saved Markdown');
+    await editor.press('ControlOrMeta+z');
+    await page.waitForFunction(()=>!window.previewTest.state().editPreviewDrafts['synthetic-preview']?.content.includes('对照中直接手改'));
+    assert.equal(await editor.getAttribute('data-test-retained-editor'),'same-editor','Typing and undo inside comparison keep the same editor');
     if(width===1280){
       await page.locator('#root').evaluate(n=>n.style.width='736px');
       await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
@@ -249,7 +260,8 @@ try {
 
     await page.evaluate(()=>window.previewTest.replaceContent('review-block-kinds','# 标题\n\n旧开场。\n\n## 删除小节\n\n仅旧稿有这段。\n\n## 保留小节\n\n完全相同。\n\n## 改写小节\n\n旧句。\n\n## 结尾\n\n共同结尾。','# 标题\n\n新开场。\n\n## 保留小节\n\n完全相同。\n\n## 改写小节\n\n新句。\n\n## 新增小节\n\n只有新稿有这段。\n\n## 结尾\n\n共同结尾。'));
     await editor.waitFor();await page.getByRole('button',{name:'对照原文',exact:true}).click();await review.waitFor();
-    for(const kind of ['equal','replace','add','remove'])assert(await review.locator('.nf-edit-review-block[data-kind="'+kind+'"]').count()>0,'Review exposes '+kind+' blocks');
+    await review.locator('.nf-edit-review-block[data-kind="remove"]').waitFor();
+    for(const kind of ['replace','add','remove'])assert(await review.locator('.nf-edit-review-block[data-kind="'+kind+'"]').count()>0,'Review exposes '+kind+' blocks');
     assert.match(await review.innerText(),/新增/);assert.match(await review.innerText(),/已删除/);assert.match(await review.innerText(),/改写/);
     assert.equal(await review.locator('h1').count(),1,'An unchanged heading is shown once instead of duplicating complete documents');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);await screenshot('paragraph-review');
@@ -346,7 +358,7 @@ try {
     await result.waitFor({state:'detached'});
     assert.equal(await page.evaluate(()=>window.previewTest.cancelled),1);
     assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
-    reports.push({width,geometry,resultFirst:true,summaryDirect:true,summaryExpandable:true,moreMenuKeyboard:true,moreMenuOutsideClose:true,versionPanel:true,openedAuxiliaryVisibleAfterScrolling:true,initialUndoAbsent:true,undoAfterSuccessfulAdjustment:true,compactComposer:true,IME:true,singleColumnReview:true,nearbyOriginal:true,allChangeKinds:true,diff:true,newPreviewReset:true,coloredCode:true,nativeEditorUndo:true,editorRetainedAcrossViews:true,manualAutosave:true,saveWhileTyping:true,saveFailureAndConflictRetainDraft:true,flushBeforeAIApplyRestore:true,manualHistory:true,deleteReadOnly:true,applyStage:true,inFlightNewInstructionRetained:true,revisionOwnership:true,lateRevisionIgnored:true,selectedRevisionRestored:true,revisionReadRetry:true,restoreFailureRetry:true,cancelFailureRetry:true,dark:true,reducedMotion:true,errors,requests});
+    reports.push({width,geometry,scopeVisible:true,editableDuringComparison:true,comparisonExcludedFromSavedMarkdown:true,resultFirst:true,summaryDirect:true,summaryExpandable:true,moreMenuKeyboard:true,moreMenuOutsideClose:true,versionPanel:true,openedAuxiliaryVisibleAfterScrolling:true,initialUndoAbsent:true,undoAfterSuccessfulAdjustment:true,compactComposer:true,IME:true,singleColumnReview:true,nearbyOriginal:true,allChangeKinds:true,diff:true,newPreviewReset:true,coloredCode:true,nativeEditorUndo:true,editorRetainedAcrossViews:true,manualAutosave:true,saveWhileTyping:true,saveFailureAndConflictRetainDraft:true,flushBeforeAIApplyRestore:true,manualHistory:true,deleteReadOnly:true,applyStage:true,inFlightNewInstructionRetained:true,revisionOwnership:true,lateRevisionIgnored:true,selectedRevisionRestored:true,revisionReadRetry:true,restoreFailureRetry:true,cancelFailureRetry:true,dark:true,reducedMotion:true,errors,requests});
     await context.close();
   }
   console.log(JSON.stringify({ok:true,productionComponent:true,syntheticOnly:true,output,reports},null,2));
