@@ -1,0 +1,353 @@
+<div id="nf-paper-home" aria-label="NoteFlow 笔记归页登录预览">
+  <section class="nfh-scene" data-phase="opening">
+    <canvas class="nfh-canvas" aria-hidden="true"></canvas>
+    <header class="nfh-header">NoteFlow</header>
+    <div class="nfh-paper">
+      <div class="nfh-fold" aria-hidden="true"></div>
+      <div class="nfh-tab" aria-hidden="true"></div>
+      <form class="nfh-form" aria-label="登录预览" novalidate>
+        <h1>登录</h1>
+        <div class="nfh-field">
+          <label for="nfh-address">邮箱</label>
+          <input id="nfh-address" type="email" value="note@example.com" autocomplete="off" spellcheck="false">
+          <label for="nfh-code" hidden>验证码</label>
+          <input id="nfh-code" type="text" inputmode="numeric" maxlength="6" autocomplete="off" hidden disabled>
+        </div>
+        <p class="nfh-feedback" aria-live="polite"></p>
+        <button class="nfh-submit cursor-interaction" type="button"><span>继续</span><i data-lucide="arrow-right" aria-hidden="true"></i></button>
+        <div class="nfh-secondary">
+          <button class="nfh-switch cursor-interaction" type="button">注册账号</button>
+          <button class="nfh-back cursor-interaction" type="button" hidden>修改邮箱</button>
+        </div>
+      </form>
+      <div class="nfh-note" aria-hidden="true">
+        <div class="nfh-note-heading"></div>
+        <div class="nfh-note-line"></div><div class="nfh-note-line"></div>
+        <div class="nfh-note-sketch"></div>
+        <div class="nfh-note-line"></div><div class="nfh-note-line"></div>
+      </div>
+    </div>
+    <div class="nfh-end" hidden>
+      <button class="nfh-return cursor-interaction" type="button">返回登录</button>
+    </div>
+    <button class="nfh-pause cursor-interaction" type="button" aria-label="暂停动画" aria-pressed="false"><i data-lucide="pause" aria-hidden="true"></i></button>
+    <div class="nfh-colors" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  </section>
+  <p class="nfh-caption">交互预览 · 已填入示例信息，不发送邮件</p>
+</div>
+<style>
+#nf-paper-home {
+  --nfh-bg: light-dark(#e4eaf0,#17232c);
+  --nfh-glow: light-dark(#f7f4e9,#324553);
+  --nfh-paper: light-dark(#fffdf7,#e1e4df);
+  --nfh-edge: light-dark(#d6dcd9,#7e959f);
+  --nfh-shadow: light-dark(#798b98,#06141e);
+  --nfh-ink: #354b58;
+  --nfh-muted: #687c87;
+  --nfh-blue: #597f94;
+  --nfh-blue-dark: #365e74;
+  --nfh-action: #52758b;
+  --nfh-gold: light-dark(#c6ac7b,#ab9265);
+  --nfh-shell-ink: light-dark(#354b58,#d6e1e7);
+  font-family: -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  width:100%;color:var(--nfh-ink);
+}
+#nf-paper-home * {box-sizing:border-box;}
+#nf-paper-home [hidden] {display:none!important;}
+#nf-paper-home .nfh-scene {
+  position:relative;isolation:isolate;overflow:hidden;height:720px;
+  background:radial-gradient(ellipse at 75% 12%,var(--nfh-glow) 0,transparent 65%),var(--nfh-bg);
+}
+#nf-paper-home .nfh-canvas {position:absolute;inset:0;width:100%;height:100%;z-index:-1;}
+#nf-paper-home .nfh-header {position:absolute;left:36px;top:29px;font-size:22px;letter-spacing:-.8px;font-weight:500;color:var(--nfh-shell-ink);}
+#nf-paper-home .nfh-paper {
+  position:absolute;width:368px;height:422px;left:calc(50% - 184px);top:calc(47% - 211px);
+  background:var(--nfh-paper);border-radius:2px 21px 2px 2px;
+  box-shadow:2px 7px 9px color-mix(in srgb,var(--nfh-shadow) 12%,transparent),18px 42px 64px -20px color-mix(in srgb,var(--nfh-shadow) 45%,transparent);
+  transform-origin:50% 50%;will-change:transform;
+}
+#nf-paper-home .nfh-paper::after {content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(101deg,transparent 43%,#c5c4b50b 48%,#ffffff2e 49.5%,transparent 51%);}
+#nf-paper-home .nfh-fold {position:absolute;top:0;right:0;width:29px;height:29px;background:linear-gradient(45deg,var(--nfh-edge),var(--nfh-paper));clip-path:polygon(0 0,0 100%,100% 100%);transform:rotate(180deg);opacity:.75;}
+#nf-paper-home .nfh-tab {position:absolute;top:27px;right:-8px;width:30px;height:51px;background:var(--nfh-blue);clip-path:polygon(0 0,100% 0,100% 100%,50% 82%,0 100%);box-shadow:0 4px 6px #1f405322;}
+#nf-paper-home .nfh-form {padding:58px 46px 30px;position:relative;z-index:2;}
+#nf-paper-home h1 {font-weight:400;font-size:26px;line-height:1.4;margin:0 0 34px;letter-spacing:2px;text-align:center;color:var(--nfh-ink);}
+#nf-paper-home label {display:block;font-size:12px;color:var(--nfh-muted);margin:0 0 8px;}
+#nf-paper-home input {font:inherit;font-size:16px;width:100%;height:46px;padding:0 10px;border:0;border-bottom:1px solid #bac8cc;border-radius:0;background:#f5f7f448;color:var(--nfh-ink);}
+#nf-paper-home #nfh-code {letter-spacing:7px;font-variant-numeric:tabular-nums;}
+#nf-paper-home .nfh-feedback {font-size:11px;line-height:18px;min-height:36px;margin:7px 0 13px;color:var(--nfh-muted);overflow-wrap:anywhere;}
+#nf-paper-home .nfh-feedback[data-error="true"] {color:#a14537;}
+#nf-paper-home button {font:inherit;}
+#nf-paper-home .nfh-submit {height:46px;width:100%;border:0;background:var(--nfh-action);color:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:14px;transition:background .18s;}
+#nf-paper-home .nfh-submit:hover {background:var(--nfh-blue-dark);}
+#nf-paper-home button:disabled {opacity:.65;cursor:default;}
+#nf-paper-home .nfh-submit svg {width:16px!important;height:16px!important;}
+#nf-paper-home .nfh-secondary {display:flex;justify-content:center;margin-top:9px;}
+#nf-paper-home .nfh-secondary button {border:0;background:transparent;min-height:44px;padding:0 12px;font-size:12px;color:var(--nfh-muted);}
+#nf-paper-home .nfh-pause {position:absolute;right:22px;bottom:20px;width:44px;height:44px;display:grid;place-items:center;border:0;background:transparent;color:var(--nfh-shell-ink);}
+#nf-paper-home .nfh-pause svg {width:16px!important;height:16px!important;}
+#nf-paper-home .nfh-end {position:absolute;bottom:52px;left:0;right:0;text-align:center;}
+#nf-paper-home .nfh-return {padding:0 16px;height:44px;font-size:12px;border:0;background:transparent;color:var(--nfh-shell-ink);}
+#nf-paper-home .nfh-note {position:absolute;inset:55px 43px;opacity:0;pointer-events:none;}
+#nf-paper-home .nfh-note-heading {width:45%;height:9px;background:var(--nfh-blue);opacity:.6;margin:0 0 27px;}
+#nf-paper-home .nfh-note-line {height:2px;background:var(--nfh-blue);opacity:.21;margin:13px 0;}
+#nf-paper-home .nfh-note-line:last-child {width:68%;}
+#nf-paper-home .nfh-note-sketch {height:108px;margin:22px 0;background:linear-gradient(150deg,transparent 49%,#9fb7be35 50%),linear-gradient(40deg,#c4d0cc50 38%,transparent 39%);border:1px solid #b8c7ca70;}
+#nf-paper-home .nfh-caption {margin:10px 0 0;font-size:11px;color:var(--nfh-shell-ink);opacity:.65;text-align:center;line-height:1.7;}
+#nf-paper-home .nfh-colors {position:absolute;visibility:hidden;width:0;height:0;overflow:hidden;}
+#nf-paper-home .nfh-colors i:nth-child(1) {background:var(--nfh-paper);}
+#nf-paper-home .nfh-colors i:nth-child(2) {background:var(--nfh-edge);}
+#nf-paper-home .nfh-colors i:nth-child(3) {background:var(--nfh-blue);}
+#nf-paper-home .nfh-colors i:nth-child(4) {background:var(--nfh-blue-dark);}
+#nf-paper-home .nfh-colors i:nth-child(5) {background:var(--nfh-gold);}
+#nf-paper-home .nfh-colors i:nth-child(6) {background:var(--nfh-shadow);}
+#nf-paper-home .nfh-colors i:nth-child(7) {background:var(--nfh-ink);}
+#nf-paper-home .nfh-colors i:nth-child(8) {background:var(--nfh-bg);}
+@media(max-width:580px) {
+  #nf-paper-home .nfh-scene {height:760px;}
+  #nf-paper-home .nfh-header {left:24px;top:24px;font-size:21px;}
+  #nf-paper-home .nfh-paper {width:calc(100% - 56px);max-width:368px;left:50%;margin-left:0;top:calc(44% - 211px);}
+  #nf-paper-home .nfh-form {padding:59px 27px 26px;}
+  #nf-paper-home h1 {font-size:24px;}
+  #nf-paper-home .nfh-tab {width:24px;right:-7px;}
+}
+@media(prefers-reduced-motion:reduce) {
+  #nf-paper-home * {transition:none!important;}
+}
+</style>
+<script>
+(() => {
+  const root=document.getElementById('nf-paper-home'),$=s=>root.querySelector(s);
+  const scene=$('.nfh-scene'),canvas=$('canvas'),ctx=canvas.getContext('2d');
+  const sheet=$('.nfh-paper'),form=$('form'),note=$('.nfh-note'),tab=$('.nfh-tab');
+  const email=$('#nfh-address'),code=$('#nfh-code'),next=$('.nfh-submit'),back=$('.nfh-back'),toggle=$('.nfh-switch'),feedback=$('.nfh-feedback');
+  const motion=matchMedia('(prefers-reduced-motion: reduce)');
+  const appearance=matchMedia('(prefers-color-scheme: dark)');
+  const design={speed:1};
+  let colors=[],w=1,h=1,mobile=false,pw=368,ph=422,frame=0,last=0,clock=0,elapsed=0;
+  let phase='opening',step='email',mode='login',paused=motion.matches,visible=true,focused=false,settle=0,dirty=false,timer=null;
+  const pointer={x:.5,y:.5,dx:0,dy:0},particles=Array.from({length:8},(_,i)=>({i,x:0,y:0}));
+  const clamp=n=>Math.max(0,Math.min(1,n)),ease=n=>{n=clamp(n);return n*n*(3-2*n);},mix=(a,b,t)=>a+(b-a)*t;
+  const ink=(alpha=1)=>{ctx.strokeStyle=colors[2];ctx.globalAlpha*=alpha;};
+  function path(points,fill) {
+    ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));
+    ctx.closePath();ctx.fillStyle=fill;ctx.fill();
+  }
+  function curve(points) {
+    ctx.beginPath();ctx.moveTo(points[0],points[1]);ctx.bezierCurveTo(...points.slice(2));ctx.stroke();
+  }
+  function marks(x,y,s,kind=0,opacity=1) {
+    ctx.save();ctx.translate(x,y);ctx.scale(s,s);ink(opacity);ctx.lineWidth=1.1;
+    ctx.beginPath();ctx.moveTo(-24,-30);ctx.lineTo(9,-30);ctx.lineWidth=2.8;ctx.stroke();ctx.lineWidth=1;
+    if(kind%3===0) {
+      for(let j=0;j<3;j++){ctx.strokeRect(-24,-15+j*17,6,6);ctx.beginPath();ctx.moveTo(-12,-12+j*17);ctx.lineTo(j===2?7:25,-12+j*17);ctx.stroke();}
+    } else if(kind%3===1) {
+      ctx.strokeRect(-24,-13,48,33);ctx.beginPath();ctx.moveTo(-24,19);ctx.lineTo(-7,0);ctx.lineTo(3,12);ctx.lineTo(11,4);ctx.lineTo(24,20);ctx.stroke();
+      ctx.beginPath();ctx.arc(12,-4,3.4,0,Math.PI*2);ctx.stroke();
+    } else {
+      ctx.beginPath();ctx.moveTo(-23,22);ctx.lineTo(-23,-13);ctx.moveTo(-23,22);ctx.lineTo(25,22);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-18,14);ctx.bezierCurveTo(3,18,-9,-12,20,-6);ctx.stroke();
+    }
+    ctx.globalAlpha*=.65;
+    for(let j=0;j<2;j++){ctx.beginPath();ctx.moveTo(-24,34+j*8);ctx.lineTo(j?10:25,34+j*8);ctx.stroke();}
+    ctx.restore();
+  }
+  function loose(x,y,s,angle,kind,alpha=1) {
+    ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.globalAlpha=alpha;
+    ctx.shadowColor=colors[5];ctx.shadowBlur=s*.15;ctx.shadowOffsetY=s*.12;
+    const g=ctx.createLinearGradient(-s*.5,0,s*.5,s*.7);g.addColorStop(0,colors[0]);g.addColorStop(1,colors[1]);
+    ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(-s*.45,-s*.62);
+    ctx.quadraticCurveTo(0,-s*.67,s*.45,-s*.60);ctx.quadraticCurveTo(s*.39,0,s*.48,s*.58);
+    ctx.quadraticCurveTo(0,s*.67,-s*.45,s*.60);ctx.quadraticCurveTo(-s*.50,0,-s*.45,-s*.62);ctx.fill();
+    ctx.shadowBlur=0;ctx.shadowOffsetY=0;marks(0,0,s/79,kind,.35);
+    ctx.restore();
+  }
+  function bookLocation(progress=0) {
+    return {x:mix(w*(mobile?.23:.19),w*.5,progress),y:mix(h*(mobile?.84:.79),h*.52,progress),s:mix(mobile?77:114,mobile?111:193,progress),angle:mix(-.23,-.055,progress)};
+  }
+  function notebook(b,filled,opening=1) {
+    ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.angle);ctx.scale(b.s,b.s*.78);
+    ctx.shadowColor=colors[5];ctx.shadowBlur=24;ctx.shadowOffsetY=20;
+    path([[-1.12,-.72],[-.08,-.65],[1.12,-.72],[1.21,.77],[.02,.84],[-1.16,.77]],colors[3]);
+    ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+    for(let k=3;k>=0;k--) {
+      ctx.translate(0,-.018);
+      ctx.fillStyle=k?colors[1]:colors[0];
+      ctx.beginPath();ctx.moveTo(0,-.58);ctx.bezierCurveTo(-.3,-.73,-.83,-.79,-1.08,-.68);
+      ctx.lineTo(-1.10,.65);ctx.bezierCurveTo(-.70,.56,-.30,.64,0,.77);
+      ctx.bezierCurveTo(.35,.60,.75,.59,1.10,.66);ctx.lineTo(1.06,-.68);
+      ctx.bezierCurveTo(.68,-.77,.28,-.74,0,-.58);ctx.fill();
+    }
+    ctx.strokeStyle=colors[1];ctx.lineWidth=.01;curve([0,-.58,-.02,-.1,.01,.3,0,.77]);
+    ctx.save();ctx.scale(.0125,.0125);marks(-43,1,.88,0,.55);ctx.restore();
+    if(filled>0) {
+      ctx.save();ctx.globalAlpha=filled;ctx.scale(.0125,.0125);marks(43,1,.91,1,.6);ctx.restore();
+      path([[.86,-.69],[1.02,-.7],[1.04,-.22],[.97,-.29],[.90,-.21]],colors[2]);
+    } else {
+      ctx.save();ctx.globalAlpha=.21;ctx.strokeStyle=colors[2];ctx.lineWidth=.009;ctx.setLineDash([.04,.035]);
+      ctx.strokeRect(.17,-.48,.72,1.04);ctx.restore();
+    }
+    if(opening<1) {
+      ctx.save();ctx.globalAlpha=1-opening;ctx.fillStyle=colors[3];
+      path([[-1.1,-.73],[0,-.59],[.02,.78],[-1.16,.68]],colors[2]);ctx.restore();
+    }
+    ctx.restore();
+  }
+  function plane(x,y,s,angle) {
+    ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.shadowColor=colors[5];ctx.shadowBlur=18;ctx.shadowOffsetY=9;
+    path([[-s*.7,-s*.3],[s*.7,0],[-s*.25,s*.05]],colors[2]);ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+    path([[-s*.25,s*.05],[s*.7,0],[-s*.18,s*.37]],colors[3]);
+    path([[-s*.18,s*.37],[s*.7,0],[0,s*.10]],colors[2]);ctx.restore();
+  }
+  function paint(dt=0) {
+    colors=[...root.querySelectorAll('.nfh-colors i')].map(n=>getComputedStyle(n).backgroundColor);
+    ctx.clearRect(0,0,w,h);
+    const returning=phase==='returning'||phase==='home';
+    const returnP=phase==='home'?1:phase==='returning'?ease(elapsed/2.7):0;
+    const destination=bookLocation(ease((returnP-.24)/.76));
+    const mainX=w*.5,mainY=h*(mobile?.44:.47);
+    settle+=((focused||step==='code'?.72:0)-settle)*Math.min(1,dt*2);
+    pointer.dx+=(pointer.x-.5-pointer.dx)*Math.min(1,dt*3);
+    pointer.dy+=(pointer.y-.5-pointer.dy)*Math.min(1,dt*3);
+    // Light and a desk shadow make the notebook a place the loose page can return to.
+    ctx.save();ctx.globalAlpha=.07;ctx.fillStyle=colors[4];ctx.beginPath();
+    ctx.ellipse(w*.63,h*.79,w*.66,h*.13,-.25,0,Math.PI*2);ctx.fill();ctx.restore();
+    notebook(destination,returnP>.87?ease((returnP-.87)/.13):0,phase==='opening'?ease(elapsed/.9):1);
+    const anchors=mobile?[
+      [.91,.11,.83],[.91,.83,.68],[-.07,.38,.60],[.13,.13,.41],[1.07,.56,.4],[.65,.92,.34],[.56,.06,.25],[-.07,.68,.30]
+    ]:[
+      [.13,.32,.87],[.87,.32,.96],[.81,.79,.63],[.27,.15,.53],[.92,.60,.42],[.39,.87,.40],[.70,.09,.32],[.06,.59,.41]
+    ];
+    particles.forEach((item,i)=>{
+      const a=anchors[i],theta=clock*(.24+i*.013)*design.speed+i;
+      let x=w*a[0]+Math.sin(theta)*(16+i*1.2)+pointer.dx*(16+i*2);
+      let y=h*a[1]+Math.cos(theta*.9)*14+pointer.dy*(14+i);
+      let s=(mobile?66:104)*a[2],rot=Math.sin(theta*.7)*.18+(i%2?.12:-.18),alpha=.90;
+      // When writing begins, scattered notes lean toward the waiting notebook.
+      x=mix(x,bookLocation().x+(i-3.5)*22,settle*.20);
+      y=mix(y,bookLocation().y-60,settle*.20);
+      if(returning){
+        const p=ease((returnP-i*.035)/.70);
+        x=mix(x,destination.x,p);y=mix(y,destination.y,p)-Math.sin(p*Math.PI)*(50+i*5);
+        s*=1-p*.7;rot+=p*(i%2?.6:-.7);alpha*=1-p;
+      }
+      loose(x,y,s,rot,i,alpha);
+    });
+    let tx=0,ty=0,scale=1,rotate=0,rotateY=0,opacity=1;
+    if(phase==='opening') {
+      const p=ease(elapsed/2.4),origin=bookLocation();
+      tx=mix(origin.x+origin.s*.45-mainX,0,p);
+      ty=mix(origin.y-mainY,0,p)-Math.sin(p*Math.PI)*120;
+      scale=mix(.20,1,p);rotate=mix(-24,0,p)+Math.sin(p*Math.PI)*12;rotateY=Math.sin(p*Math.PI)*-36;
+    }
+    if(returning) {
+      const angle=destination.angle,targetX=destination.x+Math.cos(angle)*destination.s*.50,targetY=destination.y+Math.sin(angle)*destination.s*.50;
+      tx=mix(0,targetX-mainX,returnP);ty=mix(0,targetY-mainY,returnP)-Math.sin(returnP*Math.PI)*95;
+      scale=mix(1,destination.s*.83/pw,returnP);rotate=mix(0,angle*180/Math.PI,returnP);
+      rotateY=Math.sin(returnP*Math.PI)*26;opacity=1-ease((returnP-.89)/.11);
+    }
+    sheet.style.transform=`translate(${mobile?'-50%':'0'},0) translate(${tx}px,${ty}px) perspective(1000px) rotateY(${rotateY}deg) rotate(${rotate}deg) scale(${scale})`;
+    sheet.style.opacity=String(opacity);
+    form.style.opacity=returning?String(1-ease(returnP/.22)):'1';
+    note.style.opacity=returning?String(ease(returnP/.22)):'0';
+    tab.style.opacity=phase==='sending'?'0':'1';
+    if(phase==='sending') {
+      const p=clamp(elapsed/2.3),origin={x:mainX+pw*.5-4,y:mainY-ph*.5+49};
+      const arc=Math.sin(p*Math.PI),radius=mobile?55:180;
+      const x=origin.x+Math.sin(p*Math.PI*2)*radius*.7;
+      const y=origin.y-arc*(mobile?88:100)+Math.sin(p*Math.PI*2)*18;
+      plane(x,y,24+arc*33,Math.cos(p*Math.PI*2)*-.8);
+      ctx.save();ctx.globalAlpha=.20*arc;ctx.strokeStyle=colors[2];ctx.lineWidth=1;ctx.setLineDash([3,7]);
+      curve([origin.x,origin.y,origin.x+radius*.6,origin.y-140,x,y-30,x,y]);ctx.restore();
+    }
+    if(phase==='opening'&&elapsed>=2.4)setPhase('ready');
+  }
+  function tick(now) {
+    frame=0;if(!root.isConnected){cleanup();return;}
+    const dt=last?Math.min(.05,(now-last)/1000):0;last=now;clock+=dt;elapsed+=dt;paint(dt);
+    if(!frame&&!paused&&!motion.matches&&visible&&!document.hidden)frame=requestAnimationFrame(tick);
+  }
+  function wake() {
+    if(!root.isConnected)return;paint();
+    if(!frame&&!paused&&!motion.matches&&visible&&!document.hidden){last=0;frame=requestAnimationFrame(tick);}
+  }
+  function size() {
+    const r=scene.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);w=r.width;h=r.height;mobile=w<=580;
+    pw=mobile?Math.min(368,w-56):368;canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);wake();
+  }
+  function setPhase(value) {phase=value;elapsed=0;scene.dataset.phase=value;wake();}
+  function clearWait(){clearTimeout(timer);timer=null;}
+  function feedbackText(value,error=false){feedback.textContent=value;feedback.dataset.error=String(error);}
+  function setStep(value) {
+    step=value;const codeStep=value==='code';
+    email.hidden=codeStep;email.disabled=codeStep;code.hidden=!codeStep;code.disabled=!codeStep;
+    $('label[for="nfh-address"]').hidden=codeStep;$('label[for="nfh-code"]').hidden=!codeStep;
+    back.hidden=!codeStep;toggle.hidden=codeStep;next.disabled=false;next.removeAttribute('aria-busy');
+    $('.nfh-submit span').textContent=codeStep?(mode==='register'?'创建账号':'登录'):'继续';
+  }
+  function finishOpening(){if(phase==='opening')setPhase('ready');}
+  function submit() {
+    if(phase==='sending'||phase==='returning'||phase==='home')return;
+    dirty=true;finishOpening();
+    if(step==='email') {
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())){feedbackText('请输入有效的邮箱。',true);email.focus();return;}
+      setStep('code');code.value='123456';feedbackText('演示验证码：123456');
+      setPhase('sending');next.disabled=true;next.setAttribute('aria-busy','true');code.focus();
+      timer=setTimeout(()=>{timer=null;setPhase('ready');next.disabled=false;next.removeAttribute('aria-busy');},paused||motion.matches?80:2350);
+    } else {
+      if(code.value!=='123456'){feedbackText('演示验证码为 123456。',true);code.focus();return;}
+      setPhase('returning');form.inert=true;form.setAttribute('aria-hidden','true');next.disabled=true;
+      timer=setTimeout(()=>{timer=null;setPhase('home');$('.nfh-end').hidden=false;$('.nfh-return').focus();},paused||motion.matches?80:2750);
+    }
+    save();
+  }
+  function reset() {
+    clearWait();setStep('email');setPhase(paused||motion.matches?'ready':'opening');
+    email.value='note@example.com';code.value='';focused=false;settle=0;feedbackText('');
+    form.inert=false;form.removeAttribute('aria-hidden');$('.nfh-end').hidden=true;
+  }
+  function updateMotion() {
+    const btn=$('.nfh-pause');btn.setAttribute('aria-pressed',String(paused));
+    btn.setAttribute('aria-label',motion.matches?'已减少动画':paused?'继续动画':'暂停动画');btn.disabled=motion.matches;
+    btn.innerHTML=`<i data-lucide="${paused?'play':'pause'}" aria-hidden="true"></i>`;
+    if(globalThis.lucide)lucide.createIcons({attrs:{width:16,height:16}});
+  }
+  function save(){
+    window.openai?.setWidgetState?.({modelContent:{concept:'笔记归页',motion:!paused},
+      privateContent:{design:'nf-paper-home-v1',paused}})?.catch(()=>{});
+  }
+  function restore(state){
+    if(dirty||state?.privateContent?.design!=='nf-paper-home-v1')return;
+    paused=!!state.privateContent.paused||motion.matches;
+    if(paused)finishOpening();updateMotion();wake();
+  }
+  const visibility=()=>{if(document.hidden&&frame){cancelAnimationFrame(frame);frame=0;}else wake();};
+  const changeMotion=()=>{paused=motion.matches;if(paused){finishOpening();if(frame)cancelAnimationFrame(frame);frame=0;}updateMotion();wake();};
+  const changeState=e=>restore(e.detail?.globals?.widgetState);
+  next.addEventListener('click',submit);
+  form.addEventListener('submit',e=>e.preventDefault());
+  form.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing&&e.target.tagName==='INPUT'){e.preventDefault();if(!next.disabled)submit();}});
+  form.addEventListener('focusin',()=>{finishOpening();focused=true;});
+  form.addEventListener('focusout',e=>{if(!form.contains(e.relatedTarget))focused=false;});
+  email.addEventListener('input',()=>{feedbackText('');focused=true;});
+  code.addEventListener('input',()=>{code.value=code.value.replace(/\D/g,'').slice(0,6);feedbackText('演示验证码：123456');});
+  back.addEventListener('click',()=>{clearWait();setStep('email');setPhase('ready');code.value='';feedbackText('');email.focus();});
+  toggle.addEventListener('click',()=>{mode=mode==='login'?'register':'login';$('h1').textContent=mode==='register'?'注册':'登录';toggle.textContent=mode==='register'?'已有账号，登录':'注册账号';feedbackText('');email.focus();});
+  $('.nfh-return').addEventListener('click',()=>{reset();email.focus();});
+  $('.nfh-pause').addEventListener('click',()=>{
+    dirty=true;paused=!paused;if(frame)cancelAnimationFrame(frame);frame=0;
+    if(paused)finishOpening();updateMotion();save();wake();
+  });
+  scene.addEventListener('pointermove',e=>{const r=scene.getBoundingClientRect();pointer.x=(e.clientX-r.left)/w;pointer.y=(e.clientY-r.top)/h;});
+  scene.addEventListener('pointerleave',()=>{pointer.x=.5;pointer.y=.5;});
+  document.addEventListener('visibilitychange',visibility);motion.addEventListener('change',changeMotion);appearance.addEventListener('change',wake);
+  window.addEventListener('openai:set_globals',changeState);
+  const resize=new ResizeObserver(size),intersection=new IntersectionObserver(entries=>{
+    visible=entries[0].isIntersecting;if(!visible&&frame){cancelAnimationFrame(frame);frame=0;}else wake();
+  });
+  function cleanup(){clearWait();if(frame)cancelAnimationFrame(frame);resize.disconnect();intersection.disconnect();document.removeEventListener('visibilitychange',visibility);motion.removeEventListener('change',changeMotion);appearance.removeEventListener('change',wake);window.removeEventListener('openai:set_globals',changeState);}
+  resize.observe(scene);intersection.observe(scene);size();
+  if(motion.matches)setPhase('ready');
+  updateMotion();restore(window.openai?.widgetState);
+})();
+</script>

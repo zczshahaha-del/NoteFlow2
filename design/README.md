@@ -2,7 +2,17 @@
 
 > 更新：2026-10-21。设计稿不是正式应用；业务界面仍以 `src/` 为准。下述组件合成标本也不等于用户实屏。
 
-## 一张纸的旅行 · 登录动效候选待评审
+## 笔记归页 · 精简文字后的登录候选待评审
+
+用户退回上一版的宣传文案和「播放完整旅程」，要求动画自身有故事、文字贴合笔记。本版只保留登录 / 注册所需文字：笔记本留出一页的位置，带蓝色页签的纸从本中飞出并展开成真实可输入的登录区域；完成演示登录后，同一张纸缩回原位置，散页收拢，笔记本补齐。开场自动发生，后续由「继续 / 登录」推进。
+
+- [交互预览](noteflow-paper-home.preview.html) / [源稿](noteflow-paper-home.source.html) / [反馈、验证与边界](noteflow-paper-home-notes.md)
+- [桌面](noteflow-paper-home-1024.png) / [手机](noteflow-paper-home-320.png) / [深色](noteflow-paper-home-dark.png)
+- [纸页飞出](noteflow-paper-home-opening.png) / [发送](noteflow-paper-home-send.png) / [纸页归位中](noteflow-paper-home-returning.png) / [归位结果](noteflow-paper-home-home.png)
+
+示例邮箱和验证码预填，仅作离线视觉评审。正式认证与工作台未接入，最终故事感和审美仍待用户验收。
+
+## 一张纸的旅行 · 首稿已退回
 
 用户选择全屏叙事方向后，新增「灵感启程 → 寄出一页 → 找到归处」可交互概念稿。雾蓝 / 暖白天空、带卷曲与阴影的纸张、鼠标风场、纸飞机送信和纸页聚拢成笔记；移动端重新安排纸张位置，支持深色与减少动效。可用示例邮箱和演示验证码 `123456` 体验，也可点击「播放完整旅程」自动播放。
 
@@ -10,7 +20,7 @@
 - [桌面画面](noteflow-paper-journey-1024.png) / [320px 画面](noteflow-paper-journey-320.png) / [深色画面](noteflow-paper-journey-dark.png)
 - [验证码步骤](noteflow-paper-journey-verify.png) / [故事落点](noteflow-paper-journey-arrival.png)
 
-仅设计预览；正式 LoginPage 仍采用下文的邮箱优先入口。本稿没有发邮件、创建账号或接入真实工作台。AUTH-01 保持部分解决，最终审美与正式实施待确认。
+用户明确不满意：文字与笔记不贴切、播放入口生硬、互动缺少故事。此稿保留作历史记录，不作为当前候选；其运行检查通过不代表审美认可。正式 LoginPage 仍采用下文的邮箱优先入口，AUTH-01 保持部分解决。
 
 ## 无顶栏与头像随知识库收起 · 收纳已实施，最终效果待验收
 
