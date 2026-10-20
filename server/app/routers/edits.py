@@ -23,7 +23,8 @@ from app.repositories.index_jobs import IndexJobRepository
 from app.repositories.notes import NoteRepository
 from app.services.markdown_index import HEADING_RE, index_note_now
 from app.memory.domain import build_memory_context
-from app.services.note_edit import generate_edit_preview, revise_edit_preview
+from app.services.note_edit import EditGenerationError, generate_edit_preview, revise_edit_preview
+from app.services.edit_scope import infer_edit_target, positive_instruction, requests_current_section, requests_section, requests_note
 from app.services.user_settings import is_user_memory_enabled
 from app.agent.write_runtime import initialize_edit_graph, resume_edit_graph
 from app.utils import random_id
@@ -31,13 +32,6 @@ from app.utils import random_id
 router = APIRouter(tags=["edits"])
 
 TARGET_TYPES = {"selection", "section", "note", "insert", "delete"}
-
-SECTION_INTENT_RE = (
-    r"(当前小节|这个小节|这一个小节|这一小节|本小节|小节|"
-    r"当前章节|这个章节|这一个章节|这一章节|章节|"
-    r"当前节|这一节|这节|本节|这一章|这章|本章)"
-)
-
 
 @dataclass
 class MarkdownSectionRange:
@@ -52,6 +46,7 @@ class EditPreviewPayload(BaseModel):
     noteId: str
     targetType: Optional[str] = None
     sectionId: Optional[str] = None
+    contextSectionId: Optional[str] = None
     selectedText: str = ""
     instruction: str
     keepStyle: bool = True
@@ -213,7 +208,7 @@ async def _get_section(
 
 
 def _instruction_requests_section(instruction: str) -> bool:
-    return bool(instruction and re.search(SECTION_INTENT_RE, instruction))
+    return requests_section(instruction)
 
 
 def _normalize_target_type(
@@ -224,13 +219,14 @@ def _normalize_target_type(
 ) -> str:
     if value in TARGET_TYPES:
         return value
-    if section_id:
-        return "section"
-    if _instruction_requests_section(instruction):
-        return "section"
+    inferred = infer_edit_target(instruction)
+    if inferred:
+        return inferred
     if selected_text.strip():
         return "selection"
-    return "note"
+    if section_id:
+        return "section"
+    return "unknown"
 
 
 def _find_instruction_sections(instruction: str, sections: list[NoteSection]) -> list[NoteSection]:
@@ -310,7 +306,18 @@ def _parse_markdown_section_ranges(markdown: str) -> list[MarkdownSectionRange]:
             cursor += 1
 
     headings: list[tuple[int, int, int, str]] = []
+    fence = ""
     for line_index, line in enumerate(lines):
+        marker = re.match(r"^\s{0,3}(`{3,}|~{3,})", line)
+        if marker:
+            token = marker.group(1)
+            if not fence:
+                fence = token
+            elif token[0] == fence[0] and len(token) >= len(fence):
+                fence = ""
+            continue
+        if fence:
+            continue
         match = HEADING_RE.match(line)
         if match:
             headings.append(
@@ -469,11 +476,17 @@ def _resolve_selected_content(full_text: str, selected: str) -> str:
     if not selected:
         return selected
     if selected in full_text:
+        if full_text.count(selected) > 1:
+            raise HTTPException(status_code=409, detail="选中文字在笔记中出现了多次，请连同前后文一起选择。")
         return selected
 
+    normalized_full, _ = _normalized_match_text(full_text)
+    normalized_selected, _ = _normalized_match_text(selected)
+    if normalized_selected and normalized_full.count(normalized_selected) > 1:
+        raise HTTPException(status_code=409, detail="选中文字在笔记中有多处相同内容，请连同前后文一起选择。")
     span = _find_normalized_span(full_text, selected) or _find_anchor_span(full_text, selected)
     if not span:
-        return selected
+        raise HTTPException(status_code=409, detail="没有在当前笔记中找到这段原文，请重新选择要修改的内容。")
 
     start, end = span
     return full_text[start:end]
@@ -494,7 +507,27 @@ async def _resolve_target(
     selected = payload.selectedText.strip()
     note_content = note.content or ""
 
+    if target_type == "note":
+        return "note", None, note_content, "整篇笔记"
+
+    # A named heading takes precedence over the user's passive reading position.
+    # Resolve against current Markdown first; section indexes can lag behind edits.
+    current_sections = _parse_markdown_section_ranges(note_content)
+    named = _find_instruction_sections(positive_instruction(payload.instruction), current_sections)
+    if target_type != "selection" and named:
+        # Nested names contained in a longer explicit heading are not separate
+        # requests; distinct / duplicate headings still require clarification.
+        named = [item for item in named if not any(
+            item.title != other.title and item.title in other.title for other in named
+        )]
+        if len(named) != 1:
+            raise HTTPException(status_code=409, detail="找到了多个可能的小节，请选中要修改的内容，或写出更完整的章节标题。")
+        section = named[0]
+        return (target_type if target_type in {"insert", "delete"} else "section",
+                None, section.content, f"小节：{section.title}")
+
     if selected and target_type == "section":
+        _resolve_selected_content(note_content, selected)
         sections = await _get_sections(session, user_id, note.id)
         section = _find_section_from_selected_text(sections, selected)
         section_id = section.id if section else None
@@ -502,7 +535,7 @@ async def _resolve_target(
             section = _find_section_from_note_content(note_content, selected)
         if section is not None:
             return "section", section_id, _current_section_content(note_content, section, selected), f"小节：{section.title}"
-        return "selection", None, _resolve_selected_content(note_content, selected), "用户选中的文本"
+        raise HTTPException(status_code=400, detail="没有确定选中文字所属的小节，请选中完整小节后再试。")
 
     if selected and target_type in {"selection", "insert", "delete"}:
         return target_type, None, _resolve_selected_content(note_content, selected), "用户选中的文本"
@@ -512,15 +545,19 @@ async def _resolve_target(
             raise HTTPException(status_code=400, detail="selectedText is required for selection edit")
         return target_type, None, _resolve_selected_content(note_content, selected), "用户选中的文本"
 
+    if target_type == "unknown":
+        raise HTTPException(status_code=400, detail="你想修改哪一部分？请选中文字、写出章节标题，或说明“整篇笔记”。")
     sections = await _get_sections(session, user_id, note.id)
-    section_id = payload.sectionId
+    section_id = payload.sectionId or (
+        payload.contextSectionId if requests_current_section(payload.instruction) else None
+    )
     if not section_id and target_type in {"section", "insert", "delete"}:
         matches = _find_instruction_sections(payload.instruction, sections)
         if len(matches) > 1:
             raise HTTPException(
                 status_code=409,
                 detail={
-                    "message": "multiple sections matched",
+                    "message": "找到了多个同名小节，请选中要修改的内容。",
                     "sections": [{"id": section.id, "title": section.title} for section in matches],
                 },
             )
@@ -545,7 +582,7 @@ async def _resolve_target(
     if target_type in {"insert", "delete"}:
         raise HTTPException(status_code=400, detail="insert/delete requires a selected text or section")
 
-    return "note", None, note_content, "当前整篇笔记"
+    raise HTTPException(status_code=400, detail="请选中要修改的文字，或明确说明要修改哪一节、是否修改整篇笔记。")
 
 
 def _make_version(note: Note, preview: NoteEditPreview) -> NoteVersion:
@@ -563,6 +600,8 @@ def _make_version(note: Note, preview: NoteEditPreview) -> NoteVersion:
 def _replace_once(full_text: str, old: str, new: str) -> str:
     if not old:
         return full_text
+    if full_text.count(old) > 1:
+        raise HTTPException(status_code=409, detail="原文在笔记中出现了多次，请连同前后文重新选择，避免改错位置。")
     index = full_text.find(old)
     if index >= 0:
         return full_text[:index] + new + full_text[index + len(old):]
@@ -624,15 +663,23 @@ async def create_edit_preview(
                     scopes=["note_editing", "note_generation", "learning"],
                     memory_types=["identity", "personal_info", "interest", "preference", "writing_style", "constraint", "workflow"],
                 )
-            result = await generate_edit_preview(
-                note_title=note.title,
-                target_type=target_type,
-                target_content=old_content,
-                instruction=payload.instruction,
-                neighbor_context=target_label,
-                keep_style=payload.keepStyle,
-                memory_context=memory_context,
-            )
+            offset = (note.content or "").find(old_content)
+            neighbors = target_label
+            if target_type != "note" and offset >= 0:
+                neighbors += "\n前文：\n" + (note.content or "")[max(0, offset - 1200):offset]
+                neighbors += "\n后文：\n" + (note.content or "")[offset + len(old_content):offset + len(old_content) + 1200]
+            try:
+                result = await generate_edit_preview(
+                    note_title=note.title,
+                    target_type=target_type,
+                    target_content=old_content,
+                    instruction=payload.instruction,
+                    neighbor_context=neighbors,
+                    keep_style=payload.keepStyle,
+                    memory_context=memory_context,
+                )
+            except EditGenerationError as error:
+                raise HTTPException(status_code=502, detail=str(error)) from error
             new_content = result.new_content
             change_summary = result.change_summary
 
@@ -769,6 +816,19 @@ async def revise_preview(
         if preview.status != "preview":
             raise HTTPException(status_code=409, detail="edit preview is not active")
         note = await _get_note(session, user.id, preview.note_id)
+        if preview.target_type == "delete":
+            raise HTTPException(status_code=409, detail="当前是删除预览。如需改写这些内容，请先放弃删除，再提出修改要求。")
+        # Continuing a draft never silently expands its write boundary.
+        named_targets = _find_instruction_sections(positive_instruction(payload.instruction), _parse_markdown_section_ranges(note.content or ""))
+        elsewhere = [item for item in named_targets if item.content not in (preview.old_content or "")]
+        if preview.target_type != "note" and (
+            requests_note(payload.instruction)
+            or re.search(r"下一(?:章|节)|上一(?:章|节)|另外一(?:章|节)", positive_instruction(payload.instruction))
+            or (requests_section(payload.instruction) and preview.target_type == "selection")
+            or elsewhere
+        ):
+            target = f"「{elsewhere[0].title}」" if elsewhere else "新的修改范围"
+            raise HTTPException(status_code=409, detail=f"这次要求涉及{target}，当前修改稿已保留。请先应用或放弃当前修改，再从正文选择新的范围。")
         expected_updated_at = preview.updated_at
         original_content = _resolve_selected_content(note.content or "", preview.old_content or "")
         memory_context = ""
@@ -780,14 +840,17 @@ async def revise_preview(
                 scopes=["note_editing", "note_generation", "learning"],
                 memory_types=["identity", "personal_info", "interest", "preference", "writing_style", "constraint", "workflow"],
             )
-        result = await revise_edit_preview(
-            note_title=note.title,
-            target_type=preview.target_type,
-            original_content=original_content,
-            current_preview=preview.new_content,
-            instruction=payload.instruction,
-            memory_context=memory_context,
-        )
+        try:
+            result = await revise_edit_preview(
+                note_title=note.title,
+                target_type=preview.target_type,
+                original_content=original_content,
+                current_preview=preview.new_content,
+                instruction=payload.instruction,
+                memory_context=memory_context,
+            )
+        except EditGenerationError as error:
+            raise HTTPException(status_code=502, detail=str(error)) from error
         # The model runs outside a row lock. Re-read and lock before publishing
         # so a manual edit, restore, cancellation or another AI result wins over
         # an older in-flight generation rather than being silently overwritten.

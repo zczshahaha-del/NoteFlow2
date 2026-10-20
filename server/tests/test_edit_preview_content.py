@@ -98,6 +98,68 @@ class EditPreviewContentTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(await session.scalar(select(func.count()).select_from(NoteVersion)), 0)
             self.assertEqual(await session.scalar(select(func.count()).select_from(NoteIndexJob)), 0)
 
+    async def test_create_selection_ignores_passive_section_and_applies_only_selected_text(self):
+        model = AsyncMock(return_value=SimpleNamespace(new_content="只替换这一句。", change_summary=["改写选区"]))
+        with patch.object(edits, "generate_edit_preview", model):
+            response = await self.client.post("/api/note-edit-previews", json={
+                "noteId": "preview-note", "selectedText": "原文不应提前改变。",
+                "contextSectionId": "passive-reading-position", "instruction": "讲得通俗一点", "memoryEnabled": False,
+            })
+        self.assertEqual(response.status_code, 200, response.text)
+        preview = response.json()["preview"]
+        self.assertEqual(preview["targetType"], "selection")
+        self.assertEqual(preview["oldContent"], "原文不应提前改变。")
+        self.assertIn("## 原小节", model.call_args.kwargs["neighbor_context"])
+        await self.assert_original_untouched()
+        async def synthetic_index(session, note):
+            job = NoteIndexJob(id="scope-index", note_id=note.id, user_id=self.user.id, status="pending")
+            session.add(job)
+            await session.flush()
+            return job
+        with patch.object(edits, "index_note_now", synthetic_index):
+            applied = await self.client.post(f"/api/note-edit-previews/{preview['id']}/apply")
+        self.assertEqual(applied.status_code, 200, applied.text)
+        self.assertEqual(applied.json()["note"]["content"], "## 原小节\n\n只替换这一句。")
+
+    async def test_ambiguous_target_asks_before_model_or_preview_creation(self):
+        model = AsyncMock()
+        with patch.object(edits, "generate_edit_preview", model):
+            response = await self.client.post("/api/note-edit-previews", json={
+                "noteId": "preview-note", "contextSectionId": "passive", "instruction": "这里改一下", "memoryEnabled": False,
+            })
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertIn("哪一部分", response.json()["detail"])
+        model.assert_not_awaited()
+        await self.assert_original_untouched()
+
+    async def test_revise_new_scope_is_explicitly_rejected_without_changing_current_draft(self):
+        async with self.sessions() as session:
+            preview = await session.get(NoteEditPreview, "preview")
+            preview.target_type = "selection"
+            await session.commit()
+        for instruction in ("下一章也改了", "整篇笔记重写一遍", "把这一节都改了"):
+            response = await self.client.post("/api/note-edit-previews/preview/revise", json={
+                "instruction": instruction, "memoryEnabled": False,
+            })
+            self.assertEqual(response.status_code, 409, response.text)
+            self.assertIn("当前修改稿已保留", response.json()["detail"])
+        self.model.assert_not_awaited()
+        current = await self.client.get("/api/note-edit-previews/preview")
+        self.assertEqual(current.json()["preview"]["newContent"], self.initial)
+
+    async def test_delete_preview_cannot_accept_ignored_rewrite_content(self):
+        async with self.sessions() as session:
+            preview = await session.get(NoteEditPreview, "preview")
+            preview.target_type = "delete"
+            preview.new_content = ""
+            await session.commit()
+        response = await self.client.post("/api/note-edit-previews/preview/revise", json={
+            "instruction": "改成通俗的解释", "memoryEnabled": False,
+        })
+        self.assertEqual(response.status_code, 409)
+        self.model.assert_not_awaited()
+        await self.assert_original_untouched()
+
     async def test_manual_write_is_versioned_preserves_markdown_and_does_not_write_note(self):
         text = "## 手动标题\n\n**加粗** 与 `代码`\n\n```go\nfmt.Println(1)\n```\n"
         response = await self.save(text)

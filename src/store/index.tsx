@@ -2159,7 +2159,9 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           const selectedText =
             typeof payload.selectedText === "string" ? payload.selectedText : pageState?.selectedText ?? "";
           const sectionId =
-            typeof payload.sectionId === "string" ? payload.sectionId : requestPageState.currentSectionId ?? null;
+            typeof payload.sectionId === "string" ? payload.sectionId : null;
+          const contextSectionId =
+            typeof payload.contextSectionId === "string" ? payload.contextSectionId : requestPageState.currentSectionId ?? null;
           const targetType =
             typeof payload.targetType === "string" ? (payload.targetType as EditTargetType) : null;
 
@@ -2180,6 +2182,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
               noteId,
               targetType,
               sectionId,
+              contextSectionId,
               selectedText,
               instruction,
               keepStyle: true,

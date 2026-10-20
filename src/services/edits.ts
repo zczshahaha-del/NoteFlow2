@@ -34,6 +34,7 @@ export interface EditPreviewPayload {
   noteId: string;
   targetType?: EditTargetType | null;
   sectionId?: string | null;
+  contextSectionId?: string | null;
   selectedText?: string;
   instruction: string;
   keepStyle?: boolean;

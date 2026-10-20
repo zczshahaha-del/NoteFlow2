@@ -300,13 +300,8 @@ def _note_sources_fallback(sources: list[dict]) -> str:
 
 
 def _infer_edit_target_type(question: str) -> Optional[str]:
-    if re.search(r"(删掉|删除|移除)", question):
-        return "delete"
-    if re.search(r"(插入|插到|插在)", question):
-        return "insert"
-    if re.search(r"(当前小节|这个小节|这一个小节|这一小节|本小节|小节|当前章节|这个章节|这一个章节|这一章节|章节|当前节|这一节|这节|本节|这一章|这章|本章|段落)", question):
-        return "section"
-    return None
+    from app.services.edit_scope import infer_edit_target
+    return infer_edit_target(question)
 
 
 async def _checkpoint_for_plan(user_id: str, session_id: Optional[str], intent: str) -> Optional[dict]:
@@ -1428,7 +1423,7 @@ async def chat(
                         "noteId": page_state.currentNoteId,
                         "instruction": payload.question,
                         "selectedText": page_state.selectedText,
-                        "sectionId": page_state.currentSectionId,
+                        "contextSectionId": page_state.currentSectionId,
                         "targetType": _infer_edit_target_type(payload.question),
                         "runtime": edit_runtime,
                     },
@@ -1455,7 +1450,7 @@ async def chat(
                             "noteId": page_state.currentNoteId,
                             "instruction": payload.question,
                             "selectedText": page_state.selectedText,
-                            "sectionId": page_state.currentSectionId,
+                            "contextSectionId": page_state.currentSectionId,
                             "targetType": _infer_edit_target_type(payload.question),
                             "checkpointId": checkpoint["id"],
                             "runtime": edit_runtime,
