@@ -132,6 +132,36 @@ class EditPreviewContentTest(unittest.IsolatedAsyncioTestCase):
         model.assert_not_awaited()
         await self.assert_original_untouched()
 
+    async def test_selection_generation_repairs_protocol_before_creating_preview(self):
+        with patch("app.services.note_edit._call_ai", new=AsyncMock(side_effect=[
+            '{"edits":[{"oldText":"## 原小节","newText":"错误的范围"}]}',
+            '{"newContent":"这句话已改写。","changeSummary":["改写选中文字"]}',
+        ])) as model:
+            response = await self.client.post("/api/note-edit-previews", json={
+                "noteId": "preview-note", "selectedText": "原文不应提前改变。",
+                "contextSectionId": "passive-reading-position",
+                "instruction": "改一下这句话呗能改吗", "memoryEnabled": False,
+            })
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(model.await_count, 2)
+        self.assertEqual(response.json()["preview"]["newContent"], "这句话已改写。")
+        self.assertEqual(response.json()["preview"]["oldContent"], "原文不应提前改变。")
+        self.assertEqual(response.json()["preview"]["targetType"], "selection")
+        await self.assert_original_untouched()
+
+    async def test_repeated_bad_model_output_creates_no_preview_and_blames_no_selection(self):
+        with patch("app.services.note_edit._call_ai", new=AsyncMock(return_value='{"edits":[{"oldText":"错","newText":"错"}]}')) as model:
+            response = await self.client.post("/api/note-edit-previews", json={
+                "noteId": "preview-note", "selectedText": "原文不应提前改变。",
+                "instruction": "改一下这句话", "memoryEnabled": False,
+            })
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(model.await_count, 2)
+        self.assertNotIn("缩小选区", response.json()["detail"])
+        async with self.sessions() as session:
+            self.assertEqual(await session.scalar(select(func.count()).select_from(NoteEditPreview)), 1)
+        await self.assert_original_untouched()
+
     async def test_revise_new_scope_is_explicitly_rejected_without_changing_current_draft(self):
         async with self.sessions() as session:
             preview = await session.get(NoteEditPreview, "preview")

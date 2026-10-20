@@ -71,12 +71,19 @@ def _allow_replacement(target_type: str, instruction: str) -> bool:
     )
 
 
-def _read_edit_result(raw: str, source: str, instruction: str, allow_replacement: bool) -> EditGenerationResult:
+def _read_edit_result(raw: str, source: str, instruction: str, allow_replacement: bool,
+                      replacement_only: bool = False) -> EditGenerationResult:
     parsed = _extract_json(raw)
     if not parsed:
         raise EditGenerationError("AI 没有返回有效的修改结果，请重试；原文和当前修改稿均已保留。")
     patches = parsed.get("edits")
-    if isinstance(patches, list):
+    if replacement_only:
+        # The server already resolved the selected range. Do not ask the model
+        # to locate it again, or let a redundant edits field override its text.
+        if not isinstance(parsed.get("newContent"), str):
+            raise EditGenerationError("AI 返回的改写格式不正确，未应用任何修改。请重试。")
+        content = parsed["newContent"]
+    elif isinstance(patches, list):
         if len(patches) > 128:
             raise EditGenerationError("本次改动过多，请分几次调整。")
         spans: list[tuple[int, int, str]] = []
@@ -84,7 +91,7 @@ def _read_edit_result(raw: str, source: str, instruction: str, allow_replacement
             old = item.get("oldText") if isinstance(item, dict) else None
             new = item.get("newText") if isinstance(item, dict) else None
             if not isinstance(old, str) or not old or not isinstance(new, str) or source.count(old) != 1:
-                raise EditGenerationError("无法准确定位 AI 要修改的原文，请重试或缩小选区；当前内容已保留。")
+                raise EditGenerationError("AI 返回的修改片段与原文不一致，未应用任何修改。请重试。")
             start = source.index(old)
             spans.append((start, start + len(old), new))
         spans.sort(key=lambda span: span[0])
@@ -115,6 +122,33 @@ def _output_contract(allow_replacement: bool) -> str:
 """ if allow_replacement else "\n本次只允许 edits，不要返回整段 newContent。")
 
 
+def _selection_contract() -> str:
+    return """
+选区已经由系统准确定位，不需要再查找或复制 oldText。
+仅返回修改后选区的完整文字，不返回 edits，不包含相邻正文、解释或额外标题。
+如果选中的是一句话或标题文字，仅改写这句文字，不生成文章。
+格式：{"newContent":"修改后的选区文字","changeSummary":["具体修改了什么"]}
+"""
+
+
+async def _generate_validated_result(prompt: str, source: str, instruction: str,
+                                     allow_replacement: bool, replacement_only: bool = False) -> EditGenerationResult:
+    for attempt in range(2):
+        raw = await _call_ai(prompt)
+        try:
+            return _read_edit_result(raw, source, instruction, allow_replacement, replacement_only)
+        except EditGenerationError as error:
+            if attempt:
+                raise
+            # One bounded repair using the same source and scope. Never loosen
+            # exact-match checks or switch a local chapter edit to full rewrite.
+            prompt += (
+                "\n上次输出未通过系统校验：" + str(error)
+                + "\n请根据上面的同一份内容重新输出合法 JSON。保持相同修改范围，不要猜测原文，不要输出解释。"
+            )
+    raise AssertionError("unreachable")
+
+
 async def generate_edit_preview(
     *,
     note_title: str,
@@ -134,7 +168,8 @@ async def generate_edit_preview(
     output_contract = (
         '本次是插入：当前修改范围仅用于确定插入位置，不要重复输出这些原文。'
         '只返回新增内容：{"newContent":"要插入的新 Markdown","changeSummary":["新增了什么"]}'
-        if insert_only else _output_contract(_allow_replacement(target_type, instruction))
+        if insert_only else _selection_contract() if target_type == "selection"
+        else _output_contract(_allow_replacement(target_type, instruction))
     )
     prompt = f"""你正在为 NoteFlow 生成正式笔记的 AI 修改预览。
 
@@ -168,10 +203,12 @@ targetType：
 
 {output_contract}
 """
-    raw = await _call_ai(prompt)
     # Insertion stores only added text; apply appends it after the untouched
     # anchor. Feeding the anchor through replacements would duplicate it.
-    return _read_edit_result(raw, "" if insert_only else target_content, instruction, _allow_replacement(target_type, instruction))
+    return await _generate_validated_result(
+        prompt, "" if insert_only else target_content, instruction,
+        _allow_replacement(target_type, instruction), target_type in {"selection", "insert"},
+    )
 
 
 async def revise_edit_preview(
@@ -213,7 +250,9 @@ targetType：
 {instruction}
 {memory_block}
 
-{_output_contract(_allow_replacement(target_type, instruction))}
+{_selection_contract() if target_type == "selection" else _output_contract(_allow_replacement(target_type, instruction))}
 """
-    raw = await _call_ai(prompt)
-    return _read_edit_result(raw, current_preview, instruction, _allow_replacement(target_type, instruction))
+    return await _generate_validated_result(
+        prompt, current_preview, instruction, _allow_replacement(target_type, instruction),
+        target_type == "selection",
+    )

@@ -138,6 +138,58 @@ class EditScopeTest(unittest.IsolatedAsyncioTestCase):
             result = await generate_edit_preview(note_title="API", target_type="section", target_content=NOTE, instruction="重写这一节")
         self.assertEqual(result.new_content, "新小节")
 
+    async def test_short_selection_returns_text_without_model_relocating_it(self):
+        selected = "模型接口与API调用基础"
+        answer = {"newContent": "模型 API 调用入门", "edits": [{"oldText": "## " + selected, "newText": "无效冗余字段"}]}
+        with patch("app.services.note_edit._call_ai", new=AsyncMock(return_value=json.dumps(answer))) as model:
+            result = await generate_edit_preview(note_title="合成笔记", target_type="selection",
+                                                target_content=selected, instruction="改一下这句话呗能改吗")
+        self.assertEqual(result.new_content, "模型 API 调用入门")
+        model.assert_awaited_once()
+        self.assertIn("不需要再查找或复制 oldText", model.call_args.args[0])
+        self.assertNotIn("默认返回局部替换项", model.call_args.args[0])
+        applied = _apply_preview_content(SimpleNamespace(content=f"## {selected}\n\n保留正文。"),
+                                        SimpleNamespace(target_type="selection", old_content=selected, new_content=result.new_content))
+        self.assertEqual(applied, "## 模型 API 调用入门\n\n保留正文。")
+
+    async def test_bad_selection_protocol_is_repaired_once(self):
+        answers = [
+            '{"edits":[{"oldText":"不在选区的文字","newText":"错"}]}',
+            '{"newContent":"更清楚的说法","changeSummary":["改写"]}',
+        ]
+        with patch("app.services.note_edit._call_ai", new=AsyncMock(side_effect=answers)) as model:
+            result = await generate_edit_preview(note_title="合成", target_type="selection",
+                                                target_content="一句原话", instruction="改一下这句话")
+        self.assertEqual(result.new_content, "更清楚的说法")
+        self.assertEqual(model.await_count, 2)
+        self.assertIn("上次输出未通过系统校验", model.call_args.args[0])
+
+    async def test_repair_keeps_exact_section_boundaries(self):
+        answers = [
+            '{"edits":[{"oldText":"不存在","newText":"错"}]}',
+            '{"edits":[{"oldText":"API 用来调用模型。","newText":"API 是程序调用模型的接口。"}]}',
+        ]
+        with patch("app.services.note_edit._call_ai", new=AsyncMock(side_effect=answers)) as model:
+            result = await generate_edit_preview(note_title="合成", target_type="section",
+                                                target_content=NOTE, instruction="只扩写介绍")
+        self.assertEqual(model.await_count, 2)
+        self.assertEqual(result.new_content, NOTE.replace("API 用来调用模型。", "API 是程序调用模型的接口。"))
+
+    async def test_repair_failure_does_not_expand_scope_or_loop(self):
+        with patch("app.services.note_edit._call_ai", new=AsyncMock(return_value='{"newContent":"不能全篇覆盖"}')) as model:
+            with self.assertRaises(EditGenerationError):
+                await generate_edit_preview(note_title="合成", target_type="section", target_content=NOTE, instruction="只改介绍")
+        self.assertEqual(model.await_count, 2)
+
+    async def test_selection_revision_uses_current_text_and_preserves_empty_result(self):
+        for replacement in ("修订后的手改句子", ""):
+            with patch("app.services.note_edit._call_ai", new=AsyncMock(return_value=json.dumps({"newContent": replacement}))) as model:
+                result = await revise_edit_preview(note_title="合成", target_type="selection", original_content="最初原文",
+                                                   current_preview="手动调整后的句子", instruction="继续调整这句话")
+            self.assertEqual(result.new_content, replacement)
+            self.assertIn("当前预览内容：\n手动调整后的句子", model.call_args.args[0])
+            self.assertNotIn("默认返回局部替换项", model.call_args.args[0])
+
 
 if __name__ == "__main__":
     unittest.main()
