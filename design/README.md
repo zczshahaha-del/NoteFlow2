@@ -1,6 +1,16 @@
 # NoteFlow 设计稿索引
 
-> 更新：2026-10-14。设计稿不是正式应用；业务界面仍以 `src/` 为准。下述组件合成标本也不等于用户实屏。
+> 更新：2026-10-21。设计稿不是正式应用；业务界面仍以 `src/` 为准。下述组件合成标本也不等于用户实屏。
+
+## 一张纸的旅行 · 登录动效候选待评审
+
+用户选择全屏叙事方向后，新增「灵感启程 → 寄出一页 → 找到归处」可交互概念稿。雾蓝 / 暖白天空、带卷曲与阴影的纸张、鼠标风场、纸飞机送信和纸页聚拢成笔记；移动端重新安排纸张位置，支持深色与减少动效。可用示例邮箱和演示验证码 `123456` 体验，也可点击「播放完整旅程」自动播放。
+
+- [交互预览](noteflow-paper-journey.preview.html) / [可编辑源稿](noteflow-paper-journey.source.html) / [范围、验证和限制](noteflow-paper-journey-notes.md)
+- [桌面画面](noteflow-paper-journey-1024.png) / [320px 画面](noteflow-paper-journey-320.png) / [深色画面](noteflow-paper-journey-dark.png)
+- [验证码步骤](noteflow-paper-journey-verify.png) / [故事落点](noteflow-paper-journey-arrival.png)
+
+仅设计预览；正式 LoginPage 仍采用下文的邮箱优先入口。本稿没有发邮件、创建账号或接入真实工作台。AUTH-01 保持部分解决，最终审美与正式实施待确认。
 
 ## 无顶栏与头像随知识库收起 · 收纳已实施，最终效果待验收
 

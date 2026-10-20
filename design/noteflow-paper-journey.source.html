@@ -1,0 +1,449 @@
+<div id="nf-paper-journey" aria-label="NoteFlow 一张纸的旅行登录预览">
+  <section class="nfj-world" data-scene="arrive">
+    <canvas class="nfj-sky" aria-hidden="true"></canvas>
+    <header class="nfj-header">
+      <span class="nfj-brand">NoteFlow<span class="nfj-brand-dot">.</span></span>
+      <span class="nfj-edition">A LITTLE SPACE FOR BIG IDEAS</span>
+    </header>
+    <div class="nfj-story">
+      <p class="nfj-eyebrow"><span></span> 一张纸的旅行</p>
+      <h1>让每一个念头，<br>都有<span class="nfj-emphasis">去处。</span></h1>
+      <p class="nfj-description">捕捉一闪而过的灵感，<br>慢慢写成属于你的世界。</p>
+    </div>
+    <div class="nfj-entry">
+      <form class="nfj-form" novalidate aria-label="演示登录">
+        <div class="nfj-form-heading">
+          <span class="nfj-chapter">YOUR STORY CONTINUES</span>
+          <h2>欢迎回来</h2>
+        </div>
+        <div class="nfj-fields">
+          <label class="nfj-label" for="nfj-email">邮箱</label>
+          <input class="nfj-input" id="nfj-email" type="email" placeholder="you@example.com" autocomplete="off" spellcheck="false">
+          <label class="nfj-label nfj-code-label" for="nfj-code" hidden>验证码</label>
+          <input class="nfj-input nfj-code" id="nfj-code" inputmode="numeric" maxlength="6" placeholder="输入 6 位验证码" autocomplete="off" hidden disabled>
+        </div>
+        <p class="nfj-feedback" aria-live="polite"></p>
+        <button class="nfj-primary cursor-interaction" type="button" data-action="continue"><span>继续</span><span aria-hidden="true">→</span></button>
+        <div class="nfj-secondary">
+          <button class="nfj-text cursor-interaction" type="button" data-action="back" hidden>修改邮箱</button>
+          <button class="nfj-text cursor-interaction" type="button" data-action="register">第一次来？<span>创建账号</span></button>
+        </div>
+      </form>
+    </div>
+    <div class="nfj-arrival" hidden>
+      <p class="nfj-eyebrow">A NEW PAGE, JUST FOR YOU</p>
+      <h2>故事，从这里继续。</h2>
+      <p>你的灵感，已经找到归处。</p>
+      <button class="nfj-replay cursor-interaction" type="button" data-action="replay">再看一次 <span aria-hidden="true">↗</span></button>
+    </div>
+    <footer class="nfj-footer">
+      <div class="nfj-progress" aria-label="故事进度">
+        <span class="nfj-current"><b>01</b> 灵感启程</span>
+        <i></i><span><b>02</b> 寄出一页</span>
+        <i></i><span><b>03</b> 找到归处</span>
+      </div>
+      <div class="nfj-preview-actions">
+        <button class="nfj-demo cursor-interaction" type="button" data-action="demo">播放完整旅程 <span aria-hidden="true">↗</span></button>
+        <button class="nfj-motion cursor-interaction" type="button" data-action="motion" aria-pressed="false">暂停动效</button>
+      </div>
+    </footer>
+    <span class="nfj-palette" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+  </section>
+  <div class="nfj-caption"><span>移动鼠标，拨动纸张；点击空白，扬起一阵风。</span><span>交互概念预览 · 不发送邮件</span></div>
+</div>
+<style>
+#nf-paper-journey {
+  --nfj-sky: light-dark(#e9f1f5, #16232f);
+  --nfj-horizon: light-dark(#fbf8f0, #202e3a);
+  --nfj-ink: light-dark(#2b4051, #e6edf2);
+  --nfj-muted: light-dark(#5a7082, #aabfcf);
+  --nfj-blue: light-dark(#557d9d, #9dc4e3);
+  --nfj-paper: light-dark(#fffdf6, #b4c8d7);
+  --nfj-paper-shade: light-dark(#c8d7df, #526f86);
+  --nfj-edge: light-dark(#a9becb, #365269);
+  --nfj-gold: light-dark(#c8aa76, #a68b65);
+  --nfj-field: light-dark(#fcfdfd, #233847);
+  --nfj-button: light-dark(#527897, #9cbfd9);
+  --nfj-on-button: light-dark(#ffffff, #142a3d);
+  --nfj-error: light-dark(#ab4a3a, #f1b09e);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  width: 100%; color: var(--nfj-ink);
+}
+#nf-paper-journey * { box-sizing: border-box; }
+#nf-paper-journey [hidden] { display: none !important; }
+#nf-paper-journey .nfj-world {
+  position: relative; isolation: isolate; overflow: hidden; min-height: 700px;
+  background: radial-gradient(ellipse at 76% 44%, var(--nfj-horizon) 0%, transparent 63%),
+    linear-gradient(155deg, var(--nfj-sky) 12%, var(--nfj-horizon) 91%);
+}
+#nf-paper-journey .nfj-sky { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; }
+#nf-paper-journey .nfj-header { position: relative; display: flex; align-items: center; gap: 28px; padding: 32px 44px; padding-right: 100px; }
+#nf-paper-journey .nfj-brand { font-size: 23px; font-weight: 500; letter-spacing: -1px; }
+#nf-paper-journey .nfj-brand-dot { color: var(--nfj-blue); padding-left: 1px; }
+#nf-paper-journey .nfj-edition { font-size: 10px; letter-spacing: 1.8px; color: var(--nfj-muted); }
+#nf-paper-journey .nfj-story { position: absolute; top: 181px; left: 8.2%; width: 49%; transition: opacity .6s, transform .9s; }
+#nf-paper-journey .nfj-eyebrow { display: flex; gap: 10px; align-items: center; color: var(--nfj-muted); font-size: 12px; font-weight: 400; letter-spacing: 2px; margin: 0 0 25px; }
+#nf-paper-journey .nfj-eyebrow span { display: block; width: 24px; height: 1px; background: var(--nfj-blue); }
+#nf-paper-journey h1 { font-family: "Songti SC", "STSong", "Noto Serif CJK SC", serif; font-size: clamp(34px, 4.8vw, 51px); font-weight: 400; line-height: 1.55; letter-spacing: 1px; margin: 0; color: var(--nfj-ink); }
+#nf-paper-journey .nfj-emphasis { color: var(--nfj-blue); }
+#nf-paper-journey .nfj-description { font-size: 14px; font-weight: 400; color: var(--nfj-muted); line-height: 1.9; margin: 20px 0 0; letter-spacing: .5px; }
+#nf-paper-journey .nfj-entry { position: absolute; top: 228px; left: 64%; width: 28%; max-width: 330px; transition: opacity .5s, transform .8s; }
+#nf-paper-journey .nfj-form-heading { margin-bottom: 24px; }
+#nf-paper-journey .nfj-chapter { font-size: 10px; letter-spacing: 1.6px; color: var(--nfj-muted); }
+#nf-paper-journey h2 { font-size: 25px; line-height: 1.4; font-weight: 400; color: var(--nfj-ink); margin: 11px 0 0; }
+#nf-paper-journey .nfj-label { display: block; font-size: 12px; color: var(--nfj-muted); margin-bottom: 9px; }
+#nf-paper-journey .nfj-input { display: block; width: 100%; height: 48px; border: 1px solid var(--nfj-edge); border-radius: 8px; padding: 0 14px; font: inherit; font-size: 16px; color: var(--nfj-ink); background: var(--nfj-field); box-shadow: 0 4px 14px #28445c04; }
+#nf-paper-journey .nfj-input::placeholder { color: var(--nfj-muted); opacity: .9; }
+#nf-paper-journey .nfj-code { letter-spacing: 4px; }
+#nf-paper-journey .nfj-code::placeholder { letter-spacing: 0; font-size: 14px; }
+#nf-paper-journey .nfj-feedback { font-size: 11px; line-height: 18px; min-height: 36px; margin: 8px 0 7px; color: var(--nfj-muted); overflow-wrap: anywhere; }
+#nf-paper-journey .nfj-feedback[data-error="true"] { color: var(--nfj-error); }
+#nf-paper-journey button { font: inherit; }
+#nf-paper-journey .nfj-primary { border: 0; width: 100%; height: 48px; padding: 0 17px; display: flex; align-items: center; justify-content: center; gap: 14px; border-radius: 8px; color: var(--nfj-on-button); background: var(--nfj-button); font-size: 14px; transition: filter .2s, transform .2s; }
+#nf-paper-journey .nfj-primary:hover { filter: brightness(1.06); }
+#nf-paper-journey .nfj-primary:active { transform: translateY(1px); }
+#nf-paper-journey button:disabled { cursor: default; opacity: .65; }
+#nf-paper-journey .nfj-secondary { display: flex; justify-content: center; min-height: 48px; margin-top: 6px; }
+#nf-paper-journey .nfj-text { min-height: 44px; padding: 0 5px; background: none; border: 0; color: var(--nfj-muted); font-size: 12px; }
+#nf-paper-journey .nfj-text span { color: var(--nfj-blue); margin-left: 6px; }
+#nf-paper-journey .nfj-footer { position: absolute; left: 44px; right: 44px; bottom: 27px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; z-index: 3; }
+#nf-paper-journey .nfj-progress { display: flex; gap: 13px; align-items: center; color: var(--nfj-muted); }
+#nf-paper-journey .nfj-progress span { display: flex; align-items: center; gap: 7px; font-size: 11px; opacity: .72; white-space: nowrap; transition: opacity .5s, color .5s; }
+#nf-paper-journey .nfj-progress b { font-size: 10px; font-weight: 400; font-variant-numeric: tabular-nums; }
+#nf-paper-journey .nfj-progress i { width: 20px; height: 1px; background: var(--nfj-edge); }
+#nf-paper-journey .nfj-progress .nfj-current { color: var(--nfj-ink); opacity: 1; }
+#nf-paper-journey .nfj-preview-actions { display: flex; align-items: center; gap: 16px; }
+#nf-paper-journey .nfj-demo, #nf-paper-journey .nfj-motion { background: transparent; border: 0; min-height: 44px; padding: 0; color: var(--nfj-ink); font-size: 12px; }
+#nf-paper-journey .nfj-demo span { margin-left: 8px; }
+#nf-paper-journey .nfj-motion { color: var(--nfj-muted); font-size: 11px; min-width: 48px; }
+#nf-paper-journey .nfj-arrival { position: absolute; inset: 0; padding: 190px 24px 130px; text-align: center; z-index: 2; }
+#nf-paper-journey .nfj-arrival .nfj-eyebrow { justify-content: center; font-size: 11px; letter-spacing: 2px; }
+#nf-paper-journey .nfj-arrival h2 { font-family: "Songti SC", "STSong", serif; font-size: 40px; font-weight: 400; margin: 0; }
+#nf-paper-journey .nfj-arrival p:not(.nfj-eyebrow) { font-size: 14px; color: var(--nfj-muted); margin: 18px 0 0; }
+#nf-paper-journey .nfj-replay { margin-top: 200px; color: var(--nfj-blue); min-height: 44px; padding: 0 16px; border: 0; background: transparent; font-size: 13px; }
+#nf-paper-journey .nfj-world[data-scene="land"] .nfj-story,
+#nf-paper-journey .nfj-world[data-scene="land"] .nfj-entry,
+#nf-paper-journey .nfj-world[data-scene="home"] .nfj-story,
+#nf-paper-journey .nfj-world[data-scene="home"] .nfj-entry { opacity: 0; transform: translateY(-15px); pointer-events: none; }
+#nf-paper-journey .nfj-caption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding: 12px 2px 0; font-size: 11px; line-height: 1.6; color: var(--nfj-muted); }
+#nf-paper-journey .nfj-palette { position: absolute; visibility: hidden; width: 0; height: 0; overflow: hidden; }
+#nf-paper-journey .nfj-palette i:nth-child(1) { background-color: var(--nfj-paper); }
+#nf-paper-journey .nfj-palette i:nth-child(2) { background-color: var(--nfj-paper-shade); }
+#nf-paper-journey .nfj-palette i:nth-child(3) { background-color: var(--nfj-blue); }
+#nf-paper-journey .nfj-palette i:nth-child(4) { background-color: var(--nfj-gold); }
+#nf-paper-journey .nfj-palette i:nth-child(5) { background-color: var(--nfj-ink); }
+#nf-paper-journey .nfj-palette i:nth-child(6) { background-color: var(--nfj-edge); }
+@media (max-width: 800px) {
+  #nf-paper-journey .nfj-world { min-height: 670px; }
+  #nf-paper-journey .nfj-header { padding-left: 30px; }
+  #nf-paper-journey .nfj-story { left: 6%; top: 185px; width: 51%; }
+  #nf-paper-journey h1 { font-size: 38px; letter-spacing: 0; }
+  #nf-paper-journey .nfj-entry { left: 61%; width: 33%; top: 218px; }
+  #nf-paper-journey .nfj-footer { left: 30px; right: 30px; }
+  #nf-paper-journey .nfj-progress { gap: 7px; }
+  #nf-paper-journey .nfj-progress i { width: 12px; }
+  #nf-paper-journey .nfj-preview-actions { gap: 12px; }
+}
+@media (max-width: 580px) {
+  #nf-paper-journey .nfj-world { min-height: 800px; }
+  #nf-paper-journey .nfj-header { padding: 24px; padding-right: 100px; }
+  #nf-paper-journey .nfj-brand { font-size: 22px; }
+  #nf-paper-journey .nfj-edition { display: none; }
+  #nf-paper-journey .nfj-story { top: 109px; left: 24px; width: calc(100% - 48px); }
+  #nf-paper-journey .nfj-eyebrow { margin-bottom: 16px; font-size: 11px; }
+  #nf-paper-journey h1 { font-size: clamp(30px, 8vw, 38px); line-height: 1.5; }
+  #nf-paper-journey .nfj-description { margin-top: 12px; font-size: 12px; }
+  #nf-paper-journey .nfj-entry { top: 381px; left: 24px; width: calc(100% - 48px); max-width: none; }
+  #nf-paper-journey .nfj-form-heading { margin-bottom: 18px; }
+  #nf-paper-journey .nfj-chapter { font-size: 10px; }
+  #nf-paper-journey h2 { font-size: 23px; margin-top: 7px; }
+  #nf-paper-journey .nfj-footer { bottom: 18px; left: 24px; right: 24px; justify-content: center; gap: 4px; }
+  #nf-paper-journey .nfj-progress { width: 100%; justify-content: center; gap: 8px; }
+  #nf-paper-journey .nfj-progress span { font-size: 10px; gap: 4px; }
+  #nf-paper-journey .nfj-preview-actions { gap: 24px; }
+  #nf-paper-journey .nfj-arrival { padding-top: 230px; }
+  #nf-paper-journey .nfj-arrival h2 { font-size: 29px; }
+  #nf-paper-journey .nfj-arrival .nfj-eyebrow { font-size: 10px; }
+  #nf-paper-journey .nfj-replay { margin-top: 210px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #nf-paper-journey *, #nf-paper-journey *::before, #nf-paper-journey *::after { transition: none !important; animation: none !important; }
+}
+</style>
+<script>
+(() => {
+  const root = document.getElementById('nf-paper-journey');
+  const world = root.querySelector('.nfj-world');
+  const canvas = root.querySelector('canvas');
+  const ctx = canvas.getContext('2d');
+  const $ = s => root.querySelector(s);
+  const email = $('#nfj-email'), code = $('#nfj-code'), feedback = $('.nfj-feedback');
+  const next = $('[data-action="continue"]'), demo = $('[data-action="demo"]');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const design = { wind: 0.8, papers: 18 };
+  let phase = 'arrive', mode = 'login', step = 'email', auto = false, paused = reduced.matches;
+  let w = 1, h = 1, colors = [], time = 0, last = 0, phaseTime = 0, raf = 0, inView = true;
+  let gust = 0, typed = 0, interacted = false, pending = [];
+  const mouse = { x: -1000, y: -1000, px: 0, py: 0 };
+  const papers = Array.from({length: 24}, (_, i) => ({i, dx: 0, dy: 0}));
+  const base = [
+    [.12,.78,1.30,-.22], [.34,.84,.80,.22], [.47,.21,.63,-.33],
+    [.82,.13,.48,.50], [.93,.79,.80,-.28], [.02,.38,.66,.35],
+    [.43,.58,.43,-.22], [.58,.86,.40,.15], [.25,.11,.31,-.40],
+    [.97,.32,.45,.30], [.72,.90,.35,.21], [.57,.08,.27,.10],
+    [.03,.10,.20,-.28], [.25,.61,.27,.40], [.88,.94,.25,.15],
+    [.69,.07,.22,-.26], [.36,.46,.18,.10], [.50,.96,.20,.30],
+    [.12,.57,.17,.20], [.84,.85,.19,.20], [.40,.09,.20,.10],
+    [.97,.49,.20,-.20], [.70,.18,.14,.30], [.06,.93,.24,.10]
+  ];
+  const readColors = () => { colors = [...root.querySelectorAll('.nfj-palette i')].map(n => getComputedStyle(n).backgroundColor); };
+  const ease = n => 1 - Math.pow(1 - Math.max(0,Math.min(1,n)), 3);
+  const poly = (points, fill) => {
+    ctx.beginPath(); points.forEach(([x,y],i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y));
+    ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+  };
+  function paper(x,y,size,angle,alpha,index,bend) {
+    ctx.save(); ctx.translate(x,y); ctx.rotate(angle); ctx.globalAlpha = alpha;
+    const sw = size, sh = size*1.28;
+    ctx.transform(1,.08*Math.sin(index+time*.4),.12*Math.cos(index),1,0,0);
+    const grad = ctx.createLinearGradient(-sw/2,-sh/2,sw/2,sh/2);
+    grad.addColorStop(0,colors[0]); grad.addColorStop(.72,colors[0]); grad.addColorStop(1,colors[1]);
+    ctx.fillStyle = grad; ctx.shadowColor = colors[5]; ctx.shadowBlur = size*.24; ctx.shadowOffsetY = size*.15;
+    ctx.beginPath(); ctx.moveTo(-sw*.50,-sh*.48);
+    ctx.bezierCurveTo(-sw*.1,-sh*.55,sw*.2,-sh*.4,sw*.49,-sh*.48);
+    ctx.quadraticCurveTo(sw*(.43+bend),0,sw*.50,sh*.40);
+    ctx.quadraticCurveTo(sw*.12,sh*.58,-sw*.48,sh*.46);
+    ctx.quadraticCurveTo(-sw*(.45+bend),0,-sw*.50,-sh*.48);
+    ctx.fill(); ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    ctx.globalAlpha *= .38; ctx.strokeStyle = colors[2]; ctx.lineWidth = .7;
+    for(let j=0;j<4;j++) {
+      ctx.beginPath(); ctx.moveTo(-sw*.31,sh*(-.12+j*.12));
+      ctx.quadraticCurveTo(0,sh*(-.10+j*.12),sw*(j===3?.08:.3),sh*(-.12+j*.12)); ctx.stroke();
+    }
+    ctx.globalAlpha = alpha*.62;
+    if(size>50) {
+      ctx.fillStyle=colors[4]; ctx.font=`${Math.max(10,size*.10)}px "Songti SC",serif`;
+      ctx.fillText(index===0?'一个小小的念头':index===1?'写给未来的自己':'灵感，未完待续',-sw*.31,-sh*.27,sw*.75);
+    }
+    ctx.globalAlpha=alpha;
+    poly([[sw*.25,sh*.45],[sw*.5,sh*.4],[sw*.47,sh*.17]],colors[1]);
+    ctx.restore();
+  }
+  function plane(x,y,size,angle,fold=1) {
+    ctx.save(); ctx.translate(x,y); ctx.rotate(angle);
+    ctx.shadowColor=colors[5]; ctx.shadowBlur=22; ctx.shadowOffsetY=16;
+    poly([[-size*.62,-size*.36*fold],[size*.65,0],[-size*.29,size*.06]],colors[0]);
+    ctx.shadowBlur=0; ctx.shadowOffsetY=0;
+    poly([[-size*.29,size*.06],[size*.65,0],[-size*.18,size*.48*fold]],colors[1]);
+    poly([[-size*.18,size*.48*fold],[size*.65,0],[0,size*.13]],colors[0]);
+    poly([[-size*.29,size*.06],[-size*.18,size*.48*fold],[0,size*.13]],colors[2]);
+    ctx.restore();
+  }
+  function book(progress) {
+    const s=w<580?82:94, x=w*.5, y=h*(w<580?.56:.61);
+    ctx.save(); ctx.translate(x,y); ctx.globalAlpha=ease(progress);
+    ctx.shadowColor=colors[5];ctx.shadowBlur=24;ctx.shadowOffsetY=18;
+    poly([[-s,-s*.61],[s*.72,-s*.69],[s*.96,s*.73],[-s*.72,s*.85]],colors[2]);
+    ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+    poly([[-s*.93,-s*.65],[s*.7,-s*.71],[s*.89,s*.63],[-s*.73,s*.75]],colors[0]);
+    poly([[-s*.93,-s*.65],[-s*.74,-s*.66],[-s*.54,s*.73],[-s*.73,s*.75]],colors[1]);
+    ctx.fillStyle=colors[2];ctx.font='500 16px -apple-system,sans-serif';ctx.fillText('NoteFlow',-s*.45,-s*.1);
+    ctx.globalAlpha*=.52;ctx.fillStyle=colors[4];ctx.font='11px "Songti SC",serif';ctx.fillText('每一个念头，都有去处。',-s*.48,s*.15,s*1.12);
+    ctx.strokeStyle=colors[3];ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(s*.45,-s*.68);ctx.lineTo(s*.60,s*.27);ctx.stroke();
+    ctx.restore();
+  }
+  function renderScene(dt=0) {
+    readColors();
+    ctx.clearRect(0,0,w,h);
+    const mobile=w<580, landing=phase==='land'||phase==='home', land=phase==='home'?1:ease(phaseTime/1.7);
+    const isSending=phase==='send', flight=Math.min(1,phaseTime/2.4);
+    mouse.px+=(mouse.x>w*.1?(mouse.x-w/2)/w-mouse.px:-mouse.px)*.04;
+    mouse.py+=(mouse.y>0?(mouse.y-h/2)/h-mouse.py:-mouse.py)*.04;
+    gust*=Math.exp(-dt*1.8);
+    // A continuous ink-current connects the near paper to the distant sky.
+    ctx.save();ctx.globalAlpha=landing?.07:.24+typed*.09;ctx.strokeStyle=colors[2];ctx.lineWidth=1;
+    for(let n=0;n<3;n++) {
+      ctx.beginPath();ctx.moveTo(-30,h*(mobile?.40:.91)+n*10);
+      ctx.bezierCurveTo(w*.36,h*.56+n*8,w*.7,h*1.04,w*.56,h*.57+n*5);
+      ctx.bezierCurveTo(w*.47,h*.22,w*.78,h*.36,w*1.06,h*.09+n*5);ctx.stroke();
+    }
+    ctx.globalAlpha=landing?.03:.3;ctx.strokeStyle=colors[3];ctx.beginPath();
+    ctx.moveTo(-30,h*.94);ctx.bezierCurveTo(w*.55,h*.67,w*.4,h*.96,w*.61,h*.55);
+    ctx.bezierCurveTo(w*.8,h*.18,w*.96,h*.3,w*1.1,h*.18);ctx.stroke();ctx.restore();
+    for(let i=design.papers-1;i>=0;i--) {
+      const item=papers[i], p=base[i], speed=design.wind;
+      let x=w*p[0]+Math.sin(time*.20*speed+i*1.7)*15;
+      let y=h*p[1]+Math.cos(time*.24*speed+i)*12;
+      if(mobile) {
+        x=w*([.95,-.07,.80,.15,1.05,-.10,.64,.92][i%8]);
+        y=h*([.12,.42,.33,.08,.84,.22,.44,.93][i%8]);
+      }
+      const dist=Math.hypot(x-mouse.x,y-mouse.y), repel=Math.max(0,1-dist/165);
+      const targetX=(x-mouse.x)*repel*.23+mouse.px*(10+p[2]*16);
+      const targetY=(y-mouse.y)*repel*.23+mouse.py*12-gust*(8+i%5*4);
+      if(!paused) {item.dx+=(targetX-item.dx)*Math.min(1,dt*5); item.dy+=(targetY-item.dy)*Math.min(1,dt*5);}
+      let size=(mobile?62:98)*p[2], alpha=(i<6?.92:.52);
+      let angle=p[3]+Math.sin(time*.32*speed+i)*.12+gust*.10;
+      x+=item.dx; y+=item.dy;
+      if(isSending && i===0) {size*=1-ease(flight*3);alpha*=1-ease(flight*3);}
+      if(landing) {
+        x=x+(w*.5-x)*land;y=y+(h*(mobile?.56:.61)-y)*land;
+        size*=1-land*.8;alpha*=1-land;angle+=land*1.2;
+      }
+      paper(x,y,size,angle,alpha,i,Math.sin(time*.45+i)*.05);
+    }
+    if(landing) {
+      book(Math.max(0,(land-.25)/.75));
+    } else {
+      let x=w*(mobile?.75:.51), y=h*(mobile?.38:.66), size=mobile?82:118;
+      let angle=-.22+Math.sin(time*.58)*.10;
+      if(isSending) {
+        const p=ease(flight);
+        x=w*(.14+.92*p);y=h*(.72-.65*p+Math.sin(p*Math.PI*2)*.11);
+        size*=.8+.4*Math.sin(p*Math.PI);angle=-.6+Math.cos(p*Math.PI*2)*.45;
+        ctx.save();ctx.strokeStyle=colors[2];ctx.globalAlpha=.3;ctx.lineWidth=1;ctx.setLineDash([4,7]);
+        ctx.beginPath();ctx.moveTo(w*.12,h*.73);ctx.quadraticCurveTo(w*.35,h*.33,x,y);ctx.stroke();ctx.restore();
+      } else { x+=Math.sin(time*.42)*12+mouse.px*19; y+=Math.cos(time*.48)*10+mouse.py*10; }
+      plane(x,y,size,angle,isSending?Math.min(1,.25+flight*4):1);
+    }
+  }
+  function tick(now) {
+    raf=0;
+    if(!root.isConnected) {cleanup();return;}
+    const dt=last?Math.min(.05,(now-last)/1000):0;last=now;
+    if(!paused&&!reduced.matches) {time+=dt;phaseTime+=dt;}
+    renderScene(dt);
+    if(!paused&&!reduced.matches&&inView&&!document.hidden) raf=requestAnimationFrame(tick);
+  }
+  function wake() {
+    if(!root.isConnected)return;
+    renderScene();
+    if(!raf&&!paused&&!reduced.matches&&inView&&!document.hidden){last=0;raf=requestAnimationFrame(tick);}
+  }
+  function resize() {
+    const r=world.getBoundingClientRect(), ratio=Math.min(devicePixelRatio||1,2);
+    w=r.width;h=r.height;canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);
+    ctx.setTransform(ratio,0,0,ratio,0,0);wake();
+  }
+  function save() {
+    window.openai?.setWidgetState?.({
+      modelContent:{concept:'一张纸的旅行',motion:!paused,wind:design.wind,papers:design.papers},
+      privateContent:{design:'nf-paper-journey-v1',paused,wind:design.wind,papers:design.papers}
+    })?.catch(()=>{});
+  }
+  function restore(state) {
+    const p=state?.privateContent;if(!p||p.design!=='nf-paper-journey-v1'||interacted)return;
+    if(typeof p.paused==='boolean')paused=p.paused||reduced.matches;
+    if(Number.isFinite(p.wind))design.wind=Math.max(.3,Math.min(1.4,p.wind));
+    if(Number.isInteger(p.papers))design.papers=Math.max(10,Math.min(24,p.papers));
+    motionLabel();wake();
+  }
+  function motionLabel() {
+    const btn=$('[data-action="motion"]');btn.textContent=paused?'继续动效':'暂停动效';
+    btn.setAttribute('aria-pressed',String(paused));btn.disabled=reduced.matches;
+    if(reduced.matches)btn.textContent='已减少动效';
+  }
+  function setPhase(value) {
+    phase=value;phaseTime=0;world.dataset.scene=value;
+    const current=value==='home'||value==='land'?2:value==='send'||value==='verify'?1:0;
+    root.querySelectorAll('.nfj-progress span').forEach((n,i)=>n.classList.toggle('nfj-current',i===current));
+    wake();
+  }
+  function later(fn,delay) {const id=setTimeout(fn,delay);pending.push(id);}
+  function clearTimers() {pending.forEach(clearTimeout);pending=[];}
+  function message(text,error=false) {feedback.textContent=text;feedback.dataset.error=String(error);}
+  function setStep(value) {
+    step=value;const verify=value==='verify';
+    email.hidden=verify;email.disabled=verify;$('.nfj-label').hidden=verify;
+    code.hidden=!verify;code.disabled=!verify;$('.nfj-code-label').hidden=!verify;
+    $('[data-action="back"]').hidden=!verify;$('[data-action="register"]').hidden=verify;
+    $('.nfj-primary span').textContent=verify?(mode==='register'?'创建账号':'进入我的世界'):'继续';
+    next.disabled=false;next.removeAttribute('aria-busy');
+  }
+  function send() {
+    if(phase==='send'||phase==='land'||phase==='home')return;
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {message('请输入有效的邮箱地址。',true);email.focus();return;}
+    interacted=true;code.value='';setStep('verify');setPhase('send');next.disabled=true;
+    next.setAttribute('aria-busy','true');message('一张纸，正带着问候飞向你。');code.focus();
+    later(()=>{
+      setPhase('verify');next.disabled=false;next.removeAttribute('aria-busy');
+      message('演示验证码：123456 · 未实际发送邮件。');
+      if(auto){code.value='123456';later(land,reduced.matches?150:1100);}
+    },reduced.matches||paused?200:2400);
+    save();
+  }
+  function land() {
+    if(phase==='land'||phase==='home'||phase==='send')return;
+    if(code.value!=='123456'){message('这是演示预览，请输入 123456。',true);code.focus();return;}
+    setPhase('land');$('.nfj-entry').inert=true;$('.nfj-story').inert=true;
+    $('.nfj-entry').setAttribute('aria-hidden','true');$('.nfj-story').setAttribute('aria-hidden','true');
+    next.disabled=true;demo.disabled=true;
+    if(auto)demo.textContent='正在归拢纸页…';
+    later(()=>{
+      setPhase('home');$('.nfj-arrival').hidden=false;demo.hidden=true;
+      $('[data-action="replay"]').focus();save();
+    },reduced.matches||paused?100:1750);
+  }
+  function reset() {
+    clearTimers();auto=false;setPhase('arrive');setStep('email');message('');
+    email.value='';code.value='';typed=0;
+    $('.nfj-arrival').hidden=true;$('.nfj-entry').inert=false;$('.nfj-story').inert=false;
+    $('.nfj-entry').removeAttribute('aria-hidden');$('.nfj-story').removeAttribute('aria-hidden');
+    demo.hidden=false;demo.disabled=false;demo.innerHTML='播放完整旅程 <span aria-hidden="true">↗</span>';
+    email.focus();
+  }
+  next.addEventListener('click',()=>step==='email'?send():land());
+  $('.nfj-form').addEventListener('submit',e=>e.preventDefault());
+  $('.nfj-form').addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&!e.isComposing&&e.target.tagName==='INPUT'){e.preventDefault();if(!next.disabled)next.click();}
+  });
+  email.addEventListener('input',()=>{typed=Math.min(1,email.value.length/16);message('');wake();});
+  code.addEventListener('input',()=>{code.value=code.value.replace(/\D/g,'').slice(0,6);if(phase!=='send')message('演示验证码：123456 · 未实际发送邮件。');});
+  $('[data-action="back"]').addEventListener('click',()=>{
+    clearTimers();auto=false;setPhase('arrive');setStep('email');code.value='';message('');demo.disabled=false;
+    demo.innerHTML='播放完整旅程 <span aria-hidden="true">↗</span>';email.focus();
+  });
+  $('[data-action="register"]').addEventListener('click',()=>{
+    interacted=true;mode=mode==='login'?'register':'login';
+    $('.nfj-form-heading h2').textContent=mode==='register'?'从第一张纸开始':'欢迎回来';
+    $('.nfj-chapter').textContent=mode==='register'?'EVERY IDEA STARTS SOMEWHERE':'YOUR STORY CONTINUES';
+    $('[data-action="register"]').innerHTML=mode==='register'?'已经有账号？<span>去登录</span>':'第一次来？<span>创建账号</span>';
+    message('');email.focus();
+  });
+  demo.addEventListener('click',()=>{
+    reset();auto=true;email.value='hello@example.invalid';typed=1;
+    demo.disabled=true;demo.textContent='旅程播放中…';send();
+  });
+  $('[data-action="replay"]').addEventListener('click',reset);
+  $('[data-action="motion"]').addEventListener('click',()=>{
+    interacted=true;paused=!paused;if(raf){cancelAnimationFrame(raf);raf=0;}
+    motionLabel();save();wake();
+  });
+  world.addEventListener('pointermove',e=>{const r=world.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;});
+  world.addEventListener('pointerleave',()=>{mouse.x=-1000;mouse.y=-1000;});
+  world.addEventListener('pointerdown',e=>{if(!e.target.closest('button,input,form')){gust=1;wake();}});
+  const visibility=()=>{if(document.hidden&&raf){cancelAnimationFrame(raf);raf=0;}else wake();};
+  document.addEventListener('visibilitychange',visibility);
+  const onReduced=()=>{paused=reduced.matches;motionLabel();if(raf){cancelAnimationFrame(raf);raf=0;}wake();};
+  reduced.addEventListener('change',onReduced);
+  const onRestore=e=>restore(e.detail?.globals?.widgetState);
+  window.addEventListener('openai:set_globals',onRestore);
+  const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(world);
+  const intersection=new IntersectionObserver(entries=>{
+    inView=entries[0].isIntersecting;
+    if(!inView&&raf){cancelAnimationFrame(raf);raf=0;}else wake();
+  });intersection.observe(world);
+  function cleanup(){
+    clearTimers();if(raf)cancelAnimationFrame(raf);
+    resizeObserver.disconnect();intersection.disconnect();
+    document.removeEventListener('visibilitychange',visibility);
+    reduced.removeEventListener('change',onReduced);window.removeEventListener('openai:set_globals',onRestore);
+  }
+  motionLabel();restore(window.openai?.widgetState);resize();
+  if(globalThis.Tweak) {
+    const tweak=new Tweak({container:root,onChange:()=>{interacted=true;save();wake();}});
+    tweak.addSlider(design,'wind',{label:'风的速度',min:.3,max:1.4,step:.1});
+    tweak.addSlider(design,'papers',{label:'漂浮纸张',min:10,max:24,step:1});
+  }
+})();
+</script>
