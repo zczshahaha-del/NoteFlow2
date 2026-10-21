@@ -12,7 +12,11 @@
   color: var(--nf-ui-muted) !important; font-size: 12px !important; font-weight: 400 !important; line-height: 20px !important;
 }
 .document-meta-date { white-space: nowrap; }
+.document-numbering-action { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; margin-left: auto; padding: 0 4px; min-height: 24px; background: transparent; border: 0; border-radius: 6px; color: var(--nf-ui-muted); font-size: 12px; cursor: pointer; }
+.document-numbering-action:hover { color: var(--nf-ui-text); background: var(--nf-ui-soft); }
+.document-numbering-action:focus-visible { outline: 2px solid var(--nf-ui-focus); outline-offset: 2px; }
 @media (pointer: coarse) {
+  .document-numbering-action { min-height: 44px; }
   .document-title-field .document-title { min-height: 44px; }
   .document-canvas .document-header[data-title-mode="body"] .document-title { font-size: 16px !important; }
 }

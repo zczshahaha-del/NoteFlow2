@@ -166,6 +166,30 @@ try{
   assert.equal(await page.evaluate(()=>window.headerTest.api.editor.getMarkdown()),chineseSource);
   assert.equal(await page.evaluate(()=>window.headerTest.api.updates.length),updatesBefore);
   await page.screenshot({path:join(output,'chinese-numbering-'+width+'.png')});
+  // Explicit normalization is a normal reversible edit, not a display toggle.
+  const normalize=page.getByRole('button',{name:'统一章节编号',exact:true});
+  assert.equal(await normalize.count(),1);
+  await normalize.click();
+  const cleanSource=chineseSource.replace('一、Docker','Docker').replace('（二）容器','容器').replace('二、安装','安装');
+  await page.waitForFunction(()=>!document.querySelector('[aria-label="统一章节编号"]'));
+  assert.equal(await page.evaluate(()=>window.headerTest.api.editor.getMarkdown()),cleanSource);
+  assert.equal(await page.evaluate(()=>window.headerTest.api.updates.length),updatesBefore+1);
+  const unifiedLabels=['1. Docker 是什么','1.1 一句话定义','1.2 容器','2. 安装','2.1 2026 年环境','3. 继续学习'];
+  assert.deepEqual(await page.locator('.note-content h2,.note-content h3').evaluateAll(nodes=>nodes.map(n=>(n.dataset.headingNumber?n.dataset.headingNumber+' ':'')+n.textContent)),unifiedLabels);
+  await page.getByTestId('tiptap-editor-content').press('ControlOrMeta+z');
+  assert.equal(await page.evaluate(()=>window.headerTest.api.editor.getMarkdown()),chineseSource);
+  await page.getByTestId('tiptap-editor-content').press('ControlOrMeta+Shift+z');
+  assert.equal(await page.evaluate(()=>window.headerTest.api.editor.getMarkdown()),cleanSource);
+  if(width>=768){
+    await page.getByRole('button',{name:'展开章节目录',exact:true}).click();
+    assert.deepEqual(await page.locator('.chapter-rail-label').allTextContents(),unifiedLabels);
+    await page.keyboard.press('Escape');
+  }else{
+    await page.getByRole('button',{name:'展开目录',exact:true}).click();
+    for(const label of unifiedLabels)assert.equal(await page.getByRole('button',{name:label,exact:true}).count(),1);
+    await page.getByRole('button',{name:'收起目录',exact:true}).click();
+  }
+  await page.screenshot({path:join(output,'unified-numbering-'+width+'.png')});
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);reports.push({width,compactDuplicateTitle:true,originalH1Preserved:true,noBreadcrumb:true,createdTimeOnly:true,updatedMetadataPreserved:true,noBlankDateRow:true,silentNormalSave:true,errorOfflineRetry:true,saveStateGeometry:true,renameOnCommit:true,spaces:true,escapeCancel:true,imeGuards:true,emptyFallback:true,noResizeUnderCaret:true,undo:true,numberingAlwaysOn:true,noEmptyMenu:true,nestedManualNumbers:true,proseOutlineAgree:true,sourceUnchanged:true,rootMove:true,dark:true,reducedMotion:true});await context.close();
  }
  console.log(JSON.stringify({ok:true,actualEditorAndHeader:true,syntheticOnly:true,networkBlocked:true,output,reports},null,2));

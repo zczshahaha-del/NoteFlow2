@@ -21,18 +21,30 @@ function chineseNumber(value: string): number {
   return total + digit;
 }
 
-function parseManualNumber(text: string): { parts: number[]; joinParent: boolean } | null {
+function parseManualNumber(text: string): { parts: number[]; joinParent: boolean; length: number } | null {
   const hierarchical = text.match(/^\s*(\d+(?:\.\d+)+)(?:[.、．](?!\d)\s*|\s+)/u);
   const topLevel = text.match(/^\s*(\d+)[.、．](?!\d)\s*/u);
   const rawNumber = hierarchical?.[1] ?? topLevel?.[1];
-  if (rawNumber) return { parts: rawNumber.split(".").map(Number), joinParent: true };
+  if (rawNumber) return { parts: rawNumber.split(".").map(Number), joinParent: true, length: (hierarchical ?? topLevel)![0].length };
   // Recognize explicit numbering punctuation, never words such as “一体化”
   // or bare years/version numbers. Keep every original character editable.
   const chinese = text.match(/^\s*([零〇一二两三四五六七八九十百千]+)[、．.]\s*/u);
   const wrapped = text.match(/^\s*[（(]([零〇一二两三四五六七八九十百千]+|\d+)[）)]\s*/u);
   const chapter = text.match(/^\s*第([零〇一二两三四五六七八九十百千]+|\d+)[章节篇部](?:\s*[:：、.]?\s*)/u);
   const number = chinese?.[1] ?? wrapped?.[1] ?? chapter?.[1];
-  return number ? { parts: [/^\d+$/.test(number) ? Number(number) : chineseNumber(number)], joinParent: false } : null;
+  return number ? { parts: [/^\d+$/.test(number) ? Number(number) : chineseNumber(number)], joinParent: false,
+    length: (chinese ?? wrapped ?? chapter)![0].length } : null;
+}
+
+/** Recognized ordinal prefix only; never consume an empty title or years. */
+export function headingNumberPrefixLength(text: string): number {
+  let length = 0;
+  for (let index = 0; index < 4; index++) {
+    const prefix = parseManualNumber(text.slice(length));
+    if (!prefix || !text.slice(length + prefix.length).trim()) break;
+    length += prefix.length;
+  }
+  return length;
 }
 
 /**

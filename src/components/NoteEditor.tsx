@@ -38,6 +38,7 @@ import { hasMatchingDocumentTitle } from "../utils/documentHeader";
 import { getDocumentHeadings, getDocumentNumberedHeadings, getEditorMarkdown, type TiptapHeading } from "../editor/documentCache";
 import { captureSelectionEdit, type SelectionEditSnapshot } from "../editor/quickSelectionEdit";
 import SelectionQuickEdit from "./SelectionQuickEdit";
+import { headingNumberEdits, normalizeHeadingNumbers } from "../editor/normalizeHeadingNumbers";
 
 const VersionHistoryPanel = lazy(() => import("./VersionHistoryPanel"));
 const extensions = createNoteFlowTiptapExtensions();
@@ -473,6 +474,7 @@ function NoteEditorDocument({ onReady, presented = true }: {
     [editor, headings]
   );
   const visibleHeadings = numberedHeadings;
+  const canNormalizeHeadingNumbers = useMemo(() => Boolean(documentState?.doc && headingNumberEdits(documentState.doc).length), [documentState?.doc]);
   const activeId = useReadingHeading(editor, documentScroller, headings);
   const headingGroups = useHeadingGroups(visibleHeadings, activeId);
   const headingPositions = useMemo(
@@ -651,7 +653,8 @@ function NoteEditorDocument({ onReady, presented = true }: {
                     setTitleDraft(name);
                     if (name !== selectedFile.name.replace(/\.md$/i, "")) updateNodeName(selectedFile.id, name + ".md");
                   }}
-                  matchingBodyTitle={matchingBodyTitle} bodyEditing={bodyEditing} />
+                  matchingBodyTitle={matchingBodyTitle} bodyEditing={bodyEditing}
+                  onNormalizeHeadings={canNormalizeHeadingNumbers && editor ? () => normalizeHeadingNumbers(editor) : undefined} />
                 {(noteSaveState.status === 'error' || noteSaveState.status === 'offline') && <div className="nf-note-feedback">
                   <OperationFeedback onRetry={() => retryNoteSave(selectedFile.id)} retryLabel={noteSaveState.status === 'offline' ? '立即同步' : '重试保存'}>
                     <strong>{noteSaveState.status === 'offline' ? '正文已留在本机，等待同步' : '正文未能同步到服务器'}</strong>

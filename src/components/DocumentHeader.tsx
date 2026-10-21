@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { FileNode } from "../types";
 import { formatDocumentTime } from "../utils/documentTime";
+import { ListOrdered } from "lucide-react";
 import "./document-metadata.css";
 
 interface DocumentHeaderProps {
@@ -11,10 +12,11 @@ interface DocumentHeaderProps {
   onTitleEditingChange: (editing: boolean) => void;
   matchingBodyTitle: boolean;
   bodyEditing: boolean;
+  onNormalizeHeadings?: () => void;
 }
 
 export default function DocumentHeader({ note, title, onTitleChange, onTitleCommit, onTitleEditingChange,
-  matchingBodyTitle, bodyEditing }: DocumentHeaderProps) {
+  matchingBodyTitle, bodyEditing, onNormalizeHeadings }: DocumentHeaderProps) {
   const titleId = useId();
   const [titleFocused, setTitleFocused] = useState(false);
   const [compactTitle, setCompactTitle] = useState(matchingBodyTitle);
@@ -53,8 +55,12 @@ export default function DocumentHeader({ note, title, onTitleChange, onTitleComm
           setTitleFocused(false);
         }} />
     </div>
-    {created && <div className="document-meta-row">
-      <time className="document-meta-date" dateTime={note.createdAt ?? undefined}>创建于 {created}</time>
+    {(created || onNormalizeHeadings) && <div className="document-meta-row">
+      {created && <time className="document-meta-date" dateTime={note.createdAt ?? undefined}>创建于 {created}</time>}
+      {onNormalizeHeadings && <button type="button" className="document-numbering-action" aria-label="统一章节编号"
+        title="统一章节编号，可撤销" onMouseDown={event => event.preventDefault()} onClick={onNormalizeHeadings}>
+        <ListOrdered size={15} aria-hidden="true" /><span>统一编号</span>
+      </button>}
     </div>}
   </header>;
 }
