@@ -102,7 +102,7 @@ def build_note_generate_prompt(req: NoteGenerateRequest) -> str:
             f"Output format only:\n"
             f"- Output only Markdown table-of-contents text. Do not wrap it in a code block.\n"
             f"- Include one # title.\n"
-            f"- After the # title, output only main sections as H2 headings or a single numbered list.\n"
+            f"- After the # title, output only main sections as H2 headings. Do not add manual chapter numbers such as 1., 1.1, 一、 or （一）; NoteFlow handles heading numbering.\n"
             f"- Each main section should be one short line.\n"
             f"- Prefer a compact, coherent table of contents. Avoid long grab-bag lists of loosely related mini projects.\n"
             f"- If two sections belong to the same learning step, merge them into one stronger main section.\n"
@@ -118,7 +118,7 @@ def build_note_generate_prompt(req: NoteGenerateRequest) -> str:
             f"{req.outlinePlan.strip()}\n\n"
             f"Expansion requirements:\n"
             f"1. Return complete Markdown body only. Do not wrap it in a code block.\n"
-            f"2. Preserve the outline's heading hierarchy, numbering, and parent-child relationships.\n"
+            f"2. Preserve the outline's heading hierarchy and parent-child relationships. Do not add manual chapter numbers to headings; NoteFlow handles heading numbering.\n"
             f"3. Do not print a separate table of contents before the body.\n"
             f"4. Expand every core section with background, concepts, mechanisms, scenarios, examples, boundaries, and common pitfalls.\n"
             f"5. Keep headings concise. If an outline heading is a long explanatory sentence, shorten it into a clear label and move the details into the body.\n"
@@ -139,6 +139,7 @@ def build_note_generate_prompt(req: NoteGenerateRequest) -> str:
             f"4. Do not repeat the user's raw topic as a standalone heading unless it is exactly the current section heading.\n"
             f"5. Keep the section heading concise. If the outline heading is a long explanatory sentence, shorten it into a clear label and move details into the body.\n"
             f"6. Write the section in the way that best fits the user's request and the current outline."
+            f"\n7. Use unnumbered heading text; do not add 1., 1.1, 一、 or （一）. NoteFlow handles heading numbering."
         )
 
     if mode == "continue":
@@ -198,7 +199,7 @@ def build_note_generate_prompt(req: NoteGenerateRequest) -> str:
         f"{base_info}\n\n"
         f"Writing requirements:\n"
         f"1. The content must be substantial and complete, not a shallow outline.\n"
-        f'2. Use exactly one # main title. Major sections should use numbered H2 headings such as "## 1. Basics".\n'
+        f'2. Use exactly one # main title and unnumbered H2 sections such as "## Basics". Do not add 1., 1.1, 一、 or （一） to heading text; NoteFlow handles heading numbering.\n'
         f"3. Keep headings short and structural: headings should be concise labels, not full explanatory sentences. Put explanation, examples, and caveats in body text under the heading.\n"
         f"4. Explain background, concepts, mechanisms, scenarios, examples, boundaries, and common pitfalls for each core point.\n"
         f"5. If the topic is broad, make the core modules solid instead of ending early.\n"

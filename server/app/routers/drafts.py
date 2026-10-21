@@ -132,7 +132,8 @@ def _clean_title(value: str) -> str:
 
 
 def _clean_section_title(value: str) -> str:
-    title = re.sub(r"^[#\s*+\-\d.、)）]+", "", value.strip())
+    from app.services.heading_numbers import unnumber_title
+    title = unnumber_title(re.sub(r"^(?:#{1,6}\s+|[-*+]\s+)", "", value.strip()))
     title = re.sub(r"\s+", " ", title).strip()
     return title[:255] or "未命名小节"
 
@@ -253,6 +254,8 @@ def _make_note_version(note: Note) -> NoteVersion:
 
 
 def _parse_outline_sections(outline: str) -> list[DraftSectionPayload]:
+    from app.services.heading_numbers import unnumber_generated_headings
+    outline = unnumber_generated_headings(outline)
     lines = outline.replace("\r\n", "\n").replace("\r", "\n").split("\n")
     sections: list[DraftSectionPayload] = []
     current: DraftSectionPayload | None = None

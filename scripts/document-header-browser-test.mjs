@@ -146,6 +146,26 @@ try{
   assert.equal(await page.evaluate(()=>window.headerTest.api.editor.getMarkdown()),nestedSource);
   assert.equal(await page.evaluate(()=>window.headerTest.api.updates.length),updatesBefore,'Display correction must never save rewritten headings');
   await page.screenshot({path:join(output,'numbering-'+width+'.png')});
+  // Legacy Chinese numbers are editable source text; no extra Arabic prefix.
+  const chineseSource='## 一、Docker 是什么\n\n### 一句话定义\n\n### （二）容器\n\n## 二、安装\n\n### 2026 年环境\n\n## 继续学习\n\n正文保持原样。';
+  if(width>=768)await page.keyboard.press('Escape');
+  else await page.getByRole('button',{name:'收起目录',exact:true}).click();
+  await page.evaluate(content=>{window.headerTest.slice.fileContents.note=content;window.headerTest.api.render()},chineseSource);
+  await page.waitForFunction(()=>document.querySelector('.note-content h2')?.textContent==='一、Docker 是什么');
+  const chineseLabels=['一、Docker 是什么','1.1 一句话定义','（二）容器','二、安装','2.1 2026 年环境','3. 继续学习'];
+  assert.deepEqual(await page.locator('.note-content h2,.note-content h3').evaluateAll(nodes=>nodes.map(n=>(n.dataset.headingNumber?n.dataset.headingNumber+(n.dataset.headingNumberJoin?'':' '):'')+n.textContent)),chineseLabels);
+  if(width>=768){
+    await page.getByRole('button',{name:'展开章节目录',exact:true}).click();
+    assert.deepEqual(await page.locator('.chapter-rail-label').allTextContents(),chineseLabels);
+    await page.keyboard.press('Escape');
+  }else{
+    await page.getByRole('button',{name:'展开目录',exact:true}).click();
+    for(const label of chineseLabels)assert.equal(await page.getByRole('button',{name:label,exact:true}).count(),1);
+    await page.getByRole('button',{name:'收起目录',exact:true}).click();
+  }
+  assert.equal(await page.evaluate(()=>window.headerTest.api.editor.getMarkdown()),chineseSource);
+  assert.equal(await page.evaluate(()=>window.headerTest.api.updates.length),updatesBefore);
+  await page.screenshot({path:join(output,'chinese-numbering-'+width+'.png')});
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);reports.push({width,compactDuplicateTitle:true,originalH1Preserved:true,noBreadcrumb:true,createdTimeOnly:true,updatedMetadataPreserved:true,noBlankDateRow:true,silentNormalSave:true,errorOfflineRetry:true,saveStateGeometry:true,renameOnCommit:true,spaces:true,escapeCancel:true,imeGuards:true,emptyFallback:true,noResizeUnderCaret:true,undo:true,numberingAlwaysOn:true,noEmptyMenu:true,nestedManualNumbers:true,proseOutlineAgree:true,sourceUnchanged:true,rootMove:true,dark:true,reducedMotion:true});await context.close();
  }
  console.log(JSON.stringify({ok:true,actualEditorAndHeader:true,syntheticOnly:true,networkBlocked:true,output,reports},null,2));

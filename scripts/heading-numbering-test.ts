@@ -62,4 +62,26 @@ assert.deepEqual(numberHeadings([
   { level: 3, text: "2.2.带句点子节" }, { level: 2, text: "下章" },
 ]).map(h => [headingLabel(h), h.hierarchyDepth]), [["2. 根", 0], ["2.1 旧平级子节", 1], ["2.2.带句点子节", 1], ["3. 下章", 0]]);
 
-console.log("heading numbering checks passed");
+const chinese = [
+  { level: 2, text: "一、Docker 是什么" },
+  { level: 3, text: "一句话定义" },
+  { level: 3, text: "（二）运行容器" },
+  { level: 2, text: "二、安装" },
+  { level: 3, text: "(1) 准备工作" },
+  { level: 3, text: "下一步" },
+  { level: 2, text: "第三章 配置" },
+  { level: 2, text: "继续学习" },
+];
+assert.deepEqual(numberHeadings(chinese).map(headingLabel), [
+  "一、Docker 是什么", "1.1 一句话定义", "（二）运行容器", "二、安装",
+  "(1) 准备工作", "2.2 下一步", "第三章 配置", "4. 继续学习",
+]);
+assert.deepEqual(numberHeadings(chinese).map(h => h.text), chinese.map(h => h.text));
+assert.deepEqual(numberHeadings([
+  { level: 2, text: "十二、进阶" }, { level: 3, text: "自动子节" },
+  { level: 2, text: "下一章" },
+]).map(headingLabel), ["十二、进阶", "12.1 自动子节", "13. 下一章"]);
+for (const title of ["2026 年总结", "3D 图形", "1.5版本变化", "一体化设计", "二叉树", "（Docker）基础"]) {
+  assert.equal(numberHeadings([{ level: 2, text: title }])[0].hasManualNumber, false, title);
+}
+console.log("heading numbering checks passed (Chinese, wrapped, Arabic, meaningful leading text)");

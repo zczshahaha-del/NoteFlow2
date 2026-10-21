@@ -10,12 +10,29 @@ export type NumberedHeading<T extends HeadingForNumbering> = T & {
   hierarchyDepth: number;
 };
 
-function parseManualNumber(text: string): number[] | null {
+function chineseNumber(value: string): number {
+  const digits: Record<string, number> = { 零: 0, 〇: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+  const units: Record<string, number> = { 十: 10, 百: 100, 千: 1000 };
+  let total = 0, digit = 0;
+  for (const character of value) {
+    if (character in units) { total += (digit || 1) * units[character]; digit = 0; }
+    else digit = digit * 10 + digits[character];
+  }
+  return total + digit;
+}
+
+function parseManualNumber(text: string): { parts: number[]; joinParent: boolean } | null {
   const hierarchical = text.match(/^\s*(\d+(?:\.\d+)+)(?:[.、．](?!\d)\s*|\s+)/u);
   const topLevel = text.match(/^\s*(\d+)[.、．](?!\d)\s*/u);
   const rawNumber = hierarchical?.[1] ?? topLevel?.[1];
-  if (!rawNumber) return null;
-  return rawNumber.split(".").map(Number);
+  if (rawNumber) return { parts: rawNumber.split(".").map(Number), joinParent: true };
+  // Recognize explicit numbering punctuation, never words such as “一体化”
+  // or bare years/version numbers. Keep every original character editable.
+  const chinese = text.match(/^\s*([零〇一二两三四五六七八九十百千]+)[、．.]\s*/u);
+  const wrapped = text.match(/^\s*[（(]([零〇一二两三四五六七八九十百千]+|\d+)[）)]\s*/u);
+  const chapter = text.match(/^\s*第([零〇一二两三四五六七八九十百千]+|\d+)[章节篇部](?:\s*[:：、.]?\s*)/u);
+  const number = chinese?.[1] ?? wrapped?.[1] ?? chapter?.[1];
+  return number ? { parts: [/^\d+$/.test(number) ? Number(number) : chineseNumber(number)], joinParent: false } : null;
 }
 
 /**
@@ -34,7 +51,8 @@ export function numberHeadings<T extends HeadingForNumbering>(
 
   return headings.map((heading) => {
     const depth = Math.max(0, Math.min(5, heading.level - baseLevel));
-    const manualParts = parseManualNumber(heading.text);
+    const manual = parseManualNumber(heading.text);
+    const manualParts = manual?.parts;
 
     // A local numeral in a child heading belongs to that level, not to the
     // root counter. Complete its ancestry visually; keep the source editable.
@@ -46,8 +64,8 @@ export function numberHeadings<T extends HeadingForNumbering>(
       counters.fill(0, depth + 1);
       return {
         ...heading,
-        displayNumber: depth < maxNumberedDepth ? `${counters.slice(0, depth).join(".")}.` : "",
-        numberJoinsText: true,
+        displayNumber: manual?.joinParent && depth < maxNumberedDepth ? `${counters.slice(0, depth).join(".")}.` : "",
+        numberJoinsText: !!manual?.joinParent,
         hasManualNumber: true,
         hierarchyDepth: depth,
       };

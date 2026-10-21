@@ -12,6 +12,7 @@
     "test:code-highlight": "node --experimental-strip-types scripts/code-highlight-lifecycle-test.ts",
     "test:tiptap-selection": "node --experimental-strip-types scripts/tiptap-selection-test.ts",
     "test:heading-numbering": "node --experimental-strip-types scripts/heading-numbering-test.ts",
+    "test:heading-copy-export": "node --experimental-strip-types scripts/heading-copy-export-test.ts",
     "test:editor-ui": "node scripts/editor-ui-contract-test.mjs",
     "test:prose-ui": "node scripts/prose-surface-browser-test.mjs",
     "test:selection-toolbar-ui": "node scripts/selection-toolbar-browser-test.mjs",

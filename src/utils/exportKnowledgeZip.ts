@@ -1,4 +1,5 @@
 import type { FileNode } from "../types";
+import { numberedMarkdown } from "./numberedMarkdown.ts";
 
 interface ZipEntry {
   path: string;
@@ -109,7 +110,7 @@ function collectEntries(
     return [
       {
         path,
-        content: fileContents[node.id] ?? node.content ?? "",
+        content: numberedMarkdown(fileContents[node.id] ?? node.content ?? ""),
       },
     ];
   });

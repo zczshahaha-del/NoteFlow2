@@ -247,7 +247,8 @@ async def _generate_section(draft: NoteDraft, section: NoteDraftSection) -> str:
         max_tokens=7600,
         temperature=0.25,
     )
-    return reviewed.strip() or first_pass.strip()
+    from app.services.heading_numbers import unnumber_generated_headings
+    return unnumber_generated_headings(reviewed.strip() or first_pass.strip())
 
 
 async def _claim_one() -> tuple[str, str] | None:
