@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { JSDOM } from "jsdom";
 const dom = new JSDOM("<!doctype html><body></body>", { pretendToBeVisual: true });
 for (const key of ["window", "document", "navigator", "Node", "Element", "HTMLElement", "Text", "DOMParser", "MutationObserver", "KeyboardEvent"] as const) {
@@ -37,5 +38,17 @@ assert.equal(editor.view.dom.querySelectorAll('h2')[2]?.textContent,'9. 手动�
 editor.commands.setTextSelection(child.position+4);
 editor.commands.splitBlock();
 assert.equal(editor.view.dom.querySelectorAll('h3')[0]?.textContent,'4.1','Splitting uses ordinary text behavior, without cloned numbering metadata');
+// Cross-runtime contract: actual Python generation output, not hand-typed digits.
+const generatedSource = JSON.parse(execFileSync(process.execPath, ['scripts/run-python.mjs', '-c',
+  'import json; from app.services.heading_numbers import number_markdown_headings; print(json.dumps(number_markdown_headings("# 文档名\\n\\n## 一、基础\\n\\n### （一）定义\\n\\n## 二、实践", "文档名")))'
+], {encoding:'utf8'}));
+const generatedEditor=create(generatedSource);
+assert.deepEqual([...generatedEditor.view.dom.querySelectorAll('h1,h2,h3')].map(n=>n.textContent), ['文档名','1. 基础','1.1 定义','2. 实践']);
+const generatedChild=getDocumentOutlineHeadings(generatedEditor.state.doc,'文档名')[2];
+generatedEditor.commands.deleteRange({from:generatedChild.position+1,to:generatedChild.position+5});
+assert.equal(generatedEditor.view.dom.querySelector('h3')?.textContent,'定义');
+const generatedReopened=create(generatedEditor.getMarkdown());
+assert.equal(generatedReopened.view.dom.querySelector('h3')?.textContent,'定义');
+generatedEditor.destroy();generatedReopened.destroy();
 editor.destroy();reopened.destroy();dom.window.close();
-console.log('editable headings passed: all levels, literal numbers, character deletion, no regeneration, source/marks, undo/redo, split, paste and reopen');
+console.log('editable headings passed: all levels, literal numbers, character deletion, no regeneration, source/marks, undo/redo, split, paste, reopen, and Python generation → real Tiptap → deletion → reopen');

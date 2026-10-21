@@ -96,6 +96,7 @@ try {
   await complete(requests[0]);
   assert.equal(writes.length, 1); assert.equal(writes[0].topic, 'MCP');
   assert.equal(context.stage, 'outline_ready'); assert.equal(context.totalSections, 2); assert.equal(context.busy, false);
+  assert.deepEqual(writes[0].sections.map(s => s.title), ['MCP 基础', '实践']);
   await act(async () => root.unmount()); root = null;
 
   requests.length = 0; writes.length = 0;
@@ -120,6 +121,13 @@ try {
   await complete(requests[3]);
   assert.equal(writes.length, 1); assert.equal(writes[0].topic, 'HTTP');
   assert.equal(context.stage, 'outline_ready'); assert.equal(context.busy, false);
+  await act(async () => root.unmount()); root = null;
+
+  requests.length = 0; writes.length = 0;
+  await mount(false);
+  await act(async () => { requests[0].params.onDelta('## 2026 年计划\n\n## 1.5版本变化'); requests[0].resolve(); });
+  await flush();
+  assert.deepEqual(writes[0].sections.map(s => s.title), ['2026 年计划', '1.5版本变化'], 'Meaningful years and version digits must not be stripped as ordinals');
   await act(async () => root.unmount()); root = null;
 
   // A retry command present at first mount must not compete with auto-start.

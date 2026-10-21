@@ -50,6 +50,7 @@ import { handleRenderedCodeBlockAction, renderChatMarkdown } from "../utils/chat
 import { useConfirmDialog } from "./ConfirmDialog";
 import "./draft-workspace.css";
 import { buildBodySupplement, buildDraftGenerationRequest, type DraftBrief } from "../utils/draftBrief";
+import { headingNumberPrefixLength } from "../utils/headingNumbering";
 
 const AUTO_NOTE_TYPE = "智能笔记";
 const AUTO_WRITING_TONE = "根据用户需求自动匹配";
@@ -123,9 +124,9 @@ function cleanTitle(value: string): string {
 }
 
 function cleanSectionTitle(value: string): string {
+  const title = value.replace(/^(?:#{1,6}\s+|[-*+]\s+)/, "").trim();
   return (
-    value
-      .replace(/^[#\s*\-+0-9.、)）]+/g, "")
+    title.slice(headingNumberPrefixLength(title))
       .replace(/\s+/g, " ")
       .trim() || "未命名小节"
   );

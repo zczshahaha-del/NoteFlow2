@@ -12,6 +12,7 @@ from app.database import AsyncSessionLocal
 from app.models.db import NoteDraft, NoteDraftSection
 from app.services.ai import ERR_RATE_LIMITED, complete_chat
 from app.services.prompts import NoteGenerateRequest, build_note_generate_prompt
+from app.services.heading_numbers import draft_numbering_style, number_generated_section, number_markdown_headings
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +159,7 @@ def _assemble(draft: NoteDraft, sections: list[NoteDraftSection]) -> str:
         content = (section.content or "").strip()
         if content:
             parts.append(_strip_main_title(content, draft.title))
-    return "\n\n".join(parts).strip()
+    return number_markdown_headings("\n\n".join(parts).strip(), draft.title, style=draft_numbering_style(draft))
 
 
 async def _complete_with_retry(messages: list[dict], *, max_tokens: int, temperature: float) -> str:
@@ -456,9 +457,16 @@ async def _run_claim(draft_id: str, section_id: str) -> None:
                 job.pop("currentSectionId", None)
                 job.pop("currentSectionTitle", None)
             elif content:
-                section.content = content
-                section.status = "generated"
-                job["error"] = ""
+                siblings = list((await session.execute(select(NoteDraftSection).where(NoteDraftSection.draft_id == draft.id, NoteDraftSection.user_id == draft.user_id))).scalars().all())
+                try:
+                    numbered = number_generated_section(draft, section, siblings, content)
+                except ValueError as error:
+                    section.status = "failed"
+                    job["error"] = str(error)
+                else:
+                    section.content = numbered
+                    section.status = "generated"
+                    job["error"] = ""
             else:
                 section.status = "failed"
                 job["error"] = error_text or "本节生成失败"

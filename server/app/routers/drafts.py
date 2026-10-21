@@ -23,6 +23,7 @@ from app.repositories.notes import NoteRepository
 from app.agent.write_runtime import authorize_draft_save, initialize_draft_graph, resume_draft_generation
 from app.services.markdown_index import index_note_now
 from app.services.draft_brief import DraftBrief, generation_request
+from app.services.heading_numbers import draft_numbering_style, number_generated_section, number_markdown_headings
 from app.utils import random_id
 
 router = APIRouter(tags=["drafts"])
@@ -322,10 +323,10 @@ def _assemble_from_sections(draft: NoteDraft, sections: list[NoteDraftSection]) 
             continue
         heading = "#" * max(1, min(section.level, 4))
         outline_text = section.outline_text.strip()
-        body_parts.append(f"{heading} {section.title}\n\n{outline_text}".strip())
+        body_parts.append(outline_text if re.match(r"^#{1,6}\s+", outline_text) else f"{heading} {section.title}\n\n{outline_text}".strip())
     if body_parts:
-        return "\n\n".join(body_parts).strip()
-    return (draft.assembled_content or draft.outline or "").strip()
+        return number_markdown_headings("\n\n".join(body_parts).strip(), draft.title, style=draft_numbering_style(draft))
+    return number_markdown_headings((draft.assembled_content or draft.outline or "").strip(), draft.title, style=draft_numbering_style(draft))
 
 
 def _outline_from_sections(draft: NoteDraft, sections: list[NoteDraftSection]) -> str:
@@ -337,8 +338,9 @@ def _outline_from_sections(draft: NoteDraft, sections: list[NoteDraftSection]) -
     for section in ordered:
         lines = (section.outline_text or "").strip().splitlines()
         nested = lines[1:] if lines and re.match(r"^#{1,4}\s+", lines[0]) else lines
-        parts.append("\n".join([f"## {_clean_section_title(section.title)}", *nested]).strip())
-    return "\n\n".join(part for part in parts if part).strip()
+        heading = "#" * max(2, min(section.level, 4))
+        parts.append("\n".join([f"{heading} {_clean_section_title(section.title)}", *nested]).strip())
+    return number_markdown_headings("\n\n".join(part for part in parts if part).strip(), draft.title, style=draft_numbering_style(draft))
 
 
 async def _ensure_category(session, user_id: str, category_id: Optional[str]):
@@ -377,23 +379,27 @@ async def _replace_sections(
     sections: list[DraftSectionPayload],
 ):
     await DraftRepository(session).delete_sections(draft.user_id, draft.id)
+    created = []
     for index, payload in enumerate(sections):
         status = _normalize_status(payload.status, SECTION_STATUSES, "outline_only")
         deleted_at = _now() if status == "deleted" else None
-        session.add(
-            NoteDraftSection(
-                id=(payload.id or random_id())[:64],
-                draft_id=draft.id,
-                user_id=draft.user_id,
-                title=_clean_section_title(payload.title),
-                level=max(1, min(payload.level, 4)),
-                sort_order=payload.sortOrder if "sortOrder" in payload.model_fields_set else index,
-                outline_text=payload.outlineText.strip(),
-                content=payload.content,
-                status="outline_only" if status == "deleted" else status,
-                deleted_at=deleted_at,
-            )
+        section = NoteDraftSection(
+            id=(payload.id or random_id())[:64],
+            draft_id=draft.id,
+            user_id=draft.user_id,
+            title=_clean_section_title(payload.title),
+            level=max(1, min(payload.level, 4)),
+            sort_order=payload.sortOrder if "sortOrder" in payload.model_fields_set else index,
+            outline_text=payload.outlineText.strip(),
+            content=payload.content,
+            status="outline_only" if status == "deleted" else status,
+            deleted_at=deleted_at,
         )
+        created.append(section)
+        session.add(section)
+    for section in created:
+        if section.deleted_at is None:
+            section.outline_text = number_generated_section(draft, section, created, section.outline_text)
     await session.flush()
 
 
@@ -449,6 +455,7 @@ async def create_draft(
         session.add(draft)
         await session.flush()
         await _replace_sections(session, draft, sections)
+        draft.outline = number_markdown_headings(outline, draft.title, style=draft_numbering_style(draft)) if outline else _outline_from_sections(draft, await _get_sections(session, user.id, draft.id))
         initialized = await initialize_draft_graph(
             user_id=user.id, thread_id=draft.graph_thread_id,
             draft_id=draft.id, topic=draft.topic, outline=draft.outline,
@@ -523,6 +530,8 @@ async def update_draft(
             await _replace_sections(session, draft, payload.sections)
             if payload.status is None:
                 draft.status = "outline_ready"
+        if payload.outline is not None:
+            draft.outline = number_markdown_headings(draft.outline, draft.title, style=draft_numbering_style(draft))
         if payload.generationBrief is not None and payload.outline is not None:
             draft.graph_thread_id = f"draft-{random_id()}"
             initialized = await initialize_draft_graph(user_id=user.id, thread_id=draft.graph_thread_id,
@@ -540,6 +549,12 @@ async def update_draft(
             order_by_id = {section_id: index for index, section_id in enumerate(ordered_ids)}
             for section in active_sections:
                 section.sort_order = order_by_id[section.id]
+            for section in active_sections:
+                if section.content.strip():
+                    session.add(_make_section_version(section, "outline_reorder"))
+                    section.content = number_generated_section(draft, section, active_sections, section.content)
+            draft.outline = _outline_from_sections(draft, active_sections)
+            draft.assembled_content = ""
         if "bodyInstruction" in payload.model_fields_set:
             config = dict(draft.draft_config or {})
             config["bodyInstruction"] = (payload.bodyInstruction or "").strip()[:4000]
@@ -593,7 +608,7 @@ async def update_draft_section(
         if payload.outlineText is not None:
             section.outline_text = payload.outlineText.strip()
         if payload.content is not None:
-            section.content = payload.content
+            section.content = number_generated_section(draft, section, await _get_sections(session, user.id, draft.id), payload.content) if payload.source == "generate_section" and payload.content.strip() else payload.content
         if payload.status is not None:
             status = _normalize_status(payload.status, SECTION_STATUSES, section.status)
             if status == "deleted":
@@ -713,6 +728,7 @@ async def assemble_draft(
         draft = await _get_draft(session, user.id, draft_id)
         sections = await _get_sections(session, user.id, draft.id)
         content = payload.content.strip() if payload.content else _assemble_from_sections(draft, sections)
+        content = number_markdown_headings(content, draft.title, style=draft_numbering_style(draft))
         if not content:
             raise HTTPException(status_code=400, detail="draft content is empty")
         draft.assembled_content = content
