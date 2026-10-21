@@ -27,7 +27,7 @@ const markdown = Array.from({ length: 80 }, (_, index) => [
   ...(index % 4 === 0 ? ['```go', 'var users []User', 'db.Preload("Posts").Find(&users)'.repeat(8), '```', ''] : []),
 ]).flat().concat(['尾段性能测试。'.repeat(30)]).join('\n');
 const entry = `import React,{StrictMode} from 'react';import{createRoot}from'react-dom/client';import NoteEditor from ${JSON.stringify(component)};
-const stats=()=>({renders:0,headingScans:0,numberingPasses:0,headingDomPasses:0,serializations:0,serializeMs:0,highlightParses:0,updates:0});
+const stats=()=>({renders:0,headingScans:0,outlinePasses:0,headingDomPasses:0,serializations:0,serializeMs:0,highlightParses:0,updates:0});
 const root=createRoot(document.getElementById('root'));
 const api={stats:stats(),statsFactory:stats,editor:null,updates:[],copied:[],render(){root.render(React.createElement(StrictMode,null,React.createElement(NoteEditor)))}};
 const slice={selectedFileId:'perf-note',treeData:[{id:'perf-note',name:'性能验证.md',type:'file',indexStatus:'indexed'}],fileContents:{'perf-note':${JSON.stringify(markdown)}},noteSaveState:{status:'saved'},pendingEditorSelection:null,pendingSourceFocus:null,
@@ -57,7 +57,7 @@ const result = await build({ configFile: false, logLevel: 'silent', plugins: [{
       .replace('const headingElements = Array.from(', 'window.editorPerf.stats.headingDomPasses++; const headingElements = Array.from(')
       .replace('      extensions,', `      extensions,
       onCreate: ({editor}) => { window.editorPerf.editor=editor; const original=editor.getMarkdown.bind(editor); editor.getMarkdown=()=>{ const start=performance.now();window.editorPerf.stats.serializations++;try{return original()}finally{window.editorPerf.stats.serializeMs+=performance.now()-start} }; },`);
-    if (id.endsWith('/headingNumbering.ts')) return readFileSync(id, 'utf8').replace('  if (headings.length === 0)', '  window.editorPerf.stats.numberingPasses++; if (headings.length === 0)');
+    if (id.endsWith('/headingNumbering.ts')) return readFileSync(id, 'utf8').replace('  if (headings.length === 0)', '  window.editorPerf.stats.outlinePasses++; if (headings.length === 0)');
     if (id.endsWith('/tiptapExtensions.ts') && extensionSource) return extensionSource;
     if (id.endsWith('/documentCache.ts')) return readFileSync(id,'utf8').replace('  doc.descendants((node, position) => {','  window.editorPerf.stats.headingScans++; doc.descendants((node, position) => {');
     if (id.endsWith('/headingDecorations.ts')) return readFileSync(id,'utf8').replace('  const decorations = DecorationSet.create(', '  window.editorPerf.stats.headingDomPasses++; const decorations = DecorationSet.create(');
@@ -129,14 +129,13 @@ try {
       });
       await page.waitForFunction(() => document.querySelector('.chapter-rail-item.is-active')?.textContent.includes('章节 1'));
     }
-    // Display-only numbering is not a document edit and must refresh after
-    // text input, heading creation and deletion.
-    await page.waitForFunction(() => document.querySelector('.note-content').classList.contains('heading-numbering-enabled'));
+    // Creating a heading must not synthesize an invisible/generated number.
+    await page.waitForFunction(() => document.querySelector('.note-content').classList.contains('ProseMirror'));
     await page.evaluate(() => { const e=window.editorPerf.editor;e.commands.setTextSelection(e.state.doc.content.size-1);e.commands.toggleHeading({level:2}); });
     await settled(page);
     await page.waitForFunction(() => document.querySelectorAll('.note-content h2').length === 81);
-    if(process.env.NOTEFLOW_PERF_BASELINE !== '1') await page.waitForFunction(() => [...document.querySelectorAll('.note-content h2')].at(-1)?.dataset.headingNumber === '81.');
-    const numberingRefreshed=await page.evaluate(() => [...document.querySelectorAll('.note-content h2')].at(-1)?.dataset.headingNumber === '81.');
+    if(process.env.NOTEFLOW_PERF_BASELINE !== '1') await page.waitForFunction(() => [...document.querySelectorAll('.note-content h2')].at(-1)?.dataset.headingNumber === undefined);
+    const noPhantomNumbering=await page.evaluate(() => [...document.querySelectorAll('.note-content h2')].at(-1)?.dataset.headingNumber === undefined);
     await page.evaluate(() => {
       const e=window.editorPerf.editor;let position=0;
       e.state.doc.descendants((node,pos) => {if(node.type.name==='heading') position=pos;});
@@ -163,13 +162,13 @@ try {
     assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
     if(process.env.NOTEFLOW_PERF_BASELINE !== '1') {
       assert.equal(selection.renders,0,'Caret moves inside one section should not rerender NoteEditor');
-      assert.equal(selection.headingScans,0);assert.equal(selection.numberingPasses,0);assert.equal(selection.headingDomPasses,0);
-      assert.equal(headerFocus.headingScans,0);assert.equal(headerFocus.numberingPasses,0);assert.equal(headerFocus.headingDomPasses,0);assert.equal(headerFocus.serializations,0);
+      assert.equal(selection.headingScans,0);assert.equal(selection.outlinePasses,0);assert.equal(selection.headingDomPasses,0);
+      assert.equal(headerFocus.headingScans,0);assert.equal(headerFocus.outlinePasses,0);assert.equal(headerFocus.headingDomPasses,0);assert.equal(headerFocus.serializations,0);
       assert.equal(typing.serializations,typing.updates,'Serialize each new document once, not again after save');
       assert.equal(typing.headingScans,typing.updates,'Scan headings once per changed document');
-      assert.equal(typing.headingDomPasses,typing.updates,'Rebuild heading decorations once per document, never on unrelated rerenders');
+      assert.equal(typing.headingDomPasses,0,'No generated-number decorations to rebuild');
     }
-    reports.push({width,sourceCharacters:markdown.length,headings:80,codeBlocks:20,selection,headerFocus,typing,formattingUndo:true,numberingRefreshed,externalContent:true,noteSwitch:true,errors,requests});
+    reports.push({width,sourceCharacters:markdown.length,headings:80,codeBlocks:20,selection,headerFocus,typing,formattingUndo:true,noPhantomNumbering,externalContent:true,noteSwitch:true,errors,requests});
     await context.close();
   }
   writeFileSync(join(output,'results.json'),JSON.stringify(reports,null,2));

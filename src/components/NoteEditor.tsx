@@ -37,7 +37,7 @@ import { getNoteOutline, type NoteSectionRecord } from "../services/notes";
 import { hasMatchingDocumentTitle } from "../utils/documentHeader";
 import { headingNumberPrefixLength } from "../utils/headingNumbering";
 import { updateHeadingDocumentTitle } from "../editor/headingDecorations";
-import { getDocumentHeadings, getDocumentNumberedHeadings, getEditorMarkdown, type TiptapHeading } from "../editor/documentCache";
+import { getDocumentHeadings, getDocumentOutlineHeadings, getEditorMarkdown, type TiptapHeading } from "../editor/documentCache";
 import { captureSelectionEdit, type SelectionEditSnapshot } from "../editor/quickSelectionEdit";
 import SelectionQuickEdit from "./SelectionQuickEdit";
 
@@ -477,11 +477,11 @@ function NoteEditorDocument({ onReady, presented = true }: {
     () => editor && !editor.isDestroyed ? collectHeadings(editor) : emptyHeadings,
     [editor, documentState?.doc]
   );
-  const numberedHeadings = useMemo(
-    () => editor && !editor.isDestroyed ? getDocumentNumberedHeadings(editor.state.doc, selectedFile?.name.replace(/\.md$/i, "") ?? "") : [],
+  const outlineHeadings = useMemo(
+    () => editor && !editor.isDestroyed ? getDocumentOutlineHeadings(editor.state.doc, selectedFile?.name.replace(/\.md$/i, "") ?? "") : [],
     [editor, headings, selectedFile?.name]
   );
-  const visibleHeadings = useMemo(() => numberedHeadings.filter(heading => !heading.isDocumentTitle), [numberedHeadings]);
+  const visibleHeadings = useMemo(() => outlineHeadings.filter(heading => !heading.isDocumentTitle), [outlineHeadings]);
   const activeId = useReadingHeading(editor, documentScroller, visibleHeadings, selectedFile?.name.replace(/\.md$/i, "") ?? "");
   const headingGroups = useHeadingGroups(visibleHeadings, activeId);
   const headingPositions = useMemo(
@@ -506,7 +506,7 @@ function NoteEditorDocument({ onReady, presented = true }: {
 
   useEffect(() => {
     const heading = headings.find((item) => item.id === activeId);
-    const normalized = heading?.text.trim().replace(/\s+/g, " ").toLocaleLowerCase() ?? "";
+    const normalized = heading ? heading.text.slice(headingNumberPrefixLength(heading.text)).trim().replace(/\s+/g, " ").toLocaleLowerCase() : "";
     const section = normalized
       ? backendSections.find(
           (item) => item.title.slice(headingNumberPrefixLength(item.title)).trim().replace(/\s+/g, " ").toLocaleLowerCase() === normalized

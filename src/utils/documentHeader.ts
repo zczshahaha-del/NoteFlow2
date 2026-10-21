@@ -30,6 +30,5 @@ export function hasMatchingDocumentTitle(title: string, firstBlock: {
 } | null | undefined): boolean {
   const normalize = (text: string) => text.normalize("NFC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
   return firstBlock?.type.name === "heading" && firstBlock.attrs.level === 1
-    && !firstBlock.attrs.sourcePrefix
     && Boolean(normalize(title)) && normalize(title) === normalize(firstBlock.textContent);
 }

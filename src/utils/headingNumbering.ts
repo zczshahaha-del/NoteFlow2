@@ -3,10 +3,7 @@ export interface HeadingForNumbering {
   text: string;
 }
 
-export type NumberedHeading<T extends HeadingForNumbering> = T & {
-  displayNumber: string;
-  numberJoinsText: boolean;
-  hasManualNumber: boolean;
+export type OutlineHeadingMetadata<T extends HeadingForNumbering> = T & {
   hierarchyDepth: number;
   isDocumentTitle?: boolean;
 };
@@ -33,52 +30,14 @@ export function headingNumberPrefixLength(text: string): number {
   return length;
 }
 
-/**
- * Adds display-only chapter numbers without changing stored heading text.
- * The shallowest heading becomes level one, so #/## and ##/### documents
- * produce the same visible hierarchy.
- */
-export function numberHeadings<T extends HeadingForNumbering>(
-  headings: T[],
-  maxNumberedDepth = 6
-): NumberedHeading<T>[] {
+/** Only derive outline depth. Labels are the actual editable heading text. */
+export function outlineHeadings<T extends HeadingForNumbering>(headings: T[]): OutlineHeadingMetadata<T>[] {
   if (headings.length === 0) return [];
 
   const baseLevel = Math.min(...headings.map((heading) => heading.level));
-  const counters = Array.from({ length: 6 }, () => 0);
-
-  return headings.map((heading) => {
-    const depth = Math.max(0, Math.min(5, heading.level - baseLevel));
-    const prefixLength = headingNumberPrefixLength(heading.text);
-    // Only structure and order own the counters. Old textual ordinals never
-    // change the starting point, infer a level, or reset a parent chapter.
-    for (let index = 0; index < depth; index += 1) {
-      if (counters[index] === 0) counters[index] = 1;
-    }
-    counters[depth] += 1;
-    for (let index = depth + 1; index < counters.length; index += 1) {
-      counters[index] = 0;
-    }
-
-    const parts = counters.slice(0, depth + 1);
-    const displayNumber =
-      depth < maxNumberedDepth
-        ? depth === 0
-          ? `${parts[0]}.`
-          : parts.join(".")
-        : "";
-
-    return {
-      ...heading,
-      text: heading.text.slice(prefixLength),
-      displayNumber,
-      numberJoinsText: false,
-      hasManualNumber: prefixLength > 0,
-      hierarchyDepth: depth,
-    };
-  });
+  return headings.map(heading => ({ ...heading, hierarchyDepth: Math.max(0, Math.min(5, heading.level - baseLevel)) }));
 }
 
-export function headingLabel(heading: HeadingForNumbering & { displayNumber?: string; numberJoinsText?: boolean }): string {
-  return `${heading.displayNumber ?? ""}${heading.displayNumber && !heading.numberJoinsText ? " " : ""}${heading.text}`;
+export function headingLabel(heading: HeadingForNumbering): string {
+  return heading.text;
 }

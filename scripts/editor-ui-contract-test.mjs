@@ -110,7 +110,7 @@ assert.doesNotMatch(
   /const scrollToHeading[\s\S]{0,260}\.focus\(\)[\s\S]{0,120}\.scrollIntoView\(\)/,
   "outline navigation must not jump by focusing the editor before smooth scrolling"
 );
-assert.match(editor, /getDocumentNumberedHeadings\(editor\.state\.doc, selectedFile/);
+assert.match(editor, /getDocumentOutlineHeadings\(editor\.state\.doc, selectedFile/);
 assert.doesNotMatch(editor, /setHeadingNumbering|showHeadingNumbers|HEADING_NUMBERING_STORAGE_KEY/);
 assert.doesNotMatch(documentHeader, /文档显示设置|显示章节编号|menuitemcheckbox/);
 assert.doesNotMatch(documentHeader, /document-location|document-save-state|saveStatus|updatedAt|更新于/);
@@ -119,8 +119,8 @@ assert.match(editor, /noteSaveState.status === 'error' \|\| noteSaveState.status
 assert.match(chapterRail, /headingLabel\(heading\)/);
 assert.match(outlinePanel, /aria-label=\{headingLabel\(h\)\}/);
 assert.match(editor, /headings=\{visibleHeadings\}/);
-assert.match(styles, /\.note-content\.heading-numbering-enabled[\s\S]*?\[data-heading-number\]::before/);
-assert.match(styles, /\[data-heading-number-join="true"\]::before\s*\{\s*margin-right: 0;/);
+assert.doesNotMatch(styles, /heading-numbering-enabled|content: attr\(data-heading-number\)/);
+assert.doesNotMatch(outlinePanel, /h\.displayNumber/);
 assert.match(styles, /--noteflow-heading-ink: #232528;/);
 assert.match(styles, /--noteflow-body-ink: #36393d;/);
 assert.match(styles, /\.document-canvas \.note-content \{[\s\S]*?font-weight: 450;/);

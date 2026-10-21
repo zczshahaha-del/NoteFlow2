@@ -11,7 +11,7 @@ for (const [key, value] of Object.entries({
   requestAnimationFrame: dom.window.requestAnimationFrame.bind(dom.window), cancelAnimationFrame: dom.window.cancelAnimationFrame.bind(dom.window),
   ResizeObserver: class { observe() {} unobserve() {} disconnect() {} },
 })) Object.defineProperty(globalThis, key, { configurable: true, value });
-const [{ Editor }, { createNoteFlowTiptapExtensions }, { getEditorMarkdown, getDocumentHeadings, getDocumentNumberedHeadings }, { closeHistory }] = await Promise.all([
+const [{ Editor }, { createNoteFlowTiptapExtensions }, { getEditorMarkdown, getDocumentHeadings, getDocumentOutlineHeadings }, { closeHistory }] = await Promise.all([
   import("@tiptap/core"), import("../src/editor/tiptapExtensions.ts"),
   import("../src/editor/documentCache.ts"), import("@tiptap/pm/history"),
 ]);
@@ -30,17 +30,17 @@ assert.equal(getEditorMarkdown(first.editor), first.original());
 assert.equal(getEditorMarkdown(first.editor), first.original());
 assert.equal(first.calls(),1,"Repeated reads of one document must serialize once");
 const doc = first.editor.state.doc;
-const headings = getDocumentHeadings(doc), numbers = getDocumentNumberedHeadings(doc);
-assert.strictEqual(getDocumentHeadings(doc),headings);assert.strictEqual(getDocumentNumberedHeadings(doc),numbers);
-assert.equal(first.editor.view.dom.querySelector("h2")?.dataset.headingNumber,"1.");
+const headings = getDocumentHeadings(doc), numbers = getDocumentOutlineHeadings(doc);
+assert.strictEqual(getDocumentHeadings(doc),headings);assert.strictEqual(getDocumentOutlineHeadings(doc),numbers);
+assert.equal(first.editor.view.dom.querySelector("h2")?.dataset.headingNumber,undefined);
 first.editor.commands.setTextSelection(2);
 assert.strictEqual(first.editor.state.doc,doc);
 getEditorMarkdown(first.editor);assert.equal(first.calls(),1,"Selection cannot invalidate content");
 assert.strictEqual(getDocumentHeadings(first.editor.state.doc),headings);
 let selectionUpdates = 0;const onUpdate = () => { selectionUpdates++; };first.editor.on("update",onUpdate);
 first.editor.commands.setTextSelection(3);
-assert.equal(first.editor.view.dom.querySelector("h2")?.dataset.headingNumber,"1.");
-assert.equal(first.editor.view.dom.classList.contains("heading-numbering-enabled"),true);
+assert.equal(first.editor.view.dom.querySelector("h2")?.dataset.headingNumber,undefined);
+assert.equal(first.editor.view.dom.classList.contains("heading-numbering-enabled"),false);
 assert.strictEqual(first.editor.state.doc,doc);assert.equal(selectionUpdates,0,"Display numbering cannot save a note or enter edit history");
 first.editor.off("update",onUpdate);getEditorMarkdown(first.editor);assert.equal(first.calls(),1);
 
@@ -61,7 +61,7 @@ assert.equal(getEditorMarkdown(first.editor),marked);assert.equal(first.calls(),
 first.editor.commands.setContent("## 外部\n\n替换",{contentType:"markdown",emitUpdate:false});
 assert.match(getEditorMarkdown(first.editor),/外部[\s\S]*替换/);assert.equal(first.calls(),6,"Silent external replacement must invalidate");
 assert.equal(getDocumentHeadings(first.editor.state.doc)[0]?.text,"外部");
-assert.equal(first.editor.view.dom.querySelector("h2")?.dataset.headingNumber,"1.");
+assert.equal(first.editor.view.dom.querySelector("h2")?.dataset.headingNumber,undefined);
 first.editor.commands.setContent(sample,{contentType:"markdown",emitUpdate:false});
 assert.match(getEditorMarkdown(first.editor),/```go\nvar users \[\]User\n```/);
 assert.doesNotMatch(getEditorMarkdown(first.editor),/token-|<span/);assert.equal(first.calls(),7,"Saved output remains raw source");
@@ -73,26 +73,26 @@ assert.throws(() => getEditorMarkdown(broken.editor),/Synthetic/);
 broken.fail(false);assert.equal(getEditorMarkdown(broken.editor),broken.original());
 assert.equal(broken.calls(),2,"Failures must not poison the cache");
 const hierarchy = createEditor("## 3. 手写章节\n\n### 子章节\n\n## 自动章节\n\n结尾");
-assert.equal(hierarchy.editor.view.dom.querySelector("h2")?.dataset.headingNumber,"1.");
-assert.equal(hierarchy.editor.view.dom.querySelector("h3")?.dataset.headingNumber,"1.1");
-assert.equal(hierarchy.editor.view.dom.querySelectorAll("h2")[1]?.dataset.headingNumber,"2.");
+assert.equal(hierarchy.editor.view.dom.querySelector("h2")?.dataset.headingNumber,undefined);
+assert.equal(hierarchy.editor.view.dom.querySelector("h3")?.dataset.headingNumber,undefined);
+assert.equal(hierarchy.editor.view.dom.querySelectorAll("h2")[1]?.dataset.headingNumber,undefined);
 const beforeHeading = getEditorMarkdown(hierarchy.editor);
 hierarchy.editor.commands.setTextSelection(2);
 assert.equal(getEditorMarkdown(hierarchy.editor),beforeHeading);
 assert.doesNotMatch(hierarchy.editor.getHTML(),/data-heading-number/);
-assert.equal(getDocumentNumberedHeadings(hierarchy.editor.state.doc)[1]?.displayNumber,"1.1");
+assert.equal(getDocumentOutlineHeadings(hierarchy.editor.state.doc)[1]?.text,"子章节");
 const nested = createEditor("## 接口基础\n\n### 1. 准备工作\n\n### 2. 使用 SDK\n\n### 自动小节\n\n## 提示工程\n\n结尾");
 const originalNested = getEditorMarkdown(nested.editor), nestedDoc = nested.editor.state.doc;
 assert.deepEqual([...nested.editor.view.dom.querySelectorAll("h2,h3")].map(h => [h.getAttribute("data-heading-number"), h.getAttribute("data-heading-number-join")]),
-  [["1.", null], ["1.1", null], ["1.2", null], ["1.3", null], ["2.", null]]);
+  [[null, null], [null, null], [null, null], [null, null], [null, null]]);
 const child = getDocumentHeadings(nestedDoc)[1];
 nested.editor.commands.setTextSelection({from:child.position+1,to:child.position+1+child.text.length});
-assert.equal(nested.editor.state.doc.textBetween(nested.editor.state.selection.from,nested.editor.state.selection.to), "准备工作", "The ordinal is metadata, not hidden selected characters");
+assert.equal(nested.editor.state.doc.textBetween(nested.editor.state.selection.from,nested.editor.state.selection.to), "1. 准备工作", "The ordinal is ordinary selected text");
 assert.strictEqual(nested.editor.state.doc,nestedDoc);
 assert.equal(getEditorMarkdown(nested.editor),originalNested);
 assert.doesNotMatch(nested.editor.getHTML(),/data-heading-number/);
 nested.editor.commands.insertContent("1. **新的准备工作**");
-assert.equal(nested.editor.view.dom.querySelector("h3")?.dataset.headingNumber,"1.1");
+assert.equal(nested.editor.view.dom.querySelector("h3")?.dataset.headingNumber,undefined);
 nested.editor.commands.undo();
 assert.equal(getEditorMarkdown(nested.editor),originalNested,"View numbering must not add an undo step");
 first.destroy();second.destroy();broken.destroy();hierarchy.destroy();nested.destroy();dom.window.close();

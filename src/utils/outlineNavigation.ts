@@ -2,8 +2,6 @@ export interface OutlineHeading {
   id: string;
   level: number;
   text: string;
-  displayNumber?: string;
-  numberJoinsText?: boolean;
   hierarchyDepth?: number;
 }
 export interface OutlineNode { item: OutlineHeading; key: string; depth: number; children: OutlineNode[] }

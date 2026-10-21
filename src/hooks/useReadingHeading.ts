@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/core";
-import { getDocumentNumberedHeadings, type TiptapHeading } from "../editor/documentCache";
+import { getDocumentOutlineHeadings, type TiptapHeading } from "../editor/documentCache";
 import { headingBeforeOffset } from "../utils/outlineNavigation";
 
 /** Cache layout on document/size changes; scrolling only reads scrollTop and
@@ -19,7 +19,7 @@ export function useReadingHeading(editor: Editor | null, scroller: HTMLElement |
       mode.current = "editing";
       // Use the same title exclusion as the visible outline, including the
       // latest document before React has rendered a just-typed transaction.
-      const current = getDocumentNumberedHeadings(editor.state.doc, documentTitle).filter(heading => !heading.isDocumentTitle);
+      const current = getDocumentOutlineHeadings(editor.state.doc, documentTitle).filter(heading => !heading.isDocumentTitle);
       // Heading position is before its opening token; selection starts inside it.
       let low = 0, high = current.length - 1;
       if (!current.length) { publish(""); return; }

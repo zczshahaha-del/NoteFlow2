@@ -1854,20 +1854,6 @@ button,
   line-height: 1.32 !important;
 }
 
-.document-canvas .note-content.heading-numbering-enabled
-  :is(h1, h2, h3, h4, h5, h6)[data-heading-number]::before {
-  content: attr(data-heading-number);
-  display: inline-block;
-  margin-right: 0.38em;
-  color: inherit;
-  font-variant-numeric: tabular-nums;
-}
-
-.document-canvas .note-content.heading-numbering-enabled
-  :is(h1, h2, h3, h4, h5, h6)[data-heading-number-join="true"]::before {
-  margin-right: 0;
-}
-
 .document-canvas .note-content p {
   margin: 10px 0 14px !important;
   color: var(--noteflow-body-ink) !important;

@@ -363,9 +363,9 @@ try {
     await page.evaluate(()=>window.previewTest.replaceNote());
     await page.waitForFunction(()=>document.querySelector('.edit-preview-result h1')?.dataset.documentTitle==='true');
     assert.equal(await editor.locator('h1').getAttribute('data-heading-number'),null);
-    assert.equal(await editor.locator('h2').textContent(),'第一章');
-    assert.equal(await editor.locator('h2').getAttribute('data-heading-number'),'1.');
-    assert.equal(await editor.locator('h3').getAttribute('data-heading-number'),'1.1');
+    assert.equal(await editor.locator('h2').textContent(),'一、第一章');
+    assert.equal(await editor.locator('h2').getAttribute('data-heading-number'),null);
+    assert.equal(await editor.locator('h3').getAttribute('data-heading-number'),null);
     await page.getByRole('button',{name:'对照原文',exact:true}).click();
     await page.getByRole('region',{name:'段落对照',exact:true}).waitFor();
     await page.getByRole('button',{name:'收起对照',exact:true}).click();

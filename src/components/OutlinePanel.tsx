@@ -114,11 +114,6 @@ export default function OutlinePanel({
                   }}
                   onClick={() => onHeadingClick(h.id)}
                 >
-                  {h.displayNumber && (
-                    <span className={`${h.numberJoinsText ? "" : "mr-1.5"} tabular-nums text-jelly-text-muted`} aria-hidden="true">
-                      {h.displayNumber}
-                    </span>
-                  )}
                   {h.text}
                 </button>
               </div>
