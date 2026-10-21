@@ -8,6 +8,7 @@
   position: relative;
   transform: translateX(0);
 }
+.directory-tree[data-expanded="true"] { background: var(--nf-ui-surface) !important; }
 .library-navigation[data-motion="closed"] .library-navigation-surface {
   transform: translateX(-100%);
   visibility: hidden;

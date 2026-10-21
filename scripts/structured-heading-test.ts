@@ -1,0 +1,71 @@
+import assert from "node:assert/strict";
+import { JSDOM } from "jsdom";
+const dom = new JSDOM("<!doctype html><body></body>", { pretendToBeVisual: true });
+for (const key of ["window", "document", "navigator", "Node", "Element", "HTMLElement", "Text", "DOMParser", "MutationObserver", "KeyboardEvent"] as const) {
+  Object.defineProperty(globalThis, key, { configurable: true, value: key === "window" ? dom.window : dom.window[key] });
+}
+Object.defineProperty(globalThis, "getComputedStyle", { value: dom.window.getComputedStyle.bind(dom.window), configurable: true });
+Object.defineProperty(globalThis, "requestAnimationFrame", { value: dom.window.requestAnimationFrame.bind(dom.window), configurable: true });
+const [{ Editor }, { createNoteFlowTiptapExtensions }, cache, { closeHistory }, { updateHeadingDocumentTitle }] = await Promise.all([
+  import("@tiptap/core"), import("../src/editor/tiptapExtensions.ts"), import("../src/editor/documentCache.ts"), import("@tiptap/pm/history"), import("../src/editor/headingDecorations.ts"),
+]);
+const source = '# 文档名\n\n## **十二、第一章**\n\n### 9.7 子节\n\n#### （二）深入\n\n普通正文 1. 保留\n\n## 第二章 下一章\n\n### 2026 年计划\n\n```md\n## 一、代码不改\n```\n\n结束。';
+let updates = 0;
+const editor = new Editor({ element: document.createElement("div"), extensions: createNoteFlowTiptapExtensions("文档名"), content: source, contentType: "markdown", onUpdate: () => updates++ });
+editor.commands.setTextSelection(1);
+assert.equal(updates, 0, "Opening/displaying old notes does not save or migrate them");
+assert.equal(editor.getMarkdown(), source, "Old ordinals and rich marks round-trip as source formatting metadata");
+const nodes = () => [...editor.view.dom.querySelectorAll("h1,h2,h3,h4")];
+assert.deepEqual(nodes().map(n => [n.textContent, n.getAttribute("data-heading-number")]), [
+  ["文档名", null], ["第一章", "1."], ["子节", "1.1"], ["深入", "1.1.1"], ["下一章", "2."], ["2026 年计划", "2.1"],
+]);
+assert.equal(nodes()[1].querySelector("strong")?.textContent, "第一章");
+assert(!editor.getHTML().includes("sourcePrefix"), "Compatibility metadata is not injected as invisible editable characters");
+const originalDoc = editor.state.doc;
+updateHeadingDocumentTitle(editor, "另一份名称");
+assert.equal(updates, 0); assert.equal(editor.state.doc, originalDoc, "A title-context change is decorative only");
+assert.equal(nodes()[0].getAttribute("data-heading-number"), "1.");
+updateHeadingDocumentTitle(editor, "文档名");
+assert.equal(nodes()[0].getAttribute("data-heading-number"), null);
+assert.equal(cache.getDocumentNumberedHeadings(editor.state.doc, "文档名")[0].isDocumentTitle, true);
+editor.view.dispatch(closeHistory(editor.state.tr));
+const secondChapter = cache.getDocumentHeadings(editor.state.doc).find(h => h.text === "下一章")!;
+editor.commands.setTextSelection(secondChapter.position + 1);
+editor.commands.insertContent("三、");
+assert.equal(editor.state.selection.$from.parent.textContent, "下一章", "Typing an ordinal makes it formatting, not duplicated text");
+assert.equal(editor.getMarkdown().includes("## 三、下一章"), true);
+editor.commands.undo(); assert.equal(editor.getMarkdown(), source, "Normalization shares the edit's native undo step");
+editor.commands.redo(); assert.equal(editor.getMarkdown().includes("## 三、下一章"), true);
+editor.commands.setContent(source, { contentType: "markdown", emitUpdate: false });
+const before = editor.getMarkdown();
+const headings = cache.getDocumentHeadings(editor.state.doc);
+editor.commands.setTextSelection(headings[1].position + 3);
+editor.commands.splitBlock();
+assert.equal(editor.state.selection.$from.parent.attrs.sourcePrefix, null, "A new heading must not inherit the previous ordinal metadata");
+editor.commands.setContent(before, { contentType: "markdown", emitUpdate: false });
+editor.commands.insertContentAt(editor.state.doc.content.size, '<h2><strong>一、粘贴标题</strong></h2>');
+assert.equal(nodes().at(-1)?.textContent, "粘贴标题");
+assert.equal(editor.getMarkdown().includes("**一、粘贴标题**"), true);
+editor.commands.insertContentAt(editor.state.doc.content.size, { type: 'heading', attrs: { level: 2 } });
+assert.equal(nodes().at(-1)?.textContent, '', 'An empty newly created heading never crashes normalization');
+editor.commands.setContent(source, { contentType: 'markdown', emitUpdate: false });
+const target = cache.getDocumentHeadings(editor.state.doc)[1];
+Object.defineProperty(editor.view, 'composing', { configurable: true, value: true });
+editor.commands.insertContentAt(target.position + 1, '五、');
+assert.equal(editor.state.doc.nodeAt(target.position)?.textContent, '五、第一章', 'Never normalize a live IME composition');
+Object.defineProperty(editor.view, 'composing', { configurable: true, value: false });
+editor.view.dispatch(editor.state.tr.setMeta('headingCompositionEnd', true));
+assert.equal(editor.state.doc.nodeAt(target.position)?.textContent, '第一章');
+assert(editor.getMarkdown().includes('**五、第一章**'));
+editor.commands.deleteRange({ from: target.position + 1, to: target.position + target.nodeSize - 1 });
+assert(!editor.getMarkdown().includes('五、'), 'Deleting a title must not resurrect an orphan ordinal on reopen');
+editor.destroy();
+let contextUpdates = 0;
+const contextEditor = new Editor({ element: document.createElement('div'), extensions: createNoteFlowTiptapExtensions('标题'), content: '# 标题\n\n```go\nprintln(1)\n```', contentType: 'markdown', onUpdate: () => contextUpdates++ });
+const untouched = contextEditor.state.doc;
+assert.equal(updateHeadingDocumentTitle(contextEditor, '标题'), false);
+assert.equal(contextEditor.state.doc, untouched, 'Unchanged initial context must not dispatch even an empty transaction');
+updateHeadingDocumentTitle(contextEditor, '重命名');
+assert.equal(contextUpdates, 0, 'Context changes cannot autosave incidental trailing-node work');
+contextEditor.destroy(); dom.window.close();
+console.log("structured headings passed: source preservation, marks, title context, no load writes, typing/undo/redo, split and rich paste");

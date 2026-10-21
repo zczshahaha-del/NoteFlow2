@@ -1,5 +1,8 @@
 /* Expanded labels retain their own geometry; compact ticks are a separate view. */
-.chapter-rail-row { position: relative; display: flex; flex: 0 0 28px; min-height: 28px; }
+.chapter-rail-row { position: relative; display: flex; flex: 0 0 auto; min-height: 28px; }
+.chapter-rail .chapter-rail-panel { width: min(268px, calc(100vw - 40px)); padding: 10px; border-color: var(--nf-ui-line); border-radius: 12px; background: var(--nf-ui-canvas); box-shadow: 0 6px 20px rgb(36 34 30 / 7%); color: var(--nf-ui-muted); }
+.chapter-rail-label { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow-wrap: anywhere; }
+.theme-dark .chapter-rail .chapter-rail-panel { background: var(--nf-ui-surface); }
 .chapter-rail-row > .chapter-rail-item { flex: 1 1 auto; width: 100%; }
 .chapter-rail-tools { display: flex; justify-content: flex-start; gap: 12px; flex: 0 0 27px; }
 .chapter-rail-tools button { border: 0; padding: 0 2px; background: transparent; color: var(--nf-ui-muted); font-size: 11px; }

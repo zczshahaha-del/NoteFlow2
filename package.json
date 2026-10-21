@@ -13,6 +13,7 @@
     "test:tiptap-selection": "node --experimental-strip-types scripts/tiptap-selection-test.ts",
     "test:heading-numbering": "node --experimental-strip-types scripts/heading-numbering-test.ts",
     "test:heading-copy-export": "node --experimental-strip-types scripts/heading-copy-export-test.ts",
+    "test:structured-heading": "node --experimental-strip-types scripts/structured-heading-test.ts",
     "test:editor-ui": "node scripts/editor-ui-contract-test.mjs",
     "test:prose-ui": "node scripts/prose-surface-browser-test.mjs",
     "test:selection-toolbar-ui": "node scripts/selection-toolbar-browser-test.mjs",
@@ -79,6 +80,7 @@
   "dependencies": {
     "@tanstack/react-query": "^5.100.8",
     "@tiptap/extension-code-block": "^3.27.4",
+    "@tiptap/extension-heading": "^3.27.4",
     "@tiptap/extension-highlight": "^3.27.4",
     "@tiptap/extension-image": "^3.27.4",
     "@tiptap/extension-table": "^3.27.4",

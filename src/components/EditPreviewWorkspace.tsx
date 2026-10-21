@@ -394,6 +394,7 @@ export default function EditPreviewWorkspace() {
           <section className="edit-preview-result" aria-label="修改后正文" hidden={viewMode === "diff"}>
             {activeEditPreview.targetType === "delete" ? <div className="nf-edit-deletion"><span className="nf-edit-change-label">将删除</span><PreviewMarkdown content={activeEditPreview.oldContent} /></div> : <Suspense fallback={<PreviewMarkdown content={draftContent} />}>
               <EditablePreviewBody key={activeEditPreview.id} previewId={activeEditPreview.id} content={draftContent} oldContent={activeEditPreview.oldContent} showComparison={viewMode === "compare"} disabled={busy}
+                documentTitle={activeEditPreview.targetType === "note" ? findFileById(treeData, activeEditPreview.noteId)?.name.replace(/\.md$/i, "") : ""}
                 onChange={updateEditPreviewDraft} onBlur={() => { void flushEditPreviewDraft(activeEditPreview.id).catch(() => {}); }} />
             </Suspense>}
           </section>

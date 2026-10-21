@@ -79,7 +79,7 @@ try{
    assert(frames.every(n=>JSON.stringify(n)===JSON.stringify(before)),'Grouping must not destabilize hover geometry');
    assert.deepEqual(await page.evaluate(()=>({scans:window.readingTest.api.scans,serializations:window.readingTest.api.serializations,headingReads:window.readingTest.api.headingReads})),{scans:0,serializations:0,headingReads:0});
   }
-  await scope.getByRole('button',{name:'展开全部',exact:true}).click();assert.equal(await scope.locator('[data-heading-id]').count(),251);
+  await scope.getByRole('button',{name:'展开全部',exact:true}).click();assert.equal(await scope.locator('[data-heading-id]').count(),250,'The matching document title is not a chapter');
   await scope.getByRole('button',{name:'收起分组',exact:true}).click();assert((await scope.locator('[data-heading-id]').count())<60);
   assert.equal(await scope.locator('[aria-current="location"]').count(),1,'Collapsing groups retains the current reading branch');
   await scope.locator('[aria-current="location"]').scrollIntoViewIfNeeded();
@@ -110,7 +110,7 @@ try{
   await page.getByRole('textbox',{name:'文档标题',exact:true}).focus();await page.evaluate(()=>{document.querySelector('.document-header').style.paddingBottom='240px'});await settle(page);
   await scrollTo(page,target);if(width!==320)await expectActive(page,target);
   await page.locator('.note-content').focus();await settle(page);
-  await page.evaluate(()=>{const a=window.readingTest.api;a.cacheBuilds=0;a.editor.chain().setTextSelection(5).insertContent('新增').run()});await settle(page);
+  await page.evaluate(()=>{const a=window.readingTest.api;a.cacheBuilds=0;const firstChapter=a.headings()[1];a.editor.chain().setTextSelection(firstChapter.position+firstChapter.nodeSize+1).insertContent('新增').run()});await settle(page);
   assert.equal(await page.evaluate(()=>window.readingTest.api.cacheBuilds),0,'Editing defers reading-position measurements until reading resumes');
   if(width===320){await page.getByRole('button',{name:'展开目录',exact:true}).click();}
   else {const b=await scope.boundingBox();await page.mouse.move(b.x+b.width-14,b.y+100);await settle(page);}
@@ -123,13 +123,13 @@ try{
   assert(await page.locator('.note-content code [class^="token-"]').count()>0);
   await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));await settle(page);
   assert.equal(await page.locator('.note-content').evaluate(n=>getComputedStyle(n).color),'rgb(230, 229, 223)');
-  if(width!==320)assert.equal(await page.locator('.chapter-rail-panel').evaluate(n=>getComputedStyle(n).backgroundColor),'rgba(36, 43, 53, 0.98)');
+  if(width!==320)assert.equal(await page.locator('.chapter-rail-panel').evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(37, 43, 51)');
   await page.emulateMedia({reducedMotion:'reduce'});
   await page.evaluate(()=>{const t=window.readingTest;t.slice.selectedFileId='short';t.api.render()});await page.waitForFunction(()=>document.querySelector('.note-entry[data-ready="true"]')&&document.querySelector('.note-content').textContent.includes('短正文'));await settle(page);
-  if(width!==320){assert.equal(await page.locator('.chapter-rail-item').count(),2);await expectActive(page,0);}
+  if(width!==320){assert.equal(await page.locator('.chapter-rail-item').count(),1);await expectActive(page,1);}
   assert.equal(await page.locator('.note-entry-content').evaluate(n=>getComputedStyle(n).animationName),'none');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
-  reports.push({width,touch,readingFollows:true,cursorOwnership:true,wheelReturnsToReading:true,selectionPreserved:true,grouped251:true,expandCollapse:true,hoverStable:width===320?null:true,scrollCacheNoWork:true,layoutInvalidation:true,positionShiftGroups:true,undo:true,bottom:true,codeColors:true,noteSwitchCleanup:true,dark:true,reducedMotion:true});await context.close();
+  reports.push({width,touch,readingFollows:true,cursorOwnership:true,wheelReturnsToReading:true,selectionPreserved:true,grouped250:true,documentTitleExcluded:true,expandCollapse:true,hoverStable:width===320?null:true,scrollCacheNoWork:true,layoutInvalidation:true,positionShiftGroups:true,undo:true,bottom:true,codeColors:true,noteSwitchCleanup:true,dark:true,reducedMotion:true});await context.close();
  }
  console.log(JSON.stringify({ok:true,actualEditorAndOutline:true,syntheticOnly:true,networkBlocked:true,output,reports},null,2));
 }finally{await browser.close();}

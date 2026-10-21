@@ -2,16 +2,16 @@
 @import "./components/ui-foundation.css";
 
 @theme {
-  --color-jelly-bg: #f3f6f8;
-  --color-jelly-surface: #f8fafb;
+  --color-jelly-bg: #f5f5f4;
+  --color-jelly-surface: #f9f8f7;
   --color-jelly-card: #ffffff;
   --color-jelly-blue: #3f7898;
   --color-jelly-blue-deep: #315f7d;
   --color-jelly-blue-light: #d9e9f2;
   --color-jelly-blue-pale: #edf5f8;
-  --color-jelly-text: #1d2935;
-  --color-jelly-text-soft: #596a78;
-  --color-jelly-text-muted: #657682;
+  --color-jelly-text: #2c2c2b;
+  --color-jelly-text-soft: #66635f;
+  --color-jelly-text-muted: #706d68;
   --color-jelly-border: rgba(29, 41, 53, 0.1);
   --color-jelly-shadow: rgba(19, 32, 44, 0.1);
   --color-jelly-green: #307552;
@@ -67,9 +67,7 @@ html, body, #root {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-    "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial,
-    sans-serif;
+  font-family: var(--nf-font-ui);
   color: var(--color-jelly-text);
   background: var(--color-jelly-bg);
   font-size: 15px;
@@ -195,11 +193,11 @@ button,
    Do not extend these rules to dialogs, the toolbar or the account controls. */
 .directory-tree .directory-node-list {
   padding-inline: 12px;
-  --directory-row-text: #303a45;
-  --directory-row-muted: #697987;
-  --directory-row-icon: #84919d;
-  --directory-row-hover: #f0f3f6;
-  --directory-row-selected: #eaf0f5;
+  --directory-row-text: var(--nf-ui-text);
+  --directory-row-muted: var(--nf-ui-muted);
+  --directory-row-icon: var(--nf-ui-icon);
+  --directory-row-hover: var(--nf-ui-soft);
+  --directory-row-selected: var(--nf-ui-selected);
 }
 
 .theme-dark .directory-tree .directory-node-list {
@@ -3329,7 +3327,7 @@ body,
 @media (min-width: 768px) {
   .app-frame.stable-workspace-layout {
     --document-edge-gap: 28px;
-    --document-page-width: min(780px, calc(100% - 56px));
+    --document-page-width: min(var(--nf-reading-width), calc(100% - 56px));
   }
 
   .app-frame.stable-workspace-layout .document-canvas .document-scroll {

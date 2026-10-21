@@ -23,6 +23,7 @@ function history(id){if(!histories.has(id)){const p=server(id);histories.set(id,
 function snapshot(id){return {...server(id)}}
 function appendRevision(id,instruction='合成继续修改',source='revision',content){const p=server(id),records=history(id),number=records.length;const revision={id:id+'-r'+(number+1),editId:id,newContent:content??p.newContent+'\\n\\n本轮调整：补充第 '+number+' 次合成说明。',instruction,changeSummary:source==='manual'?['手动调整预览正文']:preview.changeSummary,source,createdAt:source==='manual'?stamp():'invalid'};records.push(revision);Object.assign(p,{newContent:revision.newContent,changeSummary:revision.changeSummary,updatedAt:stamp()});return revision}
 window.previewTest={applied:0,cancelled:0,closed:0,requests:[],requestBodies:[],events:[],completedRevisionReads:[],failNext:'',failure:null,holdRevisions:false,holdRevise:false,holdSave:false,holdApply:true,seedRevision:appendRevision,current:snapshot,state:()=>useAppStore.getState(),setSummary(items=preview.changeSummary){useAppStore.setState(state=>({activeEditPreview:{...state.activeEditPreview,changeSummary:items}}))},replace(id='second'){history(id);useAppStore.setState({activeEditPreview:snapshot(id),editPreviewError:''})},replaceContent(id,oldContent,newContent){const p=server(id);Object.assign(p,{oldContent,newContent,updatedAt:stamp()});history(id)[0].newContent=newContent;useAppStore.setState({activeEditPreview:snapshot(id),editPreviewError:''})},replaceDelete(id='delete-preview'){const p=server(id);Object.assign(p,{targetType:'delete',newContent:'',changeSummary:['删除目标范围内容']});history(id)[0].newContent='';useAppStore.setState({activeEditPreview:snapshot(id),editPreviewError:''})}};
+window.previewTest.replaceNote=()=>{const p=server('whole-note'),text='# 合成整篇笔记\\n\\n## 一、第一章\\n\\n### 9.2 小节\\n\\n\x60\x60\x60go\\nprintln(1)\\n\x60\x60\x60';Object.assign(p,{targetType:'note',oldContent:text,newContent:text});history(p.id)[0].newContent=text;useAppStore.setState({treeData:[{id:p.noteId,type:'file',name:'合成整篇笔记.md'}],activeEditPreview:{...p},editPreviewError:''})};
 history(preview.id);
 useAppStore.setState({activeEditPreview:snapshot(preview.id),chatLoading:false,editPreviewDrafts:{},closeEditPreview:()=>{window.previewTest.closed++}});
 window.fetch=async(input,init={})=>{const a=window.previewTest,url=String(input);a.requests.push(url);const payload=init.body?JSON.parse(String(init.body)):{};a.requestBodies.push({url,payload});
@@ -357,6 +358,19 @@ try {
     await page.getByRole('button',{name:'放弃',exact:true}).click();
     await result.waitFor({state:'detached'});
     assert.equal(await page.evaluate(()=>window.previewTest.cancelled),1);
+    // Whole-note previews share the saved editor's document-title context;
+    // a section preview's first H1 is not silently treated as a file title.
+    await page.evaluate(()=>window.previewTest.replaceNote());
+    await page.waitForFunction(()=>document.querySelector('.edit-preview-result h1')?.dataset.documentTitle==='true');
+    assert.equal(await editor.locator('h1').getAttribute('data-heading-number'),null);
+    assert.equal(await editor.locator('h2').textContent(),'第一章');
+    assert.equal(await editor.locator('h2').getAttribute('data-heading-number'),'1.');
+    assert.equal(await editor.locator('h3').getAttribute('data-heading-number'),'1.1');
+    await page.getByRole('button',{name:'对照原文',exact:true}).click();
+    await page.getByRole('region',{name:'段落对照',exact:true}).waitFor();
+    await page.getByRole('button',{name:'收起对照',exact:true}).click();
+    await page.waitForTimeout(750);
+    assert.equal(await page.evaluate(()=>window.previewTest.requests.filter(url=>url.includes('/whole-note/content')).length),0,'Opening or comparing a code-ending whole-note preview must not save source or trailing-node work');
     assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
     reports.push({width,geometry,scopeVisible:true,editableDuringComparison:true,comparisonExcludedFromSavedMarkdown:true,resultFirst:true,summaryDirect:true,summaryExpandable:true,moreMenuKeyboard:true,moreMenuOutsideClose:true,versionPanel:true,openedAuxiliaryVisibleAfterScrolling:true,initialUndoAbsent:true,undoAfterSuccessfulAdjustment:true,compactComposer:true,IME:true,singleColumnReview:true,nearbyOriginal:true,allChangeKinds:true,diff:true,newPreviewReset:true,coloredCode:true,nativeEditorUndo:true,editorRetainedAcrossViews:true,manualAutosave:true,saveWhileTyping:true,saveFailureAndConflictRetainDraft:true,flushBeforeAIApplyRestore:true,manualHistory:true,deleteReadOnly:true,applyStage:true,inFlightNewInstructionRetained:true,revisionOwnership:true,lateRevisionIgnored:true,selectedRevisionRestored:true,revisionReadRetry:true,restoreFailureRetry:true,cancelFailureRetry:true,dark:true,reducedMotion:true,errors,requests});
     await context.close();

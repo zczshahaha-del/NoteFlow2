@@ -110,7 +110,7 @@ function collectEntries(
     return [
       {
         path,
-        content: numberedMarkdown(fileContents[node.id] ?? node.content ?? ""),
+        content: numberedMarkdown(fileContents[node.id] ?? node.content ?? "", node.name.replace(/\.md$/i, "")),
       },
     ];
   });

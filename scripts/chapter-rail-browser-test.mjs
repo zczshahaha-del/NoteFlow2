@@ -155,7 +155,7 @@ try{
       assert(parseFloat(await panel.evaluate(n=>getComputedStyle(n).transitionDuration))<0.001,'reduced motion avoids expansion tween');
       await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));await settle(page);
       const surface=await panel.evaluate(n=>getComputedStyle(n).backgroundColor);
-      assert.equal(surface,'rgba(36, 43, 53, 0.98)','dark rail uses the actual dark panel surface');
+      assert.equal(surface,'rgb(37, 43, 51)','dark rail uses the shared semantic panel surface');
       await page.emulateMedia({forcedColors:'active'});await settle(page);
       assert.notEqual(await panel.evaluate(n=>getComputedStyle(n).borderStyle),'none');
       reports.push({width,stableGeometry:true,frames:frames.length,hoverWork:snapshot,localWheel:true,clickScroll:true,keyboard:true,reducedMotion:true,dark:true,forcedColors:true});

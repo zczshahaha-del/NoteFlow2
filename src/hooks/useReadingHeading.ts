@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/core";
-import { getDocumentHeadings, type TiptapHeading } from "../editor/documentCache";
+import { getDocumentNumberedHeadings, type TiptapHeading } from "../editor/documentCache";
 import { headingBeforeOffset } from "../utils/outlineNavigation";
 
 /** Cache layout on document/size changes; scrolling only reads scrollTop and
  * binary-searches offsets. Never changes selection, focus, Markdown or history. */
-export function useReadingHeading(editor: Editor | null, scroller: HTMLElement | null, headings: TiptapHeading[]) {
+export function useReadingHeading(editor: Editor | null, scroller: HTMLElement | null, headings: TiptapHeading[], documentTitle = "") {
   const [activeId, setActiveId] = useState(headings[0]?.id ?? "");
   const mode = useRef<"reading" | "editing">("reading");
   useEffect(() => {
@@ -17,7 +17,9 @@ export function useReadingHeading(editor: Editor | null, scroller: HTMLElement |
     const caret = () => {
       if (!editor.isFocused) return;
       mode.current = "editing";
-      const current = getDocumentHeadings(editor.state.doc);
+      // Use the same title exclusion as the visible outline, including the
+      // latest document before React has rendered a just-typed transaction.
+      const current = getDocumentNumberedHeadings(editor.state.doc, documentTitle).filter(heading => !heading.isDocumentTitle);
       // Heading position is before its opening token; selection starts inside it.
       let low = 0, high = current.length - 1;
       if (!current.length) { publish(""); return; }
@@ -79,6 +81,6 @@ export function useReadingHeading(editor: Editor | null, scroller: HTMLElement |
       scroller.removeEventListener("load", invalidate, true); window.removeEventListener("resize", invalidate);
       document.fonts?.removeEventListener("loadingdone", invalidate);
     };
-  }, [editor, scroller, headings]);
+  }, [editor, scroller, headings, documentTitle]);
   return activeId;
 }

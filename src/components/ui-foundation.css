@@ -1,7 +1,14 @@
 /* Shared auxiliary UI grammar. Prose, syntax colors, selection marks and layout
    budgets are intentionally outside this foundation. Compact roles stay compact. */
 :root {
-  --nf-font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --nf-font-ui: ui-sans-serif, -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Helvetica, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  --nf-font-mono: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  --nf-reading-width: 704px;
+  --nf-body-size: 16px;
+  --nf-body-leading: 1.5;
+  --nf-title-size: 40px;
+  --nf-heading-size: 24px;
+  --nf-subheading-size: 20px;
   --nf-font-control: 13px;
   --nf-font-menu: 14px;
   --nf-font-caption: 12px;
@@ -23,14 +30,14 @@
   --nf-ease-surface: cubic-bezier(.2, .8, .2, 1);
 }
 :root, .nf-settings-system[data-theme="light"] {
-  --nf-ui-surface: #fcfcfd;
+  --nf-ui-surface: #f9f8f7;
   --nf-ui-canvas: #ffffff;
-  --nf-ui-soft: #f3f4f6;
-  --nf-ui-selected: #eceff2;
-  --nf-ui-text: #30353c;
-  --nf-ui-muted: #66717d;
+  --nf-ui-soft: #f3f2f0;
+  --nf-ui-selected: #eeedea;
+  --nf-ui-text: #2c2c2b;
+  --nf-ui-muted: #706d68;
   --nf-ui-icon: #7e8791;
-  --nf-ui-line: #e8eaee;
+  --nf-ui-line: #e9e7e3;
   --nf-ui-focus: #8090a5;
   --nf-ui-danger: #b34c49;
   --nf-ui-danger-soft: #faeeee;

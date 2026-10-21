@@ -65,7 +65,8 @@ function reviewWidget(block: MarkdownReviewBlock, number: number, context: strin
 export function updatePreviewReview(editor: Editor, oldContent: string, newContent: string, enabled: boolean, expanded: Set<string>) {
   if (editor.isDestroyed) return;
   if (!enabled) {
-    editor.view.dispatch(editor.state.tr.setMeta(key, DecorationSet.empty).setMeta("addToHistory", false));
+    if (key.getState(editor.state) === DecorationSet.empty) return;
+    editor.view.dispatch(editor.state.tr.setMeta(key, DecorationSet.empty).setMeta("addToHistory", false).setMeta("preventUpdate", true));
     return;
   }
   const doc = editor.state.doc;
@@ -112,5 +113,7 @@ export function updatePreviewReview(editor: Editor, oldContent: string, newConte
       return false;
     });
   }
-  editor.view.dispatch(editor.state.tr.setMeta(key, DecorationSet.create(doc, decorations)).setMeta("addToHistory", false));
+  // Other plugins can append incidental trailing-node work to a meta-only
+  // transaction; showing a reference must never be treated as a manual save.
+  editor.view.dispatch(editor.state.tr.setMeta(key, DecorationSet.create(doc, decorations)).setMeta("addToHistory", false).setMeta("preventUpdate", true));
 }

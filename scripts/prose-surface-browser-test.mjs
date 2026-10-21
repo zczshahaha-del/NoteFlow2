@@ -210,18 +210,18 @@ try {
     const after = await metrics(page);
     assert.equal(after.text, before.text, 'CSS must not change body content');
     assert.deepEqual(after.codeText, before.codeText);
-    assert.equal(after.width, before.width, 'Keep the existing canvas width');
+    assert.equal(after.width, Math.min(704, before.width), 'Reading column caps at 704px and fits narrow screens');
     assert.equal(after.pageWidth, width, 'No global horizontal overflow');
     assert.equal(after.paragraph.size, '16px');
-    assert.equal(after.paragraph.leading, '28.8px');
-    assert.equal(after.heading.size, width === 320 ? '19px' : '20px');
-    assert.equal(after.heading.weight, '650');
-    assert.equal(after.code.size, '13.5px');
+    assert.equal(after.paragraph.leading, '24px');
+    assert.equal(after.heading.size, '24px');
+    assert.equal(after.heading.weight, '600');
+    assert.equal(after.code.size, '13.6px');
     assert.equal(after.code.weight, '400');
-    assert.equal(after.code.leading, '22.95px');
+    assert.equal(after.code.leading, '20.4px');
     assert.equal(after.prePadding, width === 320 ? '44px 16px 22px' : '44px 22px 22px');
     assert.equal(after.inline.background, 'rgb(243, 242, 239)');
-    assert.equal(after.quote.background, 'rgb(233, 242, 236)');
+    assert.equal(after.quote.background, 'rgba(0, 0, 0, 0)');
     assert(after.toolbarClear, 'Actual hover toolbar must not cover the first line: ' + JSON.stringify(after.toolbarGeometry));
     assert.equal(after.scrollbar, 'thin');
     assert(new Set(after.colors.map(item => item.color)).size >= 5);
@@ -264,7 +264,7 @@ try {
     await settleStyles(editor);
     const dark = await metrics(page);
     assert.equal(dark.body.color, 'rgb(230, 229, 223)');
-    assert.equal(dark.quote.background, 'rgb(39, 55, 46)');
+    assert.equal(dark.quote.background, 'rgba(0, 0, 0, 0)');
     for (const token of dark.colors) assert(ratio(token.color, 'rgb(41, 41, 39)') >= 4.5, JSON.stringify(token));
     assert(ratio(dark.inline.color, dark.inline.background) >= 4.5);
     await page.screenshot({ path: join(output, 'dark-' + width + '.png') });
@@ -295,5 +295,5 @@ try {
     await context.close();
   }
   writeFileSync(join(output, 'results.json'), JSON.stringify(reports, null, 2));
-  console.log(JSON.stringify({ ok: true, actualProductionComponent: true, syntheticStateOnly: true, networkBlocked: true, output, checks: reports.map(r => ({ width: r.width, freshCode: r.freshCode, noOverflow: r.after.pageWidth === r.width, widthPreserved: r.before.width === r.after.width, toolbarClear: r.after.toolbarClear, nativeCopy: r.nativeCopy, languageOpenEscape: r.languageOpenEscape, editingUndo: r.editingUndo, retainedCodeScroll: r.retainedCodeScroll, scopeRollback: r.scopeRollback, errors: r.errors })) }, null, 2));
+  console.log(JSON.stringify({ ok: true, actualProductionComponent: true, syntheticStateOnly: true, networkBlocked: true, output, checks: reports.map(r => ({ width: r.width, freshCode: r.freshCode, noOverflow: r.after.pageWidth === r.width, readingWidthCorrect: r.after.width === Math.min(704, r.before.width), toolbarClear: r.after.toolbarClear, nativeCopy: r.nativeCopy, languageOpenEscape: r.languageOpenEscape, editingUndo: r.editingUndo, retainedCodeScroll: r.retainedCodeScroll, scopeRollback: r.scopeRollback, errors: r.errors })) }, null, 2));
 } finally { await browser.close(); }

@@ -15,6 +15,7 @@ import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { CODE_LANGUAGES, getCodeHighlight, normalizeCodeLanguage } from "./codeHighlight.ts";
 import type { CodeLanguage } from "./codeHighlight.ts";
 import { HeadingDisplay } from "./headingDecorations.ts";
+import { StructuredHeading } from "./structuredHeading.ts";
 
 const NoteFlowUnderline = Underline.extend({
   parseMarkdown(token, helpers) {
@@ -498,16 +499,17 @@ const NoteFlowCodeBlock = CodeBlock.extend({
   },
 });
 
-export function createNoteFlowTiptapExtensions() {
+export function createNoteFlowTiptapExtensions(documentTitle = "") {
   return [
     StarterKit.configure({
-      heading: { levels: [1, 2, 3, 4] },
+      heading: false,
       link: { openOnClick: false },
       underline: false,
       codeBlock: false,
     }),
     NoteFlowCodeBlock,
-    HeadingDisplay,
+    StructuredHeading.configure({ levels: [1, 2, 3, 4, 5, 6] }),
+    HeadingDisplay.configure({ documentTitle }),
     Markdown.configure({
       markedOptions: { gfm: true, breaks: true },
     }),

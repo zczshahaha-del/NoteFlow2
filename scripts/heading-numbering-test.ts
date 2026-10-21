@@ -1,87 +1,38 @@
 import assert from "node:assert/strict";
 import { headingLabel, numberHeadings } from "../src/utils/headingNumbering.ts";
 
-const generated = numberHeadings([
-  { id: "a", level: 2, text: "安装" },
-  { id: "b", level: 3, text: "Windows" },
-  { id: "c", level: 4, text: "环境变量" },
-  { id: "d", level: 2, text: "模型" },
-  { id: "e", level: 3, text: "字段标签" },
-]);
-
-assert.deepEqual(
-  generated.map((heading) => heading.displayNumber),
-  ["1.", "1.1", "", "2.", "2.1"]
-);
-assert.deepEqual(
-  generated.map((heading) => heading.hierarchyDepth),
-  [0, 1, 2, 0, 1]
-);
-
-const existing = numberHeadings([
-  { level: 2, text: "2. 模型" },
-  { level: 3, text: "2.1 字段" },
-  { level: 3, text: "索引" },
-  { level: 2, text: "3. 自动建表" },
-  { level: 3, text: "3.1.无空格小节" },
-]);
-
-assert.deepEqual(
-  existing.map((heading) => heading.displayNumber),
-  ["", "", "2.2", "", ""]
-);
-assert.deepEqual(
-  existing.map((heading) => heading.hierarchyDepth),
-  [0, 1, 1, 0, 1],
-  "manual decimal numbers should restore hierarchy even in older flat outlines"
-);
-
-assert.equal(numberHeadings([{ level: 1, text: "2026 年总结" }])[0].displayNumber, "1.");
-
-const mixedSource = [
-  { level: 2, text: "模型接口与API调用基础" },
-  ...Array.from({ length: 7 }, (_, index) => ({ level: 3, text: `${index + 1}. 小节` })),
-  { level: 2, text: "提示工程与上下文管理" },
-  { level: 3, text: "提示工程的核心思路" },
+const input = [
+  { level: 2, text: "十二、随机章节甲" },
+  { level: 3, text: "9.7 子节甲" },
+  { level: 4, text: "（二）深层内容" },
+  { level: 3, text: "子节乙" },
+  { level: 2, text: "第三章 随机章节乙" },
+  { level: 3, text: "1. 准备" },
+  { level: 3, text: "1. 运行" },
 ];
-const mixed = numberHeadings(mixedSource);
-assert.deepEqual(mixed.map(h => h.hierarchyDepth), [0, 1, 1, 1, 1, 1, 1, 1, 0, 1],
-  "Nested manual numbers must not become root chapters");
-assert.equal(mixed[8].displayNumber, "2.", "Seven manual subsections cannot advance the next chapter to eight");
-assert.deepEqual(mixed.map(headingLabel), [
-  "1. 模型接口与API调用基础", ...Array.from({ length: 7 }, (_, i) => `1.${i + 1}. 小节`),
-  "2. 提示工程与上下文管理", "2.1 提示工程的核心思路",
+assert.deepEqual(numberHeadings(input).map(headingLabel), [
+  "1. 随机章节甲", "1.1 子节甲", "1.1.1 深层内容", "1.2 子节乙", "2. 随机章节乙", "2.1 准备", "2.2 运行",
 ]);
-assert.deepEqual(mixed.map(h => h.text), mixedSource.map(h => h.text), "Never rewrite stored titles");
+assert.equal(input[0].text, "十二、随机章节甲", "Input source is never mutated");
+assert.deepEqual(numberHeadings(input).map(h => h.hierarchyDepth), [0, 1, 2, 1, 0, 1, 1]);
 assert.deepEqual(numberHeadings([
-  { level: 2, text: "3. 手动起点" }, { level: 3, text: "1、子节" },
-  { level: 3, text: "自动子节" }, { level: 2, text: "下一章" },
-]).map(headingLabel), ["3. 手动起点", "3.1、子节", "3.2 自动子节", "4. 下一章"]);
-assert.deepEqual(numberHeadings([
-  { level: 2, text: "2. 根" }, { level: 2, text: "2.1 旧平级子节" },
-  { level: 3, text: "2.2.带句点子节" }, { level: 2, text: "下章" },
-]).map(h => [headingLabel(h), h.hierarchyDepth]), [["2. 根", 0], ["2.1 旧平级子节", 1], ["2.2.带句点子节", 1], ["3. 下章", 0]]);
-
-const chinese = [
-  { level: 2, text: "一、Docker 是什么" },
-  { level: 3, text: "一句话定义" },
-  { level: 3, text: "（二）运行容器" },
-  { level: 2, text: "二、安装" },
-  { level: 3, text: "(1) 准备工作" },
-  { level: 3, text: "下一步" },
-  { level: 2, text: "第三章 配置" },
-  { level: 2, text: "继续学习" },
-];
-assert.deepEqual(numberHeadings(chinese).map(headingLabel), [
-  "一、Docker 是什么", "1.1 一句话定义", "（二）运行容器", "二、安装",
-  "(1) 准备工作", "2.2 下一步", "第三章 配置", "4. 继续学习",
-]);
-assert.deepEqual(numberHeadings(chinese).map(h => h.text), chinese.map(h => h.text));
-assert.deepEqual(numberHeadings([
-  { level: 2, text: "十二、进阶" }, { level: 3, text: "自动子节" },
-  { level: 2, text: "下一章" },
-]).map(headingLabel), ["十二、进阶", "12.1 自动子节", "13. 下一章"]);
-for (const title of ["2026 年总结", "3D 图形", "1.5版本变化", "一体化设计", "二叉树", "（Docker）基础"]) {
-  assert.equal(numberHeadings([{ level: 2, text: title }])[0].hasManualNumber, false, title);
+  { level: 2, text: "2. 根" }, { level: 2, text: "2.1 仍然是同级标题" },
+  { level: 3, text: "2.2.实际子节" }, { level: 2, text: "下章" },
+]).map(headingLabel), ["1. 根", "2. 仍然是同级标题", "2.1 实际子节", "3. 下章"], "Textual numbers cannot invent a hierarchy");
+assert.deepEqual(numberHeadings([...input.slice(4), ...input.slice(0, 4)]).map(headingLabel), [
+  "1. 随机章节乙", "1.1 准备", "1.2 运行", "2. 随机章节甲", "2.1 子节甲", "2.1.1 深层内容", "2.2 子节乙",
+], "Moving a chapter recalculates from structure, not the old ordinal");
+for (const title of ["2026 年总结", "3D 图形", "1.5版本变化", "一体化设计", "二叉树", "（Docker）基础", "1."]) {
+  const [heading] = numberHeadings([{ level: 2, text: title }]);
+  assert.equal(heading.hasManualNumber, false, title);
+  assert.equal(headingLabel(heading), "1. " + title);
 }
-console.log("heading numbering checks passed (Chinese, wrapped, Arabic, meaningful leading text)");
+assert.deepEqual(numberHeadings(input.map(h => ({ ...h, level: h.level - 1 }))).map(headingLabel), numberHeadings(input).map(headingLabel));
+assert.deepEqual(numberHeadings([]), []);
+for (let seed = 0; seed < 40; seed++) {
+  const plain = Array.from({length: 25}, (_, i) => ({level: 1 + ((seed * 7 + i * 5) % 6), text: `主题${seed}·条目${i}🎯`}));
+  const prefixes = ["一、", "99. ", "9.8.7 ", "（三）", "第十二章 "];
+  const legacy = plain.map((heading, i) => ({...heading, text: prefixes[(seed+i)%prefixes.length] + heading.text}));
+  assert.deepEqual(numberHeadings(legacy).map(headingLabel), numberHeadings(plain).map(headingLabel), "Ordinal text never determines structure, regardless of note/title names");
+}
+console.log("heading numbering passed: structure/order, Chinese/Arabic prefixes, reorder, protected names, all heading depths");

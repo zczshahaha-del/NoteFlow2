@@ -47,13 +47,14 @@ assert.match(selectionStyles, /@media \(forced-colors: active\)/);
 assert.doesNotMatch(selectionStyles, /\.note-content|\.document-scroll|\.selection-toolbar-menu|animation:|inset 0 -2px/);
 assert.match(editor, /document-canvas nf-prose-refined/);
 assert.match(proseStyles, /\.document-canvas\.nf-prose-refined \.note-content/);
-assert.match(proseStyles, /font-size: 16px !important;[\s\S]*?font-weight: 400;[\s\S]*?line-height: 1\.8 !important/);
+assert.match(proseStyles, /font-size: var\(--nf-body-size\) !important;[\s\S]*?font-weight: 400;[\s\S]*?line-height: var\(--nf-body-leading\) !important/);
 assert.match(proseStyles, /padding: 44px 22px 22px !important/);
-assert.match(proseStyles, /font-size: 13\.5px !important/);
+assert.match(proseStyles, /font-size: 13\.6px !important/);
 assert.match(proseStyles, /white-space: pre !important/);
 assert.match(proseStyles, /\.theme-dark \.document-canvas\.nf-prose-refined/);
 assert.match(proseStyles, /@media \(forced-colors: active\)/);
-assert.doesNotMatch(proseStyles, /\.code-toolbar|\.code-copy-button|\.code-language-trigger|--document-page-width|\.note-page|\.document-scroll|animation:|transition:/);
+assert.doesNotMatch(proseStyles, /\.code-toolbar|\.code-copy-button|\.code-language-trigger|\.document-scroll|animation:|transition:/);
+assert.match(proseStyles, /max-width: var\(--nf-reading-width\)/);
 
 assert.match(directoryTree, /<SoftMenu open=\{menuOpen\}/);
 assert.match(directoryTree, /<SoftMenu open=\{newMenuOpen\}/);
@@ -109,7 +110,7 @@ assert.doesNotMatch(
   /const scrollToHeading[\s\S]{0,260}\.focus\(\)[\s\S]{0,120}\.scrollIntoView\(\)/,
   "outline navigation must not jump by focusing the editor before smooth scrolling"
 );
-assert.match(editor, /getDocumentNumberedHeadings\(editor\.state\.doc\)/);
+assert.match(editor, /getDocumentNumberedHeadings\(editor\.state\.doc, selectedFile/);
 assert.doesNotMatch(editor, /setHeadingNumbering|showHeadingNumbers|HEADING_NUMBERING_STORAGE_KEY/);
 assert.doesNotMatch(documentHeader, /文档显示设置|显示章节编号|menuitemcheckbox/);
 assert.doesNotMatch(documentHeader, /document-location|document-save-state|saveStatus|updatedAt|更新于/);
@@ -221,7 +222,7 @@ assert.match(
 );
 assert.match(
   styles,
-  /--document-page-width: min\(780px, calc\(100% - 56px\)\)/,
+  /--document-page-width: min\(var\(--nf-reading-width\), calc\(100% - 56px\)\)/,
   "document width must follow its available space without covering panels"
 );
 assert.match(

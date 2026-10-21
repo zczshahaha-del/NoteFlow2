@@ -13,12 +13,17 @@ const [{ Editor }, { createNoteFlowTiptapExtensions }] = await Promise.all([
   import("@tiptap/core"), import("../src/editor/tiptapExtensions.ts"),
 ]);
 const source = '## 一、Docker 是什么\n\n### 一句话定义\n\n### （二）容器\n\n## 下一章\n\n### 1. 运行\n\n```md\n## 1. 代码示例不可改\n```';
-const expected = source.replace('### 一句话定义', '### 1.1 一句话定义')
-  .replace('## 下一章', '## 2. 下一章').replace('### 1. 运行', '### 2.1. 运行');
+const expected = source.replace('## 一、Docker 是什么', '## 1. Docker 是什么').replace('### 一句话定义', '### 1.1 一句话定义')
+  .replace('### （二）容器', '### 1.2 容器').replace('## 下一章', '## 2. 下一章').replace('### 1. 运行', '### 2.1 运行');
 assert.equal(numberedMarkdown(source), expected);
 assert.equal(numberedMarkdown(expected), expected, "Export/reimport cannot duplicate numbering");
 assert.equal(numberedMarkdown(source.replaceAll('\n', '\r\n')), expected.replaceAll('\n', '\r\n'));
-assert.equal(numberedMarkdown('## **一、Docker**\n\n### `定义`'), '## **一、Docker**\n\n### 1.1 `定义`');
+assert.equal(numberedMarkdown('## **一、Docker**\n\n### `定义`'), '## 1. **Docker**\n\n### 1.1 `定义`');
+assert.equal(numberedMarkdown('## **一**、[准备](https://example.com)\n\n### `2. 运行`'), '## 1. [准备](https://example.com)\n\n### 1.1 `运行`');
+assert.equal(numberedMarkdown('## <u>一、开始</u>\n\n### <mark>二、运行</mark>'), '## 1. <u>开始</u>\n\n### 1.1 <mark>运行</mark>');
+assert.equal(numberedMarkdown('## <b>一、开始</b>'), '## <b>一、开始</b>', 'An unmapped HTML ordinal is exported intact instead of guessed');
+assert.equal(numberedMarkdown('##\n\n## 标题'), '##\n\n## 1. 标题', 'An unfinished empty heading never consumes a chapter');
+assert.equal(numberedMarkdown('# 知识笔记\n\n## 一、开始\n\n### 二、准备', '知识笔记'), '# 知识笔记\n\n## 1. 开始\n\n### 1.1 准备');
 assert.equal(numberedMarkdown('> ## 章节\n>\n> ### 子节\n\n- ### 列表小节\n'), '> ## 1. 章节\n>\n> ### 1.1 子节\n\n- ### 1.2 列表小节\n');
 assert.equal(numberedMarkdown('章节\n===\n\n子节\n---\n'), '1. 章节\n===\n\n1.1 子节\n---\n');
 const editor = new Editor({ element: document.createElement('div'), extensions: createNoteFlowTiptapExtensions(), content: source, contentType: 'markdown' });
@@ -30,8 +35,8 @@ const fullCopy = () => {
 };
 const copy = fullCopy();
 const labels = Array.from(copy.dom.querySelectorAll('h2,h3')).map(n => n.textContent);
-assert.deepEqual(labels, ['一、Docker 是什么', '1.1 一句话定义', '（二）容器', '2. 下一章', '2.1. 运行']);
-assert(copy.text.includes('1.1 一句话定义') && copy.text.includes('2.1. 运行'));
+assert.deepEqual(labels, ['1. Docker 是什么', '1.1 一句话定义', '1.2 容器', '2. 下一章', '2.1 运行']);
+assert(copy.text.includes('1.1 一句话定义') && copy.text.includes('2.1 运行'));
 assert.equal(copy.dom.querySelector('code')?.textContent, '## 1. 代码示例不可改');
 assert.equal(editor.state.doc, originalDoc, "Copy never changes the document or undo history");
 const heading = editor.state.doc.child(0);
@@ -47,7 +52,7 @@ const beforeFormatting=editor.getMarkdown();
 let formattingUpdates=0;
 editor.on('update',()=>formattingUpdates++);
 assert.equal(normalizeHeadingNumbers(editor),true);
-const clean=beforeFormatting.replace('**一、Docker**','**Docker**').replace('9.7 定义','定义').replace('二、安装','安装').replace('1. 安装 Docker','安装 Docker');
+const clean=beforeFormatting.replace('**一、Docker**','**Docker**').replace('9.7 定义','定义').replace('二、安装','安装').replace('1. 安装 Docker','安装 Docker').replace('一、深层手写标题','深层手写标题');
 assert.equal(editor.getMarkdown(),clean,'Only ordinal prefixes in headings are changed, marks and code remain intact');
 assert.deepEqual(Array.from(editor.view.dom.querySelectorAll('h2,h3')).map(n=>n.getAttribute('data-heading-number')),['1.','1.1','2.','2.1','2.2']);
 assert.equal(formattingUpdates,1,'One formatting transaction uses the normal save path');

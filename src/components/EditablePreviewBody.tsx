@@ -1,14 +1,13 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { EditorState } from "@tiptap/pm/state";
 import { createNoteFlowTiptapExtensions } from "../editor/tiptapExtensions";
 import { getEditorMarkdown } from "../editor/documentCache";
+import { updateHeadingDocumentTitle } from "../editor/headingDecorations";
 import { PreviewReview, updatePreviewReview } from "../editor/previewReview";
 
-const extensions = [...createNoteFlowTiptapExtensions(), PreviewReview];
-
 /** An isolated document: editing here never invokes the note autosave pipeline. */
-export default function EditablePreviewBody({ previewId, content, oldContent, showComparison, disabled, onChange, onBlur }: {
+export default function EditablePreviewBody({ previewId, content, oldContent, showComparison, disabled, onChange, onBlur, documentTitle = "" }: {
   previewId: string;
   content: string;
   oldContent: string;
@@ -16,7 +15,10 @@ export default function EditablePreviewBody({ previewId, content, oldContent, sh
   disabled: boolean;
   onChange: (content: string) => void;
   onBlur: () => void;
+  documentTitle?: string;
 }) {
+  // Preserve the same editor on title/context changes; update decorations below.
+  const extensions = useMemo(() => [...createNoteFlowTiptapExtensions(documentTitle), PreviewReview], [previewId]);
   const callbacks = useRef({ onChange, onBlur });
   callbacks.current = { onChange, onBlur };
   const localContent = useRef(content);
@@ -43,6 +45,10 @@ export default function EditablePreviewBody({ previewId, content, oldContent, sh
     },
     onBlur: () => callbacks.current.onBlur(),
   }, [previewId]);
+
+  useEffect(() => {
+    if (editor) updateHeadingDocumentTitle(editor, documentTitle);
+  }, [editor, documentTitle]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;

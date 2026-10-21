@@ -35,13 +35,13 @@ import { attachmentMarkdown, uploadAttachment } from "../services/attachments";
 import { OperationFeedback } from './OperationFeedback';
 import { getNoteOutline, type NoteSectionRecord } from "../services/notes";
 import { hasMatchingDocumentTitle } from "../utils/documentHeader";
+import { headingNumberPrefixLength } from "../utils/headingNumbering";
+import { updateHeadingDocumentTitle } from "../editor/headingDecorations";
 import { getDocumentHeadings, getDocumentNumberedHeadings, getEditorMarkdown, type TiptapHeading } from "../editor/documentCache";
 import { captureSelectionEdit, type SelectionEditSnapshot } from "../editor/quickSelectionEdit";
 import SelectionQuickEdit from "./SelectionQuickEdit";
-import { headingNumberEdits, normalizeHeadingNumbers } from "../editor/normalizeHeadingNumbers";
 
 const VersionHistoryPanel = lazy(() => import("./VersionHistoryPanel"));
-const extensions = createNoteFlowTiptapExtensions();
 const selectionToolbarAppendTo = () => document.body;
 const selectionToolbarShouldShow = ({
   editor,
@@ -318,6 +318,9 @@ function NoteEditorDocument({ onReady, presented = true }: {
   const [documentScroller, setDocumentScroller] = useState<HTMLDivElement | null>(null);
   const toolbarOptions = useMemo(() => ({ ...selectionToolbarOptions, scrollTarget: documentScroller ?? undefined }), [documentScroller]);
   const isMobile = useMediaQuery("(max-width: 767px)");
+  // Extensions belong to this note's editor lifecycle; a rename updates only
+  // decorative title context below, never recreates the editor/history.
+  const extensions = useMemo(() => createNoteFlowTiptapExtensions(selectedFile?.name.replace(/\.md$/i, "") ?? ""), [selectedFileId]);
 
   const editor = useEditor(
     {
@@ -362,6 +365,11 @@ function NoteEditorDocument({ onReady, presented = true }: {
   });
 
   useEffect(() => {
+    const title = selectedFile?.name.replace(/\.md$/i, "") ?? "";
+    if (editor) updateHeadingDocumentTitle(editor, title);
+  }, [editor, selectedFile?.name]);
+
+  useEffect(() => {
     if (!editor || editor.isDestroyed || !onReady) return;
     const frame = requestAnimationFrame(onReady);
     return () => cancelAnimationFrame(frame);
@@ -404,7 +412,7 @@ function NoteEditorDocument({ onReady, presented = true }: {
       !pendingSourceFocus ||
       pendingSourceFocus.noteId !== selectedFileId
     ) return;
-    const normalize = (value: string) => value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+    const normalize = (value: string) => value.slice(headingNumberPrefixLength(value)).trim().replace(/\s+/g, " ").toLocaleLowerCase();
     const pathTitle =
       pendingSourceFocus.sectionPath?.[pendingSourceFocus.sectionPath.length - 1]?.trim();
     const sectionTitle = (
@@ -470,12 +478,11 @@ function NoteEditorDocument({ onReady, presented = true }: {
     [editor, documentState?.doc]
   );
   const numberedHeadings = useMemo(
-    () => editor && !editor.isDestroyed ? getDocumentNumberedHeadings(editor.state.doc) : [],
-    [editor, headings]
+    () => editor && !editor.isDestroyed ? getDocumentNumberedHeadings(editor.state.doc, selectedFile?.name.replace(/\.md$/i, "") ?? "") : [],
+    [editor, headings, selectedFile?.name]
   );
-  const visibleHeadings = numberedHeadings;
-  const canNormalizeHeadingNumbers = useMemo(() => Boolean(documentState?.doc && headingNumberEdits(documentState.doc).length), [documentState?.doc]);
-  const activeId = useReadingHeading(editor, documentScroller, headings);
+  const visibleHeadings = useMemo(() => numberedHeadings.filter(heading => !heading.isDocumentTitle), [numberedHeadings]);
+  const activeId = useReadingHeading(editor, documentScroller, visibleHeadings, selectedFile?.name.replace(/\.md$/i, "") ?? "");
   const headingGroups = useHeadingGroups(visibleHeadings, activeId);
   const headingPositions = useMemo(
     () => new Map(headings.map((heading) => [heading.id, heading.position])),
@@ -502,7 +509,7 @@ function NoteEditorDocument({ onReady, presented = true }: {
     const normalized = heading?.text.trim().replace(/\s+/g, " ").toLocaleLowerCase() ?? "";
     const section = normalized
       ? backendSections.find(
-          (item) => item.title.trim().replace(/\s+/g, " ").toLocaleLowerCase() === normalized
+          (item) => item.title.slice(headingNumberPrefixLength(item.title)).trim().replace(/\s+/g, " ").toLocaleLowerCase() === normalized
         )
       : null;
     setActiveEditorSectionId(section?.id ?? null);
@@ -653,8 +660,7 @@ function NoteEditorDocument({ onReady, presented = true }: {
                     setTitleDraft(name);
                     if (name !== selectedFile.name.replace(/\.md$/i, "")) updateNodeName(selectedFile.id, name + ".md");
                   }}
-                  matchingBodyTitle={matchingBodyTitle} bodyEditing={bodyEditing}
-                  onNormalizeHeadings={canNormalizeHeadingNumbers && editor ? () => normalizeHeadingNumbers(editor) : undefined} />
+                  matchingBodyTitle={matchingBodyTitle} bodyEditing={bodyEditing} />
                 {(noteSaveState.status === 'error' || noteSaveState.status === 'offline') && <div className="nf-note-feedback">
                   <OperationFeedback onRetry={() => retryNoteSave(selectedFile.id)} retryLabel={noteSaveState.status === 'offline' ? '立即同步' : '重试保存'}>
                     <strong>{noteSaveState.status === 'offline' ? '正文已留在本机，等待同步' : '正文未能同步到服务器'}</strong>

@@ -1,6 +1,7 @@
 import type { Editor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { numberHeadings, type NumberedHeading } from "../utils/headingNumbering.ts";
+import { hasMatchingDocumentTitle } from "../utils/documentHeader.ts";
 
 export interface TiptapHeading {
   id: string;
@@ -10,7 +11,7 @@ export interface TiptapHeading {
   nodeSize: number;
 }
 const headingCache = new WeakMap<ProseMirrorNode, TiptapHeading[]>();
-const numberingCache = new WeakMap<ProseMirrorNode, NumberedHeading<TiptapHeading>[]>();
+const numberingCache = new WeakMap<ProseMirrorNode, { title: string; headings: NumberedHeading<TiptapHeading>[] }>();
 
 export function getDocumentHeadings(doc: ProseMirrorNode): TiptapHeading[] {
   const cached = headingCache.get(doc);
@@ -18,10 +19,11 @@ export function getDocumentHeadings(doc: ProseMirrorNode): TiptapHeading[] {
   const headings: TiptapHeading[] = [];
   doc.descendants((node, position) => {
     if (node.type.name !== "heading") return;
+    if (!node.textContent.trim()) return; // An unfinished empty heading is not an outline entry.
     headings.push({
       id: `tiptap-heading-${position}`,
       level: Number(node.attrs.level) || 1,
-      text: node.textContent.trim() || "未命名标题",
+      text: node.textContent.trim(),
       position,
       nodeSize: node.nodeSize,
     });
@@ -30,11 +32,14 @@ export function getDocumentHeadings(doc: ProseMirrorNode): TiptapHeading[] {
   return headings;
 }
 
-export function getDocumentNumberedHeadings(doc: ProseMirrorNode): NumberedHeading<TiptapHeading>[] {
+export function getDocumentNumberedHeadings(doc: ProseMirrorNode, documentTitle = ""): NumberedHeading<TiptapHeading>[] {
   const cached = numberingCache.get(doc);
-  if (cached) return cached;
-  const headings = numberHeadings(getDocumentHeadings(doc));
-  numberingCache.set(doc, headings);
+  if (cached?.title === documentTitle) return cached.headings;
+  const all = getDocumentHeadings(doc);
+  const firstIsTitle = hasMatchingDocumentTitle(documentTitle, doc.firstChild);
+  const headings = numberHeadings(firstIsTitle ? all.filter(h => h.position !== 0) : all);
+  if (firstIsTitle && all[0]?.position === 0) headings.unshift({ ...all[0], displayNumber: "", numberJoinsText: false, hasManualNumber: false, hierarchyDepth: -1, isDocumentTitle: true });
+  numberingCache.set(doc, { title: documentTitle, headings });
   return headings;
 }
 

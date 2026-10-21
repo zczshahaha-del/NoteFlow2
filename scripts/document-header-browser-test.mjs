@@ -12,14 +12,14 @@ const component=fileURLToPath(new URL('../src/components/NoteEditor.tsx',import.
 const baseline=process.env.NOTEFLOW_HEADER_BASELINE==='1';
 const title='知识库学习笔记';
 const markdown='# '+title+'\n\n保留 **重点** 与 `inline`。\n\n## 正文章节\n\n```go\nfunc main() { println("color") }\n```';
-const entry=`import React from 'react';import {createRoot} from 'react-dom/client';import NoteEditor from ${JSON.stringify(component)};
+const entry=`import React from 'react';import {createRoot} from 'react-dom/client';import {closeHistory} from '@tiptap/pm/history';import NoteEditor from ${JSON.stringify(component)};
 let legacyNumberReads=0;
 Object.defineProperty(window,'localStorage',{value:{getItem(key){if(key==='noteflow:show-heading-numbers'){legacyNumberReads++;return 'false'}return null},setItem(){},removeItem(){}}});
 const root=createRoot(document.getElementById('root'));
 const note={id:'note',type:'file',name:${JSON.stringify(title+'.md')},createdAt:'2026-07-22T15:50:00+08:00',updatedAt:'2026-10-15T09:14:00+08:00',indexStatus:'indexed'};
 const folders=()=>[{id:'f1',type:'folder',name:'全栈开发',children:[{id:'f2',type:'folder',name:'学习笔记',children:[note]}]}];
 const api={renames:[],updates:[],retries:[],editor:null,render(){root.render(React.createElement(React.StrictMode,null,React.createElement(NoteEditor)))},
-move(root){slice.treeData=root?[note]:folders();api.render()},status(status){slice.noteSaveState={status};api.render()}};
+move(root){slice.treeData=root?[note]:folders();api.render()},status(status){slice.noteSaveState={status};api.render()},startUserEdit(){api.editor.view.dispatch(closeHistory(api.editor.state.tr))}};
 const slice={selectedFileId:'note',treeData:folders(),fileContents:{note:${JSON.stringify(markdown)}},noteSaveState:{status:'saved'},pendingEditorSelection:null,pendingSourceFocus:null,
 updateNodeName(id,name){api.renames.push({id,name});note.name=name;api.render()},updateFileContent(id,content){api.updates.push({id,content});slice.fileContents[id]=content;api.render()},
 retryNoteSave(id){api.retries.push(id)},reindexNote(){throw Error('Unexpected reindex')},addSelectionToChat(){},clearPendingEditorSelection(){},clearPendingSourceFocus(){},setActiveEditorSectionId(){}};
@@ -50,7 +50,7 @@ try{
    assert.equal(await page.locator('.document-meta-date').count(),1);
    assert.equal(await page.locator('time.document-meta-date').getAttribute('datetime'),'2026-07-22T15:50:00+08:00');
    assert.equal(await page.locator('.document-meta-date').textContent(),'创建于 2026-07-22 15:50');
-   assert.equal(await header.getByText(/知识库|全栈开发|正文自动保存|更新于/).count(),0);
+   assert.equal(await header.locator('.document-meta-row').getByText(/知识库|全栈开发|正文自动保存|更新于/).count(),0,'Read-only metadata excludes breadcrumbs; the editable title may legitimately contain these words');
    assert.equal(await page.evaluate(()=>window.headerTest.api.updates.length),0);assert.equal(await page.evaluate(()=>window.headerTest.slice.fileContents.note),markdown);
    await page.evaluate(()=>{window.headerOriginalEditor=window.headerTest.api.editor;window.headerOriginalDoc=window.headerTest.api.editor.state.doc});
    assert.equal(await page.getByRole('button',{name:'文档显示设置',exact:true}).count(),0,'No empty numbering-settings menu');
@@ -118,7 +118,7 @@ try{
   await input.focus();await input.press('Tab');await page.waitForFunction(()=>document.querySelector('.document-header').dataset.titleMode==='document');
   await page.evaluate(()=>window.headerTest.api.editor.chain().focus().undo().run());
   await input.focus();await input.press('Tab');await page.waitForFunction(()=>document.querySelector('.document-header').dataset.titleMode==='body');
-  assert.equal(await page.locator('.note-content h1').getAttribute('data-heading-number'),'1.','Numbering is always on');
+  assert.equal(await page.locator('.note-content h1').getAttribute('data-heading-number'),null,'A matching document title never consumes a chapter number');
   assert.equal(await page.evaluate(()=>window.headerTest.legacyNumberReads()),0,'Old disabled preference is no longer consulted');
   await page.evaluate(()=>window.headerTest.api.move(true));await settle(page);
   assert.equal(await page.locator('.document-location').count(),0);
@@ -131,28 +131,28 @@ try{
   const nestedSource='## 模型接口与API调用基础\n\n### 1. 准备工作\n\n### 2. 使用 SDK\n\n### 自动子节\n\n## 提示工程\n\n结尾';
   const updatesBefore=await page.evaluate(()=>window.headerTest.api.updates.length);
   await page.evaluate(content=>{window.headerTest.slice.fileContents.note=content;window.headerTest.api.render()},nestedSource);
-  await page.waitForFunction(()=>document.querySelector('.note-content h3')?.textContent==='1. 准备工作');
+  await page.waitForFunction(()=>document.querySelector('.note-content h3')?.textContent==='准备工作');
   assert.deepEqual(await page.locator('.note-content h2,.note-content h3').evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n,'::before').content.replaceAll('"','')+(n.dataset.headingNumberJoin?'':' ')+n.textContent)),
-    ['1. 模型接口与API调用基础','1.1. 准备工作','1.2. 使用 SDK','1.3 自动子节','2. 提示工程']);
-  assert.equal(await page.locator('.note-content h3').first().evaluate(n=>getComputedStyle(n,'::before').marginRight),'0px','Ancestry joins the source without a visual gap');
+    ['1. 模型接口与API调用基础','1.1 准备工作','1.2 使用 SDK','1.3 自动子节','2. 提示工程']);
+  assert(parseFloat(await page.locator('.note-content h3').first().evaluate(n=>getComputedStyle(n,'::before').marginRight))>0,'One structural prefix is separated from editable title text');
   if(width>=768){
     await page.getByRole('button',{name:'展开章节目录',exact:true}).click();
-    assert.deepEqual(await page.locator('.chapter-rail-label').allTextContents(),['1. 模型接口与API调用基础','1.1. 准备工作','1.2. 使用 SDK','1.3 自动子节','2. 提示工程']);
+    assert.deepEqual(await page.locator('.chapter-rail-label').allTextContents(),['1. 模型接口与API调用基础','1.1 准备工作','1.2 使用 SDK','1.3 自动子节','2. 提示工程']);
   }else{
     await page.getByRole('button',{name:'展开目录',exact:true}).click();
-    assert.deepEqual(await page.locator('.document-outline-heading').allTextContents(),['1.模型接口与API调用基础','1.1. 准备工作','1.2. 使用 SDK','1.3自动子节','2.提示工程']);
-    assert.equal(await page.getByRole('button',{name:'1.1. 准备工作',exact:true}).count(),1);
+    assert.deepEqual(await page.locator('.document-outline-heading').allTextContents(),['1.模型接口与API调用基础','1.1准备工作','1.2使用 SDK','1.3自动子节','2.提示工程']);
+    assert.equal(await page.getByRole('button',{name:'1.1 准备工作',exact:true}).count(),1);
   }
   assert.equal(await page.evaluate(()=>window.headerTest.api.editor.getMarkdown()),nestedSource);
   assert.equal(await page.evaluate(()=>window.headerTest.api.updates.length),updatesBefore,'Display correction must never save rewritten headings');
   await page.screenshot({path:join(output,'numbering-'+width+'.png')});
-  // Legacy Chinese numbers are editable source text; no extra Arabic prefix.
+  // Legacy ordinals become source-compatible metadata, not hidden editable text.
   const chineseSource='## 一、Docker 是什么\n\n### 一句话定义\n\n### （二）容器\n\n## 二、安装\n\n### 2026 年环境\n\n## 继续学习\n\n正文保持原样。';
   if(width>=768)await page.keyboard.press('Escape');
   else await page.getByRole('button',{name:'收起目录',exact:true}).click();
   await page.evaluate(content=>{window.headerTest.slice.fileContents.note=content;window.headerTest.api.render()},chineseSource);
-  await page.waitForFunction(()=>document.querySelector('.note-content h2')?.textContent==='一、Docker 是什么');
-  const chineseLabels=['一、Docker 是什么','1.1 一句话定义','（二）容器','二、安装','2.1 2026 年环境','3. 继续学习'];
+  await page.waitForFunction(()=>document.querySelector('.note-content h2')?.textContent==='Docker 是什么');
+  const chineseLabels=['1. Docker 是什么','1.1 一句话定义','1.2 容器','2. 安装','2.1 2026 年环境','3. 继续学习'];
   assert.deepEqual(await page.locator('.note-content h2,.note-content h3').evaluateAll(nodes=>nodes.map(n=>(n.dataset.headingNumber?n.dataset.headingNumber+(n.dataset.headingNumberJoin?'':' '):'')+n.textContent)),chineseLabels);
   if(width>=768){
     await page.getByRole('button',{name:'展开章节目录',exact:true}).click();
@@ -166,20 +166,21 @@ try{
   assert.equal(await page.evaluate(()=>window.headerTest.api.editor.getMarkdown()),chineseSource);
   assert.equal(await page.evaluate(()=>window.headerTest.api.updates.length),updatesBefore);
   await page.screenshot({path:join(output,'chinese-numbering-'+width+'.png')});
-  // Explicit normalization is a normal reversible edit, not a display toggle.
-  const normalize=page.getByRole('button',{name:'统一章节编号',exact:true});
-  assert.equal(await normalize.count(),1);
-  await normalize.click();
-  const cleanSource=chineseSource.replace('一、Docker','Docker').replace('（二）容器','容器').replace('二、安装','安装');
-  await page.waitForFunction(()=>!document.querySelector('[aria-label="统一章节编号"]'));
-  assert.equal(await page.evaluate(()=>window.headerTest.api.editor.getMarkdown()),cleanSource);
+  assert.equal(await page.getByRole('button',{name:'统一章节编号',exact:true}).count(),0,'No manual maintenance action is required');
+  // The synthetic external replacements above establish a new baseline; do
+  // not group them into the native typing/undo operation being tested below.
+  await page.evaluate(()=>window.headerTest.api.startUserEdit());
+  await page.locator('.note-content p').last().click();
+  await page.keyboard.press('End');await page.keyboard.insertText('继续写作');
+  await page.waitForFunction(()=>window.headerTest.api.editor.getMarkdown().includes('继续写作'));
+  assert.equal(await page.evaluate(()=>window.headerTest.api.editor.getMarkdown()),chineseSource+'继续写作','Normal saving retains legacy source prefixes without resetting the editor');
   assert.equal(await page.evaluate(()=>window.headerTest.api.updates.length),updatesBefore+1);
   const unifiedLabels=['1. Docker 是什么','1.1 一句话定义','1.2 容器','2. 安装','2.1 2026 年环境','3. 继续学习'];
   assert.deepEqual(await page.locator('.note-content h2,.note-content h3').evaluateAll(nodes=>nodes.map(n=>(n.dataset.headingNumber?n.dataset.headingNumber+' ':'')+n.textContent)),unifiedLabels);
   await page.getByTestId('tiptap-editor-content').press('ControlOrMeta+z');
   assert.equal(await page.evaluate(()=>window.headerTest.api.editor.getMarkdown()),chineseSource);
   await page.getByTestId('tiptap-editor-content').press('ControlOrMeta+Shift+z');
-  assert.equal(await page.evaluate(()=>window.headerTest.api.editor.getMarkdown()),cleanSource);
+  assert.equal(await page.evaluate(()=>window.headerTest.api.editor.getMarkdown()),chineseSource+'继续写作');
   if(width>=768){
     await page.getByRole('button',{name:'展开章节目录',exact:true}).click();
     assert.deepEqual(await page.locator('.chapter-rail-label').allTextContents(),unifiedLabels);
