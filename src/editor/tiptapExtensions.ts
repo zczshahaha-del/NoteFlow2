@@ -16,6 +16,7 @@ import { CODE_LANGUAGES, getCodeHighlight, normalizeCodeLanguage } from "./codeH
 import type { CodeLanguage } from "./codeHighlight.ts";
 import { DocumentTitleDisplay } from "./headingDecorations.ts";
 import { Heading } from "@tiptap/extension-heading";
+import { ReadingBlocks } from "./readingBlocks.ts";
 
 const NoteFlowUnderline = Underline.extend({
   parseMarkdown(token, helpers) {
@@ -510,6 +511,7 @@ export function createNoteFlowTiptapExtensions(documentTitle = "") {
     NoteFlowCodeBlock,
     Heading.configure({ levels: [1, 2, 3, 4, 5, 6] }),
     DocumentTitleDisplay.configure({ documentTitle }),
+    ReadingBlocks,
     Markdown.configure({
       markedOptions: { gfm: true, breaks: true },
     }),

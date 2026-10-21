@@ -48,12 +48,16 @@ assert.doesNotMatch(selectionStyles, /\.note-content|\.document-scroll|\.selecti
 assert.match(editor, /document-canvas nf-prose-refined/);
 assert.match(proseStyles, /\.document-canvas\.nf-prose-refined \.note-content/);
 assert.match(proseStyles, /font-size: var\(--nf-body-size\) !important;[\s\S]*?font-weight: 400;[\s\S]*?line-height: var\(--nf-body-leading\) !important/);
-assert.match(proseStyles, /padding: 44px 22px 22px !important/);
+assert.match(proseStyles, /padding: 8px 18px 18px !important/);
+assert.match(proseStyles, /\.code-toolbar \{\s*position: relative !important/);
+assert.match(proseStyles, /\.code-toolbar-actions \{[\s\S]*?box-shadow: none !important/);
 assert.match(proseStyles, /font-size: 13\.6px !important/);
 assert.match(proseStyles, /white-space: pre !important/);
-assert.match(proseStyles, /\.theme-dark \.document-canvas\.nf-prose-refined/);
+assert.match(proseStyles, /\.theme-dark :is\(\.document-canvas\.nf-prose-refined/);
 assert.match(proseStyles, /@media \(forced-colors: active\)/);
-assert.doesNotMatch(proseStyles, /\.code-toolbar|\.code-copy-button|\.code-language-trigger|\.document-scroll|animation:|transition:/);
+assert.doesNotMatch(proseStyles, /\.document-scroll|animation:/);
+assert.match(proseStyles, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*?height: 44px !important/);
+assert.match(proseStyles, /\.note-content\.nf-reading-prose/);
 assert.match(proseStyles, /max-width: var\(--nf-reading-width\)/);
 
 assert.match(directoryTree, /<SoftMenu open=\{menuOpen\}/);

@@ -1,4 +1,5 @@
 import { Marked } from "marked";
+import { readingCalloutKind } from "./readingCallout.ts";
 
 const marked = new Marked({
   breaks: true,
@@ -229,6 +230,10 @@ export function renderChatMarkdown(markdown: string, validCitationCount = 0, opt
   template.innerHTML = marked.parse(markdown || "") as string;
   sanitizeHtml(template.content);
   enhanceCodeBlocks(template.content);
+  template.content.querySelectorAll("blockquote").forEach(quote => {
+    const kind = readingCalloutKind(quote.firstElementChild?.tagName === "P" ? quote.firstElementChild.textContent || "" : "");
+    if (kind) quote.setAttribute("data-reading-callout", kind);
+  });
   enhanceCitations(template.content, validCitationCount);
   if (options.scrollTables) {
     template.content.querySelectorAll("table").forEach(table => {

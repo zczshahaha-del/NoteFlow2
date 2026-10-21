@@ -4,7 +4,7 @@
   --edit-muted: var(--nf-ui-muted, #66717d);
   --edit-line: var(--nf-ui-line, #e8eaee);
   --edit-soft: var(--nf-ui-soft, #f3f4f6);
-  --edit-reading-width: 820px;
+  --edit-reading-width: var(--nf-reading-width, 704px);
   container-type: inline-size;
   min-height: 0;
   background: var(--color-jelly-card);
@@ -99,17 +99,16 @@
 .edit-preview-workspace .nf-edit-diff-row[data-kind="add"] { background: var(--color-jelly-green-bg); color: var(--color-jelly-green); }
 .edit-preview-workspace .nf-edit-diff-row[data-kind="remove"] { background: var(--color-jelly-red-bg); color: var(--color-jelly-red); }
 .edit-preview-workspace .nf-edit-footer { flex-shrink: 0; padding: 12px 24px; border-top: 1px solid var(--edit-line); }
-.edit-preview-workspace .nf-edit-composer { display: flex; align-items: flex-end; gap: 10px; width: min(100%, 820px); margin-inline: auto; padding: 6px; border-radius: 12px; background: var(--edit-soft); }
+.edit-preview-workspace .nf-edit-composer { display: flex; align-items: flex-end; gap: 10px; width: min(100%, var(--edit-reading-width)); margin-inline: auto; padding: 6px; border-radius: 12px; background: var(--edit-soft); }
 .edit-preview-workspace .nf-edit-composer:focus-within { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nf-ui-focus) 40%, transparent); }
 .edit-preview-workspace .nf-edit-composer textarea { display: block; flex: 1; width: 0; min-width: 0; min-height: 22px; max-height: 88px; margin: 5px 0 5px 7px; padding: 0; border: 0; border-radius: 0; outline: none; box-shadow: none; resize: none; overflow-y: hidden; background: transparent; color: var(--edit-text); font-size: 13px; line-height: 22px; }
 .edit-preview-workspace .nf-edit-composer textarea:focus-visible { outline: none; box-shadow: none; }
 .edit-preview-workspace .nf-edit-composer textarea::placeholder { color: var(--edit-muted); }
 .edit-preview-workspace .nf-edit-adjust:not(:disabled) { background: var(--color-jelly-blue, #3f7898); color: white; }
 .edit-preview-workspace .nf-edit-adjust:disabled { opacity: .65; }
-.edit-preview-workspace .nf-edit-undo-row { width: min(100%, 820px); margin: 4px auto -4px; }
+.edit-preview-workspace .nf-edit-undo-row { width: min(100%, var(--edit-reading-width)); margin: 4px auto -4px; }
 .edit-preview-workspace .nf-edit-undo-row .nf-edit-button { padding-inline: 3px; font-size: 11px; }
-.theme-dark .edit-preview-workspace.document-canvas .note-content .code-toolbar-actions { background: var(--edit-soft) !important; border-color: var(--edit-line) !important; box-shadow: 0 6px 16px rgb(0 0 0 / 20%) !important; }
-.theme-dark .edit-preview-workspace.document-canvas .note-content :is(.code-language-trigger, .code-copy-button) { color: var(--edit-muted) !important; }
+/* Body/code palette is shared with saved notes, including dark mode. */
 @keyframes edit-preview-enter { from { opacity: 0; } to { opacity: 1; } }
 @container (max-width: 520px) {
   .edit-preview-workspace .nf-edit-header { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 10px 12px; }

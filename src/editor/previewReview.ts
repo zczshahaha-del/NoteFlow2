@@ -50,7 +50,7 @@ function reviewWidget(block: MarkdownReviewBlock, number: number, context: strin
         const original = document.createElement("section");
         original.className = "nf-edit-original";
         original.setAttribute("aria-label", `第 ${number} 处改动的原文`);
-        original.innerHTML = '<span class="nf-edit-original-label">原文 · 只读</span><div class="note-content chat-markdown">'
+        original.innerHTML = '<span class="nf-edit-original-label">原文 · 只读</span><div class="note-content nf-reading-prose chat-markdown">'
           + renderPreviewMarkdown(block.oldContent, context) + "</div>";
         original.addEventListener("click", event => { void handleRenderedCodeBlockAction(event.target, original); });
         wrapper.append(original);

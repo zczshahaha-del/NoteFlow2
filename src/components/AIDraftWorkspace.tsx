@@ -49,6 +49,7 @@ import { isMemoryEnabled } from "../services/memories";
 import { handleRenderedCodeBlockAction, renderChatMarkdown } from "../utils/chatMarkdown";
 import { useConfirmDialog } from "./ConfirmDialog";
 import "./draft-workspace.css";
+import "./document-prose.css";
 import { buildBodySupplement, buildDraftGenerationRequest, type DraftBrief } from "../utils/draftBrief";
 import { headingNumberPrefixLength } from "../utils/headingNumbering";
 
@@ -1611,7 +1612,7 @@ export default function AIDraftWorkspace() {
                     </div>
                   ) : selectedSection?.content ? (
                     <div
-                      className="note-content draft-note-content"
+                      className="note-content nf-reading-prose draft-note-content"
                       onClick={(event) => void handleRenderedCodeBlockAction(event.target, event.currentTarget)}
                       dangerouslySetInnerHTML={{ __html: renderedSection }}
                     />

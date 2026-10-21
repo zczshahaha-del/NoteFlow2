@@ -5,6 +5,7 @@ import { createNoteFlowTiptapExtensions } from "../editor/tiptapExtensions";
 import { getEditorMarkdown } from "../editor/documentCache";
 import { updateHeadingDocumentTitle } from "../editor/headingDecorations";
 import { PreviewReview, updatePreviewReview } from "../editor/previewReview";
+import "./document-prose.css";
 
 /** An isolated document: editing here never invokes the note autosave pipeline. */
 export default function EditablePreviewBody({ previewId, content, oldContent, showComparison, disabled, onChange, onBlur, documentTitle = "" }: {
@@ -32,7 +33,7 @@ export default function EditablePreviewBody({ previewId, content, oldContent, sh
     editable: !disabled,
     editorProps: {
       attributes: {
-        class: "note-content nf-edit-document outline-none",
+        class: "note-content nf-reading-prose nf-edit-document outline-none",
         "aria-label": "修改稿正文",
         "role": "textbox",
         "aria-multiline": "true",

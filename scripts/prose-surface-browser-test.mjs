@@ -10,6 +10,8 @@ import { build } from 'vite';
 
 const { chromium } = createRequire(import.meta.url)(process.env.NOTEFLOW_PLAYWRIGHT_MODULE || 'playwright');
 const component = fileURLToPath(new URL('../src/components/NoteEditor.tsx', import.meta.url));
+const previewComponent = fileURLToPath(new URL('../src/components/EditablePreviewBody.tsx', import.meta.url));
+const markdownRenderer = fileURLToPath(new URL('../src/utils/chatMarkdown.ts', import.meta.url));
 const assets = new URL('../dist/assets/', import.meta.url);
 const cssFile = readdirSync(assets).find(name => /^index-.*\.css$/.test(name));
 const proseCssFile = readdirSync(assets).find(name => /^NoteEditor-.*\.css$/.test(name));
@@ -27,7 +29,9 @@ const markdown = [
   '---', '', '## 预加载（Preload）', '', '```go',
   'var users []User', 'db.Preload("Posts").Find(&users)',
   '// 等于先查 users，再一次性把所有 Posts 都查出来填进去', '```', '',
+  '> 普通引用保持细竖线，不添加图标或提示语。', '',
   '> **人话：** 没有 Preload，要重复查询；有了 Preload，只查 2 次。', '',
+  '> ⚠️ **注意：** struct 更新会忽略零值。', '',
   '### 宽内容与编辑', '', '```go',
   'const longValue = "' + '保留代码行结构'.repeat(40) + '"', '```', '',
   '| 名称 | 类型 | 说明 |', '| --- | --- | --- |', '| 用户 | User | 合成表格 |', '',
@@ -35,8 +39,16 @@ const markdown = [
 ].join('\n');
 const entry = `import React, {StrictMode} from 'react'; import {createRoot} from 'react-dom/client';
 import NoteEditor from ${JSON.stringify(component)};
+import EditablePreviewBody from ${JSON.stringify(previewComponent)};
+import {renderChatMarkdown,handleRenderedCodeBlockAction} from ${JSON.stringify(markdownRenderer)};
 const root=createRoot(document.getElementById('root'));
-const api={updates:[],copied:[],render(){root.render(React.createElement(StrictMode,null,React.createElement(NoteEditor)))}};
+const originalContent=${JSON.stringify(markdown)};
+const api={updates:[],copied:[],previewUpdates:[],surface:'note',render(){
+  let surface=React.createElement(NoteEditor);
+  if(api.surface==='preview')surface=React.createElement('div',{className:'edit-preview-workspace document-canvas nf-prose-refined',style:{width:'100%',padding:'20px'}},React.createElement('div',{className:'nf-edit-frame'},React.createElement(EditablePreviewBody,{previewId:'synthetic-parity',content:originalContent,oldContent:originalContent,documentTitle:'GORM 学习笔记',showComparison:false,disabled:false,onChange:c=>api.previewUpdates.push(c),onBlur:()=>{}})));
+  if(api.surface==='rendered')surface=React.createElement('div',{className:'nf-draft-workspace',style:{width:'100%',overflow:'auto',height:'100%'}},React.createElement('div',{className:'nf-draft-reading'},React.createElement('div',{className:'note-content nf-reading-prose draft-note-content',onClick:e=>void handleRenderedCodeBlockAction(e.target,e.currentTarget),dangerouslySetInnerHTML:{__html:renderChatMarkdown(originalContent,0,{scrollTables:true})}})));
+  root.render(React.createElement(StrictMode,null,surface));
+}};
 const slice={selectedFileId:'synthetic-prose',treeData:[{id:'synthetic-prose',name:'GORM 学习笔记.md',type:'file',indexStatus:'indexed',createdAt:'2026-07-22T15:50:00+08:00',updatedAt:'2026-08-18T09:14:00+08:00'}],fileContents:{'synthetic-prose':${JSON.stringify(markdown)}},noteSaveState:{status:'saved'},pendingEditorSelection:null,pendingSourceFocus:null,
 updateFileContent(id,content){api.updates.push({id,content});slice.fileContents[id]=content;api.render()},updateNodeName(){throw new Error('Unexpected rename')},reindexNote(){throw new Error('Unexpected reindex')},addSelectionToChat(){throw new Error('Unexpected chat')},clearPendingEditorSelection(){},clearPendingSourceFocus(){},setActiveEditorSectionId(){}};
 window.proseTest={api,slice}; Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>api.copied.push(text)}});
@@ -79,11 +91,12 @@ async function metrics(page) {
     const toolbar = root.querySelector('.code-toolbar-actions');
     const code = pre.querySelector('code');
     const colors = [...root.querySelectorAll('[class^="token-"]')].map(el => ({ type: el.className, color: getComputedStyle(el).color }));
+    const contentOnly=root.cloneNode(true);contentOnly.querySelectorAll('.code-toolbar').forEach(el=>el.remove());
     return { body: style(root), paragraph: style(root.querySelector('p')), heading: style(root.querySelector('h2')), code: style(code), inline: style(root.querySelector('p code')), quote: style(root.querySelector('blockquote')),
       width: root.getBoundingClientRect().width, pageWidth: document.documentElement.scrollWidth, viewport: innerWidth, prePadding: getComputedStyle(pre).padding,
       toolbarClear: toolbar.getBoundingClientRect().bottom <= code.getBoundingClientRect().top,
       toolbarGeometry: { bottom: toolbar.getBoundingClientRect().bottom, codeTop: code.getBoundingClientRect().top, height: toolbar.getBoundingClientRect().height },
-      codeText: [...root.querySelectorAll('pre code')].map(el => el.textContent), text: root.innerText, colors, scrollbar: getComputedStyle(pre).scrollbarWidth };
+      codeText: [...root.querySelectorAll('pre code')].map(el => el.textContent), text: contentOnly.textContent, colors, scrollbar: getComputedStyle(pre).scrollbarWidth };
   });
 }
 function ratio(a, b) {
@@ -161,6 +174,46 @@ async function freshCodeLifecycle(page) {
   }
   return checks;
 }
+async function sharedGrammar(page) {
+  await page.evaluate(() => { const {slice,api}=window.proseTest;slice.selectedFileId='synthetic-prose';api.surface='note';api.render(); });
+  await page.locator('.document-canvas .note-content').waitFor();
+  const shape=()=>page.locator('.note-content').evaluate(root=>{
+    const s=selector=>{const e=root.querySelector(selector),c=getComputedStyle(e);return {font:c.fontFamily,size:c.fontSize,weight:c.fontWeight,line:c.lineHeight,margin:c.margin,padding:c.padding,background:c.backgroundColor,color:c.color};};
+    return {bodySize:getComputedStyle(root).fontSize,heading:s('h2'),paragraph:s('p'),code:s('pre code'),quote:s('blockquote'),note:s('blockquote[data-reading-callout="note"]'),warning:s('blockquote[data-reading-callout="warning"]'),cell:s('td'),toolbar:s('.code-toolbar-actions')};
+  });
+  const baseline=await shape(), reports=[];
+  await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));
+  await settleStyles(page.locator('.note-content'));
+  const darkBaseline=await shape();
+  await page.evaluate(()=>document.documentElement.classList.remove('theme-dark'));
+  await settleStyles(page.locator('.note-content'));
+  const before=await page.evaluate(()=>window.proseTest.api.updates.length);
+  for(const surface of ['preview','rendered']) {
+    await page.evaluate(surface=>{window.proseTest.api.surface=surface;window.proseTest.api.render();},surface);
+    await page.locator('.nf-reading-prose').waitFor();
+    await settleStyles(page.locator('.nf-reading-prose'));
+    assert.deepEqual(await shape(),baseline,'Same source must use one block grammar on '+surface);
+    await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));
+    await settleStyles(page.locator('.nf-reading-prose'));
+    assert.deepEqual(await shape(),darkBaseline,'Dark reading grammar must also match on '+surface);
+    await page.evaluate(()=>document.documentElement.classList.remove('theme-dark'));
+    await settleStyles(page.locator('.nf-reading-prose'));
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),await page.evaluate(()=>innerWidth));
+    if(surface==='rendered') {
+      const block=page.locator('.rendered-code-block').first();
+      await block.hover();await block.locator('.code-copy-button').click();
+      assert.equal(await page.evaluate(()=>window.proseTest.api.copied.at(-1)),await block.locator('code').textContent());
+      await block.locator('.code-language-trigger').click();
+      const option=block.locator('[data-language-option="python"]');
+      await option.click();assert.equal(await block.getAttribute('data-language'),'python');
+      assert.equal(await block.locator('.code-language-trigger').getAttribute('aria-expanded'),'false');
+    }
+    reports.push(surface);
+  }
+  assert.equal(await page.evaluate(()=>window.proseTest.api.updates.length),before);
+  assert.deepEqual(await page.evaluate(()=>window.proseTest.api.previewUpdates),[],'Opening preview must not change/save its Markdown');
+  return reports;
+}
 try {
   for (const width of [1280, 736, 320]) {
     console.log('Checking actual NoteEditor at ' + width + 'px');
@@ -219,9 +272,15 @@ try {
     assert.equal(after.code.size, '13.6px');
     assert.equal(after.code.weight, '400');
     assert.equal(after.code.leading, '20.4px');
-    assert.equal(after.prePadding, width === 320 ? '44px 16px 22px' : '44px 22px 22px');
+    assert.equal(after.prePadding, width === 320 ? '8px 14px 18px' : '8px 18px 18px');
     assert.equal(after.inline.background, 'rgb(243, 242, 239)');
     assert.equal(after.quote.background, 'rgba(0, 0, 0, 0)');
+    const callouts=page.locator('blockquote[data-reading-callout]');
+    assert.equal(await callouts.count(),2);
+    assert.equal(await callouts.first().evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(233, 242, 236)');
+    assert.equal(await callouts.last().evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(251, 243, 223)');
+    assert.equal(await editor.locator('.code-toolbar-actions').first().evaluate(el=>getComputedStyle(el).boxShadow),'none');
+    assert.equal(await editor.locator('td p').first().evaluate(el=>getComputedStyle(el).fontSize),'14px');
     assert(after.toolbarClear, 'Actual hover toolbar must not cover the first line: ' + JSON.stringify(after.toolbarGeometry));
     assert.equal(after.scrollbar, 'thin');
     assert(new Set(after.colors.map(item => item.color)).size >= 5);
@@ -289,11 +348,12 @@ try {
     assert.equal(await page.evaluate(() => window.proseTest.api.updates.length), updates);
     await shell.evaluate(el => el.classList.add('nf-prose-refined'));
     const freshCode = await freshCodeLifecycle(page);
+    const surfaceParity = await sharedGrammar(page);
     assert.deepEqual(errors, []);
     assert.deepEqual(requests, []);
-    reports.push({ width, before, after, dark, freshCode, nativeCopy: true, languageOpenEscape: true, editingUndo: true, retainedCodeScroll: true, scopeRollback: true, reducedMotion: true, forcedColors: true, errors, requests });
+    reports.push({ width, before, after, dark, freshCode, surfaceParity, nativeCopy: true, languageOpenEscape: true, editingUndo: true, retainedCodeScroll: true, scopeRollback: true, reducedMotion: true, forcedColors: true, errors, requests });
     await context.close();
   }
   writeFileSync(join(output, 'results.json'), JSON.stringify(reports, null, 2));
-  console.log(JSON.stringify({ ok: true, actualProductionComponent: true, syntheticStateOnly: true, networkBlocked: true, output, checks: reports.map(r => ({ width: r.width, freshCode: r.freshCode, noOverflow: r.after.pageWidth === r.width, readingWidthCorrect: r.after.width === Math.min(704, r.before.width), toolbarClear: r.after.toolbarClear, nativeCopy: r.nativeCopy, languageOpenEscape: r.languageOpenEscape, editingUndo: r.editingUndo, retainedCodeScroll: r.retainedCodeScroll, scopeRollback: r.scopeRollback, errors: r.errors })) }, null, 2));
+  console.log(JSON.stringify({ ok: true, actualProductionComponent: true, syntheticStateOnly: true, networkBlocked: true, output, checks: reports.map(r => ({ width: r.width, freshCode: r.freshCode, surfaceParity:r.surfaceParity, noOverflow: r.after.pageWidth === r.width, readingWidthCorrect: r.after.width === Math.min(704, r.before.width), toolbarClear: r.after.toolbarClear, nativeCopy: r.nativeCopy, languageOpenEscape: r.languageOpenEscape, editingUndo: r.editingUndo, retainedCodeScroll: r.retainedCodeScroll, scopeRollback: r.scopeRollback, errors: r.errors })) }, null, 2));
 } finally { await browser.close(); }

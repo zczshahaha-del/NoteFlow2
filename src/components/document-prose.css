@@ -1,7 +1,7 @@
-/* Reading grammar informed by the inspected Notion page. Shared tokens own
-   scale/width; preserve the editor, code controls, selection and note source. */
+/* One reading grammar for saved notes, draft bodies and editable review.
+   Display only: no document transformation, counters or source changes. */
 .document-canvas.nf-prose-refined .note-page { max-width: var(--nf-reading-width) !important; }
-.document-canvas.nf-prose-refined .note-content {
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) {
   --prose-ink: #2c2c2b;
   --prose-code: #f8f7f5;
   --prose-inline: #f3f2ef;
@@ -14,6 +14,7 @@
   --prose-operator: #8b641e;
   --prose-inline-ink: #c44034;
   --prose-mint: #e9f2ec;
+  --prose-warning: #fbf3df;
   color: var(--prose-ink) !important;
   font-family: var(--nf-font-ui);
   font-size: var(--nf-body-size) !important;
@@ -21,7 +22,7 @@
   line-height: var(--nf-body-leading) !important;
 }
 
-.theme-dark .document-canvas.nf-prose-refined .note-content {
+.theme-dark :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) {
   --prose-ink: #e6e5df;
   --prose-code: #292927;
   --prose-inline: #33332f;
@@ -34,73 +35,74 @@
   --prose-operator: #d6b574;
   --prose-inline-ink: #f39c91;
   --prose-mint: #27372e;
+  --prose-warning: #3b3425;
 }
 
-.document-canvas.nf-prose-refined .note-content :is(h1, h2, h3, h4, h5, h6) {
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(h1, h2, h3, h4, h5, h6) {
   color: var(--prose-ink) !important;
   font-weight: 600 !important;
   line-height: 1.3 !important;
   letter-spacing: normal !important;
 }
 
-.document-canvas.nf-prose-refined .note-content h1 {
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) h1 {
   margin: 32px 0 12px !important;
   font-size: 30px !important;
 }
 
-.document-canvas.nf-prose-refined .note-content h1[data-document-title],
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) h1[data-document-title],
 .document-canvas.nf-prose-refined .note-page:has(.document-header[data-title-mode="body"]) .note-content > h1:first-child {
   font-size: var(--nf-title-size) !important; font-weight: 700 !important;
   line-height: 1.2 !important; margin-bottom: 24px !important;
 }
 
-.document-canvas.nf-prose-refined .note-content h2 {
-  margin: 30px 0 10px !important;
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) h2 {
+  margin: 32px 0 8px !important;
   font-size: var(--nf-heading-size) !important;
 }
 
-.document-canvas.nf-prose-refined .note-content h3 {
-  margin: 24px 0 8px !important;
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) h3 {
+  margin: 24px 0 6px !important;
   font-size: var(--nf-subheading-size) !important;
 }
 
-.document-canvas.nf-prose-refined .note-content h4 {
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) h4 {
   margin: 20px 0 8px !important;
   font-size: 18px !important;
 }
-.document-canvas.nf-prose-refined .note-content :is(h5, h6) { margin: 18px 0 8px !important; font-size: 16px !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(h5, h6) { margin: 18px 0 8px !important; font-size: 16px !important; }
 
-.document-canvas.nf-prose-refined .note-content p {
-  margin: 10px 0 !important;
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) p {
+  margin: 6px 0 !important;
   color: var(--prose-ink) !important;
   font-size: var(--nf-body-size) !important;
   line-height: var(--nf-body-leading) !important;
 }
 
-.document-canvas.nf-prose-refined .note-content li {
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) li {
   color: var(--prose-ink) !important;
   font-size: var(--nf-body-size) !important;
   line-height: var(--nf-body-leading) !important;
 }
-.document-canvas.nf-prose-refined .note-content :is(ul, ol) { margin: 8px 0 !important; padding-inline-start: 24px !important; }
-.document-canvas.nf-prose-refined .note-content li { margin: 4px 0 !important; }
-.document-canvas.nf-prose-refined .note-content li p { margin: 0 !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(ul, ol) { margin: 8px 0 !important; padding-inline-start: 24px !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) li { margin: 2px 0 !important; padding-block: 0 !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) li p { margin: 0 !important; }
 
-.document-canvas.nf-prose-refined .note-content strong {
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) strong {
   color: inherit !important;
   font-weight: 600 !important;
 }
 
-.document-canvas.nf-prose-refined .note-content > :first-child {
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) > :first-child {
   margin-top: 0 !important;
 }
 
-.document-canvas.nf-prose-refined .note-content hr {
-  margin: 32px 0 !important;
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) hr {
+  margin: 24px 0 !important;
   background: var(--prose-line) !important;
 }
 
-.document-canvas.nf-prose-refined .note-content code {
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) code {
   background: var(--prose-inline) !important;
   color: var(--prose-inline-ink) !important;
   padding: 2px 5px !important;
@@ -111,85 +113,143 @@
   -webkit-box-decoration-break: clone;
 }
 
-.document-canvas.nf-prose-refined .note-content .code-block,
-.document-canvas.nf-prose-refined .note-content pre {
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-block,
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) pre {
   margin: 16px 0 !important;
   border: 0 !important;
   border-radius: 10px !important;
   background: var(--prose-code) !important;
   box-shadow: none !important;
 }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-block { position: relative; overflow: visible !important; }
 
-.document-canvas.nf-prose-refined .note-content .code-block pre,
-.document-canvas.nf-prose-refined .note-content pre.code-pre,
-.document-canvas.nf-prose-refined .note-content > pre {
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-block pre,
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) pre.code-pre,
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) > pre {
   margin: 0 !important;
-  /* The real language/copy controls need a stable row above the first line.
-     Unlike the static study, do not remove controls or let hover obscure code. */
-  padding: 44px 22px 22px !important;
+  /* Controls occupy their own quiet row, never an overlay on code. */
+  padding: 8px 18px 18px !important;
   overflow: auto !important;
   scrollbar-width: thin;
   scrollbar-color: var(--prose-line) transparent;
 }
 
-.document-canvas.nf-prose-refined .note-content .code-block pre code,
-.document-canvas.nf-prose-refined .note-content pre code {
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-block pre code,
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) pre code {
   background: transparent !important;
   color: var(--prose-ink) !important;
   padding: 0 !important;
   border-radius: 0 !important;
-  font-family: var(--nf-font-mono);
+  font-family: var(--nf-font-mono) !important;
   font-size: 13.6px !important;
   font-weight: 400 !important;
   line-height: 1.5 !important;
   white-space: pre !important;
 }
 
-.document-canvas.nf-prose-refined .note-content .token-keyword { color: var(--prose-blue) !important; font-weight: 400 !important; }
-.document-canvas.nf-prose-refined .note-content .token-string { color: var(--prose-green) !important; }
-.document-canvas.nf-prose-refined .note-content .token-number { color: var(--prose-number) !important; }
-.document-canvas.nf-prose-refined .note-content .token-comment { color: var(--prose-comment) !important; }
-.document-canvas.nf-prose-refined .note-content .token-function { color: var(--prose-pink) !important; font-weight: 400 !important; }
-.document-canvas.nf-prose-refined .note-content :is(.token-operator, .token-property, .token-key) { color: var(--prose-operator) !important; font-weight: 400 !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.token-keyword, .chat-token-keyword) { color: var(--prose-blue) !important; font-weight: 400 !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.token-string, .chat-token-string) { color: var(--prose-green) !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.token-number, .chat-token-number) { color: var(--prose-number) !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.token-comment, .chat-token-comment) { color: var(--prose-comment) !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.token-function, .chat-token-function) { color: var(--prose-pink) !important; font-weight: 400 !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.token-operator, .token-property, .token-key, .chat-token-operator, .chat-token-property, .chat-token-key) { color: var(--prose-operator) !important; font-weight: 400 !important; }
 
-.document-canvas.nf-prose-refined .note-content blockquote {
-  margin: 18px 0 !important;
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) blockquote {
+  margin: 14px 0 !important;
   border: 0 !important;
-  border-left: 3px solid var(--prose-line) !important;
+  border-left: 2px solid var(--prose-comment) !important;
   border-radius: 0 !important;
   background: transparent !important;
   color: var(--prose-ink) !important;
-  padding: 4px 16px !important;
+  padding: 2px 14px !important;
   line-height: var(--nf-body-leading) !important;
 }
 
-.document-canvas.nf-prose-refined .note-content blockquote::before {
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) blockquote::before {
   content: none !important;
 }
 
-.document-canvas.nf-prose-refined .note-content blockquote p {
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) blockquote p {
   margin: 0 !important;
   color: inherit !important;
   line-height: inherit !important;
 }
 
+
+/* Headings introduce a section; its first paragraph/list belongs to it. */
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(h1, h2, h3, h4, h5, h6) + :is(p, ul, ol) { margin-top: 4px !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) h2 + h3 { margin-top: 16px !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) li::marker { color: var(--prose-comment) !important; font-weight: 400 !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(ul, ol) :is(ul, ol) { margin-block: 3px !important; }
+
+/* No floating white capsule/shadow. The language anchors a slim utility row. */
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-toolbar {
+  position: relative !important; inset: auto !important; min-height: 28px !important;
+  padding: 4px 8px 0 !important; background: transparent !important; border: 0 !important;
+  cursor: default; border-radius: 10px 10px 0 0;
+}
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-toolbar-actions {
+  display: flex !important; width: 100%; height: 24px !important; min-width: 0;
+  justify-content: space-between; align-items: center; gap: 8px !important;
+  padding: 0 !important; border: 0 !important; border-radius: 0 !important;
+  background: transparent !important; box-shadow: none !important; opacity: 1 !important;
+  color: var(--prose-comment) !important; font: 400 11px/20px var(--nf-font-ui) !important;
+}
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.code-toolbar-left, .code-window-dots, .code-fold-button) { display: none !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.code-language-trigger, .code-copy-button) {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 0 !important;
+  width: auto !important; height: 24px !important; margin: 0 !important;
+  padding: 0 7px !important; border: 0 !important; border-radius: 4px !important;
+  background: transparent !important; box-shadow: none !important;
+  color: var(--prose-comment) !important; font: 400 11px/20px var(--nf-font-ui) !important;
+}
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-language-trigger { max-width: 180px !important; gap: 6px !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.code-language-trigger, .code-copy-button):hover { background: var(--prose-line) !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-language-arrow { width: 5px !important; height: 5px !important; border-width: 0 1px 1px 0 !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button { opacity: 0; transition: opacity 120ms ease; overflow: visible !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.code-block:hover, .code-block:focus-within) .code-copy-button { opacity: 1; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button:is(:focus-visible, .is-copied) { opacity: 1; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button::before,
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button::after { content: none !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-tooltip { display: none !important; }
+
+/* Table hierarchy stays quiet and compact, without turning into a large card. */
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.tableWrapper, .chat-table-scroll) { max-width: 100%; margin-block: 14px; overflow-x: auto; overscroll-behavior-inline: contain; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) table { width: 100%; margin: 14px 0 !important; border-collapse: collapse; table-layout: fixed; font-size: 14px; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(th, td) { border: 1px solid var(--prose-line) !important; padding: 8px 12px !important; color: var(--prose-ink) !important; background: transparent; font-size: 14px !important; line-height: 1.5 !important; font-weight: 400; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) th { background: var(--prose-code) !important; font-weight: 600 !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(th, td) > p { margin: 0 !important; font-size: inherit !important; line-height: inherit !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) blockquote[data-reading-callout] { border: 0 !important; border-radius: 6px !important; padding: 12px 14px !important; background: var(--prose-mint) !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) blockquote[data-reading-callout="warning"] { background: var(--prose-warning) !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.tableWrapper, .chat-table-scroll) > table { margin: 0 !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button.is-copied { color: var(--prose-green) !important; background: var(--prose-mint) !important; }
+@media (hover: none), (pointer: coarse) {
+  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button { opacity: 1; min-width: 44px !important; min-height: 44px; height: 44px !important; }
+  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-language-trigger { min-height: 44px; height: 44px !important; }
+  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-toolbar-actions { height: 44px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button { transition: none; }
+}
+
 @media (max-width: 480px) {
-  .document-canvas.nf-prose-refined .note-content h1 { font-size: 28px !important; }
-  .document-canvas.nf-prose-refined .note-content h1[data-document-title],
+  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) h1 { font-size: 28px !important; }
+  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) h1[data-document-title],
   .document-canvas.nf-prose-refined .note-page:has(.document-header[data-title-mode="body"]) .note-content > h1:first-child { font-size: 32px !important; }
-  .document-canvas.nf-prose-refined .note-content .code-block pre,
-  .document-canvas.nf-prose-refined .note-content pre.code-pre,
-  .document-canvas.nf-prose-refined .note-content > pre { padding-inline: 16px !important; }
-  .document-canvas.nf-prose-refined .note-content blockquote { padding: 4px 12px !important; }
+  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-block pre,
+  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) pre.code-pre,
+  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) > pre { padding-inline: 14px !important; }
+  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) blockquote { padding: 2px 12px !important; }
 }
 
 @media (forced-colors: active) {
-  .document-canvas.nf-prose-refined .note-content,
-  .theme-dark .document-canvas.nf-prose-refined .note-content {
+  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose),
+  .theme-dark :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) {
     --prose-ink: CanvasText;
     --prose-code: Canvas;
     --prose-inline: Canvas;
     --prose-mint: Canvas;
+    --prose-warning: Canvas;
     --prose-line: GrayText;
     --prose-blue: CanvasText;
     --prose-green: CanvasText;
@@ -199,5 +259,5 @@
     --prose-operator: CanvasText;
     --prose-inline-ink: CanvasText;
   }
-  .document-canvas.nf-prose-refined .note-content :is(.code-block, blockquote) { border: 1px solid GrayText !important; }
+  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.code-block, blockquote) { border: 1px solid GrayText !important; }
 }
