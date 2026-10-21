@@ -59,6 +59,41 @@ class RevisePreviewPayload(BaseModel):
     memoryEnabled: bool = True
 
 
+class QuickSelectionPayload(BaseModel):
+    noteId: str
+    selectedMarkdown: str = Field(min_length=1, max_length=16000)
+    currentDraft: Optional[str] = Field(default=None, max_length=24000)
+    instruction: str = Field(default="", max_length=2000)
+    memoryEnabled: bool = True
+
+
+@router.post("/note-selection-rewrite")
+async def rewrite_selection(payload: QuickSelectionPayload, user: CurrentUser = Depends(get_current_user)):
+    # The live editor owns the position snapshot, including unsaved text and
+    # repeated phrases. This endpoint generates text only: it cannot write notes
+    # or create durable previews. Adoption uses the editor's undo transaction.
+    if not payload.selectedMarkdown.strip():
+        raise HTTPException(status_code=400, detail="请先选中要修改的文字。")
+    async with AsyncSessionLocal() as session:
+        note = await _get_note(session, user.id, payload.noteId)
+        memory_context = ""
+        if await _effective_memory_enabled(session, user.id, payload.memoryEnabled):
+            memory_context = await build_memory_context(session, user.id, query=payload.instruction,
+                scopes=["note_editing"], memory_types=["writing_style", "preference", "constraint"])
+        instruction = payload.instruction.strip() or "润色选中文字：保留原意，改善表达，不扩写，不添加事实。"
+        try:
+            if payload.currentDraft is None:
+                result = await generate_edit_preview(note_title=note.title, target_type="selection",
+                    target_content=payload.selectedMarkdown, instruction=instruction, memory_context=memory_context)
+            else:
+                result = await revise_edit_preview(note_title=note.title, target_type="selection",
+                    original_content=payload.selectedMarkdown, current_preview=payload.currentDraft,
+                    instruction=instruction, memory_context=memory_context)
+        except EditGenerationError as error:
+            raise HTTPException(status_code=502, detail=str(error)) from error
+        return {"newContent": result.new_content}
+
+
 class UpdatePreviewContentPayload(BaseModel):
     newContent: str
     expectedUpdatedAt: str = Field(min_length=1)

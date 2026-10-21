@@ -14,6 +14,7 @@ import {
   Quote,
   RefreshCw,
   Strikethrough,
+  Sparkles,
   Underline as UnderlineIcon,
   X,
 } from "lucide-react";
@@ -35,6 +36,8 @@ import { OperationFeedback } from './OperationFeedback';
 import { getNoteOutline, type NoteSectionRecord } from "../services/notes";
 import { hasMatchingDocumentTitle } from "../utils/documentHeader";
 import { getDocumentHeadings, getDocumentNumberedHeadings, getEditorMarkdown, type TiptapHeading } from "../editor/documentCache";
+import { captureSelectionEdit, type SelectionEditSnapshot } from "../editor/quickSelectionEdit";
+import SelectionQuickEdit from "./SelectionQuickEdit";
 
 const VersionHistoryPanel = lazy(() => import("./VersionHistoryPanel"));
 const extensions = createNoteFlowTiptapExtensions();
@@ -159,10 +162,12 @@ function NoteSelectionToolbar({
   editor,
   onAddToChat,
   onAddLink,
+  onQuickEdit,
 }: {
   editor: Editor;
   onAddToChat: () => void;
   onAddLink: () => void;
+  onQuickEdit: () => void;
 }) {
   // Keep selection formatting reactive without redrawing the note, outline
   // and chapter rail for every caret move. Only these primitive flags matter.
@@ -183,6 +188,7 @@ function NoteSelectionToolbar({
   });
   return (
     <>
+      <button type="button" className="selection-toolbar-button selection-ai-button" onMouseDown={event => event.preventDefault()} onClick={onQuickEdit} aria-label="AI 改一下"><Sparkles size={15} />AI 改一下</button>
       <SelectionToolbarButton label="加入对话" onClick={onAddToChat}>
         <MessageSquarePlus size={15} />
       </SelectionToolbarButton>
@@ -302,6 +308,7 @@ function NoteEditorDocument({ onReady, presented = true }: {
   const [bodyEditing, setBodyEditing] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkDraft, setLinkDraft] = useState("");
+  const [quickEdit, setQuickEdit] = useState<{ editor: Editor; snapshot: SelectionEditSnapshot } | null>(null);
   const [uploadError, setUploadError] = useState('');
   const [uploadBusy, setUploadBusy] = useState(false);
   const uploadQueueRef = useRef<File[]>([]);
@@ -338,6 +345,10 @@ function NoteEditorDocument({ onReady, presented = true }: {
   useEffect(() => () => {
     uploadControllerRef.current?.abort(); uploadQueueRef.current = [];
   }, [selectedFileId]);
+
+  useEffect(() => { setQuickEdit(null); }, [editor]);
+  const showSelectionToolbar = useCallback((props: Parameters<typeof selectionToolbarShouldShow>[0]) =>
+    quickEdit?.editor !== props.editor && selectionToolbarShouldShow(props), [quickEdit]);
 
   const documentState = useEditorState({
     editor,
@@ -669,18 +680,24 @@ function NoteEditorDocument({ onReady, presented = true }: {
                     editor={editor}
                     pluginKey="noteSelectionToolbar"
                     appendTo={selectionToolbarAppendTo}
-                    shouldShow={selectionToolbarShouldShow}
+                    shouldShow={showSelectionToolbar}
                     options={toolbarOptions}
                     className="selection-toolbar tiptap-selection-toolbar"
+                    data-quick-edit-open={quickEdit?.editor === editor ? "true" : undefined}
                     aria-label="选中文字格式工具栏"
                   >
                     <NoteSelectionToolbar
                       editor={editor}
                       onAddToChat={addCurrentSelectionToChat}
                       onAddLink={() => setLinkOpen(true)}
+                      onQuickEdit={() => {
+                        const snapshot = captureSelectionEdit(editor);
+                        if (snapshot) setQuickEdit({ editor, snapshot });
+                      }}
                     />
                   </BubbleMenu>}
                   <EditorContent editor={editor} />
+                  {quickEdit?.editor === editor && <SelectionQuickEdit key={selectedFile.id} editor={editor} noteId={selectedFile.id} snapshot={quickEdit.snapshot} onClose={() => setQuickEdit(null)} />}
                 </div>
               </article>
             </div>

@@ -40,6 +40,7 @@
     "test:editor-document-cache": "node --experimental-strip-types scripts/editor-document-cache-test.ts",
     "test:local-note-journal": "node scripts/local-note-journal-test.mjs",
     "test:edit-preview": "node scripts/edit-preview-browser-test.mjs",
+    "test:selection-quick-edit": "node scripts/selection-quick-edit-browser-test.mjs",
     "test:wiki-links": "node --experimental-strip-types scripts/wiki-links-test.ts",
     "test:knowledge-import": "node --experimental-strip-types scripts/knowledge-import-test.ts",
     "test:markdown-diff": "node --experimental-strip-types scripts/markdown-diff-test.ts",

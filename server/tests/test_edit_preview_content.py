@@ -121,6 +121,55 @@ class EditPreviewContentTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(applied.status_code, 200, applied.text)
         self.assertEqual(applied.json()["note"]["content"], "## 原小节\n\n只替换这一句。")
 
+    async def test_quick_rewrite_generates_without_writing_or_creating_preview(self):
+        model = AsyncMock(return_value=SimpleNamespace(new_content="更清楚的表达。"))
+        with patch.object(edits, "generate_edit_preview", model):
+            response = await self.client.post("/api/note-selection-rewrite", json={
+                "noteId": "preview-note", "selectedMarkdown": "还未自动保存的选中文字。", "memoryEnabled": False,
+            })
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["newContent"], "更清楚的表达。")
+        self.assertEqual(model.call_args.kwargs["target_type"], "selection")
+        self.assertIn("不添加事实", model.call_args.kwargs["instruction"])
+        await self.assert_original_untouched()
+        async with self.sessions() as session:
+            self.assertEqual(await session.scalar(select(func.count()).select_from(NoteEditPreview)), 1)
+
+    async def test_quick_rewrite_continues_current_draft(self):
+        response = await self.client.post("/api/note-selection-rewrite", json={
+            "noteId": "preview-note", "selectedMarkdown": "最初选区", "currentDraft": "已认可的结果",
+            "instruction": "再通俗一点", "memoryEnabled": False,
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.model.call_args.kwargs["current_preview"], "已认可的结果")
+        self.assertEqual(self.model.call_args.kwargs["original_content"], "最初选区")
+        await self.assert_original_untouched()
+
+    async def test_quick_rewrite_checks_note_ownership_and_size(self):
+        async with self.sessions() as session:
+            note = await session.get(Note, "preview-note")
+            note.user_id = "another-owner"
+            await session.commit()
+        with patch.object(edits, "generate_edit_preview", AsyncMock()) as model:
+            response = await self.client.post("/api/note-selection-rewrite", json={
+                "noteId": "preview-note", "selectedMarkdown": "原文", "memoryEnabled": False,
+            })
+            self.assertEqual(response.status_code, 404)
+            oversized = await self.client.post("/api/note-selection-rewrite", json={
+                "noteId": "preview-note", "selectedMarkdown": "x" * 16001, "memoryEnabled": False,
+            })
+            self.assertEqual(oversized.status_code, 422)
+            model.assert_not_awaited()
+
+    async def test_quick_rewrite_failure_preserves_note(self):
+        from app.services.note_edit import EditGenerationError
+        with patch.object(edits, "generate_edit_preview", AsyncMock(side_effect=EditGenerationError("合成生成失败"))):
+            response = await self.client.post("/api/note-selection-rewrite", json={
+                "noteId": "preview-note", "selectedMarkdown": "选区", "memoryEnabled": False,
+            })
+        self.assertEqual(response.status_code, 502)
+        await self.assert_original_untouched()
+
     async def test_ambiguous_target_asks_before_model_or_preview_creation(self):
         model = AsyncMock()
         with patch.object(edits, "generate_edit_preview", model):

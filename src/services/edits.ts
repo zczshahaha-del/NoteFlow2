@@ -1,6 +1,18 @@
 import { apiFetch, readApiError, readApiJson } from "./api";
 import type { NoteIndexJobRecord, NoteRecord } from "./notes";
 
+export async function rewriteSelection(payload: {
+  noteId: string; selectedMarkdown: string; currentDraft?: string; instruction: string; memoryEnabled: boolean;
+}, signal: AbortSignal): Promise<string> {
+  const response = await apiFetch("/api/note-selection-rewrite", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), signal,
+  });
+  if (!response.ok) throw new Error(await readApiError(response));
+  const data = await readApiJson<{ newContent: string }>(response);
+  if (typeof data.newContent !== "string") throw new Error("修改结果格式不正确，请重试。");
+  return data.newContent;
+}
+
 export type EditPreviewStatus = "preview" | "applied" | "cancelled" | "expired" | string;
 export type EditTargetType = "selection" | "section" | "note" | "insert" | "delete" | string;
 
