@@ -93,10 +93,13 @@ async function metrics(page) {
     const style = el => { const s = getComputedStyle(el); return { size: s.fontSize, weight: s.fontWeight, leading: s.lineHeight, color: s.color, background: s.backgroundColor }; };
     const pre = root.querySelector('pre');
     const toolbar = root.querySelector('.code-toolbar-actions');
+    const language = root.querySelector('.code-language-trigger');
+    const languageStyle = getComputedStyle(language);
     const code = pre.querySelector('code');
     const colors = [...root.querySelectorAll('[class^="token-"]')].map(el => ({ type: el.className, color: getComputedStyle(el).color }));
     const contentOnly=root.cloneNode(true);contentOnly.querySelectorAll('.code-toolbar').forEach(el=>el.remove());
     return { body: style(root), paragraph: style(root.querySelector('p')), heading: style(root.querySelector('h2')), code: style(code), inline: style(root.querySelector('p code')), quote: style(root.querySelector('blockquote')),
+      language: {...style(language), borderWidth:languageStyle.borderTopWidth, borderStyle:languageStyle.borderTopStyle, borderColor:languageStyle.borderTopColor, opacity:languageStyle.opacity, width:language.getBoundingClientRect().width, height:language.getBoundingClientRect().height},
       width: root.getBoundingClientRect().width, pageWidth: document.documentElement.scrollWidth, viewport: innerWidth, prePadding: getComputedStyle(pre).padding,
       toolbarClear: toolbar.getBoundingClientRect().bottom <= code.getBoundingClientRect().top,
       toolbarGeometry: { bottom: toolbar.getBoundingClientRect().bottom, codeTop: code.getBoundingClientRect().top, height: toolbar.getBoundingClientRect().height },
@@ -183,7 +186,7 @@ async function sharedGrammar(page) {
   await page.locator('.document-canvas .note-content').waitFor();
   const shape=()=>page.locator('.note-content').evaluate(root=>{
     const s=selector=>{const e=root.querySelector(selector),c=getComputedStyle(e);return {font:c.fontFamily,size:c.fontSize,weight:c.fontWeight,line:c.lineHeight,margin:c.margin,padding:c.padding,background:c.backgroundColor,color:c.color};};
-    return {bodySize:getComputedStyle(root).fontSize,heading:s('h2'),paragraph:s('p'),list:s('ol'),item:s('li'),code:s('pre code'),quote:s('blockquote'),note:s('blockquote[data-reading-callout="note"]'),warning:s('blockquote[data-reading-callout="warning"]'),cell:s('td'),toolbar:s('.code-toolbar-actions')};
+    return {bodySize:getComputedStyle(root).fontSize,heading:s('h2'),paragraph:s('p'),list:s('ol'),item:s('li'),code:s('pre code'),quote:s('blockquote'),note:s('blockquote[data-reading-callout="note"]'),warning:s('blockquote[data-reading-callout="warning"]'),cell:s('td'),toolbar:s('.code-toolbar-actions'),language:s('.code-language-trigger')};
   });
   const baseline=await shape(), reports=[];
   await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));
@@ -277,6 +280,14 @@ try {
     assert.equal(after.code.weight, '400');
     assert.equal(after.code.leading, '20.4px');
     assert.equal(after.prePadding, width === 320 ? '8px 14px 18px' : '8px 18px 18px');
+    assert.equal(after.language.size, '13px', 'Language selection must not shrink into 11px utility text');
+    assert.equal(after.language.borderWidth, '1px');
+    assert.equal(after.language.borderStyle, 'solid');
+    assert.equal(after.language.opacity, '1', 'Language select stays visible without hover');
+    assert(after.language.width >= 80);
+    assert(after.language.height >= (width === 320 ? 44 : 30));
+    assert(ratio(after.language.borderColor, 'rgb(248, 247, 245)') >= 3);
+    assert(ratio(after.language.color, after.language.background) >= 4.5);
     assert.equal(after.inline.background, 'rgb(243, 242, 239)');
     assert.equal(after.quote.background, 'rgba(0, 0, 0, 0)');
     const callouts=page.locator('blockquote[data-reading-callout]');
@@ -317,9 +328,11 @@ try {
     await page.waitForFunction(() => window.proseTest.api.copied.length === 1);
     assert.equal(await page.evaluate(() => window.proseTest.api.copied[0]), before.codeText[0]);
     const language = block.locator('.code-language-trigger');
+    await page.screenshot({ path: join(output, 'language-' + width + '.png') });
     await language.click();
     await page.getByRole('listbox', { name: '代码语言', exact: true }).waitFor();
     await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === '搜索代码语言');
+    await page.screenshot({ path: join(output, 'language-menu-' + width + '.png') });
     await page.keyboard.press('Escape');
     await page.getByRole('listbox', { name: '代码语言', exact: true }).waitFor({ state: 'detached' });
     await copy.focus();
@@ -345,6 +358,8 @@ try {
     assert.equal(dark.quote.background, 'rgba(0, 0, 0, 0)');
     for (const token of dark.colors) assert(ratio(token.color, 'rgb(41, 41, 39)') >= 4.5, JSON.stringify(token));
     assert(ratio(dark.inline.color, dark.inline.background) >= 4.5);
+    assert(ratio(dark.language.color, dark.language.background) >= 4.5);
+    assert(ratio(dark.language.borderColor, 'rgb(41, 41, 39)') >= 3);
     await page.screenshot({ path: join(output, 'dark-' + width + '.png') });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const reduced = await metrics(page);
