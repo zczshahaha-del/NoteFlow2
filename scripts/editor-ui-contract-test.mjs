@@ -48,7 +48,7 @@ assert.doesNotMatch(selectionStyles, /\.note-content|\.document-scroll|\.selecti
 assert.match(editor, /document-canvas nf-prose-refined/);
 assert.match(proseStyles, /\.document-canvas\.nf-prose-refined \.note-content/);
 assert.match(proseStyles, /font-size: var\(--nf-body-size\) !important;[\s\S]*?font-weight: 400;[\s\S]*?line-height: var\(--nf-body-leading\) !important/);
-assert.match(proseStyles, /padding: 44px 18px 18px !important/);
+assert.match(proseStyles, /padding: 44px 18px !important/);
 assert.match(proseStyles, /\.code-toolbar \{\s*position: absolute !important; inset: 7px 8px auto auto !important/);
 assert.match(proseStyles, /\.code-toolbar-actions \{[\s\S]*?width: max-content;[\s\S]*?justify-content: flex-end/);
 assert.doesNotMatch(proseStyles, /\.code-copy-tooltip\s*\{[^}]*display:\s*none/, 'Reading styles must retain the original copy hint');

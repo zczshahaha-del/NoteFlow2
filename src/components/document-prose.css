@@ -132,8 +132,8 @@
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) pre.code-pre,
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) > pre {
   margin: 0 !important;
-  /* Restore the original top-right controls; keep code below their bounds. */
-  padding: 44px 18px 18px !important;
+  /* Reserve the controls above code and balance the same space below it. */
+  padding: 44px 18px !important;
   overflow: auto !important;
   scrollbar-width: thin;
   scrollbar-color: var(--prose-line) transparent;
@@ -236,7 +236,7 @@
   :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button { opacity: 1; min-width: 44px !important; min-height: 44px; height: 44px !important; }
   :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-language-trigger { min-height: 44px; height: 44px !important; }
   :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-toolbar-actions { height: 50px !important; }
-  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-block pre { padding-top: 64px !important; }
+  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-block pre { padding-block: 64px !important; }
 }
 @media (prefers-reduced-motion: reduce) {
   :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button { transition: none; }

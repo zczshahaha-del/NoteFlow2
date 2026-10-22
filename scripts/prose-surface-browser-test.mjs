@@ -224,7 +224,7 @@ async function sharedGrammar(page) {
   await page.locator('.document-canvas .note-content').waitFor();
   const shape=()=>page.locator('.note-content').evaluate(root=>{
     const s=selector=>{const e=root.querySelector(selector),c=getComputedStyle(e);return {font:c.fontFamily,size:c.fontSize,weight:c.fontWeight,line:c.lineHeight,margin:c.margin,padding:c.padding,background:c.backgroundColor,color:c.color};};
-    return {bodySize:getComputedStyle(root).fontSize,heading:s('h2'),paragraph:s('p'),list:s('ol'),item:s('li'),code:s('pre code'),quote:s('blockquote'),note:s('blockquote[data-reading-callout="note"]'),warning:s('blockquote[data-reading-callout="warning"]'),cell:s('td'),toolbar:s('.code-toolbar-actions'),language:s('.code-language-trigger'),copyDivider:getComputedStyle(root.querySelector('.code-copy-button')).borderLeftWidth};
+    return {bodySize:getComputedStyle(root).fontSize,heading:s('h2'),paragraph:s('p'),list:s('ol'),item:s('li'),code:s('pre code'),codePadding:getComputedStyle(root.querySelector('pre')).padding,quote:s('blockquote'),note:s('blockquote[data-reading-callout="note"]'),warning:s('blockquote[data-reading-callout="warning"]'),cell:s('td'),toolbar:s('.code-toolbar-actions'),language:s('.code-language-trigger'),copyDivider:getComputedStyle(root.querySelector('.code-copy-button')).borderLeftWidth};
   });
   const baseline=await shape(), reports=[];
   await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));
@@ -320,7 +320,7 @@ try {
     assert.equal(after.code.size, '13.6px');
     assert.equal(after.code.weight, '400');
     assert.equal(after.code.leading, '20.4px');
-    assert.equal(after.prePadding, width === 320 ? '64px 14px 18px' : '44px 18px 18px');
+    assert.equal(after.prePadding, width === 320 ? '64px 14px' : '44px 18px', 'Balance the space above and below code without adding source lines');
     assert.equal(after.language.size, '14px', 'Restore the original readable language control');
     assert.equal(after.controls.borderWidth, '1px');
     assert.equal(after.language.opacity, '1', 'Language select stays visible without hover');
