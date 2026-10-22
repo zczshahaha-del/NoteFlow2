@@ -235,6 +235,9 @@ try {
   // Normal-motion integration: same production component, no auth/network actions.
   const auditSource = `(()=>{
     window.clothLabels=new Set();
+    window.clothArcRadii=new Set();
+    const arc=CanvasRenderingContext2D.prototype.arc;
+    CanvasRenderingContext2D.prototype.arc=function(x,y,radius,...args){if(this.canvas.classList.contains('cl-fx'))window.clothArcRadii.add(radius);return arc.call(this,x,y,radius,...args)};
     const fillText=CanvasRenderingContext2D.prototype.fillText;
     CanvasRenderingContext2D.prototype.fillText=function(text,...args){window.clothLabels.add(String(text));return fillText.call(this,text,...args)};
     const frames=new Set(), observers={resize:new Set(),intersection:new Set(),mutation:new Set()}, listeners=[];
@@ -308,8 +311,12 @@ try {
       return {x:r.x+x+12,y:r.y+y+420,w};
     });
     // Lower-left hem pulled upwards; releasing then editing must recover and remain usable.
+    const beforeDragFrames=Number(await scene.getAttribute('data-frames'));
     const p=await grip();await page.mouse.move(p.x,p.y);await page.mouse.down();await page.mouse.move(Math.max(14,p.x-120),p.y-200,{steps:18});
     assert.equal(await scene.getAttribute('data-grab'),'holding');
+    await page.waitForFunction(frames=>Number(document.querySelector('.cl-scene').dataset.frames)>frames,beforeDragFrames);
+    assert.deepEqual(await page.evaluate(()=>[...window.clothArcRadii]),[4.2],'keep the cloth pins but never draw the extra grab-position circle');
+    if(process.env.NOTEFLOW_AUTH_SCREENSHOT_DIR)await page.screenshot({path:process.env.NOTEFLOW_AUTH_SCREENSHOT_DIR+'/noteflow-auth-cloth-dragging-'+width+'.png'});
     await page.mouse.up();assert.equal(await scene.getAttribute('data-grab'),'idle');
     await page.getByRole('button',{name:'使用密码登录',exact:true}).click();
     const password=page.locator('input[autocomplete="current-password"]');await password.fill('synthetic-only');
@@ -363,7 +370,7 @@ try {
         return Math.abs((top+bottom)/2-innerHeight/2)<1;
       });
     }
-    reports.push({width,normalEntrance:true,landingSeconds:3.08,screenEdgeEntrance:true,auxiliaryInertUntilArrival:true,viewportCentered:true,dragRebound:true,pointerInterruptions:true,inputDuringEntrance:true,strictModeMountUnmountCleanup:true});
+    reports.push({width,normalEntrance:true,landingSeconds:3.08,screenEdgeEntrance:true,auxiliaryInertUntilArrival:true,viewportCentered:true,dragRebound:true,noGrabPositionCircle:true,pointerInterruptions:true,inputDuringEntrance:true,strictModeMountUnmountCleanup:true});
     await context.close();
   }
   // No Canvas at all: the same native form still submits to the existing auth service.

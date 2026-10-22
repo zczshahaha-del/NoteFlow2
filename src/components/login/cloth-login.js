@@ -372,7 +372,6 @@ function createClothLogin(root,cleanups,onEntranceReady) {
       for(const l of links){if(!l.broken||l.type!=='edge')continue;const a=projected[l.a],b=projected[l.b],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;
         for(let j=0;j<3;j++){const q=.2+j*.3;fc.beginPath();fc.moveTo(a.x+dx*q,a.y+dy*q);fc.lineTo(a.x+dx*q-dy/d*3,a.y+dy*q+dx/d*3);fc.stroke();}}
       fc.restore();}
-    if(grab){const p=grabPoint();const q=project(p);fc.save();fc.strokeStyle=palette.metal;fc.globalAlpha=.8;fc.lineWidth=1.2;fc.beginPath();fc.arc(q.x,q.y,7,0,Math.PI*2);fc.stroke();fc.restore();}
     drawActor();
     scene.dataset.entrance=entryTime<LAND?'entering':entryTime<END?'settling':'ready';scene.dataset.time=entryTime.toFixed(3);
     if(!entranceAnnounced&&entryTime>=LAND){entranceAnnounced=true;onEntranceReady?.();}
