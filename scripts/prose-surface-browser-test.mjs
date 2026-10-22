@@ -102,7 +102,7 @@ async function metrics(page) {
     const contentOnly=root.cloneNode(true);contentOnly.querySelectorAll('.code-toolbar').forEach(el=>el.remove());
     return { body: style(root), paragraph: style(root.querySelector('p')), heading: style(root.querySelector('h2')), code: style(code), inline: style(root.querySelector('p code')), quote: style(root.querySelector('blockquote')),
       language: {...style(language), borderWidth:languageStyle.borderTopWidth, borderStyle:languageStyle.borderTopStyle, borderColor:languageStyle.borderTopColor, opacity:languageStyle.opacity, width:language.getBoundingClientRect().width, height:language.getBoundingClientRect().height},
-      controls: {background:getComputedStyle(toolbar).backgroundColor, borderWidth:getComputedStyle(toolbar).borderTopWidth, top:toolbarRect.top-blockRect.top, right:blockRect.right-toolbarRect.right, copyGap:root.querySelector('.code-copy-button').getBoundingClientRect().left-language.getBoundingClientRect().right},
+      controls: {background:getComputedStyle(toolbar).backgroundColor, borderWidth:getComputedStyle(toolbar).borderTopWidth, top:toolbarRect.top-blockRect.top, right:blockRect.right-toolbarRect.right, copyGap:root.querySelector('.code-copy-button').getBoundingClientRect().left-language.getBoundingClientRect().right, copyDivider:getComputedStyle(root.querySelector('.code-copy-button')).borderLeftWidth},
       width: root.getBoundingClientRect().width, pageWidth: document.documentElement.scrollWidth, viewport: innerWidth, prePadding: getComputedStyle(pre).padding,
       toolbarClear: toolbar.getBoundingClientRect().bottom <= code.getBoundingClientRect().top,
       toolbarGeometry: { bottom: toolbar.getBoundingClientRect().bottom, codeTop: code.getBoundingClientRect().top, height: toolbar.getBoundingClientRect().height },
@@ -130,6 +130,7 @@ async function checkCopyHint(page, block, screenshotName) {
   assert.equal(hovered.opacity, '1');
   assert.equal(hovered.text, '拷贝');
   assert(hovered.noCodeOverlap, 'Copy hint must not cover code');
+  assert.equal(await copy.evaluate(el=>getComputedStyle(el).borderLeftWidth),'0px','Hover must not split the shared control group with a vertical line');
   await page.screenshot({path:join(output, screenshotName+'.png')});
   const before = await page.evaluate(() => window.proseTest.api.copied.length);
   await copy.click();
@@ -140,6 +141,7 @@ async function checkCopyHint(page, block, screenshotName) {
   assert.equal(success.text, '已拷贝');
   assert.equal(success.opacity, '1');
   assert(success.noCodeOverlap);
+  assert.equal(await copy.evaluate(el=>getComputedStyle(el).borderLeftWidth),'0px','Success must not restore the unwanted divider');
   await page.mouse.move(0, 0);
   await page.waitForFunction(() => !document.querySelector('.note-content .code-copy-button.is-copied'));
   await settleStyles(copy);
@@ -222,7 +224,7 @@ async function sharedGrammar(page) {
   await page.locator('.document-canvas .note-content').waitFor();
   const shape=()=>page.locator('.note-content').evaluate(root=>{
     const s=selector=>{const e=root.querySelector(selector),c=getComputedStyle(e);return {font:c.fontFamily,size:c.fontSize,weight:c.fontWeight,line:c.lineHeight,margin:c.margin,padding:c.padding,background:c.backgroundColor,color:c.color};};
-    return {bodySize:getComputedStyle(root).fontSize,heading:s('h2'),paragraph:s('p'),list:s('ol'),item:s('li'),code:s('pre code'),quote:s('blockquote'),note:s('blockquote[data-reading-callout="note"]'),warning:s('blockquote[data-reading-callout="warning"]'),cell:s('td'),toolbar:s('.code-toolbar-actions'),language:s('.code-language-trigger')};
+    return {bodySize:getComputedStyle(root).fontSize,heading:s('h2'),paragraph:s('p'),list:s('ol'),item:s('li'),code:s('pre code'),quote:s('blockquote'),note:s('blockquote[data-reading-callout="note"]'),warning:s('blockquote[data-reading-callout="warning"]'),cell:s('td'),toolbar:s('.code-toolbar-actions'),language:s('.code-language-trigger'),copyDivider:getComputedStyle(root.querySelector('.code-copy-button')).borderLeftWidth};
   });
   const baseline=await shape(), reports=[];
   await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));
@@ -326,6 +328,7 @@ try {
     assert.equal(after.controls.top, 7, 'Language/copy group must return to the original top inset');
     assert.equal(after.controls.right, 8, 'Language/copy group must be anchored to the right, not the left');
     assert.equal(after.controls.copyGap, 3, 'Copy must remain beside the language in one control group');
+    assert.equal(after.controls.copyDivider, '0px', 'Language and copy share one outer frame without an internal vertical divider');
     assert(ratio(after.language.color, after.controls.background) >= 4.5);
     assert.equal(after.inline.background, 'rgb(243, 242, 239)');
     assert.equal(after.quote.background, 'rgba(0, 0, 0, 0)');
@@ -399,6 +402,7 @@ try {
     assert(ratio(dark.language.color, dark.controls.background) >= 4.5);
     assert.equal(dark.controls.top, 7);
     assert.equal(dark.controls.right, 8);
+    assert.equal(dark.controls.copyDivider, '0px');
     await checkCopyHint(page,block,'dark-copy-hint-'+width);
     await page.screenshot({ path: join(output, 'dark-' + width + '.png') });
     await page.emulateMedia({ reducedMotion: 'reduce' });

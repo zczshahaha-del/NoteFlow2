@@ -216,7 +216,7 @@
 }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.code-language-trigger, .code-copy-button):hover { background: var(--prose-line) !important; }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-language-arrow { width: 8px !important; height: 8px !important; border-width: 0 1.8px 1.8px 0 !important; }
-:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button { width: 32px !important; padding: 0 !important; margin-left: 3px !important; border-left: 1px solid var(--prose-control-line) !important; opacity: 1; overflow: visible !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button { width: 32px !important; padding: 0 !important; margin-left: 3px !important; border-left: 0 !important; opacity: 1; overflow: visible !important; }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.code-block:hover, .code-block:focus-within) .code-copy-button { opacity: 1; }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button:is(:focus-visible, .is-copied) { opacity: 1; }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button::before,
