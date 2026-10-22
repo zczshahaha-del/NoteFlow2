@@ -107,15 +107,16 @@
 #cloth-character-login .auth-feedback span { display:block; max-height:100%; overflow:auto; }
 #cloth-character-login .auth-feedback[data-error="true"] { color:var(--page-error); }
 #cloth-character-login .auth-feedback[data-empty="true"] { height:0; padding:0; }
+#cloth-character-login .auth-feedback[data-quiet="true"] { position:absolute; width:1px; height:1px; padding:0; margin:-1px; clip-path:inset(50%); white-space:nowrap; }
 #cloth-character-login .auth-text { border:0; background:transparent; color:var(--page-soft); padding:0 4px; font-size:12px; min-width:44px; min-height:44px; border-radius:4px; display:inline-flex; align-items:center; justify-content:center; }
 #cloth-character-login .auth-text:hover:not(:disabled) { color:var(--page-ink); text-decoration:underline; text-underline-offset:3px; }
 #cloth-character-login .auth-text:disabled { opacity:.6; cursor:default; }
 #cloth-character-login .auth-options { min-height:44px; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:0 12px; }
-#cloth-character-login .auth-destination { display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:12px; min-height:44px; }
-#cloth-character-login .auth-destination span { min-width:0; overflow-wrap:anywhere; }
-#cloth-character-login .auth-destination button { flex:none; }
-#cloth-character-login .auth-code-actions { height:44px; text-align:center; }
-#cloth-character-login .auth-send { font-variant-numeric:tabular-nums; }
+#cloth-character-login .auth-delivery { display:flex; align-items:center; gap:12px; height:44px; }
+#cloth-character-login .auth-destination { flex:1; min-width:44px; justify-content:flex-start; gap:6px; padding-inline:0; }
+#cloth-character-login .auth-destination span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#cloth-character-login .auth-destination svg { flex:none; opacity:.7; }
+#cloth-character-login .auth-send { flex:none; white-space:nowrap; font-variant-numeric:tabular-nums; }
 #cloth-character-login .cl-fallback-title { display:none; }
 /* Progressive fallback when canvas/WebGL or animation initialization is unavailable. */
 #cloth-character-login[data-renderer="fallback"] .page-main { display:flex; justify-content:center; align-items:center; min-height:600px; padding:72px 24px 32px; }

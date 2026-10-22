@@ -70,6 +70,17 @@ try {
       if(process.env.NOTEFLOW_AUTH_SCREENSHOT_DIR && width!==736)await page.screenshot({path:process.env.NOTEFLOW_AUTH_SCREENSHOT_DIR+'/noteflow-auth-cloth-'+name+'-'+width+'.png'});
     };
     const touchTargets=async()=>assert.ok(await page.locator('.auth-page button').evaluateAll(nodes=>nodes.filter(n=>n.getBoundingClientRect().width>0).every(n=>{const r=n.getBoundingClientRect();return r.width>=44 && r.height>=44})));
+    const compactDelivery=async()=>{
+      assert.equal(await page.locator('.auth-support').evaluate(n=>n.getBoundingClientRect().height),88,'delivery and account actions occupy only two rows');
+      assert.equal(await page.locator('.auth-options').evaluate(n=>n.getBoundingClientRect().height),44,'account actions must not wrap into another paragraph');
+      assert.ok(await page.locator('.auth-delivery').evaluate(n=>{
+        const r=n.getBoundingClientRect();return r.height===44 && [...n.children].every(child=>{
+          const b=child.getBoundingClientRect();return b.left>=r.left && b.right<=r.right+.1 && b.height>=44;
+        });
+      }),'editable email and resend stay on the same line, including narrow screens');
+      assert.equal(await page.locator('.auth-code-actions').count(),0);
+      await touchTargets();
+    };
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);
     const initial=await measure();
     assert.ok(initial.width>=160 && initial.width<=270);assert.equal(initial.height,48);
@@ -98,12 +109,16 @@ try {
     assert.ok(await page.getByRole('button',{name:'使用密码登录',exact:true}).evaluate(n=>n===document.activeElement && getComputedStyle(n).outlineStyle==='solid'),'keyboard button focus remains visible');
     await email.fill('owner@example.com');await page.evaluate(()=>window.authTest.hold=true);await primary.click();
     await code.waitFor();assert.equal((await measure()).y,initial.y);
+    await compactDelivery();
+    assert.equal(await page.locator('.auth-feedback').getAttribute('data-quiet'),'true','pending copy must not duplicate the primary action');
     await page.getByRole('button',{name:'注册',exact:true}).click();await release();
     assert.equal(await code.count(),0);assert.equal(await email.inputValue(),'owner@example.com');
     assert.ok(await page.evaluate(()=>window.authTest.calls[0].aborted));
     assert.equal(await page.locator('input').count(),1);assert.equal((await measure()).y,initial.y);
     await shot('register');await primary.click();await page.getByRole('status').filter({hasText:'开发环境'}).waitFor();
     assert.equal(await code.inputValue(),'314159');assert.equal((await measure()).y,initial.y);
+    await compactDelivery();
+    assert.ok(await page.locator('.auth-feedback').evaluate(n=>getComputedStyle(n).position==='absolute' && getComputedStyle(n).clipPath==='inset(50%)'),'successful sending remains announced but adds no visible paragraph');
     assert.equal(await page.evaluate(()=>window.authTest.calls.at(-1).body.purpose),'register');
     assert.equal(await page.evaluate(()=>window.authTest.completed),0,'sending never creates an account');
     await page.waitForFunction(()=>document.activeElement?.getAttribute('autocomplete')==='one-time-code');
@@ -116,6 +131,7 @@ try {
     await page.evaluate(()=>window.authTest.fail='合成失败：'+'很长的错误说明。'.repeat(40));await primary.click();
     await page.getByRole('alert').waitFor();assert.equal((await measure()).y,initial.y);
     assert.ok(await page.getByRole('alert').locator('span').evaluate(n=>n.scrollHeight>n.clientHeight && n.scrollTop===0));
+    assert.equal(await page.getByRole('alert').getAttribute('data-quiet'),'false','errors must stay visible even after a quiet success');
     await primary.click();await page.waitForFunction(()=>window.authTest.completed===1);
     const registered=await page.evaluate(()=>window.authTest.calls.at(-1));
     assert.ok(registered.url.endsWith('/register'));assert.deepEqual(registered.body,{email:'owner@example.com',code:'314159'});
@@ -129,6 +145,7 @@ try {
     await page.getByRole('button',{name:'显示密码',exact:true}).click();
     assert.equal(await password.getAttribute('type'),'text');assert.ok(await password.evaluate(n=>n===document.activeElement));
     await page.getByRole('button',{name:'隐藏密码',exact:true}).click();assert.equal(await password.getAttribute('type'),'password');
+    assert.equal(await page.locator('.auth-options').evaluate(n=>n.getBoundingClientRect().height),44,'all password account actions fit in one row');
     await page.locator('.auth-options').scrollIntoViewIfNeeded();
     assert.ok(await page.locator('.auth-options button').evaluateAll(nodes=>nodes.every(n=>{
       const r=n.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
@@ -138,8 +155,14 @@ try {
     assert.equal(await page.locator('input').count(),1);await primary.click();
     await page.getByRole('status').filter({hasText:'已发送'}).waitFor();assert.equal(await code.inputValue(),'');
     await code.fill('314159');await page.locator('input[autocomplete="new-password"]').fill('new-password-123');
-    await assertInputFocus(page.locator('input[autocomplete="new-password"]'));await primary.click();
+    const newPassword=page.locator('input[autocomplete="new-password"]');await assertInputFocus(newPassword);
+    await newPassword.dispatchEvent('keyup',{key:'A',modifierCapsLock:true});
+    await page.getByRole('status').filter({hasText:'大写锁定已开启'}).waitFor();
+    assert.equal(await page.getByRole('status').getAttribute('data-quiet'),'false','a quiet delivery success must not hide a password warning');
+    assert.equal(await page.getByRole('status').evaluate(n=>n.getBoundingClientRect().height),44);
+    await newPassword.dispatchEvent('keyup',{key:'A',modifierCapsLock:false});await compactDelivery();await primary.click();
     await page.getByRole('status').filter({hasText:'密码已更新'}).waitFor();assert.equal(await password.inputValue(),'');
+    assert.equal(await page.getByRole('status').getAttribute('data-quiet'),'false','reset completion is an important visible state');
     await page.waitForFunction(()=>document.activeElement?.getAttribute('autocomplete')==='current-password');
     await password.fill('new-password-123');await password.press('Enter');await page.waitForFunction(()=>window.authTest.completed===2);
     await page.getByRole('button',{name:'使用验证码登录',exact:true}).click();await primary.click();
@@ -168,6 +191,10 @@ try {
     await page.evaluate(()=>window.authTest.development=false);
     await email.fill('long.alias.'.repeat(4)+'@example.com');await primary.click();await page.getByRole('status').filter({hasText:'已发送'}).waitFor();
     assert.equal(await code.inputValue(),'');assert.equal(await page.evaluate(()=>window.authTest.completed),4);
+    await compactDelivery();await shot('delivery');
+    assert.equal(await page.getByRole('button',{name:'修改邮箱',exact:true}).getAttribute('title'),'long.alias.'.repeat(4)+'@example.com');
+    assert.equal(await code.getAttribute('aria-describedby'),await page.locator('.auth-destination span').getAttribute('id'),'the full delivery address still describes the code field');
+    assert.ok(await page.locator('.auth-destination span').evaluate(n=>getComputedStyle(n).textOverflow==='ellipsis' && n.scrollWidth>n.clientWidth),'long addresses truncate visually instead of stacking lines');
     await code.fill('314159');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);assert.equal((await measure()).y,initial.y);
     await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));await page.mouse.move(0,0);await page.waitForTimeout(170);
@@ -190,7 +217,19 @@ try {
     await page.getByRole('button',{name:'返回登录',exact:true}).click();await password.fill('synthetic-password');
     await page.evaluate(()=>Object.defineProperty(window,'localStorage',{configurable:true,get(){throw new DOMException('Synthetic storage denied','SecurityError')}}));
     await primary.click();await page.waitForFunction(()=>window.authTest.completed===5);
-    reports.push({width,initial,emailFirst:true,explicitRegistration:true,stablePrimaryAcrossEmailCode:true,purposeIsolation:true,failureRetry:true,cancelStale:true,passwordReset:true,realAuthServicePayloads:true,integratedInputFocus:true,keyboardFocus:true,nativeValidationRetained:true,forcedColors:true,dark:true,reducedMotion:true,shortViewport:true,longEmail:true,storageDeniedAuthSucceeds:true});
+    await page.getByRole('button',{name:'使用验证码登录',exact:true}).click();await email.fill('resend@example.com');await primary.click();
+    await page.getByRole('status').filter({hasText:'已发送'}).waitFor();
+    const beforeResend=await page.evaluate(()=>window.authTest.calls.length);
+    assert.ok(await page.locator('.auth-send').isDisabled());
+    // Advance only the synthetic clock; do not wait a real minute or shorten product cooldown.
+    await page.evaluate(()=>{const now=Date.now.bind(Date);Date.now=()=>now()+61000});
+    await page.waitForFunction(()=>!document.querySelector('.auth-send').disabled);
+    await page.getByRole('button',{name:'重新发送验证码',exact:true}).click();
+    await page.waitForFunction(count=>window.authTest.calls.length===count+1,beforeResend);
+    await page.waitForFunction(()=>document.querySelector('.auth-form').getAttribute('aria-busy')==='false');
+    assert.equal(await page.evaluate(()=>window.authTest.calls.at(-1).body.purpose),'login');
+    await compactDelivery();assert.ok(await page.locator('.auth-send').isDisabled());
+    reports.push({width,initial,emailFirst:true,explicitRegistration:true,stablePrimaryAcrossEmailCode:true,purposeIsolation:true,failureRetry:true,cancelStale:true,passwordReset:true,realAuthServicePayloads:true,compactDelivery:true,quietSuccessAnnouncement:true,importantFeedbackVisible:true,cooldownResend:true,integratedInputFocus:true,keyboardFocus:true,nativeValidationRetained:true,forcedColors:true,dark:true,reducedMotion:true,shortViewport:true,longEmail:true,storageDeniedAuthSucceeds:true});
     await context.close();
   }
   // Normal-motion integration: same production component, no auth/network actions.

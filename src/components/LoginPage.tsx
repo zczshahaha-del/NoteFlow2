@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Pencil } from "lucide-react";
 import { confirmPasswordReset, requestEmailLoginCode, requestPasswordReset } from "../services/auth";
 import type { ClothLoginController, ClothLoginState } from "./login/cloth-login.js";
 import "./login/cloth-login.css";
@@ -22,7 +23,7 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
   const [capsLock, setCapsLock] = useState(false);
   const [busy, setBusy] = useState(false);
   const [sending, setSending] = useState(false);
-  const [feedback, setFeedback] = useState({ text: "", error: false });
+  const [feedback, setFeedback] = useState<{ text: string; error: boolean; quiet?: boolean }>({ text: "", error: false });
   const [renderer, setRenderer] = useState<"loading" | "active" | "fallback">("loading");
   const [entranceReady, setEntranceReady] = useState(false);
   const [now, setNow] = useState(Date.now());
@@ -47,7 +48,10 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
   const ready = validEmail && (!showCode || /^\d{6}$/.test(code)) && (!showPassword || password.length >= (mode === "reset" ? 8 : 6));
   const buttonLabel = sending ? "正在发送…" : busy ? "请稍候…" : needsCode && step === "email" ? "获取验证码" : mode === "register" ? "创建账号" : mode === "reset" ? "保存新密码" : "登录";
   const title = mode === "reset" ? "重设密码" : mode === "register" ? "创建账号" : "登录";
-  const feedbackText = feedback.text || (capsLock ? "大写锁定已开启" : sending ? "正在发送验证码…" : "");
+  const feedbackText = feedback.error ? feedback.text : capsLock ? "大写锁定已开启" : feedback.text || (sending ? "正在发送验证码…" : "");
+  // Sending is already expressed by the primary action and delivery controls.
+  // Keep the live announcement without adding another visible paragraph.
+  const quietFeedback = !feedback.error && !capsLock && (feedback.quiet || (!feedback.text && sending));
   const presentation = useMemo<ClothLoginState>(() => ({
     loading: busy || sending, primaryLabel: showCode ? "验证码" : "邮箱",
     passwordLabel: mode === "reset" ? "新密码" : "密码", buttonLabel, title,
@@ -133,7 +137,7 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
       if (!mounted.current || version !== sendVersion.current) return;
       const developmentCode = "developmentCode" in result ? result.developmentCode : undefined;
       if (typeof developmentCode === "string") setCode(developmentCode);
-      setFeedback({ text: typeof developmentCode === "string" ? "开发环境验证码已自动填入。" : result.message, error: false });
+      setFeedback({ text: typeof developmentCode === "string" ? "开发环境验证码已自动填入。" : result.message, error: false, quiet: true });
     } catch (error) {
       if (!mounted.current || version !== sendVersion.current) return;
       setFeedback({ text: error instanceof Error ? error.message : "发送失败，请稍后重试。", error: true });
@@ -147,7 +151,7 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
     if (needsCode && step === "email") {
       if (seconds > 0) {
         setStep("verify");
-        setFeedback({ text: "如果已收到邮件，可继续输入验证码。", error: false });
+        setFeedback({ text: "如果已收到邮件，可继续输入验证码。", error: false, quiet: true });
         window.requestAnimationFrame(() => codeInput.current?.focus());
       } else await sendCode();
       return;
@@ -206,17 +210,21 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
           <p className="cl-status sr-only" aria-hidden="true" />
         </section>
         <div className="auth-support" inert={!entranceReady && renderer !== "fallback"} aria-hidden={!entranceReady && renderer !== "fallback"}>
-          <div id={`${id}-feedback`} className="auth-feedback" data-error={feedback.error} data-empty={!feedbackText} role={feedback.error ? "alert" : "status"} aria-live="polite" aria-atomic="true">
+          <div id={`${id}-feedback`} className="auth-feedback" data-error={feedback.error} data-empty={!feedbackText} data-quiet={Boolean(quietFeedback)} role={feedback.error ? "alert" : "status"} aria-live="polite" aria-atomic="true">
             <span>{feedbackText}</span>
           </div>
-          {showCode && <div className="auth-destination"><span id={`${id}-destination`}>{address}</span><button type="button" className="auth-text" disabled={busy} onClick={editEmail}>修改邮箱</button></div>}
-          {showCode && <div className="auth-code-actions"><button type="button" className="auth-text auth-send" disabled={busy || (!sending && seconds > 0)} onClick={() => {
-            if (sending) { stopSend(); setFeedback({ text: "已停止等待；若邮件已发送，仍可使用验证码。", error: false }); } else void sendCode();
-          }}>{sending ? "取消等待" : seconds > 0 ? `${seconds}s 后重发` : "重新发送验证码"}</button></div>}
+          {showCode && <div className="auth-delivery">
+            <button type="button" className="auth-text auth-destination" aria-label="修改邮箱" aria-describedby={`${id}-destination`} title={address} disabled={busy} onClick={editEmail}>
+              <span id={`${id}-destination`}>{address}</span><Pencil size={12} aria-hidden="true" />
+            </button>
+            <button type="button" className="auth-text auth-send" aria-label={sending ? "取消等待" : seconds > 0 ? `${seconds}s 后重发` : "重新发送验证码"} disabled={busy || (!sending && seconds > 0)} onClick={() => {
+              if (sending) { stopSend(); setFeedback({ text: "已停止等待；若邮件已发送，仍可使用验证码。", error: false }); } else void sendCode();
+            }}>{sending ? "取消等待" : seconds > 0 ? `${seconds}s 后重发` : "重新发送"}</button>
+          </div>}
           <div className="auth-options">
-            {mode === "login" && <button type="button" className="auth-text" disabled={busy} onClick={changeMethod}>{method === "code" ? "使用密码登录" : "使用验证码登录"}</button>}
+            {mode === "login" && <button type="button" className="auth-text" aria-label={method === "code" ? "使用密码登录" : "使用验证码登录"} disabled={busy} onClick={changeMethod}>{method === "code" ? "密码登录" : "验证码登录"}</button>}
             {mode === "reset" && <button type="button" className="auth-text" disabled={busy} onClick={() => changeMode("login")}>返回登录</button>}
-            {mode === "login" && showPassword && <button type="button" className="auth-text" disabled={busy} onClick={() => changeMode("reset")}>忘记密码？</button>}
+            {mode === "login" && showPassword && <button type="button" className="auth-text" aria-label="忘记密码？" disabled={busy} onClick={() => changeMode("reset")}>忘记密码</button>}
             {mode !== "reset" && <button type="button" className="auth-text" disabled={busy} onClick={() => changeMode(mode === "login" ? "register" : "login")}>{mode === "login" ? "注册" : "登录"}</button>}
           </div>
         </div>
