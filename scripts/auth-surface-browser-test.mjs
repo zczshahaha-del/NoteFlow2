@@ -48,8 +48,8 @@ const assertInputFocus=async(field,{dark=false,fallback=false}={})=>{
 };
 let activePage;
 try {
-  for(const width of (process.env.NOTEFLOW_AUTH_ANIMATION_ONLY ? [] : [1024,736,320])) {
-    const context=await browser.newContext({viewport:{width,height:850},deviceScaleFactor:1,reducedMotion:'reduce'});
+  for(const width of (process.env.NOTEFLOW_AUTH_ANIMATION_ONLY ? [] : [1920,1280,1024,736,320])) {
+    const context=await browser.newContext({viewport:{width,height:width>=1200?1000:850},deviceScaleFactor:1,reducedMotion:'reduce'});
     await context.route('**/*',route=>{
       if(route.request().url()==='https://auth-fixture.invalid/') return route.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'});
       requests.push(route.request().url());return route.abort();
@@ -70,11 +70,14 @@ try {
       if(process.env.NOTEFLOW_AUTH_SCREENSHOT_DIR && width!==736)await page.screenshot({path:process.env.NOTEFLOW_AUTH_SCREENSHOT_DIR+'/noteflow-auth-cloth-'+name+'-'+width+'.png'});
     };
     const touchTargets=async()=>assert.ok(await page.locator('.auth-page button').evaluateAll(nodes=>nodes.filter(n=>n.getBoundingClientRect().width>0).every(n=>{const r=n.getBoundingClientRect();return r.width>=44 && r.height>=44})));
+    const displayScale=()=>page.locator('#cloth-character-login').evaluate(n=>parseFloat(getComputedStyle(n).getPropertyValue('--cl-display-scale')));
+    const scale=await displayScale();
     const compactDelivery=async()=>{
-      assert.equal(await page.locator('.auth-support').evaluate(n=>n.getBoundingClientRect().height),88,'delivery and account actions occupy only two rows');
-      assert.equal(await page.locator('.auth-options').evaluate(n=>n.getBoundingClientRect().height),44,'account actions must not wrap into another paragraph');
+      const currentScale=await displayScale();
+      assert.ok(Math.abs(await page.locator('.auth-support').evaluate(n=>n.getBoundingClientRect().height)-88*currentScale)<.1,'delivery and account actions occupy only two scaled rows');
+      assert.ok(Math.abs(await page.locator('.auth-options').evaluate(n=>n.getBoundingClientRect().height)-44*currentScale)<.1,'account actions must not wrap into another paragraph');
       assert.ok(await page.locator('.auth-delivery').evaluate(n=>{
-        const r=n.getBoundingClientRect();return r.height===44 && [...n.children].every(child=>{
+        const r=n.getBoundingClientRect(),scale=parseFloat(getComputedStyle(n.closest('main')).getPropertyValue('--cl-display-scale'));return Math.abs(r.height-44*scale)<.1 && [...n.children].every(child=>{
           const b=child.getBoundingClientRect();return b.left>=r.left && b.right<=r.right+.1 && b.height>=44;
         });
       }),'editable email and resend stay on the same line, including narrow screens');
@@ -83,7 +86,7 @@ try {
     };
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);
     const initial=await measure();
-    assert.ok(initial.width>=160 && initial.width<=270);assert.equal(initial.height,48);
+    assert.ok(initial.width>=160*scale && initial.width<=270*scale+.1);assert.ok(Math.abs(initial.height-48*scale)<.1);
     assert.equal(initial.bg,'rgba(0, 0, 0, 0)');assert.equal(initial.radius,'4px');assert.equal(initial.font,'14px');
     assert.equal(await page.locator('.cl-scene').evaluate(n=>n.dataset.entrance),'ready');
     assert.equal(await page.locator('.auth-switch').count(),0);assert.equal(await code.count(),0);
@@ -95,7 +98,7 @@ try {
     assert.ok(optionTop>initial.y+initial.height && optionTop<initial.y+initial.height+130,'account actions stay close to the form');
     assert.ok(await page.locator('.cl-scene').evaluate(n=>{
       const stage=n.getBoundingClientRect(),root=n.closest('.auth-page').getBoundingClientRect();
-      const top=stage.y+parseFloat(n.style.getPropertyValue('--cl-card-top'));
+      const scale=stage.height/parseFloat(getComputedStyle(n).height),top=stage.y+parseFloat(n.style.getPropertyValue('--cl-card-top'))*scale;
       const bottom=n.closest('form').querySelector('.auth-options').getBoundingClientRect().bottom;
       return stage.x===root.x && Math.abs(stage.width-root.width)<1 && Math.abs((top+bottom)/2-(root.y+root.height/2))<1;
     }),'the resting card and account actions are vertically centered in the viewport');
@@ -145,7 +148,7 @@ try {
     await page.getByRole('button',{name:'显示密码',exact:true}).click();
     assert.equal(await password.getAttribute('type'),'text');assert.ok(await password.evaluate(n=>n===document.activeElement));
     await page.getByRole('button',{name:'隐藏密码',exact:true}).click();assert.equal(await password.getAttribute('type'),'password');
-    assert.equal(await page.locator('.auth-options').evaluate(n=>n.getBoundingClientRect().height),44,'all password account actions fit in one row');
+    assert.ok(Math.abs(await page.locator('.auth-options').evaluate(n=>n.getBoundingClientRect().height)-44*scale)<.1,'all password account actions fit in one row');
     await page.locator('.auth-options').scrollIntoViewIfNeeded();
     assert.ok(await page.locator('.auth-options button').evaluateAll(nodes=>nodes.every(n=>{
       const r=n.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
@@ -159,7 +162,7 @@ try {
     await newPassword.dispatchEvent('keyup',{key:'A',modifierCapsLock:true});
     await page.getByRole('status').filter({hasText:'大写锁定已开启'}).waitFor();
     assert.equal(await page.getByRole('status').getAttribute('data-quiet'),'false','a quiet delivery success must not hide a password warning');
-    assert.equal(await page.getByRole('status').evaluate(n=>n.getBoundingClientRect().height),44);
+    assert.ok(Math.abs(await page.getByRole('status').evaluate(n=>n.getBoundingClientRect().height)-44*scale)<.1);
     await newPassword.dispatchEvent('keyup',{key:'A',modifierCapsLock:false});await compactDelivery();await primary.click();
     await page.getByRole('status').filter({hasText:'密码已更新'}).waitFor();assert.equal(await password.inputValue(),'');
     assert.equal(await page.getByRole('status').getAttribute('data-quiet'),'false','reset completion is an important visible state');
@@ -208,6 +211,7 @@ try {
     assert.equal(await page.locator('.auth-fields').evaluate(n=>getComputedStyle(n).animationName),'none');
     assert.equal(await primary.evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
     await page.setViewportSize({width,height:480});await page.getByRole('button',{name:'使用密码登录',exact:true}).click();
+    assert.equal(await displayScale(),1,'short windows restore the compact size instead of clipping the enlarged composition');
     await page.getByRole('button',{name:'忘记密码？',exact:true}).click();await primary.click();
     await page.getByRole('status').filter({hasText:'已发送'}).waitFor();await primary.scrollIntoViewIfNeeded();
     assert.ok(await primary.evaluate(n=>{const r=n.getBoundingClientRect();return r.bottom<=innerHeight && r.top>=0}));
@@ -288,7 +292,13 @@ try {
     assert.equal(await page.getByRole('button',{name:'注册',exact:true}).count(),0);
     assert.ok(await page.locator('.auth-support').isHidden());
     assert.equal(await scene.evaluate(n=>n.getBoundingClientRect().x),0);
-    assert.equal(await scene.evaluate(n=>n.getBoundingClientRect().width),width,'entry clipping must be the screen edge, not a centered pane');
+    assert.ok(Math.abs(await scene.evaluate(n=>n.getBoundingClientRect().width)-width)<1,'entry clipping must be the screen edge, not a centered pane');
+    const displayScale=await scene.evaluate(n=>n.getBoundingClientRect().height/parseFloat(getComputedStyle(n).height));
+    assert.ok(Math.abs(displayScale-(width>=1600?1.18:width>=1200?1.1:1))<.001,'large viewports enlarge the whole composition; narrow screens retain their original size');
+    assert.ok(await page.locator('.cl-fx').evaluate(n=>Math.abs(n.width-n.getBoundingClientRect().width*Math.min(devicePixelRatio,2))<=1),'canvas backing pixels track the actual displayed width');
+    assert.ok(await page.locator('#cloth-character-login').evaluate(n=>{
+      const s=getComputedStyle(n,'::before');return s.pointerEvents==='none' && s.backgroundImage.includes('radial-gradient');
+    }),'ambient light is static, decorative and cannot intercept the form');
     await page.waitForFunction(()=>Number(document.querySelector('.cl-scene')?.dataset.time)>=.55);
     assert.equal(await page.locator('.auth-support').getAttribute('inert'),'');
     assert.ok(await page.locator('.auth-support').isHidden());
@@ -308,7 +318,8 @@ try {
     const grip=async()=>scene.evaluate(n=>{
       const r=n.getBoundingClientRect(),form=n.closest('form'),w=parseFloat(form.style.getPropertyValue('--cl-card-width'));
       const x=parseFloat(form.style.getPropertyValue('--cl-card-left')),y=parseFloat(n.style.getPropertyValue('--cl-card-top'));
-      return {x:r.x+x+12,y:r.y+y+420,w};
+      const scale=r.height/parseFloat(getComputedStyle(n).height);
+      return {x:r.x+(x+12)*scale,y:r.y+(y+420)*scale,w:w*scale};
     });
     // Lower-left hem pulled upwards; releasing then editing must recover and remain usable.
     const beforeDragFrames=Number(await scene.getAttribute('data-frames'));
@@ -365,12 +376,12 @@ try {
     if(width===1280){
       await page.setViewportSize({width,height:1254});
       await page.waitForFunction(()=>{
-        const n=document.querySelector('.cl-scene'),r=n.getBoundingClientRect(),top=r.y+parseFloat(n.style.getPropertyValue('--cl-card-top'));
+        const n=document.querySelector('.cl-scene'),r=n.getBoundingClientRect(),scale=r.height/parseFloat(getComputedStyle(n).height),top=r.y+parseFloat(n.style.getPropertyValue('--cl-card-top'))*scale;
         const bottom=n.closest('form').querySelector('.auth-options').getBoundingClientRect().bottom;
         return Math.abs((top+bottom)/2-innerHeight/2)<1;
       });
     }
-    reports.push({width,normalEntrance:true,landingSeconds:3.08,screenEdgeEntrance:true,auxiliaryInertUntilArrival:true,viewportCentered:true,dragRebound:true,noGrabPositionCircle:true,pointerInterruptions:true,inputDuringEntrance:true,strictModeMountUnmountCleanup:true});
+    reports.push({width,displayScale,normalEntrance:true,landingSeconds:3.08,screenEdgeEntrance:true,auxiliaryInertUntilArrival:true,viewportCentered:true,dragRebound:true,noGrabPositionCircle:true,pointerInterruptions:true,inputDuringEntrance:true,strictModeMountUnmountCleanup:true});
     await context.close();
   }
   // No Canvas at all: the same native form still submits to the existing auth service.

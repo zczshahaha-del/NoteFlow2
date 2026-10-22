@@ -89,12 +89,25 @@
 /* NoteFlow integration: native auth flows and animation share no global styles. */
 #cloth-character-login.login-page {
   position:relative; color-scheme: light; height: 100%; min-height: 0; overflow: auto; overflow-x: hidden;
+  --cl-display-scale:1;
+  --page-depth:light-dark(#66614b,#070c06);
   --auth-muted: var(--page-soft); --auth-ink: var(--page-ink); --auth-error: var(--page-error);
   line-height: 1.5; font-size: 14px; -webkit-font-smoothing: antialiased;
+  isolation:isolate;
 }
 .theme-dark #cloth-character-login.login-page { color-scheme: dark; }
-#cloth-character-login .page-main { flex:none; }
-#cloth-character-login .auth-form { position:relative; width:100%; height:100%; min-width:0; margin:0; }
+/* Quiet ambient light and a soft ground shadow; no extra content or animation. */
+#cloth-character-login.login-page::before {
+  content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(ellipse min(40vw,420px) 26px at calc(50% - 25px) calc(50% + 211px * var(--cl-display-scale)),color-mix(in srgb,var(--page-depth) 10%,transparent),transparent),
+    radial-gradient(ellipse at 50% 42%,color-mix(in srgb,var(--page-paper) 72%,transparent),transparent 65%);
+}
+#cloth-character-login .page-main { position:relative; z-index:1; flex:none; }
+/* Scale the whole composition, including native fields and account actions. */
+#cloth-character-login .auth-form { position:relative; width:calc(100% / var(--cl-display-scale)); height:calc(100% / var(--cl-display-scale)); min-width:0; margin:0; transform:scale(var(--cl-display-scale)); transform-origin:0 0; }
+@media (min-width:1200px) and (min-height:800px) { #cloth-character-login.login-page { --cl-display-scale:1.1; } }
+@media (min-width:1600px) and (min-height:900px) { #cloth-character-login.login-page { --cl-display-scale:1.18; } }
 #cloth-character-login .auth-fields { display:contents; animation:none; }
 #cloth-character-login .cl-enter { margin:0; min-height:48px; display:block; transition:none; }
 #cloth-character-login .cl-enter:hover, #cloth-character-login .cl-enter:active { background:transparent; color:transparent; }
@@ -120,7 +133,7 @@
 #cloth-character-login .cl-fallback-title { display:none; }
 /* Progressive fallback when canvas/WebGL or animation initialization is unavailable. */
 #cloth-character-login[data-renderer="fallback"] .page-main { display:flex; justify-content:center; align-items:center; min-height:600px; padding:72px 24px 32px; }
-#cloth-character-login[data-renderer="fallback"] .auth-form { width:min(100%,326px); height:auto; }
+#cloth-character-login[data-renderer="fallback"] .auth-form { width:min(100%,326px); height:auto; transform:none; }
 #cloth-character-login[data-renderer="fallback"] .cl-scene { position:relative; inset:auto; height:auto; min-height:0; padding:0; }
 #cloth-character-login[data-renderer="fallback"] .cl-form { position:relative; inset:auto; width:100%; padding:28px; background:var(--page-paper); pointer-events:auto; border-radius:4px; }
 #cloth-character-login[data-renderer="fallback"] .cl-fallback-title { display:block; margin:0 0 24px; font:400 22px/1.5 "Songti SC",Georgia,serif; }
@@ -130,6 +143,7 @@
 #cloth-character-login[data-renderer="fallback"] .cl-enter { background:var(--page-ink); color:var(--page-paper); margin:8px 0 0; }
 #cloth-character-login[data-renderer="fallback"] .auth-support { position:relative; inset:auto; width:100%; margin:12px auto 0; }
 @media (forced-colors:active) {
+  #cloth-character-login.login-page::before { display:none; }
   /* System high contrast can remove shadows; retain a real keyboard focus indicator. */
   #cloth-character-login .cl-input:focus { outline:2px solid Highlight; outline-offset:4px; }
 }

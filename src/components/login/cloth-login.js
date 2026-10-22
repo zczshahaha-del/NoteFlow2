@@ -533,7 +533,8 @@ function createClothLogin(root,cleanups,onEntranceReady) {
       const z=a.z*weights[0]+b.z*weights[1]+c.z*weights[2];if(z>depth){best={ids:t.ids,weights};depth=z;}}
     return best;
   }
-  function pointer(e){const b=scene.getBoundingClientRect();return {x:e.clientX-b.left,y:e.clientY-b.top};}
+  // The full composition may be enlarged; hit testing stays in solver coordinates.
+  function pointer(e){const b=scene.getBoundingClientRect();return {x:(e.clientX-b.left)*W/b.width,y:(e.clientY-b.top)*H/b.height};}
   listen(scene,'pointerdown',e=>{
     if(e.button!==0||pending||grab||e.target.closest('input,button'))return;
     const p=pointer(e),h=hit(p);if(!h)return;
@@ -582,13 +583,15 @@ function createClothLogin(root,cleanups,onEntranceReady) {
   listen(form,'change',()=>{textureDirty=true;wake();});
   function resize(){
     const r=scene.getBoundingClientRect();if(r.width<1)return;
-    const changed=Math.abs(W-r.width)>.5||Math.abs(H-r.height)>.5;W=r.width;H=r.height;
+    const style=getComputedStyle(scene),width=parseFloat(style.width),height=parseFloat(style.height);
+    const changed=Math.abs(W-width)>.5||Math.abs(H-height)>.5;W=width;H=height;
     scene.style.setProperty('--cl-scene-width',W+'px');
     ({CW,CH,OX,OY,S,ground,endX,steps,STEP,LIFT}=clothStageLayout(W,H));
     form.style.setProperty('--cl-card-left',OX+'px');form.style.setProperty('--cl-card-width',CW+'px');
     form.style.setProperty('--cl-support-top',(scene.offsetTop+OY+CH+12)+'px');
     scene.style.setProperty('--cl-card-top',OY+'px');
-    dpr=Math.min(devicePixelRatio||1,2);
+    // Keep the canvas sharp at the rendered size without enlarging the solver mesh.
+    dpr=Math.min(devicePixelRatio||1,2)*r.width/W;
     if(!entryStarted)entryOffset=W+32-OX;else if(changed)finishEntrance();
     [canvas,shadow,fx].forEach(c=>{c.width=Math.round(W*dpr);c.height=Math.round(H*dpr);});sc.setTransform(dpr,0,0,dpr,0,0);fc.setTransform(dpr,0,0,dpr,0,0);fallback?.setTransform(dpr,0,0,dpr,0,0);
     colors();if(changed||!nodes.length)createCloth(false);else{textureDirty=true;dirty=true;wake();}render();
