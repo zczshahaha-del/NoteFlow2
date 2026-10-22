@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
 
 const { chromium } = await import(process.env.NOTEFLOW_PLAYWRIGHT_MODULE || 'playwright');
+const deviceScaleFactor=Number(process.env.NOTEFLOW_AUTH_DPR||1);
+assert.ok([1,2].includes(deviceScaleFactor),'auth regression supports standard and Retina pixel density');
 const root = fileURLToPath(new URL('../', import.meta.url));
 const assets = new URL('../dist/assets/', import.meta.url);
 const css = readFileSync(new URL(readdirSync(assets).find(x => /^index-.*\.css$/.test(x)), assets), 'utf8');
@@ -39,7 +41,7 @@ const assertInputFocus=async(field,{dark=false}={})=>{
     const s=getComputedStyle(n);
     return {focused:n===document.activeElement,outline:s.outlineStyle,shadow:s.boxShadow,bg:s.backgroundColor,
       borders:[s.borderTopWidth,s.borderRightWidth,s.borderBottomWidth,s.borderLeftWidth],
-      ink:s.webkitTextFillColor,transform:s.transform,clip:s.backgroundClip};
+      ink:s.webkitTextFillColor,transform:s.transform,wrapperTransform:getComputedStyle(n.closest('.cl-field')).transform,clip:s.backgroundClip};
   });
   assert.ok(style.focused,'check the real focused input, not an idle screenshot');
   assert.equal(style.outline,'none','native text fields must not gain a rectangular focus frame');
@@ -48,6 +50,7 @@ const assertInputFocus=async(field,{dark=false}={})=>{
   assert.deepEqual(style.borders,['0px','0px','0px','0px']);
   assert.equal(style.ink,dark?'rgb(237, 240, 221)':'rgb(53, 68, 47)');
   assert.equal(style.transform,'none','move the wrapper, not the editable native layer');
+  assert.equal(style.wrapperTransform,'none','editing must use a stable, untransformed field box rather than a cloth affine matrix');
   assert.notEqual(style.clip,'text','native glyphs must never depend on background text clipping');
 };
 // Real pointer placement, insertion, deletion and drag selection, not fill()/focus().
@@ -62,6 +65,11 @@ const assertMouseEditing=async(page,field)=>{
   let p=await point('');
   assert.ok(await field.evaluate((n,p)=>document.elementFromPoint(p.x,p.y)===n,p),'the native field receives the actual mouse click');
   await page.mouse.click(p.x,p.y);assert.ok(await field.evaluate(n=>n===document.activeElement));
+  await field.evaluate(n=>{
+    let count=0;const observer=new MutationObserver(records=>count+=records.length);
+    observer.observe(n.closest('.cl-field'),{attributes:true,attributeFilter:['style']});
+    window.finishNativeEditingLayoutAudit=()=>{count+=observer.takeRecords().length;observer.disconnect();return count;};
+  });
   await page.keyboard.type('x');assert.equal(await field.inputValue(),'x'+value,'click at start positions the real caret');
   await page.keyboard.press('Backspace');assert.equal(await field.inputValue(),value);
   if(await field.getAttribute('type')!=='password'){
@@ -73,6 +81,8 @@ const assertMouseEditing=async(page,field)=>{
     await page.keyboard.type('q');assert.equal(await field.inputValue(),'q'+value.slice(5),'drag selects text instead of grabbing cloth');
     await field.press('ControlOrMeta+A');await page.keyboard.type(value);
   }
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>resolve())));
+  assert.equal(await page.evaluate(()=>window.finishNativeEditingLayoutAudit()),0,'caret placement and typing must not keep rewriting the active native field geometry');
   assert.equal(await page.locator('.cl-scene').getAttribute('data-grab'),'idle');
 };
 // Force the browser's real autofill pseudo-state, including its UA blue fill.
@@ -108,7 +118,7 @@ const assertAutofill=async(field,dark=false)=>{
 let activePage;
 try {
   for(const width of (process.env.NOTEFLOW_AUTH_ANIMATION_ONLY ? [] : [1920,1280,1024,736,320])) {
-    const context=await browser.newContext({viewport:{width,height:width>=1200?1000:850},deviceScaleFactor:1,reducedMotion:'reduce'});
+    const context=await browser.newContext({viewport:{width,height:width>=1200?1000:850},deviceScaleFactor,reducedMotion:'reduce'});
     await context.route('**/*',route=>{
       if(route.request().url()==='https://auth-fixture.invalid/') return route.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'});
       requests.push(route.request().url());return route.abort();
@@ -367,7 +377,7 @@ try {
     window.clothListenerDetails=()=>listeners.map(x=>({type:x.type,target:x.target===window?'window':x.target===document?'document':'media',callback:String(x.callback).slice(0,100)}));
   })();`;
   for (const width of [1920,1280,736,320]) {
-    const context=await browser.newContext({viewport:{width,height:1000},deviceScaleFactor:1,reducedMotion:'no-preference'});
+    const context=await browser.newContext({viewport:{width,height:1000},deviceScaleFactor,reducedMotion:'no-preference'});
     await context.route('**/*',route=>route.request().url()==='https://auth-fixture.invalid/'?
       route.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'}):route.abort());
     const page=await context.newPage();activePage=page;page.on('pageerror',err=>errors.push(String(err)));
@@ -428,7 +438,7 @@ try {
     const password=page.locator('input[autocomplete="current-password"]');await password.fill('synthetic-only');
     await assertInputFocus(password);
     assert.equal(await scene.getAttribute('data-torn'),'0');
-    assert.ok(await password.evaluate(n=>n===document.activeElement && getComputedStyle(n).transform==='none' && !/NaN|Infinity/.test(n.closest('.cl-field').style.transform)));
+    assert.ok(await password.evaluate(n=>n===document.activeElement && getComputedStyle(n).transform==='none' && getComputedStyle(n.closest('.cl-field')).transform==='none'));
     await assertMouseEditing(page,password);
     await page.getByRole('button',{name:'显示密码',exact:true}).click();assert.equal(await password.getAttribute('type'),'text');
     assert.equal(await page.evaluate(()=>window.authTest.calls.length),0);
@@ -482,7 +492,7 @@ try {
   }
   // No Canvas at all: the same native form still submits to the existing auth service.
   {
-    const context=await browser.newContext({viewport:{width:320,height:700}});
+    const context=await browser.newContext({viewport:{width:320,height:700},deviceScaleFactor});
     await context.route('**/*',route=>route.request().url()==='https://auth-fixture.invalid/'?
       route.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'}):route.abort());
     const page=await context.newPage();activePage=page;page.on('pageerror',err=>errors.push(String(err)));
@@ -504,7 +514,7 @@ try {
     reports.push({canvasUnavailable:true,nativeFallbackAuth:true});await context.close();
   }
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
-  console.log(JSON.stringify({ok:true,productionComponentAndServices:true,syntheticFetch:true,networkBlocked:true,reports,errors},null,2));
+  console.log(JSON.stringify({ok:true,productionComponentAndServices:true,syntheticFetch:true,networkBlocked:true,deviceScaleFactor,reports,errors},null,2));
 } catch(error) {
   if(activePage) console.error(await activePage.evaluate(()=>({text:document.body.innerText,calls:window.authTest?.calls.map(x=>({url:x.url,purpose:x.body.purpose,aborted:x.aborted})),completed:window.authTest?.completed,listeners:window.clothListenerDetails?.()})));
   throw error;

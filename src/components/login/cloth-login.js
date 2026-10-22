@@ -339,6 +339,15 @@ function createClothLogin(root,cleanups,onEntranceReady) {
   }
   function positionControl(el,x,y,w){
     if(!el)return;
+    if(el.classList.contains('cl-field')){
+      el.style.width=w+'px';
+      // Editing already flattens this cloth patch. Use a normal, stable hit-test box
+      // instead of keeping the browser's caret/selection inside an animated matrix.
+      if(focused){
+        el.style.left=(OX+x)+'px';el.style.top=(OY+y)+'px';el.style.transform='none';return;
+      }
+      el.style.left='0px';el.style.top='0px';
+    }
     const p=sample(x/CW,y/CH),a=sample((x+1)/CW,y/CH),b=sample(x/CW,(y+1)/CH);
     el.style.width=w+'px';el.style.transform='matrix('+[a.x-p.x,a.y-p.y,b.x-p.x,b.y-p.y,p.x,p.y].join(',')+')';
   }
@@ -573,13 +582,15 @@ function createClothLogin(root,cleanups,onEntranceReady) {
   listen(form,'click',e=>{if(suppressClick){e.preventDefault();e.stopImmediatePropagation();}},true);
   // Flatten before the browser resolves a mouse caret position, not midway through focus.
   function prepareEditing(field){
+    // A second click/drag inside the same field belongs entirely to native editing.
+    if(focused&&focusedField===field&&document.activeElement===field)return;
     refreshFields();
     if(pending)release({pointerId:pending.id,preventDefault(){}});
     finishEntrance();focused=true;focusedField=field;
     if(torn)createCloth(false);beginRecovery();stabilizeEditing();textureDirty=true;dirty=true;render();wake();
   }
   // Delegate to the stable form: React replaces inputs between email/code/reset steps.
-  listen(form,'pointerdown',e=>{if(e.target.matches('.cl-input'))prepareEditing(e.target);},true);
+  listen(form,'pointerdown',e=>{if(e.button===0&&e.target.matches('.cl-input'))prepareEditing(e.target);},true);
   listen(form,'focus',e=>{if(e.target.matches('.cl-input'))prepareEditing(e.target);},true);
   listen(form,'blur',e=>{
     if(!e.target.matches('.cl-input'))return;
