@@ -34,6 +34,18 @@ const bundled = await build({configFile:false,logLevel:'silent',plugins:[{
 const chunks = bundled.output.filter(x => x.type === 'chunk'); assert.equal(chunks.length,1);
 const browser = await chromium.launch({headless:true,executablePath:process.env.NOTEFLOW_BROWSER_EXECUTABLE || undefined});
 const errors=[],requests=[],reports=[];
+const assertInputFocus=async(field,{dark=false,fallback=false}={})=>{
+  const style=await field.evaluate(n=>{
+    const s=getComputedStyle(n);
+    return {focused:n===document.activeElement,outline:s.outlineStyle,shadow:s.boxShadow,bg:s.backgroundColor,
+      borders:[s.borderTopWidth,s.borderRightWidth,s.borderBottomWidth,s.borderLeftWidth]};
+  });
+  assert.ok(style.focused,'check the real focused input, not an idle screenshot');
+  assert.equal(style.outline,'none','native text fields must not gain a rectangular focus frame');
+  assert.equal(style.shadow,(dark?'rgb(212, 223, 184)':'rgb(93, 112, 79)')+' 0px 2px 0px 0px','focus follows the existing cloth baseline');
+  assert.equal(style.bg,'rgba(0, 0, 0, 0)','the weave stays visible while typing');
+  assert.deepEqual(style.borders,['0px','0px',fallback?'1px':'0px','0px']);
+};
 let activePage;
 try {
   for(const width of (process.env.NOTEFLOW_AUTH_ANIMATION_ONLY ? [] : [1024,736,320])) {
@@ -77,6 +89,13 @@ try {
       return stage.x===root.x && Math.abs(stage.width-root.width)<1 && Math.abs((top+bottom)/2-(root.y+root.height/2))<1;
     }),'the resting card and account actions are vertically centered in the viewport');
     await touchTargets();assert.ok(await primary.isDisabled());await shot('login');
+    await page.locator('.site-brand').focus();await page.keyboard.press('Tab');
+    await assertInputFocus(email);await shot('email-focused');
+    assert.ok(await email.evaluate(n=>n.required && n.validity.valueMissing && !n.form.noValidate),'keep native required-field validation');
+    assert.deepEqual(await measure(),initial,'focus must not resize or move the form');
+    await page.keyboard.press('Tab');
+    assert.equal(await email.evaluate(n=>getComputedStyle(n).boxShadow),'none','blur restores the original cloth line');
+    assert.ok(await page.getByRole('button',{name:'使用密码登录',exact:true}).evaluate(n=>n===document.activeElement && getComputedStyle(n).outlineStyle==='solid'),'keyboard button focus remains visible');
     await email.fill('owner@example.com');await page.evaluate(()=>window.authTest.hold=true);await primary.click();
     await code.waitFor();assert.equal((await measure()).y,initial.y);
     await page.getByRole('button',{name:'注册',exact:true}).click();await release();
@@ -88,6 +107,7 @@ try {
     assert.equal(await page.evaluate(()=>window.authTest.calls.at(-1).body.purpose),'register');
     assert.equal(await page.evaluate(()=>window.authTest.completed),0,'sending never creates an account');
     await page.waitForFunction(()=>document.activeElement?.getAttribute('autocomplete')==='one-time-code');
+    await assertInputFocus(code);
     await touchTargets();await primary.hover();await page.waitForTimeout(170);
     assert.equal((await measure()).bg,'rgba(0, 0, 0, 0)');
     await code.fill('');await code.fill('314159');await page.mouse.move(0,0);await page.waitForTimeout(170);await shot('verify');
@@ -105,6 +125,7 @@ try {
     assert.match(await page.locator('.auth-send').innerText(),/后重发/);
     await page.getByRole('button',{name:'使用密码登录',exact:true}).click();
     const password=page.locator('input[autocomplete="current-password"]');await password.fill('synthetic-password');
+    await assertInputFocus(password);
     await page.getByRole('button',{name:'显示密码',exact:true}).click();
     assert.equal(await password.getAttribute('type'),'text');assert.ok(await password.evaluate(n=>n===document.activeElement));
     await page.getByRole('button',{name:'隐藏密码',exact:true}).click();assert.equal(await password.getAttribute('type'),'password');
@@ -116,7 +137,8 @@ try {
     await shot('password');await page.getByRole('button',{name:'忘记密码？',exact:true}).click();
     assert.equal(await page.locator('input').count(),1);await primary.click();
     await page.getByRole('status').filter({hasText:'已发送'}).waitFor();assert.equal(await code.inputValue(),'');
-    await code.fill('314159');await page.locator('input[autocomplete="new-password"]').fill('new-password-123');await primary.click();
+    await code.fill('314159');await page.locator('input[autocomplete="new-password"]').fill('new-password-123');
+    await assertInputFocus(page.locator('input[autocomplete="new-password"]'));await primary.click();
     await page.getByRole('status').filter({hasText:'密码已更新'}).waitFor();assert.equal(await password.inputValue(),'');
     await page.waitForFunction(()=>document.activeElement?.getAttribute('autocomplete')==='current-password');
     await password.fill('new-password-123');await password.press('Enter');await page.waitForFunction(()=>window.authTest.completed===2);
@@ -151,6 +173,10 @@ try {
     await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));await page.mouse.move(0,0);await page.waitForTimeout(170);
     assert.equal(await page.locator('#cloth-character-login').evaluate(n=>getComputedStyle(n).colorScheme),'dark');
     assert.equal(await page.locator('.cl-probe').evaluate(n=>getComputedStyle(n).color),'rgb(255, 182, 160)');
+    await code.focus();await assertInputFocus(code,{dark:true});
+    await page.emulateMedia({forcedColors:'active'});
+    assert.ok(await code.evaluate(n=>{const s=getComputedStyle(n);return s.outlineStyle==='solid' && s.outlineWidth==='2px'}),'system high contrast retains a real focus indicator when shadows are removed');
+    await page.emulateMedia({forcedColors:'none'});await assertInputFocus(code,{dark:true});
     await shot('dark');await page.emulateMedia({reducedMotion:'reduce'});
     assert.equal(await page.locator('.auth-fields').evaluate(n=>getComputedStyle(n).animationName),'none');
     assert.equal(await primary.evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
@@ -164,7 +190,7 @@ try {
     await page.getByRole('button',{name:'返回登录',exact:true}).click();await password.fill('synthetic-password');
     await page.evaluate(()=>Object.defineProperty(window,'localStorage',{configurable:true,get(){throw new DOMException('Synthetic storage denied','SecurityError')}}));
     await primary.click();await page.waitForFunction(()=>window.authTest.completed===5);
-    reports.push({width,initial,emailFirst:true,explicitRegistration:true,stablePrimaryAcrossEmailCode:true,purposeIsolation:true,failureRetry:true,cancelStale:true,passwordReset:true,realAuthServicePayloads:true,dark:true,reducedMotion:true,shortViewport:true,longEmail:true,storageDeniedAuthSucceeds:true});
+    reports.push({width,initial,emailFirst:true,explicitRegistration:true,stablePrimaryAcrossEmailCode:true,purposeIsolation:true,failureRetry:true,cancelStale:true,passwordReset:true,realAuthServicePayloads:true,integratedInputFocus:true,keyboardFocus:true,nativeValidationRetained:true,forcedColors:true,dark:true,reducedMotion:true,shortViewport:true,longEmail:true,storageDeniedAuthSucceeds:true});
     await context.close();
   }
   // Normal-motion integration: same production component, no auth/network actions.
@@ -248,6 +274,7 @@ try {
     await page.mouse.up();assert.equal(await scene.getAttribute('data-grab'),'idle');
     await page.getByRole('button',{name:'使用密码登录',exact:true}).click();
     const password=page.locator('input[autocomplete="current-password"]');await password.fill('synthetic-only');
+    await assertInputFocus(password);
     assert.equal(await scene.getAttribute('data-torn'),'0');
     assert.ok(await password.evaluate(n=>n===document.activeElement && !/NaN|Infinity/.test(n.style.transform)));
     await page.getByRole('button',{name:'显示密码',exact:true}).click();assert.equal(await password.getAttribute('type'),'text');
@@ -308,9 +335,12 @@ try {
     const page=await context.newPage();activePage=page;page.on('pageerror',err=>errors.push(String(err)));
     await page.goto('https://auth-fixture.invalid/');
     await page.setContent('<html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>'+css+'</style></head><body><div id="root"></div><script>HTMLCanvasElement.prototype.getContext=()=>null;</script><script type="module">'+chunks[0].code.replaceAll('</script','<\\/script')+'</script></body></html>');
-    await page.getByRole('textbox',{name:'邮箱',exact:true}).fill('fallback@example.com');
+    await page.locator('#cloth-character-login[data-renderer="fallback"]').waitFor();
+    const email=page.getByRole('textbox',{name:'邮箱',exact:true});await email.fill('fallback@example.com');
+    await assertInputFocus(email,{fallback:true});
     await page.getByRole('button',{name:'使用密码登录',exact:true}).click();
     await page.locator('input[autocomplete="current-password"]').fill('synthetic-only');
+    await assertInputFocus(page.locator('input[autocomplete="current-password"]'),{fallback:true});
     await page.locator('.auth-submit').click();await page.waitForFunction(()=>window.authTest.completed===1);
     assert.equal(await page.locator('[data-cloth-ready]').count(),0);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),320);

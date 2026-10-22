@@ -41,7 +41,7 @@
 #cloth-character-login button, #cloth-character-login a { -webkit-tap-highlight-color: transparent; }
 #cloth-character-login button { cursor: pointer; }
 #cloth-character-login button:disabled { cursor: wait; }
-#cloth-character-login button:focus-visible, #cloth-character-login a:focus-visible, #cloth-character-login input:focus-visible { outline: 2px solid var(--page-ink); outline-offset: 4px; }
+#cloth-character-login button:focus-visible, #cloth-character-login a:focus-visible { outline: 2px solid var(--page-ink); outline-offset: 4px; }
 #cloth-character-login .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
 #cloth-character-login.login-page {
   min-height: 100svh;
@@ -69,15 +69,16 @@
 #cloth-character-login .site-brand span { color: var(--page-soft); }
 #cloth-character-login .page-main { width:100%; height:100%; min-height:664px; margin:0; padding:0; }
 /* Full viewport width for entry; a centered render band avoids three tall HiDPI canvases. */
-#cloth-character-login .cl-scene { --cl-error:var(--page-error); position:absolute; top:calc(50% - 332px); left:0; height:664px; border-radius:0; background:transparent; }
+#cloth-character-login .cl-scene { --cl-error:var(--page-error); --cl-focus:light-dark(#5d704f,#d4dfb8); position:absolute; top:calc(50% - 332px); left:0; height:664px; border-radius:0; background:transparent; }
 #cloth-character-login .cl-cloth { pointer-events: none; touch-action: auto; }
 #cloth-character-login .cl-drag-surface { position:absolute; inset:0; z-index:2; clip-path:polygon(0 0,0 0,0 0); touch-action:none; cursor:grab; }
 #cloth-character-login .cl-drag-surface:active { cursor:grabbing; }
-#cloth-character-login .cl-input { position:absolute; left:0; top:0; height:44px; padding:0 0 3px; border:0; border-radius:0; background:transparent; color:transparent; caret-color:var(--cl-ink); font:400 16px/24px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif; transform-origin:0 0; pointer-events:auto; touch-action:auto; }
+#cloth-character-login .cl-input { position:absolute; left:0; top:0; height:44px; padding:0 0 3px; border:0; border-radius:0; outline:none; box-shadow:none; background:transparent; color:transparent; caret-color:var(--cl-ink); font:400 16px/24px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif; transform-origin:0 0; pointer-events:auto; touch-action:auto; }
 #cloth-character-login .cl-input::placeholder { color:transparent; }
-#cloth-character-login .cl-input:focus { color:var(--cl-ink); }
+/* Strengthen the existing cloth baseline, not a second rectangular field frame. */
+#cloth-character-login .cl-input:focus { color:var(--cl-ink); box-shadow:0 2px 0 var(--cl-focus); }
 #cloth-character-login .cl-input:focus::placeholder { color:var(--cl-soft); }
-#cloth-character-login .cl-input[aria-invalid="true"] { box-shadow:0 1px 0 var(--page-error); }
+#cloth-character-login .cl-input[aria-invalid="true"] { box-shadow:0 2px 0 var(--page-error); }
 #cloth-character-login .cl-password { padding-right:42px; }
 #cloth-character-login .cl-password-toggle { position:absolute; left:0; top:0; height:44px; padding:0; border:0; background:transparent; color:var(--cl-soft); font-size:11px; transform-origin:0 0; pointer-events:auto; touch-action:manipulation; }
 #cloth-character-login .cl-enter { height:48px; touch-action:manipulation; }
@@ -127,6 +128,10 @@
 #cloth-character-login[data-renderer="fallback"] .cl-input::placeholder { color:var(--page-soft); }
 #cloth-character-login[data-renderer="fallback"] .cl-enter { background:var(--page-ink); color:var(--page-paper); margin:8px 0 0; }
 #cloth-character-login[data-renderer="fallback"] .auth-support { position:relative; inset:auto; width:100%; margin:12px auto 0; }
+@media (forced-colors:active) {
+  /* System high contrast can remove shadows; retain a real keyboard focus indicator. */
+  #cloth-character-login .cl-input:focus { outline:2px solid Highlight; outline-offset:4px; }
+}
 @media (prefers-reduced-motion:reduce) {
   #cloth-character-login *, #cloth-character-login *::before { animation:none!important; transition:none!important; }
 }
