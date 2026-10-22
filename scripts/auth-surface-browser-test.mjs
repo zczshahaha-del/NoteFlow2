@@ -46,6 +46,35 @@ const assertInputFocus=async(field,{dark=false,fallback=false}={})=>{
   assert.equal(style.bg,'rgba(0, 0, 0, 0)','the weave stays visible while typing');
   assert.deepEqual(style.borders,['0px','0px',fallback?'1px':'0px','0px']);
 };
+// Force the browser's real autofill pseudo-state, including its UA blue fill.
+// No saved passwords, profile or real credentials are accessed.
+const withAutofill=async(page,selectors,check)=>{
+  const client=await page.context().newCDPSession(page),nodes=[];
+  try {
+    await client.send('DOM.enable');await client.send('CSS.enable');
+    const {root}=await client.send('DOM.getDocument');
+    for(const selector of selectors){
+      const {nodeId}=await client.send('DOM.querySelector',{nodeId:root.nodeId,selector});assert.ok(nodeId);
+      nodes.push(nodeId);await client.send('CSS.forcePseudoState',{nodeId,forcedPseudoClasses:['autofill']});
+    }
+    await check();
+  } finally {
+    for(const nodeId of nodes)await client.send('CSS.forcePseudoState',{nodeId,forcedPseudoClasses:[]});
+    await client.detach();
+  }
+};
+const assertAutofill=async(field,dark=false)=>{
+  const style=await field.evaluate(n=>{const s=getComputedStyle(n);return {
+    autofill:n.matches(':autofill'),clip:s.backgroundClip,ink:s.webkitTextFillColor,caret:s.caretColor,
+    font:s.fontSize,opacity:s.opacity,security:s.webkitTextSecurity,type:n.type,autocomplete:n.autocomplete,
+  }});
+  const ink=dark?'rgb(237, 240, 221)':'rgb(53, 68, 47)';
+  assert.ok(style.autofill,'exercise actual browser autofill styles, not a mock class');
+  assert.equal(style.clip,'text','do not cover the cloth with an autofill rectangle or opaque inset patch');
+  assert.equal(style.ink,ink);assert.equal(style.caret,ink);assert.equal(style.font,'16px');assert.equal(style.opacity,'1');
+  assert.ok(['email','current-password'].includes(style.autocomplete),'keep native autofill semantics');
+  if(style.type==='password')assert.equal(style.security,'disc','autofilled passwords remain masked');
+};
 let activePage;
 try {
   for(const width of (process.env.NOTEFLOW_AUTH_ANIMATION_ONLY ? [] : [1920,1280,1024,736,320])) {
@@ -148,6 +177,32 @@ try {
     await page.getByRole('button',{name:'显示密码',exact:true}).click();
     assert.equal(await password.getAttribute('type'),'text');assert.ok(await password.evaluate(n=>n===document.activeElement));
     await page.getByRole('button',{name:'隐藏密码',exact:true}).click();assert.equal(await password.getAttribute('type'),'password');
+    await page.evaluate(()=>{
+      const original=CanvasRenderingContext2D.prototype.fillText;window.autofillMirrorCount=0;
+      window.restoreAutofillPaint=()=>{CanvasRenderingContext2D.prototype.fillText=original};
+      CanvasRenderingContext2D.prototype.fillText=function(text,...args){
+        const email=document.querySelector('input[name="email"]'),password=document.querySelector('input[name="password"]');
+        if((email?.value && text===email.value)||(password?.value && text==='•'.repeat(Math.min(password.value.length,24))))window.autofillMirrorCount++;
+        return original.call(this,text,...args);
+      };
+    });
+    await withAutofill(page,['input[name="email"]','input[name="password"]'],async()=>{
+      for(const dark of [false,true]){
+        await page.evaluate(dark=>document.documentElement.classList.toggle('theme-dark',dark),dark);
+        await email.focus();await assertAutofill(email,dark);await assertAutofill(password,dark);
+        await password.focus();await assertAutofill(password,dark);
+        const frames=Number(await page.locator('.cl-scene').getAttribute('data-frames'));
+        await page.evaluate(()=>window.autofillMirrorCount=0);await password.blur();
+        await page.waitForFunction(frames=>Number(document.querySelector('.cl-scene').dataset.frames)>frames,frames);
+        assert.equal(await page.evaluate(()=>window.autofillMirrorCount),0,'blurred autofill must not be drawn twice by Canvas and the native input');
+        await assertAutofill(email,dark);await assertAutofill(password,dark);await shot(dark?'autofill-dark':'autofill-light');
+      }
+      await page.emulateMedia({forcedColors:'active'});await email.focus();
+      assert.ok(await email.evaluate(n=>{const s=getComputedStyle(n);return s.webkitTextFillColor===s.color && s.caretColor===s.color}),'autofill follows system field text in forced colors');
+      await page.emulateMedia({forcedColors:'none'});
+    });
+    await page.evaluate(()=>{document.documentElement.classList.remove('theme-dark');window.restoreAutofillPaint()});
+    await email.focus();await password.focus();await assertInputFocus(password);
     assert.ok(Math.abs(await page.locator('.auth-options').evaluate(n=>n.getBoundingClientRect().height)-44*scale)<.1,'all password account actions fit in one row');
     await page.locator('.auth-options').scrollIntoViewIfNeeded();
     assert.ok(await page.locator('.auth-options button').evaluateAll(nodes=>nodes.every(n=>{
@@ -233,7 +288,7 @@ try {
     await page.waitForFunction(()=>document.querySelector('.auth-form').getAttribute('aria-busy')==='false');
     assert.equal(await page.evaluate(()=>window.authTest.calls.at(-1).body.purpose),'login');
     await compactDelivery();assert.ok(await page.locator('.auth-send').isDisabled());
-    reports.push({width,initial,emailFirst:true,explicitRegistration:true,stablePrimaryAcrossEmailCode:true,purposeIsolation:true,failureRetry:true,cancelStale:true,passwordReset:true,realAuthServicePayloads:true,compactDelivery:true,quietSuccessAnnouncement:true,importantFeedbackVisible:true,cooldownResend:true,integratedInputFocus:true,keyboardFocus:true,nativeValidationRetained:true,forcedColors:true,dark:true,reducedMotion:true,shortViewport:true,longEmail:true,storageDeniedAuthSucceeds:true});
+    reports.push({width,initial,emailFirst:true,explicitRegistration:true,stablePrimaryAcrossEmailCode:true,purposeIsolation:true,failureRetry:true,cancelStale:true,passwordReset:true,realAuthServicePayloads:true,compactDelivery:true,quietSuccessAnnouncement:true,importantFeedbackVisible:true,cooldownResend:true,integratedInputFocus:true,nativeAutofillStyle:true,noAutofillCanvasDuplicate:true,autofillPasswordMasked:true,keyboardFocus:true,nativeValidationRetained:true,forcedColors:true,dark:true,reducedMotion:true,shortViewport:true,longEmail:true,storageDeniedAuthSucceeds:true});
     await context.close();
   }
   // Normal-motion integration: same production component, no auth/network actions.
@@ -398,6 +453,9 @@ try {
     await page.getByRole('button',{name:'使用密码登录',exact:true}).click();
     await page.locator('input[autocomplete="current-password"]').fill('synthetic-only');
     await assertInputFocus(page.locator('input[autocomplete="current-password"]'),{fallback:true});
+    await withAutofill(page,['input[name="email"]','input[name="password"]'],async()=>{
+      await assertAutofill(email);await assertAutofill(page.locator('input[autocomplete="current-password"]'));
+    });
     await page.locator('.auth-submit').click();await page.waitForFunction(()=>window.authTest.completed===1);
     assert.equal(await page.locator('[data-cloth-ready]').count(),0);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),320);

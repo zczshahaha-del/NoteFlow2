@@ -78,6 +78,9 @@
 /* Strengthen the existing cloth baseline, not a second rectangular field frame. */
 #cloth-character-login .cl-input:focus { color:var(--cl-ink); box-shadow:0 2px 0 var(--cl-focus); }
 #cloth-character-login .cl-input:focus::placeholder { color:var(--cl-soft); }
+/* Autofill owns its UA background/color. Clip that background to the glyphs
+   and paint text in our ink; an opaque inset fill would cover the cloth weave. */
+#cloth-character-login .cl-input:is(:autofill, :-webkit-autofill) { -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:var(--cl-ink); caret-color:var(--cl-ink); }
 #cloth-character-login .cl-input[aria-invalid="true"] { box-shadow:0 2px 0 var(--page-error); }
 #cloth-character-login .cl-password { padding-right:42px; }
 #cloth-character-login .cl-password-toggle { position:absolute; left:0; top:0; height:44px; padding:0; border:0; background:transparent; color:var(--cl-soft); font-size:11px; transform-origin:0 0; pointer-events:auto; touch-action:manipulation; }
@@ -144,6 +147,7 @@
 #cloth-character-login[data-renderer="fallback"] .auth-support { position:relative; inset:auto; width:100%; margin:12px auto 0; }
 @media (forced-colors:active) {
   #cloth-character-login.login-page::before { display:none; }
+  #cloth-character-login .cl-input:is(:autofill, :-webkit-autofill) { -webkit-text-fill-color:FieldText; caret-color:FieldText; }
   /* System high contrast can remove shadows; retain a real keyboard focus indicator. */
   #cloth-character-login .cl-input:focus { outline:2px solid Highlight; outline-offset:4px; }
 }

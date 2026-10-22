@@ -299,8 +299,9 @@ function createClothLogin(root,cleanups,onEntranceReady) {
     tc.fillStyle=palette.soft;
     tc.font='400 11px -apple-system,"PingFang SC",sans-serif';tc.fillText(formState.primaryLabel||'邮箱',pad,155);
     if(password)tc.fillText(formState.passwordLabel||'密码',pad,238);
-    if(focusedField!==email){tc.font='400 16px -apple-system,"PingFang SC",sans-serif';tc.fillStyle=email.value?palette.ink:palette.soft;tc.fillText(email.value||email.placeholder||'you@example.com',pad,191,content);}
-    if(password&&focusedField!==password){tc.font='400 16px -apple-system,"PingFang SC",sans-serif';tc.fillStyle=password.value?palette.ink:palette.soft;const value=password.type==='text'?password.value:'•'.repeat(Math.min(password.value.length,24));tc.fillText(value||password.placeholder||'输入你的密码',pad,274,content-42);}
+    // Autofill uses native ink even when blurred; do not duplicate it on the texture.
+    if(focusedField!==email&&!email.matches(':is(:autofill, :-webkit-autofill)')){tc.font='400 16px -apple-system,"PingFang SC",sans-serif';tc.fillStyle=email.value?palette.ink:palette.soft;tc.fillText(email.value||email.placeholder||'you@example.com',pad,191,content);}
+    if(password&&focusedField!==password&&!password.matches(':is(:autofill, :-webkit-autofill)')){tc.font='400 16px -apple-system,"PingFang SC",sans-serif';tc.fillStyle=password.value?palette.ink:palette.soft;const value=password.type==='text'?password.value:'•'.repeat(Math.min(password.value.length,24));tc.fillText(value||password.placeholder||'输入你的密码',pad,274,content-42);}
     tc.strokeStyle=palette.thread;tc.lineWidth=.9;
     (password?[209,292]:[209]).forEach(y=>{tc.beginPath();tc.moveTo(pad,y);tc.lineTo(CW-pad,y);tc.stroke();});
     tc.fillStyle=palette.button;tc.beginPath();tc.roundRect(pad,330,content,48,4);tc.fill();
@@ -577,10 +578,10 @@ function createClothLogin(root,cleanups,onEntranceReady) {
   },true);
   listen(form,'blur',e=>{
     if(!e.target.matches('.cl-input'))return;
-    focusedField=null;focused=false;beginRecovery();textureDirty=true;wake();
+    focusedField=null;focused=false;beginRecovery();textureDirty=true;dirty=true;wake();
   },true);
-  listen(form,'input',()=>{textureDirty=true;wake();});
-  listen(form,'change',()=>{textureDirty=true;wake();});
+  listen(form,'input',()=>{textureDirty=true;dirty=true;wake();});
+  listen(form,'change',()=>{textureDirty=true;dirty=true;wake();});
   function resize(){
     const r=scene.getBoundingClientRect();if(r.width<1)return;
     const style=getComputedStyle(scene),width=parseFloat(style.width),height=parseFloat(style.height);
