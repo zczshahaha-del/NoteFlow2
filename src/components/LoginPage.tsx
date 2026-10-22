@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Pencil } from "lucide-react";
+import { Eye, EyeOff, Pencil } from "lucide-react";
 import { confirmPasswordReset, requestEmailLoginCode, requestPasswordReset } from "../services/auth";
 import type { ClothLoginController, ClothLoginState } from "./login/cloth-login.js";
 import "./login/cloth-login.css";
@@ -190,18 +190,21 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
           <div className="cl-form">
             <h2 className="cl-fallback-title" aria-hidden="true">{title}</h2>
             <div className="auth-fields" key={`${mode}:${method}:${step}`}>
-              {!showCode && <><label className="sr-only" htmlFor={`${id}-email`}>邮箱</label>
+              {!showCode && <div className="cl-field cl-primary-field"><label className="sr-only" htmlFor={`${id}-email`}>邮箱</label>
                 <input className="cl-email cl-input" ref={emailInput} id={`${id}-email`} name="email" type="email" autoComplete="email" inputMode="email" placeholder="输入你的邮箱地址" required disabled={busy} value={email}
-                  onChange={event => { stopSend(); setEmail(event.target.value); setCode(""); clearFeedback(); }} /></>}
-              {showCode && <><label className="sr-only" htmlFor={`${id}-code`}>验证码</label>
+                  onChange={event => { stopSend(); setEmail(event.target.value); setCode(""); clearFeedback(); }} />
+                <span className="cl-field-weave" aria-hidden="true" /></div>}
+              {showCode && <div className="cl-field cl-primary-field"><label className="sr-only" htmlFor={`${id}-code`}>验证码</label>
                 <input className="cl-email cl-input" ref={codeInput} id={`${id}-code`} name="code" type="text" inputMode="numeric" autoComplete="one-time-code" placeholder="6 位验证码" maxLength={6} required disabled={busy} value={code}
-                  aria-describedby={`${id}-destination`} onChange={event => { stopSend(); setCode(event.target.value.replace(/\D/g, "").slice(0, 6)); clearFeedback(); }} /></>}
-              {showPassword && <><label className="sr-only" htmlFor={`${id}-password`}>{mode === "reset" ? "新密码" : "密码"}</label>
+                  aria-describedby={`${id}-destination`} onChange={event => { stopSend(); setCode(event.target.value.replace(/\D/g, "").slice(0, 6)); clearFeedback(); }} />
+                <span className="cl-field-weave" aria-hidden="true" /></div>}
+              {showPassword && <div className="cl-field cl-password-field"><label className="sr-only" htmlFor={`${id}-password`}>{mode === "reset" ? "新密码" : "密码"}</label>
                 <input className="cl-password cl-input" ref={passwordInput} id={`${id}-password`} name="password" type={visible ? "text" : "password"} autoComplete={mode === "reset" ? "new-password" : "current-password"}
                   placeholder={mode === "reset" ? "至少 8 位" : "你的密码"} minLength={mode === "reset" ? 8 : 6} required disabled={busy} value={password}
                   onChange={event => { setPassword(event.target.value); clearFeedback(); }} onKeyUp={event => setCapsLock(event.getModifierState("CapsLock"))} onBlur={() => setCapsLock(false)} />
-                <button type="button" className="cl-password-toggle" disabled={busy} aria-label={visible ? "隐藏密码" : "显示密码"} aria-pressed={visible}
-                  onClick={() => { setVisible(!visible); passwordInput.current?.focus(); }}>{visible ? "隐藏" : "显示"}</button></>}
+                <span className="cl-field-weave" aria-hidden="true" />
+                <button type="button" className="cl-password-toggle" disabled={busy} aria-label={visible ? "隐藏密码" : "显示密码"} title={visible ? "隐藏密码" : "显示密码"} aria-pressed={visible}
+                  onClick={() => { setVisible(!visible); passwordInput.current?.focus(); }}>{visible ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}</button></div>}
             </div>
             <button ref={submitButton} className="cl-enter auth-submit" type="submit" disabled={!ready || busy || sending}>{buttonLabel}</button>
           </div>

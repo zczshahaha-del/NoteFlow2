@@ -21,10 +21,10 @@ function createClothLogin(root,cleanups,onEntranceReady) {
   const canvas=root.querySelector('.cl-cloth'),shadow=root.querySelector('.cl-shadow'),fx=root.querySelector('.cl-fx');
   const sc=shadow.getContext('2d'),fc=fx.getContext('2d'),form=root.querySelector('form'),enter=root.querySelector('.cl-enter');
   const dragSurface=root.querySelector('.cl-drag-surface');
-  let email,password,passwordToggle,fields=[];
+  let email,password,fields=[];
   function refreshFields(){
     email=root.querySelector('.cl-email');password=root.querySelector('.cl-password');
-    passwordToggle=root.querySelector('.cl-password-toggle');fields=[email,password].filter(Boolean);
+    fields=[email,password].filter(Boolean);
     focusedField=fields.includes(document.activeElement)?document.activeElement:null;
     focused=Boolean(focusedField);
   }
@@ -61,6 +61,13 @@ function createClothLogin(root,cleanups,onEntranceReady) {
   }
   function colors(){
     ['bg','paper','ink','soft','thread','shadow','button','button-ink','metal','shine','face','face-shade','face-ink','rope','scarf','knit','knit-shade','shoe','stitch','error'].forEach(k=>{probe.style.color='var(--cl-'+k+')';palette[k]=getComputedStyle(probe).color;});palette.line=palette.thread;textureDirty=true;dirty=true;
+    // Same 4×5 cloth repeat as paintTexture, including antialiased half-pixel threads.
+    // Decorative only: input values are never copied into this bitmap.
+    const tile=document.createElement('canvas');tile.width=8;tile.height=10;
+    const c=tile.getContext('2d');c.scale(2,2);c.globalAlpha=.075;c.lineWidth=.5;
+    for(let x=0;x<=4;x+=2){c.strokeStyle=x===2?palette.shine:palette.ink;c.beginPath();c.moveTo(x,0);c.lineTo(x,5);c.stroke();}
+    for(let y=0;y<=5;y+=2.5){c.strokeStyle=y===2.5?palette.thread:palette.shine;c.beginPath();c.moveTo(0,y);c.lineTo(4,y);c.stroke();}
+    scene.style.setProperty('--cl-input-weave',`url("${tile.toDataURL()}")`);
   }
   function updateMode(){
     scene.dataset.mode=mode;
@@ -299,11 +306,7 @@ function createClothLogin(root,cleanups,onEntranceReady) {
     tc.fillStyle=palette.soft;
     tc.font='400 11px -apple-system,"PingFang SC",sans-serif';tc.fillText(formState.primaryLabel||'邮箱',pad,155);
     if(password)tc.fillText(formState.passwordLabel||'密码',pad,238);
-    // Autofill uses native ink even when blurred; do not duplicate it on the texture.
-    if(focusedField!==email&&!email.matches(':is(:autofill, :-webkit-autofill)')){tc.font='400 16px -apple-system,"PingFang SC",sans-serif';tc.fillStyle=email.value?palette.ink:palette.soft;tc.fillText(email.value||email.placeholder||'you@example.com',pad,191,content);}
-    if(password&&focusedField!==password&&!password.matches(':is(:autofill, :-webkit-autofill)')){tc.font='400 16px -apple-system,"PingFang SC",sans-serif';tc.fillStyle=password.value?palette.ink:palette.soft;const value=password.type==='text'?password.value:'•'.repeat(Math.min(password.value.length,24));tc.fillText(value||password.placeholder||'输入你的密码',pad,274,content-42);}
-    tc.strokeStyle=palette.thread;tc.lineWidth=.9;
-    (password?[209,292]:[209]).forEach(y=>{tc.beginPath();tc.moveTo(pad,y);tc.lineTo(CW-pad,y);tc.stroke();});
+    // Native inputs exclusively own their value, placeholder, caret and baseline.
     tc.fillStyle=palette.button;tc.beginPath();tc.roundRect(pad,330,content,48,4);tc.fill();
     tc.fillStyle=palette['button-ink'];tc.font='400 14px -apple-system,"PingFang SC",sans-serif';tc.textAlign='center';tc.fillText(formState.buttonLabel||'获取验证码',CW/2,360);tc.textAlign='left';
     if(gpu){gl.bindTexture(gl.TEXTURE_2D,gpu.texture);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,texture);}
@@ -365,7 +368,7 @@ function createClothLogin(root,cleanups,onEntranceReady) {
       function attribute(buffer,data,location,size){gl.bindBuffer(gl.ARRAY_BUFFER,buffer);if(data)gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.DYNAMIC_DRAW);gl.enableVertexAttribArray(location);gl.vertexAttribPointer(location,size,gl.FLOAT,false,0,0);}
       attribute(gpu.position,pos,gpu.p,3);attribute(gpu.normal,norm,gpu.n,3);attribute(gpu.uv,null,gpu.u,2);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,gpu.index);gl.bindTexture(gl.TEXTURE_2D,gpu.texture);gl.drawElements(gl.TRIANGLES,indices.length,gl.UNSIGNED_SHORT,0);
     }else drawFallback();
-    positionControl(email,28,164,CW-56);positionControl(password,28,247,CW-56);positionControl(passwordToggle,CW-72,247,44);positionControl(enter,28,330,CW-56);
+    positionControl(email?.closest('.cl-field'),28,164,CW-56);positionControl(password?.closest('.cl-field'),28,247,CW-56);positionControl(enter,28,330,CW-56);
     fc.clearRect(0,0,W,H);
     for(const i of pins){const p=projected[i];fc.save();fc.translate(p.x,p.y);fc.shadowColor=palette.shadow;fc.shadowBlur=4;fc.shadowOffsetY=2;
       const g=fc.createLinearGradient(-5,-5,5,5);g.addColorStop(0,palette.shine);g.addColorStop(.55,palette.metal);g.addColorStop(1,palette.thread);fc.fillStyle=g;fc.beginPath();fc.arc(0,0,4.2,0,Math.PI*2);fc.fill();fc.shadowBlur=0;fc.strokeStyle=palette.metal;fc.lineWidth=.7;fc.stroke();fc.restore();}
@@ -568,14 +571,16 @@ function createClothLogin(root,cleanups,onEntranceReady) {
   listen(window,'pointerup',release);listen(window,'pointercancel',release);
   listen(window,'blur',()=>{if(pending)release({pointerId:pending.id,preventDefault(){}});});
   listen(form,'click',e=>{if(suppressClick){e.preventDefault();e.stopImmediatePropagation();}},true);
-  // Delegate to the stable form: React replaces inputs between email/code/reset steps.
-  listen(form,'focus',e=>{
-    if(!e.target.matches('.cl-input'))return;
-    refreshFields();const field=e.target;
+  // Flatten before the browser resolves a mouse caret position, not midway through focus.
+  function prepareEditing(field){
+    refreshFields();
     if(pending)release({pointerId:pending.id,preventDefault(){}});
     finishEntrance();focused=true;focusedField=field;
     if(torn)createCloth(false);beginRecovery();stabilizeEditing();textureDirty=true;dirty=true;render();wake();
-  },true);
+  }
+  // Delegate to the stable form: React replaces inputs between email/code/reset steps.
+  listen(form,'pointerdown',e=>{if(e.target.matches('.cl-input'))prepareEditing(e.target);},true);
+  listen(form,'focus',e=>{if(e.target.matches('.cl-input'))prepareEditing(e.target);},true);
   listen(form,'blur',e=>{
     if(!e.target.matches('.cl-input'))return;
     focusedField=null;focused=false;beginRecovery();textureDirty=true;dirty=true;wake();
