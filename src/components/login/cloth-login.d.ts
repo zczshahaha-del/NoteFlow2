@@ -3,9 +3,7 @@ export interface ClothLoginState {
   primaryLabel: string;
   passwordLabel: string;
   buttonLabel: string;
-  subtitle: string;
-  help: string;
-  helpDetail: string;
+  title: string;
 }
 export interface ClothLoginController {
   update(state: ClothLoginState): void;

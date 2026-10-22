@@ -27,7 +27,7 @@ function createClothLogin(root,cleanups) {
     focused=Boolean(focusedField);
   }
   let focusedField=null,formState={loading:false,feedback:'',tone:'info'};
-  const hint=root.querySelector('.cl-hint'),status=root.querySelector('.cl-status'),probe=root.querySelector('.cl-probe'),bubble=root.querySelector('.cl-bubble');
+  const status=root.querySelector('.cl-status'),probe=root.querySelector('.cl-probe'),bubble=root.querySelector('.cl-bubble');
   const texture=document.createElement('canvas'),tc=texture.getContext('2d'),reduced=matchMedia('(prefers-reduced-motion:reduce)');
   const gl=canvas.getContext('webgl',{alpha:true,antialias:true,premultipliedAlpha:false});
   const fallback=gl?null:canvas.getContext('2d');
@@ -60,7 +60,6 @@ function createClothLogin(root,cleanups) {
     ['bg','paper','ink','soft','thread','shadow','button','button-ink','metal','shine','face','face-shade','face-ink','rope','scarf','knit','knit-shade','shoe','stitch','error'].forEach(k=>{probe.style.color='var(--cl-'+k+')';palette[k]=getComputedStyle(probe).color;});palette.line=palette.thread;textureDirty=true;dirty=true;
   }
   function updateMode(){
-    hint.textContent=entryTime<LAND?'正把你的笔记带过来。':'拖一拖布边，灵感也可以很柔软。';
     scene.dataset.mode=mode;
   }
   function finishEntrance(){
@@ -293,26 +292,16 @@ function createClothLogin(root,cleanups) {
     for(let y=0;y<CH;y+=2.5){tc.strokeStyle=(Math.round(y/2.5)%2)?palette.thread:palette.shine;tc.beginPath();tc.moveTo(0,y);tc.lineTo(CW,y);tc.stroke();}tc.restore();
     tc.strokeStyle=palette.thread;tc.lineWidth=.8;tc.setLineDash([2.5,3]);tc.strokeRect(9,9,CW-18,CH-18);tc.setLineDash([]);
     const pad=28,content=CW-pad*2,small=CW<285;
-    tc.fillStyle=palette.soft;tc.font='400 11px -apple-system,"PingFang SC",sans-serif';tc.fillText('给你留下一小片空白',pad,47);
-    tc.fillStyle=palette.ink;tc.font='400 '+(CW<250?18:small?23:27)+'px "Songti SC",Georgia,serif';tc.fillText('把灵感，轻轻放下。',pad,93);
-    tc.fillStyle=palette.soft;tc.font='400 12px -apple-system,"PingFang SC",sans-serif';tc.fillText(formState.subtitle||'新想法，慢慢写。',pad,122,content);
+    tc.fillStyle=palette.ink;tc.font='400 '+(CW<250?22:small?25:28)+'px -apple-system,"PingFang SC",sans-serif';tc.fillText(formState.title||'登录',pad,93);
+    tc.fillStyle=palette.soft;
     tc.font='400 11px -apple-system,"PingFang SC",sans-serif';tc.fillText(formState.primaryLabel||'邮箱',pad,155);
     if(password)tc.fillText(formState.passwordLabel||'密码',pad,238);
     if(focusedField!==email){tc.font='400 16px -apple-system,"PingFang SC",sans-serif';tc.fillStyle=email.value?palette.ink:palette.soft;tc.fillText(email.value||email.placeholder||'you@example.com',pad,191,content);}
     if(password&&focusedField!==password){tc.font='400 16px -apple-system,"PingFang SC",sans-serif';tc.fillStyle=password.value?palette.ink:palette.soft;const value=password.type==='text'?password.value:'•'.repeat(Math.min(password.value.length,24));tc.fillText(value||password.placeholder||'输入你的密码',pad,274,content-42);}
     tc.strokeStyle=palette.thread;tc.lineWidth=.9;
     (password?[209,292]:[209]).forEach(y=>{tc.beginPath();tc.moveTo(pad,y);tc.lineTo(CW-pad,y);tc.stroke();});
-    if(!password){
-      tc.fillStyle=palette.soft;tc.font='400 12px -apple-system,"PingFang SC",sans-serif';
-      tc.fillText(formState.help||'通过邮箱验证码安全登录',pad,255,content);
-      tc.fillText(formState.helpDetail||'无需输入密码，继续即可收取邮件。',pad,279,content);
-    }
     tc.fillStyle=palette.button;tc.beginPath();tc.roundRect(pad,330,content,48,4);tc.fill();
-    tc.fillStyle=palette['button-ink'];tc.font='400 14px -apple-system,"PingFang SC",sans-serif';tc.textAlign='center';tc.fillText(formState.buttonLabel||'继续',CW/2,360);tc.textAlign='left';
-    tc.fillStyle=formState.tone==='error'?palette.error:palette.soft;tc.font='400 11px -apple-system,"PingFang SC",sans-serif';
-    const note='留住那些一闪而过的想法。',lines=[''];
-    for(const char of note){const i=lines.length-1;if(tc.measureText(lines[i]+char).width>content&&lines[i]){if(lines.length===2)break;lines.push(char);}else lines[i]+=char;}
-    lines.forEach((line,i)=>tc.fillText(line,pad,410+i*17));
+    tc.fillStyle=palette['button-ink'];tc.font='400 14px -apple-system,"PingFang SC",sans-serif';tc.textAlign='center';tc.fillText(formState.buttonLabel||'获取验证码',CW/2,360);tc.textAlign='left';
     if(gpu){gl.bindTexture(gl.TEXTURE_2D,gpu.texture);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,texture);}
     textureDirty=false;
   }
@@ -588,8 +577,6 @@ function createClothLogin(root,cleanups) {
   },true);
   listen(form,'input',()=>{textureDirty=true;wake();});
   listen(form,'change',()=>{textureDirty=true;wake();});
-  listen(root.querySelector('[data-reset]'),'click',()=>{fields.forEach(field=>field.blur());finishEntrance();createCloth(false);save('复原布面');});
-  listen(root.querySelector('[data-replay]'),'click',()=>startEntrance(true));
   function resize(){
     const r=scene.getBoundingClientRect();if(r.width<1)return;
     const changed=Math.abs(W-r.width)>.5||Math.abs(H-r.height)>.5;W=r.width;H=r.height;

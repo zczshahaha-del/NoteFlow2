@@ -63,7 +63,12 @@ try {
     assert.equal(initial.bg,'rgba(0, 0, 0, 0)');assert.equal(initial.radius,'4px');assert.equal(initial.font,'14px');
     assert.equal(await page.locator('.cl-scene').evaluate(n=>n.dataset.entrance),'ready');
     assert.equal(await page.locator('.auth-switch').count(),0);assert.equal(await code.count(),0);
-    assert.equal(await page.locator('input').count(),1);assert.equal(await primary.innerText(),'继续');
+    assert.equal(await page.locator('input').count(),1);assert.equal(await primary.innerText(),'获取验证码');
+    assert.equal(await page.locator('[data-replay],[data-reset],.intro,.site-footer,.cl-hint').count(),0);
+    assert.ok(await page.locator('.cl-bubble').isHidden());
+    assert.equal(await page.locator('.auth-feedback').evaluate(n=>n.getBoundingClientRect().height),0);
+    const optionTop=await page.locator('.auth-options').evaluate(n=>n.getBoundingClientRect().top);
+    assert.ok(optionTop>initial.y+initial.height && optionTop<initial.y+initial.height+130,'account actions stay close to the form');
     await touchTargets();assert.ok(await primary.isDisabled());await shot('login');
     await email.fill('owner@example.com');await page.evaluate(()=>window.authTest.hold=true);await primary.click();
     await code.waitFor();assert.equal((await measure()).y,initial.y);
@@ -96,6 +101,11 @@ try {
     await page.getByRole('button',{name:'显示密码',exact:true}).click();
     assert.equal(await password.getAttribute('type'),'text');assert.ok(await password.evaluate(n=>n===document.activeElement));
     await page.getByRole('button',{name:'隐藏密码',exact:true}).click();assert.equal(await password.getAttribute('type'),'password');
+    await page.locator('.auth-options').scrollIntoViewIfNeeded();
+    assert.ok(await page.locator('.auth-options button').evaluateAll(nodes=>nodes.every(n=>{
+      const r=n.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
+      return hit===n||n.contains(hit);
+    })),'the animation scene must not intercept the account actions');
     await shot('password');await page.getByRole('button',{name:'忘记密码？',exact:true}).click();
     assert.equal(await page.locator('input').count(),1);await primary.click();
     await page.getByRole('status').filter({hasText:'已发送'}).waitFor();assert.equal(await code.inputValue(),'');
@@ -152,6 +162,9 @@ try {
   }
   // Normal-motion integration: same production component, no auth/network actions.
   const auditSource = `(()=>{
+    window.clothLabels=new Set();
+    const fillText=CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText=function(text,...args){window.clothLabels.add(String(text));return fillText.call(this,text,...args)};
     const frames=new Set(), observers={resize:new Set(),intersection:new Set(),mutation:new Set()}, listeners=[];
     const request=window.requestAnimationFrame.bind(window),cancel=window.cancelAnimationFrame.bind(window);
     window.requestAnimationFrame=callback=>{let id=request(time=>{frames.delete(id);callback(time)});frames.add(id);return id};
@@ -188,11 +201,19 @@ try {
     await page.setContent('<html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>'+css+'</style></head><body><div id="root"></div><script>'+auditSource+'</script><script type="module">'+chunks[0].code.replaceAll('</script','<\\/script')+'</script></body></html>');
     await page.locator('#cloth-character-login[data-cloth-ready="true"]').waitFor();
     const scene=page.locator('.cl-scene');
+    const remount=async(focus=true)=>{
+      await page.evaluate(()=>window.authTest.hide());await page.locator('.auth-page').waitFor({state:'detached'});
+      await page.evaluate(()=>window.authTest.show());await page.locator('#cloth-character-login[data-cloth-ready="true"]').waitFor();
+      if(focus)await page.getByRole('textbox',{name:'邮箱',exact:true}).focus();
+    };
     assert.equal(await scene.getAttribute('data-entrance'),'entering');
     assert.ok(Number(await scene.getAttribute('data-time'))<1);
     await page.waitForFunction(()=>Number(document.querySelector('.cl-scene')?.dataset.time)>=3.08,{},{timeout:20000});
     assert.notEqual(await scene.getAttribute('data-entrance'),'entering');
     await page.waitForFunction(()=>document.querySelector('.cl-scene')?.dataset.entrance==='ready',{},{timeout:20000});
+    const labels=await page.evaluate(()=>[...window.clothLabels]);
+    assert.ok(labels.includes('登录')&&labels.includes('获取验证码'));
+    for(const copy of ['给你留下一小片空白','把灵感','新想法','留住那些','通过邮箱验证码安全登录','无需输入密码'])assert.ok(!labels.some(label=>label.includes(copy)));
     if(process.env.NOTEFLOW_AUTH_SCREENSHOT_DIR)await page.screenshot({path:process.env.NOTEFLOW_AUTH_SCREENSHOT_DIR+'/noteflow-auth-cloth-arrived-'+width+'.png'});
     const grip=async()=>scene.evaluate(n=>{
       const r=n.getBoundingClientRect(),form=n.closest('form'),w=parseFloat(form.style.getPropertyValue('--cl-card-width'));
@@ -209,7 +230,7 @@ try {
     assert.ok(await password.evaluate(n=>n===document.activeElement && !/NaN|Infinity/.test(n.style.transform)));
     await page.getByRole('button',{name:'显示密码',exact:true}).click();assert.equal(await password.getAttribute('type'),'text');
     assert.equal(await page.evaluate(()=>window.authTest.calls.length),0);
-    await page.getByRole('button',{name:'整理布面',exact:true}).click();
+    await remount();
     // All interruption paths release pointer capture, including the native lost-capture path.
     for(const type of ['pointercancel','lostpointercapture','blur']){
       const q=await grip();await page.mouse.move(q.x,q.y);await page.mouse.down();await page.mouse.move(q.x+30,q.y-80,{steps:8});
@@ -217,10 +238,10 @@ try {
       await scene.evaluate((n,type)=>{if(type==='blur')window.dispatchEvent(new Event('blur'));else if(type==='lostpointercapture')n.releasePointerCapture(1);else n.dispatchEvent(new PointerEvent(type,{pointerId:1,bubbles:true,cancelable:true}));},type);
       await page.mouse.up();assert.equal(await scene.getAttribute('data-grab'),'idle');
       assert.equal(await scene.getAttribute('data-torn'),'0');
-      await page.getByRole('button',{name:'整理布面',exact:true}).click();
+      await remount();
     }
     // Focus during entrance lets the user type immediately instead of waiting.
-    await page.getByRole('button',{name:'重播入场',exact:false}).click();
+    await remount(false);
     assert.equal(await scene.getAttribute('data-entrance'),'entering');
     await page.getByRole('textbox',{name:'邮箱',exact:true}).focus();
     assert.equal(await scene.getAttribute('data-entrance'),'ready');
