@@ -1,15 +1,17 @@
-// Adapted from the user-supplied notes-login-handoff. Physics and actor motion are unchanged.
+// Original solver/actor routines retained; viewport geometry and entry cadence are adapted separately.
 // React owns authentication and field state; this controller only renders the cloth.
-export function mountClothLogin(root) {
+import { clothStageLayout } from './cloth-stage-layout.js';
+
+export function mountClothLogin(root,onEntranceReady) {
   const cleanups=[];
-  try { return createClothLogin(root,cleanups); }
+  try { return createClothLogin(root,cleanups,onEntranceReady); }
   catch(error){
     cleanups.splice(0).reverse().forEach(cleanup=>cleanup());
     root.removeAttribute('data-cloth-ready');
     throw error;
   }
 }
-function createClothLogin(root,cleanups) {
+function createClothLogin(root,cleanups,onEntranceReady) {
   const scene=root.querySelector('.cl-scene');
   let destroyed=false;
   const listen=(target,type,handler,options)=>{
@@ -35,7 +37,8 @@ function createClothLogin(root,cleanups) {
   const NX=20,NY=26,STRIDE=NX+1,DT=1/120,F=950,settings={softness:1.2,weight:1.15,swing:1};
   const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v)),mix=(a,b,q)=>a+(b-a)*q;
   const pt=(x,y)=>({x,y}),smooth=t=>{t=clamp(t);return t*t*(3-2*t);};
-  const STEP=.48,LIFT=.40,LEAD=.20,steps=6,LAND=LEAD+steps*STEP,END=LAND+1.97;
+  const LEAD=.20,LAND=3.08,END=LAND+1.97;
+  let STEP=.48,LIFT=.40,steps=6,entranceAnnounced=false;
   let W=720,H=650,CW=326,CH=448,OX=197,OY=89,dpr=1,palette={},mode='drag';
   let nodes=[],links=[],triangles=[],edgeMap=new Map(),projected=[],indices=[],pins=[],dirty=true,textureDirty=true;
   let grab=null,pending=null,last=0,accumulator=0,raf=0,awakeUntil=0,torn=0,suppressClick=false,focused=false,accepted=false,active=true;
@@ -372,6 +375,7 @@ function createClothLogin(root,cleanups) {
     if(grab){const p=grabPoint();const q=project(p);fc.save();fc.strokeStyle=palette.metal;fc.globalAlpha=.8;fc.lineWidth=1.2;fc.beginPath();fc.arc(q.x,q.y,7,0,Math.PI*2);fc.stroke();fc.restore();}
     drawActor();
     scene.dataset.entrance=entryTime<LAND?'entering':entryTime<END?'settling':'ready';scene.dataset.time=entryTime.toFixed(3);
+    if(!entranceAnnounced&&entryTime>=LAND){entranceAnnounced=true;onEntranceReady?.();}
     dirty=false;frameCount++;scene.dataset.frames=String(frameCount);
   }
   function drawActor(){
@@ -581,10 +585,11 @@ function createClothLogin(root,cleanups) {
     const r=scene.getBoundingClientRect();if(r.width<1)return;
     const changed=Math.abs(W-r.width)>.5||Math.abs(H-r.height)>.5;W=r.width;H=r.height;
     scene.style.setProperty('--cl-scene-width',W+'px');
-    CW=W<440?Math.min(228,W-96):Math.min(326,W-150);CH=448;
-    OX=Math.min(W-CW-14,(W-CW)/2+(W<410?34:W<560?48:65));OY=Math.max(52,(H-CH)/2-12);endX=OX;
+    ({CW,CH,OX,OY,S,ground,endX,steps,STEP,LIFT}=clothStageLayout(W,H));
     form.style.setProperty('--cl-card-left',OX+'px');form.style.setProperty('--cl-card-width',CW+'px');
-    S=Math.max(W<410?.74:W<560?.98:1.16,(W+32-OX)/425);ground=H-56;dpr=Math.min(devicePixelRatio||1,2);
+    form.style.setProperty('--cl-support-top',(scene.offsetTop+OY+CH+12)+'px');
+    scene.style.setProperty('--cl-card-top',OY+'px');
+    dpr=Math.min(devicePixelRatio||1,2);
     if(!entryStarted)entryOffset=W+32-OX;else if(changed)finishEntrance();
     [canvas,shadow,fx].forEach(c=>{c.width=Math.round(W*dpr);c.height=Math.round(H*dpr);});sc.setTransform(dpr,0,0,dpr,0,0);fc.setTransform(dpr,0,0,dpr,0,0);fallback?.setTransform(dpr,0,0,dpr,0,0);
     colors();if(changed||!nodes.length)createCloth(false);else{textureDirty=true;dirty=true;wake();}render();
@@ -592,7 +597,7 @@ function createClothLogin(root,cleanups) {
   root.dataset.clothReady='true';
   refreshFields();setupGPU();updateMode();resize();
   if(focused){finishEntrance();render();wake();}else startEntrance();
-  const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(scene);cleanups.push(()=>resizeObserver.disconnect());
+  const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(scene);resizeObserver.observe(root);cleanups.push(()=>resizeObserver.disconnect());
   const intersectionObserver=new IntersectionObserver(es=>{active=es.some(e=>e.isIntersecting);if(active)wake();else if(raf){cancelAnimationFrame(raf);raf=0;last=0;}},{threshold:.05});intersectionObserver.observe(scene);cleanups.push(()=>intersectionObserver.disconnect());
   listen(document,'visibilitychange',()=>{if(document.hidden){if(pending)release({pointerId:pending.id,preventDefault(){}});if(raf)cancelAnimationFrame(raf);raf=0;last=0;}else wake();});
   listen(matchMedia('(prefers-color-scheme:dark)'),'change',()=>{colors();wake();});

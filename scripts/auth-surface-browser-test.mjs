@@ -47,6 +47,7 @@ try {
     await page.setContent('<html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>'+css+'</style></head><body><div id="root"></div><script type="module">'+chunks[0].code.replaceAll('"/noteflow_icon.svg"',JSON.stringify(logo)).replaceAll('</script','<\\/script')+'</script></body></html>');
     await page.locator('.auth-form').waitFor();
     await page.locator('#cloth-character-login[data-cloth-ready="true"]').waitFor();
+    await page.locator('#cloth-character-login[data-entered="true"]').waitFor();
     const email=page.getByRole('textbox',{name:'邮箱',exact:true});
     const code=page.getByRole('textbox',{name:'验证码',exact:true});
     const primary=page.locator('.auth-submit');
@@ -69,6 +70,12 @@ try {
     assert.equal(await page.locator('.auth-feedback').evaluate(n=>n.getBoundingClientRect().height),0);
     const optionTop=await page.locator('.auth-options').evaluate(n=>n.getBoundingClientRect().top);
     assert.ok(optionTop>initial.y+initial.height && optionTop<initial.y+initial.height+130,'account actions stay close to the form');
+    assert.ok(await page.locator('.cl-scene').evaluate(n=>{
+      const stage=n.getBoundingClientRect(),root=n.closest('.auth-page').getBoundingClientRect();
+      const top=stage.y+parseFloat(n.style.getPropertyValue('--cl-card-top'));
+      const bottom=n.closest('form').querySelector('.auth-options').getBoundingClientRect().bottom;
+      return stage.x===root.x && Math.abs(stage.width-root.width)<1 && Math.abs((top+bottom)/2-(root.y+root.height/2))<1;
+    }),'the resting card and account actions are vertically centered in the viewport');
     await touchTargets();assert.ok(await primary.isDisabled());await shot('login');
     await email.fill('owner@example.com');await page.evaluate(()=>window.authTest.hold=true);await primary.click();
     await code.waitFor();assert.equal((await measure()).y,initial.y);
@@ -192,7 +199,7 @@ try {
     window.clothAudit=()=>({frames:frames.size,listeners:listeners.length,resize:observers.resize.size,intersection:observers.intersection.size,mutation:observers.mutation.size});
     window.clothListenerDetails=()=>listeners.map(x=>({type:x.type,target:x.target===window?'window':x.target===document?'document':'media',callback:String(x.callback).slice(0,100)}));
   })();`;
-  for (const width of [1280,736,320]) {
+  for (const width of [1920,1280,736,320]) {
     const context=await browser.newContext({viewport:{width,height:1000},deviceScaleFactor:1,reducedMotion:'no-preference'});
     await context.route('**/*',route=>route.request().url()==='https://auth-fixture.invalid/'?
       route.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'}):route.abort());
@@ -208,16 +215,31 @@ try {
     };
     assert.equal(await scene.getAttribute('data-entrance'),'entering');
     assert.ok(Number(await scene.getAttribute('data-time'))<1);
+    assert.equal(await page.locator('.auth-support').getAttribute('inert'),'');
+    assert.equal(await page.getByRole('button',{name:'使用密码登录',exact:true}).count(),0);
+    assert.equal(await page.getByRole('button',{name:'注册',exact:true}).count(),0);
+    assert.ok(await page.locator('.auth-support').isHidden());
+    assert.equal(await scene.evaluate(n=>n.getBoundingClientRect().x),0);
+    assert.equal(await scene.evaluate(n=>n.getBoundingClientRect().width),width,'entry clipping must be the screen edge, not a centered pane');
+    await page.waitForFunction(()=>Number(document.querySelector('.cl-scene')?.dataset.time)>=.55);
+    assert.equal(await page.locator('.auth-support').getAttribute('inert'),'');
+    assert.ok(await page.locator('.auth-support').isHidden());
+    assert.ok(await page.locator('.cl-enter').evaluate(n=>n.getBoundingClientRect().right>innerWidth),'the incoming card is still crossing the right screen edge');
+    if(process.env.NOTEFLOW_AUTH_SCREENSHOT_DIR)await page.screenshot({path:process.env.NOTEFLOW_AUTH_SCREENSHOT_DIR+'/noteflow-auth-cloth-entering-'+width+'.png'});
     await page.waitForFunction(()=>Number(document.querySelector('.cl-scene')?.dataset.time)>=3.08,{},{timeout:20000});
     assert.notEqual(await scene.getAttribute('data-entrance'),'entering');
     await page.waitForFunction(()=>document.querySelector('.cl-scene')?.dataset.entrance==='ready',{},{timeout:20000});
+    await page.locator('#cloth-character-login[data-entered="true"]').waitFor();
+    await page.waitForFunction(()=>getComputedStyle(document.querySelector('.auth-support')).opacity==='1');
+    assert.equal(await page.locator('.auth-support').getAttribute('inert'),null);
+    assert.ok(await page.locator('.auth-support').isVisible());
     const labels=await page.evaluate(()=>[...window.clothLabels]);
     assert.ok(labels.includes('登录')&&labels.includes('获取验证码'));
     for(const copy of ['给你留下一小片空白','把灵感','新想法','留住那些','通过邮箱验证码安全登录','无需输入密码'])assert.ok(!labels.some(label=>label.includes(copy)));
     if(process.env.NOTEFLOW_AUTH_SCREENSHOT_DIR)await page.screenshot({path:process.env.NOTEFLOW_AUTH_SCREENSHOT_DIR+'/noteflow-auth-cloth-arrived-'+width+'.png'});
     const grip=async()=>scene.evaluate(n=>{
       const r=n.getBoundingClientRect(),form=n.closest('form'),w=parseFloat(form.style.getPropertyValue('--cl-card-width'));
-      const x=parseFloat(form.style.getPropertyValue('--cl-card-left')),y=Math.max(52,(r.height-448)/2-12);
+      const x=parseFloat(form.style.getPropertyValue('--cl-card-left')),y=parseFloat(n.style.getPropertyValue('--cl-card-top'));
       return {x:r.x+x+12,y:r.y+y+420,w};
     });
     // Lower-left hem pulled upwards; releasing then editing must recover and remain usable.
@@ -267,7 +289,15 @@ try {
       const idleFrames=await scene.getAttribute('data-frames');await page.waitForTimeout(1200);
       assert.equal(await scene.getAttribute('data-frames'),idleFrames,'the auth clock must not wake idle cloth rendering');
     }
-    reports.push({width,normalEntrance:true,landingSeconds:3.08,dragRebound:true,pointerInterruptions:true,inputDuringEntrance:true,strictModeMountUnmountCleanup:true});
+    if(width===1280){
+      await page.setViewportSize({width,height:1254});
+      await page.waitForFunction(()=>{
+        const n=document.querySelector('.cl-scene'),r=n.getBoundingClientRect(),top=r.y+parseFloat(n.style.getPropertyValue('--cl-card-top'));
+        const bottom=n.closest('form').querySelector('.auth-options').getBoundingClientRect().bottom;
+        return Math.abs((top+bottom)/2-innerHeight/2)<1;
+      });
+    }
+    reports.push({width,normalEntrance:true,landingSeconds:3.08,screenEdgeEntrance:true,auxiliaryInertUntilArrival:true,viewportCentered:true,dragRebound:true,pointerInterruptions:true,inputDuringEntrance:true,strictModeMountUnmountCleanup:true});
     await context.close();
   }
   // No Canvas at all: the same native form still submits to the existing auth service.

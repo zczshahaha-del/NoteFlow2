@@ -23,6 +23,8 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
   const [busy, setBusy] = useState(false);
   const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState({ text: "", error: false });
+  const [renderer, setRenderer] = useState<"loading" | "active" | "fallback">("loading");
+  const [entranceReady, setEntranceReady] = useState(false);
   const [now, setNow] = useState(Date.now());
   const deadlines = useRef(new Map<string, number>());
   const sendRequest = useRef<AbortController | null>(null);
@@ -56,18 +58,26 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
   useEffect(() => {
     const root = loginRoot.current;
     // Canvas-less environments keep the same usable native authentication form.
-    if (!root || typeof ResizeObserver === "undefined" || typeof IntersectionObserver === "undefined") return;
+    if (!root) return;
+    if (typeof ResizeObserver === "undefined" || typeof IntersectionObserver === "undefined") {
+      setRenderer("fallback");
+      return;
+    }
     let controller: ClothLoginController | null = null;
     let cancelled = false;
     // Do not add the cloth renderer to the workspace's initial JavaScript bundle.
     void import("./login/cloth-login.js").then(({ mountClothLogin }) => {
       if (cancelled) return;
-      controller = mountClothLogin(root);
+      controller = mountClothLogin(root, () => { if (!cancelled) setEntranceReady(true); });
       cloth.current = controller;
       controller.update(latestPresentation.current);
+      setRenderer("active");
     }).catch(error => {
       controller?.destroy(); cloth.current = null;
-      if (!cancelled) console.warn("登录动画不可用，保留原生表单。", error);
+      if (!cancelled) {
+        setRenderer("fallback");
+        console.warn("登录动画不可用，保留原生表单。", error);
+      }
     });
     return () => { cancelled = true; controller?.destroy(); cloth.current = null; };
   }, []);
@@ -161,7 +171,7 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
     }
   };
 
-  return <main ref={loginRoot} id="cloth-character-login" className="login-page auth-page">
+  return <main ref={loginRoot} id="cloth-character-login" className="login-page auth-page" data-renderer={renderer} data-entered={entranceReady || renderer === "fallback"}>
     <header className="site-header">
       <a className="site-brand" href="/" aria-label="NoteFlow 首页">NoteFlow<span>.</span></a>
     </header>
@@ -195,7 +205,7 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
           <span className="cl-bubble" hidden aria-hidden="true" /><span className="cl-probe" aria-hidden="true" />
           <p className="cl-status sr-only" aria-hidden="true" />
         </section>
-        <div className="auth-support">
+        <div className="auth-support" inert={!entranceReady && renderer !== "fallback"} aria-hidden={!entranceReady && renderer !== "fallback"}>
           <div id={`${id}-feedback`} className="auth-feedback" data-error={feedback.error} data-empty={!feedbackText} role={feedback.error ? "alert" : "status"} aria-live="polite" aria-atomic="true">
             <span>{feedbackText}</span>
           </div>

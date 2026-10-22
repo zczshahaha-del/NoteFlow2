@@ -9,4 +9,4 @@ export interface ClothLoginController {
   update(state: ClothLoginState): void;
   destroy(): void;
 }
-export function mountClothLogin(root: HTMLElement): ClothLoginController;
+export function mountClothLogin(root: HTMLElement, onEntranceReady?: () => void): ClothLoginController;

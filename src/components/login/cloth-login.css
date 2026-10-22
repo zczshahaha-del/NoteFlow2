@@ -52,9 +52,11 @@
   background-size: 13px 13px;
 }
 #cloth-character-login .site-header {
-  position: relative;
-  inset: auto;
-  flex: none;
+  position: absolute;
+  z-index: 6;
+  top:0;
+  left:50%;
+  transform:translateX(-50%);
   width: min(100%, 1280px);
   margin: 0 auto;
   padding: 24px 40px 0;
@@ -65,8 +67,9 @@
 }
 #cloth-character-login .site-brand { color: var(--page-ink); text-decoration: none; font: 400 28px/1 Georgia, serif; letter-spacing: -1.3px; }
 #cloth-character-login .site-brand span { color: var(--page-soft); }
-#cloth-character-login .page-main { width:min(100%,740px); margin:0 auto; padding:clamp(4px,calc((100svh - 780px)/2),72px) 10px 24px; }
-#cloth-character-login .cl-scene { --cl-error:var(--page-error); height:560px; border-radius:0; background:transparent; }
+#cloth-character-login .page-main { width:100%; height:100%; min-height:664px; margin:0; padding:0; }
+/* Full viewport width for entry; a centered render band avoids three tall HiDPI canvases. */
+#cloth-character-login .cl-scene { --cl-error:var(--page-error); position:absolute; top:calc(50% - 332px); left:0; height:664px; border-radius:0; background:transparent; }
 #cloth-character-login .cl-cloth { pointer-events: none; touch-action: auto; }
 #cloth-character-login .cl-drag-surface { position:absolute; inset:0; z-index:2; clip-path:polygon(0 0,0 0,0 0); touch-action:none; cursor:grab; }
 #cloth-character-login .cl-drag-surface:active { cursor:grabbing; }
@@ -79,24 +82,26 @@
 #cloth-character-login .cl-password-toggle { position:absolute; left:0; top:0; height:44px; padding:0; border:0; background:transparent; color:var(--cl-soft); font-size:11px; transform-origin:0 0; pointer-events:auto; touch-action:manipulation; }
 #cloth-character-login .cl-enter { height:48px; touch-action:manipulation; }
 #cloth-character-login .cl-enter:disabled { cursor:wait; }
-@media (max-width:480px) { #cloth-character-login .site-header { padding:20px 22px 0; } #cloth-character-login .page-main { padding-inline:2px; } }
+@media (max-width:480px) { #cloth-character-login .site-header { padding:20px 22px 0; } }
 @media (prefers-reduced-motion:reduce) { #cloth-character-login *,#cloth-character-login *::before,#cloth-character-login *::after { scroll-behavior:auto!important; } }
 
 /* NoteFlow integration: native auth flows and animation share no global styles. */
 #cloth-character-login.login-page {
-  color-scheme: light; height: 100%; min-height: 0; overflow: auto; overflow-x: hidden;
+  position:relative; color-scheme: light; height: 100%; min-height: 0; overflow: auto; overflow-x: hidden;
   --auth-muted: var(--page-soft); --auth-ink: var(--page-ink); --auth-error: var(--page-error);
   line-height: 1.5; font-size: 14px; -webkit-font-smoothing: antialiased;
 }
 .theme-dark #cloth-character-login.login-page { color-scheme: dark; }
-#cloth-character-login .page-main { flex: 1 0 auto; }
-#cloth-character-login .auth-form { width:100%; min-width:0; margin:0; }
+#cloth-character-login .page-main { flex:none; }
+#cloth-character-login .auth-form { position:relative; width:100%; height:100%; min-width:0; margin:0; }
 #cloth-character-login .auth-fields { display:contents; animation:none; }
 #cloth-character-login .cl-enter { margin:0; min-height:48px; display:block; transition:none; }
 #cloth-character-login .cl-enter:hover, #cloth-character-login .cl-enter:active { background:transparent; color:transparent; }
 #cloth-character-login .cl-enter:disabled { cursor:default; }
 #cloth-character-login .cl-password-toggle { min-width:44px; min-height:44px; }
-#cloth-character-login .auth-support { position:relative; z-index:1; width:var(--cl-card-width,326px); margin: -48px 0 16px var(--cl-card-left,calc((100% - 326px)/2)); padding:0 8px; color:var(--page-soft); }
+#cloth-character-login .auth-support { position:absolute; z-index:5; top:var(--cl-support-top); left:var(--cl-card-left); width:var(--cl-card-width,326px); margin:0 0 20px; padding:0 8px; color:var(--page-soft); visibility:hidden; opacity:0; pointer-events:none; transition:opacity 160ms ease-out; }
+#cloth-character-login[data-entered="true"] .auth-support { visibility:visible; opacity:1; pointer-events:auto; }
+#cloth-character-login[data-renderer="loading"]:not([data-cloth-ready]) .cl-form { visibility:hidden; }
 #cloth-character-login .auth-feedback { height:44px; display:flex; align-items:center; padding:6px 0; color:var(--page-soft); font-size:12px; line-height:18px; overflow:hidden; overflow-wrap:anywhere; }
 #cloth-character-login .auth-feedback span { display:block; max-height:100%; overflow:auto; }
 #cloth-character-login .auth-feedback[data-error="true"] { color:var(--page-error); }
@@ -112,15 +117,16 @@
 #cloth-character-login .auth-send { font-variant-numeric:tabular-nums; }
 #cloth-character-login .cl-fallback-title { display:none; }
 /* Progressive fallback when canvas/WebGL or animation initialization is unavailable. */
-#cloth-character-login:not([data-cloth-ready]) .cl-scene { height:auto; min-height:448px; display:grid; align-items:center; padding:32px 24px; }
-#cloth-character-login:not([data-cloth-ready]) .cl-form { position:relative; inset:auto; width:min(100%,326px); margin:auto; padding:28px; background:var(--page-paper); pointer-events:auto; border-radius:4px; }
-#cloth-character-login:not([data-cloth-ready]) .cl-fallback-title { display:block; margin:0 0 24px; font:400 22px/1.5 "Songti SC",Georgia,serif; }
-#cloth-character-login:not([data-cloth-ready]) .cl-input, #cloth-character-login:not([data-cloth-ready]) .cl-enter, #cloth-character-login:not([data-cloth-ready]) .cl-password-toggle { position:relative; inset:auto; transform:none!important; width:100%!important; color:var(--page-ink); margin:0 0 16px; }
-#cloth-character-login:not([data-cloth-ready]) .cl-input { border-bottom:1px solid var(--page-line); }
-#cloth-character-login:not([data-cloth-ready]) .cl-input::placeholder { color:var(--page-soft); }
-#cloth-character-login:not([data-cloth-ready]) .cl-enter { background:var(--page-ink); color:var(--page-paper); margin:8px 0 0; }
-#cloth-character-login:not([data-cloth-ready]) .cl-bubble { display:none; }
-#cloth-character-login:not([data-cloth-ready]) .auth-support { width:min(100% - 48px,326px); margin:0 auto 24px; }
+#cloth-character-login[data-renderer="fallback"] .page-main { display:flex; justify-content:center; align-items:center; min-height:600px; padding:72px 24px 32px; }
+#cloth-character-login[data-renderer="fallback"] .auth-form { width:min(100%,326px); height:auto; }
+#cloth-character-login[data-renderer="fallback"] .cl-scene { position:relative; inset:auto; height:auto; min-height:0; padding:0; }
+#cloth-character-login[data-renderer="fallback"] .cl-form { position:relative; inset:auto; width:100%; padding:28px; background:var(--page-paper); pointer-events:auto; border-radius:4px; }
+#cloth-character-login[data-renderer="fallback"] .cl-fallback-title { display:block; margin:0 0 24px; font:400 22px/1.5 "Songti SC",Georgia,serif; }
+#cloth-character-login[data-renderer="fallback"] .cl-input, #cloth-character-login[data-renderer="fallback"] .cl-enter, #cloth-character-login[data-renderer="fallback"] .cl-password-toggle { position:relative; inset:auto; transform:none!important; width:100%!important; color:var(--page-ink); margin:0 0 16px; }
+#cloth-character-login[data-renderer="fallback"] .cl-input { border-bottom:1px solid var(--page-line); }
+#cloth-character-login[data-renderer="fallback"] .cl-input::placeholder { color:var(--page-soft); }
+#cloth-character-login[data-renderer="fallback"] .cl-enter { background:var(--page-ink); color:var(--page-paper); margin:8px 0 0; }
+#cloth-character-login[data-renderer="fallback"] .auth-support { position:relative; inset:auto; width:100%; margin:12px auto 0; }
 @media (prefers-reduced-motion:reduce) {
   #cloth-character-login *, #cloth-character-login *::before { animation:none!important; transition:none!important; }
 }
