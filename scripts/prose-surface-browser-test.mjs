@@ -22,6 +22,10 @@ const output = mkdtempSync(join(tmpdir(), 'noteflow-prose-ui-'));
 const markdown = [
   '# GORM 学习笔记', '',
   '这是用于隔离检查的正文，保留 **重点**、`gorm.DeletedAt` 与 <mark>高亮内容</mark>。', '',
+  '阅读节奏检查：这一段刻意保留较长的中文说明，用于检查换行之后能否轻松找到下一行，而不是只用短句标本判断长篇笔记的阅读感受。正文内容必须保持原样，不能靠删除文字让页面看起来清爽。', '',
+  '段落分隔检查：这是另一个独立想法，应该与上文有可见的停顿。段落空隙、行距和章节留白承担不同职责，不应把所有内容压成同一种密度。', '',
+  '1. **第一个要点：** 多行列表项也需要呼吸空间。这段补充说明有足够长度，在窄屏和桌面上都能检查列表换行与下一条之间的间隔。',
+  '2. **第二个要点：** 这不是上一条的延续，序号和原文都是实际文档内容，显示样式不应该修改它们。', '',
   '## 删除（Delete）', '', '```go',
   'db.Delete(&u, 1) // 删 id=1',
   'db.Where("age < ?", 10).Delete(&User{}) // 按条件删', '```', '',
@@ -179,7 +183,7 @@ async function sharedGrammar(page) {
   await page.locator('.document-canvas .note-content').waitFor();
   const shape=()=>page.locator('.note-content').evaluate(root=>{
     const s=selector=>{const e=root.querySelector(selector),c=getComputedStyle(e);return {font:c.fontFamily,size:c.fontSize,weight:c.fontWeight,line:c.lineHeight,margin:c.margin,padding:c.padding,background:c.backgroundColor,color:c.color};};
-    return {bodySize:getComputedStyle(root).fontSize,heading:s('h2'),paragraph:s('p'),code:s('pre code'),quote:s('blockquote'),note:s('blockquote[data-reading-callout="note"]'),warning:s('blockquote[data-reading-callout="warning"]'),cell:s('td'),toolbar:s('.code-toolbar-actions')};
+    return {bodySize:getComputedStyle(root).fontSize,heading:s('h2'),paragraph:s('p'),list:s('ol'),item:s('li'),code:s('pre code'),quote:s('blockquote'),note:s('blockquote[data-reading-callout="note"]'),warning:s('blockquote[data-reading-callout="warning"]'),cell:s('td'),toolbar:s('.code-toolbar-actions')};
   });
   const baseline=await shape(), reports=[];
   await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));
@@ -266,7 +270,7 @@ try {
     assert.equal(after.width, Math.min(704, before.width), 'Reading column caps at 704px and fits narrow screens');
     assert.equal(after.pageWidth, width, 'No global horizontal overflow');
     assert.equal(after.paragraph.size, '16px');
-    assert.equal(after.paragraph.leading, '24px');
+    assert.equal(after.paragraph.leading, '28px');
     assert.equal(after.heading.size, '24px');
     assert.equal(after.heading.weight, '600');
     assert.equal(after.code.size, '13.6px');
@@ -280,7 +284,22 @@ try {
     assert.equal(await callouts.first().evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(233, 242, 236)');
     assert.equal(await callouts.last().evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(251, 243, 223)');
     assert.equal(await editor.locator('.code-toolbar-actions').first().evaluate(el=>getComputedStyle(el).boxShadow),'none');
-    assert.equal(await editor.locator('td p').first().evaluate(el=>getComputedStyle(el).fontSize),'14px');
+    assert.equal(await editor.locator('td p').first().evaluate(el=>getComputedStyle(el).fontSize),'15px');
+    const rhythm = await editor.evaluate(root => {
+      const paragraphs = [...root.querySelectorAll(':scope > p')];
+      const a = paragraphs.find(n => n.textContent.startsWith('阅读节奏检查：'));
+      const b = paragraphs.find(n => n.textContent.startsWith('段落分隔检查：'));
+      const items = [...root.querySelectorAll(':scope > ol > li')];
+      const heading = root.querySelector('h2');
+      return { paragraphGap:b.getBoundingClientRect().top-a.getBoundingClientRect().bottom,
+        itemGap:items[1].getBoundingClientRect().top-items[0].getBoundingClientRect().bottom,
+        itemLeading:getComputedStyle(items[0]).lineHeight,
+        sectionSpace:parseFloat(getComputedStyle(heading).marginTop) };
+    });
+    assert(rhythm.paragraphGap >= 14, 'Separate ideas must have a visible paragraph break');
+    assert(rhythm.itemGap >= 8, 'Multi-line list items must not merge into one paragraph');
+    assert.equal(rhythm.itemLeading, '28px');
+    assert(rhythm.sectionSpace >= 40, 'Section breaks must be stronger than paragraph breaks');
     assert(after.toolbarClear, 'Actual hover toolbar must not cover the first line: ' + JSON.stringify(after.toolbarGeometry));
     assert.equal(after.scrollbar, 'thin');
     assert(new Set(after.colors.map(item => item.color)).size >= 5);

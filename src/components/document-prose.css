@@ -46,7 +46,7 @@
 }
 
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) h1 {
-  margin: 32px 0 12px !important;
+  margin: 56px 0 20px !important;
   font-size: 30px !important;
 }
 
@@ -57,23 +57,23 @@
 }
 
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) h2 {
-  margin: 32px 0 8px !important;
+  margin: 48px 0 18px !important;
   font-size: var(--nf-heading-size) !important;
 }
 
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) h3 {
-  margin: 24px 0 6px !important;
+  margin: 36px 0 12px !important;
   font-size: var(--nf-subheading-size) !important;
 }
 
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) h4 {
-  margin: 20px 0 8px !important;
+  margin: 28px 0 12px !important;
   font-size: 18px !important;
 }
-:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(h5, h6) { margin: 18px 0 8px !important; font-size: 16px !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(h5, h6) { margin: 24px 0 12px !important; font-size: 16px !important; }
 
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) p {
-  margin: 6px 0 !important;
+  margin: 14px 0 !important;
   color: var(--prose-ink) !important;
   font-size: var(--nf-body-size) !important;
   line-height: var(--nf-body-leading) !important;
@@ -84,9 +84,10 @@
   font-size: var(--nf-body-size) !important;
   line-height: var(--nf-body-leading) !important;
 }
-:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(ul, ol) { margin: 8px 0 !important; padding-inline-start: 24px !important; }
-:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) li { margin: 2px 0 !important; padding-block: 0 !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(ul, ol) { margin: 14px 0 !important; padding-inline-start: 24px !important; color: var(--prose-ink) !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) li { margin: 8px 0 !important; padding-block: 0 !important; }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) li p { margin: 0 !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) li p + p { margin-top: 10px !important; }
 
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) strong {
   color: inherit !important;
@@ -98,7 +99,7 @@
 }
 
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) hr {
-  margin: 24px 0 !important;
+  margin: 32px 0 !important;
   background: var(--prose-line) !important;
 }
 
@@ -115,7 +116,7 @@
 
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-block,
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) pre {
-  margin: 16px 0 !important;
+  margin: 20px 0 !important;
   border: 0 !important;
   border-radius: 10px !important;
   background: var(--prose-code) !important;
@@ -155,13 +156,13 @@
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.token-operator, .token-property, .token-key, .chat-token-operator, .chat-token-property, .chat-token-key) { color: var(--prose-operator) !important; font-weight: 400 !important; }
 
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) blockquote {
-  margin: 14px 0 !important;
+  margin: 20px 0 !important;
   border: 0 !important;
   border-left: 2px solid var(--prose-comment) !important;
   border-radius: 0 !important;
   background: transparent !important;
   color: var(--prose-ink) !important;
-  padding: 2px 14px !important;
+  padding: 8px 16px !important;
   line-height: var(--nf-body-leading) !important;
 }
 
@@ -176,11 +177,13 @@
 }
 
 
-/* Headings introduce a section; its first paragraph/list belongs to it. */
-:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(h1, h2, h3, h4, h5, h6) + :is(p, ul, ol) { margin-top: 4px !important; }
-:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) h2 + h3 { margin-top: 16px !important; }
+/* A section break is stronger than a paragraph break; the first block still
+   belongs to its heading. Do not compress multi-line prose into a text wall. */
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(h1, h2, h3, h4, h5, h6) + :is(p, ul, ol) { margin-top: 12px !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) h2 + h3 { margin-top: 20px !important; }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) li::marker { color: var(--prose-comment) !important; font-weight: 400 !important; }
-:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(ul, ol) :is(ul, ol) { margin-block: 3px !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(ul, ol) :is(ul, ol) { margin-block: 8px !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) blockquote p + p { margin-top: 12px !important; }
 
 /* No floating white capsule/shadow. The language anchors a slim utility row. */
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-toolbar {
@@ -213,13 +216,13 @@
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button::after { content: none !important; }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-tooltip { display: none !important; }
 
-/* Table hierarchy stays quiet and compact, without turning into a large card. */
-:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.tableWrapper, .chat-table-scroll) { max-width: 100%; margin-block: 14px; overflow-x: auto; overscroll-behavior-inline: contain; }
-:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) table { width: 100%; margin: 14px 0 !important; border-collapse: collapse; table-layout: fixed; font-size: 14px; }
-:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(th, td) { border: 1px solid var(--prose-line) !important; padding: 8px 12px !important; color: var(--prose-ink) !important; background: transparent; font-size: 14px !important; line-height: 1.5 !important; font-weight: 400; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+/* Tables remain secondary, but must not become a smaller, denser text wall. */
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.tableWrapper, .chat-table-scroll) { max-width: 100%; margin-block: 20px; overflow-x: auto; overscroll-behavior-inline: contain; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) table { width: 100%; margin: 20px 0 !important; border-collapse: collapse; table-layout: fixed; font-size: 15px; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(th, td) { border: 1px solid var(--prose-line) !important; padding: 10px 12px !important; color: var(--prose-ink) !important; background: transparent; font-size: 15px !important; line-height: 1.6 !important; font-weight: 400; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) th { background: var(--prose-code) !important; font-weight: 600 !important; }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(th, td) > p { margin: 0 !important; font-size: inherit !important; line-height: inherit !important; }
-:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) blockquote[data-reading-callout] { border: 0 !important; border-radius: 6px !important; padding: 12px 14px !important; background: var(--prose-mint) !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) blockquote[data-reading-callout] { border: 0 !important; border-radius: 6px !important; padding: 16px 18px !important; background: var(--prose-mint) !important; }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) blockquote[data-reading-callout="warning"] { background: var(--prose-warning) !important; }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.tableWrapper, .chat-table-scroll) > table { margin: 0 !important; }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button.is-copied { color: var(--prose-green) !important; background: var(--prose-mint) !important; }
@@ -239,7 +242,7 @@
   :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-block pre,
   :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) pre.code-pre,
   :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) > pre { padding-inline: 14px !important; }
-  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) blockquote { padding: 2px 12px !important; }
+  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) blockquote { padding-inline: 12px !important; }
 }
 
 @media (forced-colors: active) {
