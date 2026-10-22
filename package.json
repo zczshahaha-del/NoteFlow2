@@ -55,6 +55,7 @@
     "test:chat-retry": "node scripts/chat-retry-test.mjs",
     "test:chat-ui": "node scripts/chat-presentation-browser-test.mjs",
     "test:auth-ui": "node scripts/auth-surface-browser-test.mjs",
+    "test:login-cloth": "node scripts/login-cloth-physics-test.cjs",
     "test:search-ui": "node scripts/search-surface-browser-test.mjs",
     "test:search-snippet": "node --experimental-strip-types scripts/search-snippet-text-test.ts",
     "test:draft-ui": "node scripts/draft-surface-browser-test.mjs",

@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, useState } from "react";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { confirmPasswordReset, requestEmailLoginCode, requestPasswordReset } from "../services/auth";
+import type { ClothLoginController, ClothLoginState } from "./login/cloth-login.js";
+import "./login/cloth-login.css";
 
 type Mode = "login" | "register" | "reset";
 interface LoginPageProps {
@@ -32,6 +33,8 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
   const passwordInput = useRef<HTMLInputElement>(null);
   const submitButton = useRef<HTMLButtonElement>(null);
   const codeInput = useRef<HTMLInputElement>(null);
+  const loginRoot = useRef<HTMLElement>(null);
+  const cloth = useRef<ClothLoginController | null>(null);
   const address = email.trim().toLowerCase();
   const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address);
   const key = `${mode}:${address}`;
@@ -40,6 +43,39 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
   const showCode = needsCode && step === "verify";
   const showPassword = (mode === "reset" && step === "verify") || (mode === "login" && method === "password");
   const ready = validEmail && (!showCode || /^\d{6}$/.test(code)) && (!showPassword || password.length >= (mode === "reset" ? 8 : 6));
+  const buttonLabel = sending ? "正在发送…" : busy ? "请稍候…" : needsCode && step === "email" ? "继续" : mode === "register" ? "创建账号" : mode === "reset" ? "保存新密码" : "登录";
+  const subtitle = mode === "reset" ? "重设你的账号密码" : mode === "register" ? "创建你的 NoteFlow 账号" : "登录你的 NoteFlow 账号";
+  const presentation = useMemo<ClothLoginState>(() => ({
+    loading: busy || sending, primaryLabel: showCode ? "验证码" : "邮箱",
+    passwordLabel: mode === "reset" ? "新密码" : "密码", buttonLabel, subtitle,
+    help: showCode ? "请输入邮件中的 6 位验证码" : mode === "reset" ? "先验证邮箱，再设置新密码" : mode === "register" ? "验证邮箱后即可创建账号" : "通过邮箱验证码安全登录",
+    helpDetail: showCode ? "没有收到？可在下方重新发送。" : mode === "reset" ? "继续即可收取验证邮件。" : "无需输入密码，继续即可收取邮件。",
+  }), [busy, sending, showCode, mode, buttonLabel, subtitle]);
+  const latestPresentation = useRef(presentation);
+  latestPresentation.current = presentation;
+
+  useEffect(() => {
+    const root = loginRoot.current;
+    // Canvas-less environments keep the same usable native authentication form.
+    if (!root || typeof ResizeObserver === "undefined" || typeof IntersectionObserver === "undefined") return;
+    let controller: ClothLoginController | null = null;
+    let cancelled = false;
+    // Do not add the cloth renderer to the workspace's initial JavaScript bundle.
+    void import("./login/cloth-login.js").then(({ mountClothLogin }) => {
+      if (cancelled) return;
+      controller = mountClothLogin(root);
+      cloth.current = controller;
+      controller.update(latestPresentation.current);
+    }).catch(error => {
+      controller?.destroy(); cloth.current = null;
+      if (!cancelled) console.warn("登录动画不可用，保留原生表单。", error);
+    });
+    return () => { cancelled = true; controller?.destroy(); cloth.current = null; };
+  }, []);
+
+  useLayoutEffect(() => {
+    cloth.current?.update(presentation);
+  }, [presentation, email, code, password, visible]);
 
   useEffect(() => {
     mounted.current = true;
@@ -126,50 +162,59 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
     }
   };
 
-  return <main className="auth-page">
-    <section className="auth-main" aria-label="NoteFlow 账号入口">
-      <form className="auth-form" data-mode={mode} data-step={step} onSubmit={submit} aria-busy={busy || sending} aria-describedby={feedback.text ? `${id}-feedback` : undefined}
+  return <main ref={loginRoot} id="cloth-character-login" className="login-page auth-page">
+    <header className="site-header">
+      <a className="site-brand" href="/" aria-label="NoteFlow 首页">NoteFlow<span>.</span></a>
+      <button type="button" className="quiet-button replay-button" data-replay disabled={busy || sending}>重播入场 <span aria-hidden="true">↻</span></button>
+    </header>
+    <div className="page-main">
+      <section className="intro" aria-hidden="true"><h2>让灵感，<br />有处安放。</h2><p className="intro-copy">记下每一次灵光一闪。</p></section>
+      <form className="auth-form" data-mode={mode} data-step={step} onSubmit={submit} aria-busy={busy || sending} aria-label={subtitle} aria-describedby={feedback.text ? `${id}-feedback` : undefined}
         onKeyDown={event => { if (event.key === "Enter" && (event.nativeEvent.isComposing || event.keyCode === 229)) event.preventDefault(); }}>
-        <header className="auth-heading">
-          <div className="auth-brand"><img src="/noteflow_icon.svg" width="48" height="48" alt="NoteFlow" /></div>
-          <h1>你的笔记工作空间。</h1>
-          <p>{mode === "reset" ? "重设你的账号密码" : mode === "register" ? "创建你的 NoteFlow 账号" : "登录你的 NoteFlow 账号"}</p>
-        </header>
-        <div className="auth-fields" key={`${mode}:${method}:${step}`}>
-          {!showCode && <div className="auth-field"><label htmlFor={`${id}-email`}>邮箱</label>
-              <div className="auth-input"><input ref={emailInput} id={`${id}-email`} type="email" autoComplete="email" inputMode="email" placeholder="输入你的邮箱地址" required disabled={busy} value={email}
-                onChange={event => { stopSend(); setEmail(event.target.value); setCode(""); clearFeedback(); }} /></div>
-            </div>}
-          {showCode && <div className="auth-field"><label htmlFor={`${id}-code`}>验证码</label>
-            <div className="auth-input"><input ref={codeInput} id={`${id}-code`} type="text" inputMode="numeric" autoComplete="one-time-code" placeholder="6 位验证码" maxLength={6} required disabled={busy} value={code}
-              aria-describedby={`${id}-destination`}
-              onChange={event => { stopSend(); setCode(event.target.value.replace(/\D/g, "").slice(0, 6)); clearFeedback(); }} /></div>
-          </div>}
-          {showPassword && <div className="auth-field"><div className="auth-label-row"><label htmlFor={`${id}-password`}>{mode === "reset" ? "新密码" : "密码"}</label>
-            {mode === "login" && <button type="button" className="auth-text" disabled={busy} onClick={() => changeMode("reset")}>忘记密码？</button>}</div>
-            <div className="auth-input"><input ref={passwordInput} id={`${id}-password`} type={visible ? "text" : "password"} autoComplete={mode === "reset" ? "new-password" : "current-password"}
-              placeholder={mode === "reset" ? "至少 8 位" : "你的密码"} minLength={mode === "reset" ? 8 : 6} required disabled={busy} value={password}
-              onChange={event => { setPassword(event.target.value); clearFeedback(); }} onKeyUp={event => setCapsLock(event.getModifierState("CapsLock"))} onBlur={() => setCapsLock(false)} />
-              <button type="button" className="auth-eye" disabled={busy} aria-label={visible ? "隐藏密码" : "显示密码"} aria-pressed={visible} onClick={() => { setVisible(!visible); passwordInput.current?.focus(); }}>{visible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}</button>
+        <h1 className="sr-only">你的笔记工作空间。</h1>
+        <section className="cl-scene" aria-label="NoteFlow 布料登录">
+          <canvas className="cl-shadow" aria-hidden="true" />
+          <canvas className="cl-cloth" aria-hidden="true" />
+          <div className="cl-drag-surface" aria-hidden="true" />
+          <div className="cl-form">
+            <h2 className="cl-fallback-title">{subtitle}</h2>
+            <div className="auth-fields" key={`${mode}:${method}:${step}`}>
+              {!showCode && <><label className="sr-only" htmlFor={`${id}-email`}>邮箱</label>
+                <input className="cl-email cl-input" ref={emailInput} id={`${id}-email`} name="email" type="email" autoComplete="email" inputMode="email" placeholder="输入你的邮箱地址" required disabled={busy} value={email}
+                  onChange={event => { stopSend(); setEmail(event.target.value); setCode(""); clearFeedback(); }} /></>}
+              {showCode && <><label className="sr-only" htmlFor={`${id}-code`}>验证码</label>
+                <input className="cl-email cl-input" ref={codeInput} id={`${id}-code`} name="code" type="text" inputMode="numeric" autoComplete="one-time-code" placeholder="6 位验证码" maxLength={6} required disabled={busy} value={code}
+                  aria-describedby={`${id}-destination`} onChange={event => { stopSend(); setCode(event.target.value.replace(/\D/g, "").slice(0, 6)); clearFeedback(); }} /></>}
+              {showPassword && <><label className="sr-only" htmlFor={`${id}-password`}>{mode === "reset" ? "新密码" : "密码"}</label>
+                <input className="cl-password cl-input" ref={passwordInput} id={`${id}-password`} name="password" type={visible ? "text" : "password"} autoComplete={mode === "reset" ? "new-password" : "current-password"}
+                  placeholder={mode === "reset" ? "至少 8 位" : "你的密码"} minLength={mode === "reset" ? 8 : 6} required disabled={busy} value={password}
+                  onChange={event => { setPassword(event.target.value); clearFeedback(); }} onKeyUp={event => setCapsLock(event.getModifierState("CapsLock"))} onBlur={() => setCapsLock(false)} />
+                <button type="button" className="cl-password-toggle" disabled={busy} aria-label={visible ? "隐藏密码" : "显示密码"} aria-pressed={visible}
+                  onClick={() => { setVisible(!visible); passwordInput.current?.focus(); }}>{visible ? "隐藏" : "显示"}</button></>}
             </div>
-          </div>}
+            <button ref={submitButton} className="cl-enter auth-submit" type="submit" disabled={!ready || busy || sending}>{buttonLabel}</button>
+          </div>
+          <canvas className="cl-fx" aria-hidden="true" />
+          <span className="cl-bubble" aria-hidden="true" /><span className="cl-probe" aria-hidden="true" />
+          <p className="cl-hint" aria-hidden="true" /><p className="cl-status sr-only" aria-hidden="true" />
+        </section>
+        <div className="auth-support">
+          <div id={`${id}-feedback`} className="auth-feedback" data-error={feedback.error} role={feedback.error ? "alert" : "status"} aria-live="polite" aria-atomic="true">
+            <span>{feedback.text || (capsLock ? "大写锁定已开启" : sending ? "正在发送验证码…" : "")}</span>
+          </div>
+          {showCode && <div className="auth-destination"><span id={`${id}-destination`}>{address}</span><button type="button" className="auth-text" disabled={busy} onClick={editEmail}>修改邮箱</button></div>}
+          {showCode && <div className="auth-code-actions"><button type="button" className="auth-text auth-send" disabled={busy || (!sending && seconds > 0)} onClick={() => {
+            if (sending) { stopSend(); setFeedback({ text: "已停止等待；若邮件已发送，仍可使用验证码。", error: false }); } else void sendCode();
+          }}>{sending ? "取消等待" : seconds > 0 ? `${seconds}s 后重发` : "重新发送验证码"}</button></div>}
+          <div className="auth-secondary">{mode === "login" ? <button type="button" className="auth-text" disabled={busy} onClick={changeMethod}>{method === "code" ? "使用密码登录" : "使用验证码登录"}</button>
+            : mode === "reset" ? <button type="button" className="auth-text" disabled={busy} onClick={() => changeMode("login")}>返回登录</button>
+            : <p>验证邮箱后即可注册，无需设置密码。</p>}
+            {mode === "login" && showPassword && <button type="button" className="auth-text" disabled={busy} onClick={() => changeMode("reset")}>忘记密码？</button>}
+          </div>
+          {mode !== "reset" && <div className="auth-account-link"><span>{mode === "login" ? "是新用户？" : "已有账号？"}</span><button type="button" className="auth-text" disabled={busy} onClick={() => changeMode(mode === "login" ? "register" : "login")}>{mode === "login" ? "注册" : "登录"}</button></div>}
         </div>
-        <button ref={submitButton} className="auth-submit" type="submit" disabled={!ready || busy || sending}>
-          <span>{sending ? "正在发送…" : busy ? "请稍候…" : needsCode && step === "email" ? "继续" : mode === "register" ? "创建账号" : mode === "reset" ? "保存新密码" : "登录"}</span>
-          {(busy || sending) && <Loader2 className="auth-spinner" aria-hidden="true" />}
-        </button>
-        <div id={`${id}-feedback`} className="auth-feedback" data-error={feedback.error} role={feedback.error ? "alert" : "status"} aria-live="polite" aria-atomic="true">
-          <span>{feedback.text || (capsLock ? "大写锁定已开启" : sending ? "正在发送验证码…" : "")}</span>
-        </div>
-        {showCode && <div className="auth-destination"><span id={`${id}-destination`}>{address}</span><button type="button" className="auth-text" disabled={busy} onClick={editEmail}>修改邮箱</button></div>}
-        {showCode && <div className="auth-code-actions"><button type="button" className="auth-text auth-send" disabled={busy || (!sending && seconds > 0)} onClick={() => {
-          if (sending) { stopSend(); setFeedback({ text: "已停止等待；若邮件已发送，仍可使用验证码。", error: false }); } else void sendCode();
-        }}>{sending ? "取消等待" : seconds > 0 ? `${seconds}s 后重发` : "重新发送验证码"}</button></div>}
-        <div className="auth-secondary">{mode === "login" ? <button type="button" className="auth-text" disabled={busy} onClick={changeMethod}>{method === "code" ? "使用密码登录" : "使用验证码登录"}</button>
-          : mode === "reset" ? <button type="button" className="auth-text" disabled={busy} onClick={() => changeMode("login")}>返回登录</button>
-          : <p>验证邮箱后即可注册，无需设置密码。</p>}</div>
-        {mode !== "reset" && <div className="auth-account-link"><span>{mode === "login" ? "是新用户？" : "已有账号？"}</span><button type="button" className="auth-text" disabled={busy} onClick={() => changeMode(mode === "login" ? "register" : "login")}>{mode === "login" ? "注册" : "登录"}</button></div>}
       </form>
-    </section>
+    </div>
+    <footer className="site-footer"><span>留住那些一闪而过的想法。</span><button type="button" className="quiet-button" data-reset disabled={busy || sending}>整理布面</button></footer>
   </main>;
 }

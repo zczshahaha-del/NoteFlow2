@@ -1,0 +1,53 @@
+# NoteFlow 布料登录接入
+
+来源：用户提供的 `notes-login-handoff.zip`（2026-10-22），使用其中
+`dist/cloth.js`、`cloth.css`、`page.css` 及 `scripts/check-physics.cjs`。
+没有接入包里的演示表单提交器、全局认证对象或认证配置。
+
+## 边界
+
+- `LoginPage.tsx` 保留项目既有邮箱优先流程、验证码 / 密码登录、验证码注册、密码重置、
+  取消 / 冷却、过期请求忽略、IME 和重复提交保护。沿用原有 props 与
+  `services/auth.ts`；会话和 App 切换逻辑不变，无后端 / 账号 / 笔记数据修改。
+- `cloth-login.js` 只画布料与小人，通过 `mountClothLogin(root)` 的
+  `update(state)` 同步原生表单的内容，`destroy()` 负责卸载。
+  不发送认证请求，不保存输入，不接管密码显隐。输入是 React 管理的真实原生控件，
+  Canvas 镜像只负责视觉，错误全文与可访问状态位于普通 DOM。
+- 提供的两输入槽适配为「邮箱或验证码」与「可选密码」。
+  重发、改邮箱、切换方式、注册、找回密码位于布面下方，防止额外功能挤压原动画。
+- 保留原步态 / 人物绘制、网格 / 约束求解、投影、拖拽载荷、回弹与输入防折叠恢复。
+  LAND 仍为 3.08 秒、END 为 5.05 秒（物理模拟时间），不人为加快或放慢。
+  立即聚焦输入或开启系统减少动效时直接放好布面；慢设备不承诺恒定墙钟耗时 / 帧率。
+
+## 工程适配
+
+- 全部 CSS 都限定在 `#cloth-character-login` 内，深色跟随项目的
+  `.theme-dark`，不修改工作台、正文、代码语言框或复制控件。
+- 动画脚本仅在登录页挂载时动态加载，不进入工作台的初始脚本。
+  每秒冷却计时不会唤醒静置动画；异步加载取消后不再挂载。
+- 监听器使用稳定表单的事件委托，支持 React 替换邮箱 / 验证码 / 密码节点。
+  pointercancel、lostpointercapture、窗口失焦、隐藏页面继续沿用原有释放处理。
+- 卸载及初始化失败均移除监听器 / 观察器、取消 RAF / 点击恢复定时器并释放 GPU
+  buffers / texture / shaders / program；不强制丢失 Canvas 上下文，兼容 StrictMode 重挂载。
+- 无 WebGL 使用原 2D 渲染；没有 Canvas 或初始化失败则退回可用的原生表单，
+  不阻止登录。无动画时重播 / 整理入口隐藏。
+
+## 验证
+
+- `npm run test:login-cloth`：原包物理断言直接读取适配后的正式脚本；
+  对原包 27 个物理 / 绘制函数的 SHA-256 指纹作比较，防止静默改动步态、求解和恢复。
+  覆盖五宽度肢体长度 / 着地、入场、两种大幅拖拽中聚焦、长时间回弹及无撕裂。
+- `npm run test:auth-ui`：正式 LoginPage / auth 服务 / 构建 CSS，隔离 Edge 与合成 fetch；
+  原有认证分支、错误 / 长错误 / 冷却 / 取消 / 重试 / IME / 重复提交、
+  1024 / 736 / 320px、深色 / 减少动效 / 短视口 / 存储拒绝；
+  另测 1280 / 736 / 320px 正常动画、三种指针中断、入场聚焦、
+  StrictMode 反复挂载与握持时卸载、观察器 / 监听器 / RAF 清零、静置停止渲染、
+  无 Canvas 仍能提交认证。动画子集可用 `NOTEFLOW_AUTH_ANIMATION_ONLY=1`。
+  计数仅针对动画，排除 Vite 模块预加载观察器及 Playwright 自己的命中监听器。
+- `npm run build`、`test:frontend`、`test:editor-ui`、`test:prose-ui`；
+  后端 `test_auth_email_flow` / `test_auth_security` 使用内存数据库与邮件替身。
+
+浏览器截图只在临时目录保存，不提交真实账号或笔记截图。
+未使用真实邮箱、创建真实账号或退出用户现有会话；真实 SMTP / 生产登录、
+实体触屏 / 低配设备、Safari / Firefox 与读屏尚未验收。
+已知 Node / Python 弃用提示沿用问题汇总 DEV-11。
