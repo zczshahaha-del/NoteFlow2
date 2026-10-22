@@ -221,7 +221,6 @@
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button:is(:focus-visible, .is-copied) { opacity: 1; }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button::before,
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button::after { content: none !important; }
-:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-tooltip { display: none !important; }
 
 /* Tables remain secondary, but must not become a smaller, denser text wall. */
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.tableWrapper, .chat-table-scroll) { max-width: 100%; margin-block: 20px; overflow-x: auto; overscroll-behavior-inline: contain; }

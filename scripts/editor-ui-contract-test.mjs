@@ -51,6 +51,7 @@ assert.match(proseStyles, /font-size: var\(--nf-body-size\) !important;[\s\S]*?f
 assert.match(proseStyles, /padding: 44px 18px 18px !important/);
 assert.match(proseStyles, /\.code-toolbar \{\s*position: absolute !important; inset: 7px 8px auto auto !important/);
 assert.match(proseStyles, /\.code-toolbar-actions \{[\s\S]*?width: max-content;[\s\S]*?justify-content: flex-end/);
+assert.doesNotMatch(proseStyles, /\.code-copy-tooltip\s*\{[^}]*display:\s*none/, 'Reading styles must retain the original copy hint');
 assert.match(proseStyles, /font-size: 13\.6px !important/);
 assert.match(proseStyles, /white-space: pre !important/);
 assert.match(proseStyles, /\.theme-dark :is\(\.document-canvas\.nf-prose-refined/);

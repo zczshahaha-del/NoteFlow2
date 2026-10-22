@@ -114,6 +114,39 @@ function ratio(a, b) {
   const x = luminance(a), y = luminance(b);
   return (Math.max(x, y) + .05) / (Math.min(x, y) + .05);
 }
+async function checkCopyHint(page, block, screenshotName) {
+  const copy = block.locator('.code-copy-button');
+  const tooltip = copy.locator('.code-copy-tooltip');
+  const hint = () => tooltip.evaluate(el => {
+    const s = getComputedStyle(el), r = el.getBoundingClientRect();
+    const code = el.closest('.code-block').querySelector('pre code').getBoundingClientRect();
+    return {display:s.display,opacity:s.opacity,text:el.textContent,
+      noCodeOverlap:r.bottom <= code.top || r.top >= code.bottom || r.right <= code.left || r.left >= code.right};
+  });
+  await copy.hover();
+  await settleStyles(copy);
+  const hovered = await hint();
+  assert.notEqual(hovered.display, 'none', 'The original code copy tooltip must not be suppressed');
+  assert.equal(hovered.opacity, '1');
+  assert.equal(hovered.text, '拷贝');
+  assert(hovered.noCodeOverlap, 'Copy hint must not cover code');
+  await page.screenshot({path:join(output, screenshotName+'.png')});
+  const before = await page.evaluate(() => window.proseTest.api.copied.length);
+  await copy.click();
+  await page.waitForFunction(n => window.proseTest.api.copied.length === n + 1, before);
+  assert.equal(await page.evaluate(() => window.proseTest.api.copied.at(-1)), await block.locator('pre code').textContent());
+  await settleStyles(copy);
+  const success = await hint();
+  assert.equal(success.text, '已拷贝');
+  assert.equal(success.opacity, '1');
+  assert(success.noCodeOverlap);
+  await page.mouse.move(0, 0);
+  await page.waitForFunction(() => !document.querySelector('.note-content .code-copy-button.is-copied'));
+  await settleStyles(copy);
+  const reset = await hint();
+  assert.equal(reset.text, '拷贝');
+  assert.equal(reset.opacity, '0', 'Leaving the button and resetting success must hide the hint');
+}
 async function freshCodeLifecycle(page) {
   const checks = [];
   for (const [language, source] of [
@@ -209,6 +242,9 @@ async function sharedGrammar(page) {
     await page.evaluate(()=>document.documentElement.classList.remove('theme-dark'));
     await settleStyles(page.locator('.nf-reading-prose'));
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),await page.evaluate(()=>innerWidth));
+    if(surface==='preview') {
+      await checkCopyHint(page,page.locator('.nf-reading-prose .code-block').first(),'preview-copy-hint-'+await page.evaluate(()=>innerWidth));
+    }
     if(surface==='rendered') {
       const block=page.locator('.rendered-code-block').first();
       await block.hover();await block.locator('.code-copy-button').click();
@@ -327,8 +363,7 @@ try {
     await block.scrollIntoViewIfNeeded();
     await block.hover();
     const copy = block.locator('.code-copy-button');
-    await copy.click();
-    await page.waitForFunction(() => window.proseTest.api.copied.length === 1);
+    await checkCopyHint(page,block,'copy-hint-'+width);
     assert.equal(await page.evaluate(() => window.proseTest.api.copied[0]), before.codeText[0]);
     const language = block.locator('.code-language-trigger');
     await page.screenshot({ path: join(output, 'language-' + width + '.png') });
@@ -364,6 +399,7 @@ try {
     assert(ratio(dark.language.color, dark.controls.background) >= 4.5);
     assert.equal(dark.controls.top, 7);
     assert.equal(dark.controls.right, 8);
+    await checkCopyHint(page,block,'dark-copy-hint-'+width);
     await page.screenshot({ path: join(output, 'dark-' + width + '.png') });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const reduced = await metrics(page);
