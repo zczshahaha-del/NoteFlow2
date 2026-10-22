@@ -6,7 +6,8 @@
   --prose-code: #f8f7f5;
   --prose-inline: #f3f2ef;
   --prose-line: #e8e7e3;
-  --prose-control-line: #858d87;
+  --prose-control-line: #e2dfd9;
+  --prose-control-surface: #fff;
   --prose-blue: #07769f;
   --prose-green: #587d08;
   --prose-pink: #d32d59;
@@ -28,7 +29,8 @@
   --prose-code: #292927;
   --prose-inline: #33332f;
   --prose-line: #3d3e37;
-  --prose-control-line: #838d85;
+  --prose-control-line: #57574f;
+  --prose-control-surface: #33332f;
   --prose-blue: #65bce3;
   --prose-green: #adca6b;
   --prose-pink: #f58aab;
@@ -130,8 +132,8 @@
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) pre.code-pre,
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) > pre {
   margin: 0 !important;
-  /* Controls occupy their own quiet row, never an overlay on code. */
-  padding: 8px 18px 18px !important;
+  /* Restore the original top-right controls; keep code below their bounds. */
+  padding: 44px 18px 18px !important;
   overflow: auto !important;
   scrollbar-width: thin;
   scrollbar-color: var(--prose-line) transparent;
@@ -187,37 +189,34 @@
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(ul, ol) :is(ul, ol) { margin-block: 8px !important; }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) blockquote p + p { margin-top: 12px !important; }
 
-/* A quiet utility row, with a recognisable, always-visible language select. */
+/* Original top-right language/copy group (before the reading-style changes). */
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-toolbar {
-  position: relative !important; inset: auto !important; min-height: 34px !important;
-  padding: 4px 8px 0 !important; background: transparent !important; border: 0 !important;
+  position: absolute !important; inset: 7px 8px auto auto !important; min-height: 0 !important;
+  padding: 0 !important; background: transparent !important; border: 0 !important;
   cursor: default; border-radius: 10px 10px 0 0;
 }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-toolbar-actions {
-  display: flex !important; width: 100%; height: 30px !important; min-width: 0;
-  justify-content: space-between; align-items: center; gap: 8px !important;
-  padding: 0 !important; border: 0 !important; border-radius: 0 !important;
-  background: transparent !important; box-shadow: none !important; opacity: 1 !important;
-  color: var(--prose-comment) !important; font: 400 11px/20px var(--nf-font-ui) !important;
+  display: inline-flex !important; width: max-content; height: 34px !important; min-width: 0;
+  box-sizing: border-box !important; justify-content: flex-end; align-items: center; gap: 0 !important;
+  padding: 2px !important; border: 1px solid var(--prose-control-line) !important; border-radius: 11px !important;
+  background: var(--prose-control-surface) !important; box-shadow: 0 6px 16px rgb(43 40 35 / 8%) !important; opacity: 1 !important;
+  color: var(--prose-comment) !important; font: 400 13px/20px var(--nf-font-ui) !important;
 }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.code-toolbar-left, .code-window-dots, .code-fold-button) { display: none !important; }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.code-language-trigger, .code-copy-button) {
   display: inline-flex; align-items: center; justify-content: center; min-width: 0 !important;
-  width: auto !important; height: 24px !important; margin: 0 !important;
-  padding: 0 7px !important; border: 0 !important; border-radius: 4px !important;
+  width: auto !important; height: 28px !important; margin: 0 !important;
+  padding: 0 9px !important; border: 0 !important; border-radius: 8px !important;
   background: transparent !important; box-shadow: none !important;
-  color: var(--prose-comment) !important; font: 400 11px/20px var(--nf-font-ui) !important;
+  color: var(--prose-comment) !important; font: 400 13px/20px var(--nf-font-ui) !important;
 }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-language-trigger {
-  min-width: 80px !important; max-width: 200px !important; height: 30px !important;
-  padding: 0 10px !important; gap: 8px !important;
-  border: 1px solid var(--prose-control-line) !important; border-radius: 6px !important;
-  background: var(--prose-inline) !important; color: var(--prose-ink) !important;
-  font: 500 13px/20px var(--nf-font-ui) !important; opacity: 1 !important;
+  max-width: 150px !important; gap: 8px !important;
+  font: 650 14px/28px var(--nf-font-ui) !important; opacity: 1 !important;
 }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.code-language-trigger, .code-copy-button):hover { background: var(--prose-line) !important; }
-:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-language-arrow { width: 7px !important; height: 7px !important; border-width: 0 1px 1px 0 !important; }
-:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button { opacity: 0; transition: opacity 120ms ease; overflow: visible !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-language-arrow { width: 8px !important; height: 8px !important; border-width: 0 1.8px 1.8px 0 !important; }
+:is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button { width: 32px !important; padding: 0 !important; margin-left: 3px !important; border-left: 1px solid var(--prose-control-line) !important; opacity: 1; overflow: visible !important; }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) :is(.code-block:hover, .code-block:focus-within) .code-copy-button { opacity: 1; }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button:is(:focus-visible, .is-copied) { opacity: 1; }
 :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button::before,
@@ -237,7 +236,8 @@
 @media (hover: none), (pointer: coarse) {
   :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button { opacity: 1; min-width: 44px !important; min-height: 44px; height: 44px !important; }
   :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-language-trigger { min-height: 44px; height: 44px !important; }
-  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-toolbar-actions { height: 44px !important; }
+  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-toolbar-actions { height: 50px !important; }
+  :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-block pre { padding-top: 64px !important; }
 }
 @media (prefers-reduced-motion: reduce) {
   :is(.document-canvas.nf-prose-refined .note-content, .note-content.nf-reading-prose) .code-copy-button { transition: none; }
@@ -263,6 +263,7 @@
     --prose-warning: Canvas;
     --prose-line: GrayText;
     --prose-control-line: ButtonText;
+    --prose-control-surface: ButtonFace;
     --prose-blue: CanvasText;
     --prose-green: CanvasText;
     --prose-pink: CanvasText;

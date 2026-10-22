@@ -95,11 +95,14 @@ async function metrics(page) {
     const toolbar = root.querySelector('.code-toolbar-actions');
     const language = root.querySelector('.code-language-trigger');
     const languageStyle = getComputedStyle(language);
+    const blockRect = pre.closest('.code-block').getBoundingClientRect();
+    const toolbarRect = toolbar.getBoundingClientRect();
     const code = pre.querySelector('code');
     const colors = [...root.querySelectorAll('[class^="token-"]')].map(el => ({ type: el.className, color: getComputedStyle(el).color }));
     const contentOnly=root.cloneNode(true);contentOnly.querySelectorAll('.code-toolbar').forEach(el=>el.remove());
     return { body: style(root), paragraph: style(root.querySelector('p')), heading: style(root.querySelector('h2')), code: style(code), inline: style(root.querySelector('p code')), quote: style(root.querySelector('blockquote')),
       language: {...style(language), borderWidth:languageStyle.borderTopWidth, borderStyle:languageStyle.borderTopStyle, borderColor:languageStyle.borderTopColor, opacity:languageStyle.opacity, width:language.getBoundingClientRect().width, height:language.getBoundingClientRect().height},
+      controls: {background:getComputedStyle(toolbar).backgroundColor, borderWidth:getComputedStyle(toolbar).borderTopWidth, top:toolbarRect.top-blockRect.top, right:blockRect.right-toolbarRect.right, copyGap:root.querySelector('.code-copy-button').getBoundingClientRect().left-language.getBoundingClientRect().right},
       width: root.getBoundingClientRect().width, pageWidth: document.documentElement.scrollWidth, viewport: innerWidth, prePadding: getComputedStyle(pre).padding,
       toolbarClear: toolbar.getBoundingClientRect().bottom <= code.getBoundingClientRect().top,
       toolbarGeometry: { bottom: toolbar.getBoundingClientRect().bottom, codeTop: code.getBoundingClientRect().top, height: toolbar.getBoundingClientRect().height },
@@ -279,22 +282,22 @@ try {
     assert.equal(after.code.size, '13.6px');
     assert.equal(after.code.weight, '400');
     assert.equal(after.code.leading, '20.4px');
-    assert.equal(after.prePadding, width === 320 ? '8px 14px 18px' : '8px 18px 18px');
-    assert.equal(after.language.size, '13px', 'Language selection must not shrink into 11px utility text');
-    assert.equal(after.language.borderWidth, '1px');
-    assert.equal(after.language.borderStyle, 'solid');
+    assert.equal(after.prePadding, width === 320 ? '64px 14px 18px' : '44px 18px 18px');
+    assert.equal(after.language.size, '14px', 'Restore the original readable language control');
+    assert.equal(after.controls.borderWidth, '1px');
     assert.equal(after.language.opacity, '1', 'Language select stays visible without hover');
-    assert(after.language.width >= 80);
-    assert(after.language.height >= (width === 320 ? 44 : 30));
-    assert(ratio(after.language.borderColor, 'rgb(248, 247, 245)') >= 3);
-    assert(ratio(after.language.color, after.language.background) >= 4.5);
+    assert(after.language.height >= (width === 320 ? 44 : 28));
+    assert.equal(after.controls.top, 7, 'Language/copy group must return to the original top inset');
+    assert.equal(after.controls.right, 8, 'Language/copy group must be anchored to the right, not the left');
+    assert.equal(after.controls.copyGap, 3, 'Copy must remain beside the language in one control group');
+    assert(ratio(after.language.color, after.controls.background) >= 4.5);
     assert.equal(after.inline.background, 'rgb(243, 242, 239)');
     assert.equal(after.quote.background, 'rgba(0, 0, 0, 0)');
     const callouts=page.locator('blockquote[data-reading-callout]');
     assert.equal(await callouts.count(),2);
     assert.equal(await callouts.first().evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(233, 242, 236)');
     assert.equal(await callouts.last().evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(251, 243, 223)');
-    assert.equal(await editor.locator('.code-toolbar-actions').first().evaluate(el=>getComputedStyle(el).boxShadow),'none');
+    assert.notEqual(await editor.locator('.code-toolbar-actions').first().evaluate(el=>getComputedStyle(el).boxShadow),'none');
     assert.equal(await editor.locator('td p').first().evaluate(el=>getComputedStyle(el).fontSize),'15px');
     const rhythm = await editor.evaluate(root => {
       const paragraphs = [...root.querySelectorAll(':scope > p')];
@@ -358,8 +361,9 @@ try {
     assert.equal(dark.quote.background, 'rgba(0, 0, 0, 0)');
     for (const token of dark.colors) assert(ratio(token.color, 'rgb(41, 41, 39)') >= 4.5, JSON.stringify(token));
     assert(ratio(dark.inline.color, dark.inline.background) >= 4.5);
-    assert(ratio(dark.language.color, dark.language.background) >= 4.5);
-    assert(ratio(dark.language.borderColor, 'rgb(41, 41, 39)') >= 3);
+    assert(ratio(dark.language.color, dark.controls.background) >= 4.5);
+    assert.equal(dark.controls.top, 7);
+    assert.equal(dark.controls.right, 8);
     await page.screenshot({ path: join(output, 'dark-' + width + '.png') });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const reduced = await metrics(page);
