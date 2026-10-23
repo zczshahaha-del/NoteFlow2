@@ -39,13 +39,14 @@ const errors=[],requests=[],reports=[];
 const assertInputFocus=async(field,{dark=false}={})=>{
   const style=await field.evaluate(n=>{
     const s=getComputedStyle(n);
-    return {focused:n===document.activeElement,outline:s.outlineStyle,shadow:s.boxShadow,bg:s.backgroundColor,
+    return {focused:n===document.activeElement,outline:s.outlineStyle,shadow:s.boxShadow,wrapperShadow:getComputedStyle(n.closest('.cl-field')).boxShadow,bg:s.backgroundColor,
       borders:[s.borderTopWidth,s.borderRightWidth,s.borderBottomWidth,s.borderLeftWidth],
       ink:s.webkitTextFillColor,transform:s.transform,wrapperTransform:getComputedStyle(n.closest('.cl-field')).transform,clip:s.backgroundClip};
   });
   assert.ok(style.focused,'check the real focused input, not an idle screenshot');
   assert.equal(style.outline,'none','native text fields must not gain a rectangular focus frame');
-  assert.equal(style.shadow,(dark?'rgb(212, 223, 184)':'rgb(93, 112, 79)')+' 0px 2px 0px 0px','focus follows the existing cloth baseline');
+  assert.equal(style.shadow,'none','native editing layers must not be covered by an input box shadow');
+  assert.equal(style.wrapperShadow,(dark?'rgb(212, 223, 184)':'rgb(93, 112, 79)')+' 0px 2px 0px 0px','the wrapper owns the cloth focus baseline');
   assert.equal(style.bg,'rgba(0, 0, 0, 0)','the weave stays visible while typing');
   assert.deepEqual(style.borders,['0px','0px','0px','0px']);
   assert.equal(style.ink,dark?'rgb(237, 240, 221)':'rgb(53, 68, 47)');
@@ -105,15 +106,42 @@ const withAutofill=async(page,selectors,check)=>{
 const assertAutofill=async(field,dark=false)=>{
   const style=await field.evaluate(n=>{const s=getComputedStyle(n);return {
     autofill:n.matches(':autofill'),clip:s.backgroundClip,ink:s.webkitTextFillColor,caret:s.caretColor,
-    font:s.fontSize,opacity:s.opacity,security:s.webkitTextSecurity,type:n.type,autocomplete:n.autocomplete,shadow:s.boxShadow,
+    font:s.fontSize,opacity:s.opacity,security:s.webkitTextSecurity,type:n.type,autocomplete:n.autocomplete,shadow:s.boxShadow,appearance:s.appearance,
   }});
   const ink=dark?'rgb(237, 240, 221)':'rgb(53, 68, 47)';
   assert.ok(style.autofill,'exercise actual browser autofill styles, not a mock class');
-  assert.notEqual(style.clip,'text','autofill glyphs remain normal editable native text');
-  assert.ok(style.shadow.includes('inset'),'the owned field surface masks the UA blue fill');
+  assert.equal(style.clip,'text','only the UA autofill background is clipped; native text stays opaque');
+  assert.equal(style.shadow,'none','never put an opaque inset layer over autofilled caret/selection');
+  assert.equal(style.appearance,'none');
   assert.equal(style.ink,ink);assert.equal(style.caret,ink);assert.equal(style.font,'16px');assert.equal(style.opacity,'1');
   assert.ok(['email','current-password'].includes(style.autocomplete),'keep native autofill semantics');
   if(style.type==='password')assert.equal(style.security,'disc','autofilled passwords remain masked');
+};
+// Check the painted selection while autofill is STILL active, before any key/fill.
+// DOM focus alone cannot prove that the user can see the caret or selected text.
+const assertAutofillSelectionVisible=async(page,field)=>{
+  const value=await field.inputValue();
+  const {start,end,clip}=await field.evaluate(n=>{
+    const r=n.getBoundingClientRect(),s=getComputedStyle(n),scale=r.width/n.offsetWidth;
+    const c=document.createElement('canvas').getContext('2d');c.font=s.font;
+    const advance=n.type==='password'?40:c.measureText(n.value.slice(0,5)).width;
+    const x=r.x+parseFloat(s.paddingLeft)*scale,y=r.y+r.height/2;
+    return {start:{x:x+1,y},end:{x:x+advance*scale,y},clip:{x:Math.ceil(x+3),y:Math.ceil(y-10*scale),width:Math.floor((advance-5)*scale),height:Math.floor(20*scale)}};
+  });
+  await page.mouse.click(start.x,start.y);
+  const before=await page.screenshot({clip,caret:'hide'});
+  await page.mouse.move(start.x,start.y);await page.mouse.down();await page.mouse.move(end.x,end.y,{steps:8});await page.mouse.up();
+  assert.equal(await field.inputValue(),value,'mouse-only autofill selection must not change the value');
+  assert.ok(await field.evaluate(n=>n.matches(':autofill')&&n===document.activeElement),'do not clear autofill or type a key to make selection work');
+  const after=await page.screenshot({clip,caret:'hide'});
+  const pixels=await page.evaluate(async({before,after})=>{
+    const decode=async png=>{const img=new Image();img.src='data:image/png;base64,'+png;await img.decode();
+      const c=document.createElement('canvas');c.width=img.width;c.height=img.height;const ctx=c.getContext('2d');ctx.drawImage(img,0,0);return ctx.getImageData(0,0,c.width,c.height).data;};
+    const a=await decode(before),b=await decode(after);let changed=0;
+    for(let i=0;i<a.length;i+=4)if(Math.abs(a[i]-b[i])+Math.abs(a[i+1]-b[i+1])+Math.abs(a[i+2]-b[i+2])>30)changed++;
+    return {changed,total:a.length/4};
+  },{before:before.toString('base64'),after:after.toString('base64')});
+  assert.ok(pixels.changed/pixels.total>.3,`autofilled text must show a painted selection before Delete: ${JSON.stringify(pixels)}`);
 };
 let activePage;
 try {
@@ -234,7 +262,9 @@ try {
       for(const dark of [false,true]){
         await page.evaluate(dark=>document.documentElement.classList.toggle('theme-dark',dark),dark);
         await email.focus();await assertAutofill(email,dark);await assertAutofill(password,dark);
+        await assertAutofillSelectionVisible(page,email);
         await password.focus();await assertAutofill(password,dark);
+        await assertAutofillSelectionVisible(page,password);
         const frames=Number(await page.locator('.cl-scene').getAttribute('data-frames'));
         await page.evaluate(()=>window.autofillMirrorCount=0);await password.blur();
         await page.waitForFunction(frames=>Number(document.querySelector('.cl-scene').dataset.frames)>frames,frames);
@@ -243,6 +273,7 @@ try {
       }
       await page.emulateMedia({forcedColors:'active'});await email.focus();
       assert.ok(await email.evaluate(n=>{const s=getComputedStyle(n);return s.webkitTextFillColor===s.color && s.caretColor===s.color}),'autofill follows system field text in forced colors');
+      assert.ok(await email.evaluate(n=>{const s=getComputedStyle(n,'::selection');return s.backgroundColor!=='rgba(0, 0, 0, 0)'&&s.webkitTextFillColor===s.color}),'forced colors retain a visible system selection and matching selected text');
       await page.emulateMedia({forcedColors:'none'});
       await page.evaluate(()=>document.documentElement.classList.remove('theme-dark'));
       await clearAutofill();
@@ -514,7 +545,7 @@ try {
     reports.push({canvasUnavailable:true,nativeFallbackAuth:true});await context.close();
   }
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
-  console.log(JSON.stringify({ok:true,productionComponentAndServices:true,syntheticFetch:true,networkBlocked:true,deviceScaleFactor,reports,errors},null,2));
+  console.log(JSON.stringify({ok:true,productionComponentAndServices:true,syntheticFetch:true,networkBlocked:true,deviceScaleFactor,autofillMouseOnlyPaintedSelection:true,reports,errors},null,2));
 } catch(error) {
   if(activePage) console.error(await activePage.evaluate(()=>({text:document.body.innerText,calls:window.authTest?.calls.map(x=>({url:x.url,purpose:x.body.purpose,aborted:x.aborted})),completed:window.authTest?.completed,listeners:window.clothListenerDetails?.()})));
   throw error;

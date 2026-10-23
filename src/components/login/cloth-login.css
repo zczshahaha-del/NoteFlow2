@@ -68,18 +68,19 @@
 #cloth-character-login .cl-drag-surface { position:absolute; inset:0; z-index:2; clip-path:polygon(0 0,0 0,0 0); touch-action:none; cursor:grab; }
 #cloth-character-login .cl-drag-surface:active { cursor:grabbing; }
 #cloth-character-login .cl-field { --cl-input-surface:color-mix(in srgb,var(--cl-paper) 96.5%,black); position:absolute; left:0; top:0; height:44px; background:var(--cl-input-surface); box-shadow:0 1px 0 var(--cl-thread); transform-origin:0 0; pointer-events:auto; }
-#cloth-character-login .cl-field:focus-within { box-shadow:none; }
+#cloth-character-login .cl-field:focus-within { box-shadow:0 2px 0 var(--cl-focus); }
 #cloth-character-login .cl-field-weave { position:absolute; inset:0; z-index:2; pointer-events:none; background-image:var(--cl-input-weave); background-size:4px 5px; background-position:-28px -164px; }
 #cloth-character-login .cl-password-field .cl-field-weave { background-position:-28px -247px; }
-#cloth-character-login .cl-input { position:absolute; z-index:1; left:0; top:0; width:100%; height:44px; padding:0 0 3px; border:0; border-radius:0; outline:none; box-shadow:none; background:transparent; color:var(--cl-ink); -webkit-text-fill-color:var(--cl-ink); caret-color:var(--cl-ink); font:400 16px/24px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif; pointer-events:auto; touch-action:auto; }
+#cloth-character-login .cl-input { position:absolute; z-index:1; left:0; top:0; width:100%; height:44px; padding:0 0 3px; border:0; border-radius:0; outline:none; appearance:none; box-shadow:none; background:transparent; color:var(--cl-ink); -webkit-text-fill-color:var(--cl-ink); caret-color:var(--cl-ink); font:400 16px/24px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif; pointer-events:auto; touch-action:auto; }
 #cloth-character-login .cl-input::placeholder { color:var(--cl-soft); -webkit-text-fill-color:var(--cl-soft); }
+#cloth-character-login .cl-input::selection { background-color:light-dark(#b9c9a4,#657650); color:var(--cl-ink); -webkit-text-fill-color:var(--cl-ink); }
 /* Strengthen the existing cloth baseline, not a second rectangular field frame. */
-#cloth-character-login .cl-input:focus { color:var(--cl-ink); box-shadow:0 2px 0 var(--cl-focus); }
+#cloth-character-login .cl-input:focus { color:var(--cl-ink); }
 #cloth-character-login .cl-input:focus::placeholder { color:var(--cl-soft); }
-/* An owned paper surface covers the UA fill. No text clipping or second text layer. */
-#cloth-character-login .cl-input:is(:autofill, :-webkit-autofill) { box-shadow:inset 0 0 0 1000px var(--cl-input-surface); }
-#cloth-character-login .cl-input:is(:autofill, :-webkit-autofill):focus { box-shadow:inset 0 0 0 1000px var(--cl-input-surface),0 2px 0 var(--cl-focus); }
-#cloth-character-login .cl-input[aria-invalid="true"] { box-shadow:0 2px 0 var(--page-error); }
+/* Clip only the UA background, never paint an opaque inset over native selection/caret.
+   The input exclusively owns its opaque text; there is no Canvas text mirror. */
+#cloth-character-login .cl-input:is(:autofill, :-webkit-autofill) { -webkit-background-clip:text; background-clip:text; }
+#cloth-character-login .cl-field:has(.cl-input[aria-invalid="true"]) { box-shadow:0 2px 0 var(--page-error); }
 #cloth-character-login .cl-password { padding-right:42px; }
 #cloth-character-login .cl-password-toggle { position:absolute; z-index:3; right:0; top:0; width:44px; height:44px; padding:0; border:0; background:transparent; color:var(--cl-soft); display:flex; align-items:center; justify-content:center; pointer-events:auto; touch-action:manipulation; }
 #cloth-character-login .cl-password-toggle:hover { color:var(--cl-ink); }
@@ -148,6 +149,7 @@
   #cloth-character-login .cl-field { --cl-input-surface:Field; background:Field; }
   #cloth-character-login .cl-field-weave { display:none; }
   #cloth-character-login .cl-input { -webkit-text-fill-color:FieldText; caret-color:FieldText; }
+  #cloth-character-login .cl-input::selection { background-color:Highlight; color:HighlightText; -webkit-text-fill-color:HighlightText; }
   /* System high contrast can remove shadows; retain a real keyboard focus indicator. */
   #cloth-character-login .cl-input:focus { outline:2px solid Highlight; outline-offset:4px; }
 }
