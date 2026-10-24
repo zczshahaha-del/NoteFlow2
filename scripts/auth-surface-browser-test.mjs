@@ -117,6 +117,36 @@ const assertAutofill=async(field,dark=false)=>{
   assert.ok(['email','current-password'].includes(style.autocomplete),'keep native autofill semantics');
   if(style.type==='password')assert.equal(style.security,'disc','autofilled passwords remain masked');
 };
+// The CSS pseudo-state cannot reproduce a stuck credential editor. Assert the
+// native handoff separately: same-value assignment BEFORE default mouse caret
+// placement, no fake input/change, and no assignments on ordinary mouse editing.
+// All inspected values here are the test's synthetic credentials, never a profile.
+const assertAutofillEditingHandoff=async(page,field,autofill)=>{
+  const value=await field.inputValue();
+  const point=await field.evaluate(n=>{
+    const descriptor=Object.getOwnPropertyDescriptor(n,'value');
+    if(!descriptor?.get||!descriptor?.set)throw Error('expected React native value accessor');
+    const initial=n.value,audit={writes:0,sameValue:true,writesBeforeMouseDown:-1,events:0};
+    Object.defineProperty(n,'value',{configurable:true,get(){return descriptor.get.call(this)},set(value){audit.writes++;audit.sameValue&&=value===initial;descriptor.set.call(this,value)}});
+    const down=()=>audit.writesBeforeMouseDown=audit.writes,event=()=>audit.events++;
+    n.addEventListener('mousedown',down);n.addEventListener('input',event);n.addEventListener('change',event);
+    window.finishAutofillHandoff=()=>{
+      Object.defineProperty(n,'value',descriptor);n.removeEventListener('mousedown',down);n.removeEventListener('input',event);n.removeEventListener('change',event);
+      return audit;
+    };
+    const r=n.getBoundingClientRect();return{x:r.x+40*r.width/n.offsetWidth,y:r.y+r.height/2};
+  });
+  let audit;
+  try { await page.mouse.click(point.x,point.y); }
+  finally { audit=await page.evaluate(()=>window.finishAutofillHandoff()); }
+  assert.equal(audit.writes,autofill?1:0,'only autofilled fields need a native value handoff');
+  assert.equal(audit.writesBeforeMouseDown,autofill?1:0,'handoff precedes the browser default caret placement');
+  assert.ok(audit.sameValue,'handoff must not clear, trim or otherwise change credentials');
+  assert.equal(audit.events,0,'do not synthesize Delete, input or change to activate editing');
+  assert.equal(await field.inputValue(),value);
+  assert.ok(await field.evaluate(n=>n===document.activeElement));
+  if(await field.getAttribute('type')==='password')assert.ok(await field.evaluate(n=>n.selectionStart>0&&n.selectionStart===n.selectionEnd),'the same click places the native password caret inside its value');
+};
 // Check the painted selection while autofill is STILL active, before any key/fill.
 // DOM focus alone cannot prove that the user can see the caret or selected text.
 const assertAutofillSelectionVisible=async(page,field)=>{
@@ -262,8 +292,10 @@ try {
       for(const dark of [false,true]){
         await page.evaluate(dark=>document.documentElement.classList.toggle('theme-dark',dark),dark);
         await email.focus();await assertAutofill(email,dark);await assertAutofill(password,dark);
+        await assertAutofillEditingHandoff(page,email,true);
         await assertAutofillSelectionVisible(page,email);
         await password.focus();await assertAutofill(password,dark);
+        await assertAutofillEditingHandoff(page,password,true);
         await assertAutofillSelectionVisible(page,password);
         const frames=Number(await page.locator('.cl-scene').getAttribute('data-frames'));
         await page.evaluate(()=>window.autofillMirrorCount=0);await password.blur();
@@ -277,6 +309,7 @@ try {
       await page.emulateMedia({forcedColors:'none'});
       await page.evaluate(()=>document.documentElement.classList.remove('theme-dark'));
       await clearAutofill();
+      await assertAutofillEditingHandoff(page,email,false);await assertAutofillEditingHandoff(page,password,false);
       await assertMouseEditing(page,email);await assertMouseEditing(page,password);
       await password.blur();
       assert.equal(await page.evaluate(()=>window.autofillMirrorCount),0,'autofill to manual editing still has exactly one native text source');

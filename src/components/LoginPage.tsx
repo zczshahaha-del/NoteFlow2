@@ -59,6 +59,16 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
   const latestPresentation = useRef(presentation);
   latestPresentation.current = presentation;
 
+  const prepareAutofillEditing = (event: React.PointerEvent<HTMLInputElement>) => {
+    const field = event.currentTarget;
+    if (event.button !== 0 || !field.matches(":is(:autofill, :-webkit-autofill)")) return;
+    const value = field.value;
+    if (!value) return;
+    // Hand an autofilled value back to the native editor before the default mouse
+    // action resolves its caret. Never clear it or synthesize a keyboard edit.
+    field.value = value;
+  };
+
   useEffect(() => {
     const root = loginRoot.current;
     // Canvas-less environments keep the same usable native authentication form.
@@ -192,14 +202,17 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
             <div className="auth-fields" key={`${mode}:${method}:${step}`}>
               {!showCode && <div className="cl-field cl-primary-field"><label className="sr-only" htmlFor={`${id}-email`}>邮箱</label>
                 <input className="cl-email cl-input" ref={emailInput} id={`${id}-email`} name="email" type="email" autoComplete="email" inputMode="email" placeholder="输入你的邮箱地址" required disabled={busy} value={email}
+                  onPointerDownCapture={prepareAutofillEditing}
                   onChange={event => { stopSend(); setEmail(event.target.value); setCode(""); clearFeedback(); }} />
                 <span className="cl-field-weave" aria-hidden="true" /></div>}
               {showCode && <div className="cl-field cl-primary-field"><label className="sr-only" htmlFor={`${id}-code`}>验证码</label>
                 <input className="cl-email cl-input" ref={codeInput} id={`${id}-code`} name="code" type="text" inputMode="numeric" autoComplete="one-time-code" placeholder="6 位验证码" maxLength={6} required disabled={busy} value={code}
+                  onPointerDownCapture={prepareAutofillEditing}
                   aria-describedby={`${id}-destination`} onChange={event => { stopSend(); setCode(event.target.value.replace(/\D/g, "").slice(0, 6)); clearFeedback(); }} />
                 <span className="cl-field-weave" aria-hidden="true" /></div>}
               {showPassword && <div className="cl-field cl-password-field"><label className="sr-only" htmlFor={`${id}-password`}>{mode === "reset" ? "新密码" : "密码"}</label>
                 <input className="cl-password cl-input" ref={passwordInput} id={`${id}-password`} name="password" type={visible ? "text" : "password"} autoComplete={mode === "reset" ? "new-password" : "current-password"}
+                  onPointerDownCapture={prepareAutofillEditing}
                   placeholder={mode === "reset" ? "至少 8 位" : "你的密码"} minLength={mode === "reset" ? 8 : 6} required disabled={busy} value={password}
                   onChange={event => { setPassword(event.target.value); clearFeedback(); }} onKeyUp={event => setCapsLock(event.getModifierState("CapsLock"))} onBlur={() => setCapsLock(false)} />
                 <span className="cl-field-weave" aria-hidden="true" />
