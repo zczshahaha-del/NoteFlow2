@@ -16,7 +16,7 @@
 
 当前归档任务中没有属于该 NoteFlow 工作区的对话。问题按主题去重归并；用户针对同一问题的多次反馈会合并为一项，但会保留方案反复、失败重试和方向纠偏等关键过程。
 
-初次归并出 69 项问题与决策记录，后续按相同口径持续追加；当前共 118 项，覆盖认证、账号信息架构、主工作台、AI 草稿、开发测试、阿里云运维、Git/交付与安全八个类别。
+初次归并出 69 项问题与决策记录，后续按相同口径持续追加；当前共 120 项，覆盖认证、账号信息架构、主工作台、AI 草稿、开发测试、阿里云运维、Git/交付与安全八个类别。
 
 状态说明：
 
@@ -1310,6 +1310,8 @@ UI-06 / UI-17 仍部分解决，UI-20 仍未解决；本稿审美评审明确未
 
 2026-10-15 架构审查延续：用户要求分析整体记忆设计，新增 [记忆与上下文架构审查](architecture/memory-context-review-2026-10-15.md)。确认应区分基础用户上下文、任务相关召回与显式记忆管理；保留唯一语义 TurnPlan，但基础读取与用途约束由统一后端策略 / ContextAssembler 承担。聊天、生成、编辑入口目前采用不同上下文服务 / 字符串构造；只读图的 MemoryWriter 仍在回答与 agent_done 之间 await，属于需评估的尾延迟风险，不等于已有索引 Outbox 已将提取完全异步。以上是源码审查与目标建议，未测真实耗时、未改正式实现，AI-10 保持未解决。
 
+2026-10-24 整体重规划复核：上述来源门槛、上下文入口分散和同步等待提取的实现仍在。正式 normalize_canonical_key 的合成调用还确认 identity.nickname 归一成 identity.name，且身份写入按 identity 类型找当前项；姓名与偏好称呼尚无独立契约，建议拆分精确键并保留来源 / 有效时间。新增 [整体架构、记忆与意图识别重规划](architecture/architecture-replanning-2026-10-24.md)，建议模块化单体、统一 ContextBundle / ContextAssembler、明确 TaskState、显式同步 / 隐式持久异步记忆写入；Mem0 先可替换化，LangGraph 保留。当前只是审查与提案，未迁移用户数据、调用真实模型或修改业务实现；AI-10 / AI-11 状态均不提高。正式协议等 35 项隔离测试通过不能代替真实读取与生成验收；新确认的协议 / 评测问题分别见 AI-13 / AI-14。
+
 ### AI-11：记忆召回先截断后过滤，语义匹配受预候选集合限制（未解决）
 
 现象与根因：memory.domain.find_memories 在未删除集合上排序，包含 pending / archived 等，先按 limit 截断；runtime.resolve_memory_read 后续才执行 active / 时效 / 内容资格过滤。即使有有效记忆，前面的不合格条目也可能占满预算。另一方面，Mem0 的结果只映射回已经截取的 candidate_ids，位于预候选之外的有效语义命中仍被丢弃，向量搜索实际上无法补足前级漏召回。
@@ -1393,6 +1395,24 @@ UI-06 / UI-17 仍部分解决，UI-20 仍未解决；本稿审美评审明确未
 验证：build、editor-ui、frontend（46 组 / 10 项）、draft-lifecycle、ai-writing-flow 通过。draft-ui 在 1440 / 960 / 736 触控 / 320 触控四宽度确认来源 / 生效文案可见、两个完整动作同排且无裁切或重叠，弹层仍不超过 280px，字段两行 / 六行封顶及清空恢复通过；新增逐章正文快照对比，确认「仅用于后续生成」不改已有章节、不调用批量生成；原要求不变、取消重写保留面板 / 输入 / 焦点且不发保存或生成请求、普通关闭放弃未保存输入等继续通过。测试首跑遇到既有严格高度断言将 64.000015px 与 64px 视为不等；仅对三处整像素设计高度取整后比较，保留尺寸目标、视口边界与溢出断言，未修改产品布局规避测试。draft-brief 在 1280 / 736 / 320px 的原要求与补充合并、单章生成 / 修改、恢复、新任务隔离及保存失败重试通过；单纯保存补充不调用模型。浅 / 深 / 窄屏截图人工检查，路径 `/private/tmp/noteflow-supplement-copy-kxEBEW/`，不提交。
 
 状态：本轮文案、局部可访问名称与隔离运行验证已完成；AI-12 仍 🟡 部分解决、累计 117 不变，不能以文案调整宣称整体生成问题已解决。浏览器使用正式组件 / CSS、合成服务并阻断真实网络，未改真实草稿或调用真实模型；用户理解度、读屏、实体输入法 / 触屏 / 软键盘及 Safari / Firefox 尚待验收。关联提交主题 `design: 明确正文补充要求的来源与生效范围`。
+
+### AI-13：任务续接执行分支与正式意图协议脱节（未解决）
+
+现象：聊天执行器保留 resume_work、note_draft_continue、confirm_action、cancel_action、note_edit_revise、history_recall 分支，但当前正式 TurnPlan 无法通过兼容映射生成这些执行意图，continue_working_task 恒为 false。不能因为代码仍有恢复 / 取消分支就认定自然语言续接能力仍可达；专用按钮、业务 API 和澄清中的取消不属于本结论。
+
+根因：server/app/services/turn_planner.py 的 PrimaryIntent 只有 general_chat / note_create / note_edit / memory / unknown；routers/agent.py:_context_plan_from_turn_plan 仅映射为普通聊天 / 创建 / 编辑 / 记忆 / 笔记搜索。协议没有独立任务关系、活动任务目标和续接动作；_planner_messages 也未序列化 schema 中的 activeDraftId / activeDraftTopic 或服务端权威任务快照。
+
+验证证据：2026-10-24 从正式 AST 抽取兼容映射函数，用 5 种主意图 × 16 种来源组合执行 80 个合成映射，确认输出集合只有 general_chat / memory_manage / note_draft_create / note_edit_create / note_search，与上述 6 个旧意图无交集，续接标记均为 false。正式提示构造的合成页面字段验证亦确认活动草稿 ID / 主题未进入提示。首次临时诊断因未注入 checkpoint 帮助函数依赖出现 NameError，已缩小为映射验证；正式 _checkpoint_for_plan 在有 session 时仍可读取 waiting checkpoint，不能据诊断脚本错误声称查询被跳过。未调用模型 / 数据库或执行任务。
+
+处理与当前状态：🔴 未解决。建议在单次语义规划中显式表达 new / continue / revise / confirm / cancel / switch，绑定服务端核验后的任务 ID 与版本；先影子比较、补多轮 E2E，再按动作迁移并清理旧分支。保留现有专用 API 和旧任务恢复兼容。35 项隔离测试通过只证明现有被测契约可运行，未证明真实自然语言继续 / 取消 / 切换已修复。详见重规划文档第 9、14、15 节，随 `docs: 重规划记忆与任务理解架构`；累计由 118 增至 119。
+
+### AI-14：Memory 安全基线仍评估旧规则路径，不能覆盖正式模型语义（未解决）
+
+现象：quality/reports/memory-safety-baseline.md 的 12 条通过和“无缺口”容易被解释为正式记忆能力已完整验收，但其评测入口实际未执行当前模型提取与唯一 TurnPlanner。
+
+根因与验证：scripts/run_memory_safety_eval.py:_evaluate_extract 调用 memory.domain.extract_memory_candidates，_evaluate_manage 调用 context_planner.fallback_context_plan；正式 MemoryWriter 调用 memory.extraction.extract_memory_candidates_smart → 模型提取，正式聊天调用 plan_turn_smart。2026-10-24 对评测脚本 AST 的检查确认上述旧函数调用；server/tests/test_memory_safety_dataset.py 也明确验证 legacy 提取基线。本轮正式协议 / 架构 / 记忆帮助函数 / legacy 数据集共 35 项隔离测试通过，模型部分使用替身，不能代替真实模型语义评测。没有覆盖或改写旧报告，没有产生模型费用。
+
+处理与当前状态：🔴 未解决。保留旧规则集作历史回归并明确范围，另建调用正式 Planner / Extractor 的固定中文语义数据集，覆盖临时 / 长期、第三方、纠正、任务续接与切换；分别验收协议、语义、读取、业务 E2E 和失败恢复。报告应说明模型版本、样本数、错误执行与澄清、召回 / 精确率及成本，不能用 JSON 合法率代替理解质量。阻塞条件是尚未实现正式路径评测和完成真实运行；详见重规划文档第 13 节。随 `docs: 重规划记忆与任务理解架构`；累计由 119 增至 120。
 
 ## 7. 本地开发、预览与测试问题
 
@@ -1651,4 +1671,4 @@ DEV-14 后续取图证据：圆润无箭头局部稿使用普通 `clip`，按外
 
 ---
 
-本文初始基线为 2026-09-13，最后更新于 2026-10-22，当前共 118 项问题与决策记录。后续遇到新问题时，应继续沿用现有 ID 分类追加，并在状态变化时同时补充提交号或提交说明和验证证据。2026-10-22 沿用 UI-27 更新设计执行纠偏，未新增 ID；历史段落的当时数量保留。
+本文初始基线为 2026-09-13，最后更新于 2026-10-24，当前共 120 项问题与决策记录。后续遇到新问题时，应继续沿用现有 ID 分类追加，并在状态变化时同时补充提交号或提交说明和验证证据。2026-10-24 整体架构审查新增 AI-13 / AI-14，沿用 AI-10 补记既有上下文与称呼契约缺口；历史段落的当时数量保留。

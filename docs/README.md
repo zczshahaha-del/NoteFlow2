@@ -14,3 +14,5 @@
 新增文档应放入对应分类；已完成且不再指导当前开发的材料应移入 `archive/`。
 
 项目文件与模块的放置规则见[项目目录规范](architecture/project-layout.md)。
+
+记忆与 AI 运行架构的重规划提案见[整体架构、记忆与意图识别重规划](architecture/architecture-replanning-2026-10-24.md)；该文为待实施方案，当前运行事实仍以源码及现有架构文档为准。
