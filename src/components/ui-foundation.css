@@ -30,6 +30,7 @@
   --nf-ease-surface: cubic-bezier(.2, .8, .2, 1);
 }
 :root, .nf-settings-system[data-theme="light"] {
+  --nf-ui-background: #f5f5f4;
   --nf-ui-surface: #f9f8f7;
   --nf-ui-canvas: #ffffff;
   --nf-ui-soft: #f3f2f0;
@@ -39,6 +40,13 @@
   --nf-ui-icon: #7e8791;
   --nf-ui-line: #e9e7e3;
   --nf-ui-focus: #8090a5;
+  /* One action/selection palette for the cloth entrance and the working UI.
+     Neutral hover/selected surfaces remain separate from active navigation. */
+  --nf-ui-accent: #3f7898;
+  --nf-ui-accent-ink: #ffffff;
+  --nf-ui-accent-text: #315f7d;
+  --nf-ui-accent-soft: #e7eef2;
+  --nf-ui-text-selection: #bfd7e5;
   --nf-ui-danger: #b34c49;
   --nf-ui-danger-soft: #faeeee;
   --nf-ui-shadow-color: rgba(36, 44, 55, .10);
@@ -47,6 +55,7 @@
   --nf-ui-shadow-compact: 0 6px 20px rgb(36 44 55 / 8%);
 }
 .theme-dark, .nf-settings-system[data-theme="dark"] {
+  --nf-ui-background: #0c131a;
   --nf-ui-surface: #252b33;
   --nf-ui-canvas: #1c252e;
   --nf-ui-soft: #2d3540;
@@ -56,6 +65,11 @@
   --nf-ui-icon: #a8b1be;
   --nf-ui-line: #3a424d;
   --nf-ui-focus: #9aa9bf;
+  --nf-ui-accent: #427693;
+  --nf-ui-accent-ink: #ffffff;
+  --nf-ui-accent-text: #9bc8e1;
+  --nf-ui-accent-soft: #263e4d;
+  --nf-ui-text-selection: #385b70;
   --nf-ui-danger: #ee9e97;
   --nf-ui-danger-soft: #482e30;
   --nf-ui-shadow-color: rgba(0, 0, 0, .30);

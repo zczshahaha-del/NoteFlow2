@@ -1,6 +1,14 @@
 /* Supplied cloth/page styles, scoped to the login root. */
 #cloth-character-login{width:100%;padding:10px 6px 0}
-#cloth-character-login .cl-scene{--cl-bg:light-dark(#ebe8dd,#242922);--cl-paper:light-dark(#f7f1df,#424a37);--cl-ink:light-dark(#35442f,#edf0dd);--cl-soft:light-dark(#737c64,#b5bca6);--cl-thread:light-dark(#bdb995,#939e7d);--cl-shadow:light-dark(#51563d,#070d06);--cl-button:light-dark(#4b603f,#d8e1c5);--cl-button-ink:light-dark(#fffbea,#2f3d28);--cl-metal:light-dark(#a78e57,#c1a976);--cl-shine:light-dark(#f8edc8,#f2e7c5);position:relative;isolation:isolate;overflow:hidden;width:100%;height:580px;border-radius:18px;background:radial-gradient(circle,color-mix(in srgb,var(--cl-thread) 18%,transparent) .6px,transparent .9px),var(--cl-bg);background-size:10px 10px;color:var(--cl-ink);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft Yahei",sans-serif;touch-action:pan-y}
+#cloth-character-login .cl-scene {
+  --cl-bg:var(--nf-ui-background); --cl-paper:var(--nf-ui-canvas);
+  --cl-ink:var(--nf-ui-text); --cl-soft:var(--nf-ui-muted);
+  --cl-thread:color-mix(in srgb,var(--nf-ui-muted) 28%,var(--nf-ui-canvas));
+  --cl-shadow:var(--nf-ui-text); --cl-button:var(--nf-ui-accent); --cl-button-ink:var(--nf-ui-accent-ink);
+  --cl-metal:light-dark(#ad9e80,#8999a7); --cl-shine:light-dark(#ffffff,#a5b2bd);
+  position:relative; isolation:isolate; overflow:hidden; width:100%; height:580px; border-radius:18px;
+  background:var(--cl-bg); color:var(--cl-ink); font-family:var(--nf-font-ui); touch-action:pan-y;
+}
 #cloth-character-login .cl-scene *{box-sizing:border-box}
 #cloth-character-login canvas{position:absolute;inset:0;width:100%;height:100%}
 #cloth-character-login .cl-shadow{z-index:0;pointer-events:none}
@@ -9,9 +17,15 @@
 #cloth-character-login .cl-form{position:absolute;inset:0;z-index:3;pointer-events:none;margin:0;padding:0}
 #cloth-character-login .cl-enter{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:auto}
 #cloth-character-login .cl-enter{touch-action:manipulation}
-#cloth-character-login .cl-enter{height:48px;padding:0;border:0;border-radius:4px;background:transparent;color:transparent;font:400 14px/20px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}
+#cloth-character-login .cl-enter{height:48px;padding:0;border:0;border-radius:var(--nf-radius-control);background:transparent;color:transparent;font:500 14px/20px var(--nf-font-ui)}
 #cloth-character-login .cl-probe{position:absolute;width:0;height:0;visibility:hidden}
-#cloth-character-login .cl-scene{--cl-face:light-dark(#fff8e7,#e9e3cf);--cl-face-shade:light-dark(#e4d6b7,#bfb295);--cl-face-ink:light-dark(#354132,#30372b);--cl-rope:light-dark(#a88b4e,#d0b376);--cl-scarf:light-dark(#be9856,#d6b879);--cl-knit:light-dark(#758568,#a8b493);--cl-knit-shade:light-dark(#53634a,#758367);--cl-shoe:light-dark(#e3dac3,#a89e86);--cl-stitch:light-dark(#b4bda7,#c9d3b9)}
+#cloth-character-login .cl-scene {
+  --cl-face:light-dark(#faf7ee,#e7e3d8); --cl-face-shade:light-dark(#e6dfce,#bdb8a9);
+  --cl-face-ink:light-dark(#36414b,#303a43); --cl-rope:light-dark(#aca18d,#b7ab96);
+  --cl-scarf:light-dark(#b1a48a,#c0b49a); --cl-knit:light-dark(#7193a5,#89a9bc);
+  --cl-knit-shade:light-dark(#527387,#5e7d91); --cl-shoe:light-dark(#e7e6df,#a8b1b9);
+  --cl-stitch:light-dark(#bac7ce,#c4d0d8);
+}
 #cloth-character-login .cl-bubble{display:none}
 @media(max-width:480px){
  #cloth-character-login{padding-top:6px;padding-inline:2px}
@@ -19,13 +33,13 @@
 
 #cloth-character-login {
   color-scheme: light dark;
-  --page-bg: light-dark(#ebe8dd, #242922);
-  --page-ink: light-dark(#35442f, #edf0dd);
-  --page-soft: light-dark(#6e775f, #b5bca6);
-  --page-line: light-dark(#c7c6b1, #4c5744);
-  --page-paper: light-dark(#f7f1df, #424a37);
-  --page-error: light-dark(#a24430, #ffb6a0);
-  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --page-bg: var(--nf-ui-background);
+  --page-ink: var(--nf-ui-text);
+  --page-soft: var(--nf-ui-muted);
+  --page-line: var(--nf-ui-line);
+  --page-paper: var(--nf-ui-canvas);
+  --page-error: var(--nf-ui-danger);
+  font-family: var(--nf-font-ui);
   background: var(--page-bg);
   color: var(--page-ink);
 }
@@ -42,8 +56,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  background: radial-gradient(circle, color-mix(in srgb, var(--page-soft) 12%, transparent) .65px, transparent .9px), var(--page-bg);
-  background-size: 13px 13px;
+  background: var(--page-bg);
 }
 #cloth-character-login .site-header {
   position: absolute;
@@ -60,27 +73,28 @@
   pointer-events: auto;
 }
 #cloth-character-login .site-brand { color: var(--page-ink); text-decoration: none; font: 400 28px/1 Georgia, serif; letter-spacing: -1.3px; }
-#cloth-character-login .site-brand span { color: var(--page-soft); }
+#cloth-character-login .site-brand span { color: var(--nf-ui-accent); }
 #cloth-character-login .page-main { width:100%; height:100%; min-height:664px; margin:0; padding:0; }
 /* Full viewport width for entry; a centered render band avoids three tall HiDPI canvases. */
-#cloth-character-login .cl-scene { --cl-error:var(--page-error); --cl-focus:light-dark(#5d704f,#d4dfb8); position:absolute; top:calc(50% - 332px); left:0; height:664px; border-radius:0; background:transparent; }
+#cloth-character-login .cl-scene { --cl-error:var(--page-error); --cl-focus:var(--nf-ui-accent); position:absolute; top:calc(50% - 332px); left:0; height:664px; border-radius:0; background:transparent; }
 #cloth-character-login .cl-cloth { pointer-events: none; touch-action: auto; }
 #cloth-character-login .cl-drag-surface { position:absolute; inset:0; z-index:2; clip-path:polygon(0 0,0 0,0 0); touch-action:none; cursor:grab; }
 #cloth-character-login .cl-drag-surface:active { cursor:grabbing; }
-#cloth-character-login .cl-field { --cl-input-surface:color-mix(in srgb,var(--cl-paper) 96.5%,black); position:absolute; left:0; top:0; height:44px; background:var(--cl-input-surface); box-shadow:0 1px 0 var(--cl-thread); transform-origin:0 0; pointer-events:auto; }
-#cloth-character-login .cl-field:focus-within { box-shadow:0 2px 0 var(--cl-focus); }
-#cloth-character-login .cl-field-weave { position:absolute; inset:0; z-index:2; pointer-events:none; background-image:var(--cl-input-weave); background-size:4px 5px; background-position:-28px -164px; }
+#cloth-character-login .cl-field { --cl-input-surface:color-mix(in srgb,var(--cl-paper) 96.5%,black); position:absolute; left:0; top:0; height:44px; border-radius:var(--nf-radius-control); background:var(--cl-input-surface); box-shadow:0 0 0 1px var(--page-line); transform-origin:0 0; pointer-events:auto; }
+#cloth-character-login .cl-field:focus-within { box-shadow:0 0 0 1px var(--cl-focus); }
+#cloth-character-login .cl-field-weave { position:absolute; inset:0; z-index:2; border-radius:inherit; pointer-events:none; background-image:var(--cl-input-weave); background-size:4px 5px; background-position:-28px -164px; }
 #cloth-character-login .cl-password-field .cl-field-weave { background-position:-28px -247px; }
-#cloth-character-login .cl-input { position:absolute; z-index:1; left:0; top:0; width:100%; height:44px; padding:0 0 3px; border:0; border-radius:0; outline:none; appearance:none; box-shadow:none; background:transparent; color:var(--cl-ink); -webkit-text-fill-color:var(--cl-ink); caret-color:var(--cl-ink); font:400 16px/24px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif; pointer-events:auto; touch-action:auto; }
+#cloth-character-login .cl-input { position:absolute; z-index:1; left:0; top:0; width:100%; height:44px; padding:0 12px 3px; border:0; border-radius:inherit; outline:none; appearance:none; box-shadow:none; background:transparent; color:var(--cl-ink); -webkit-text-fill-color:var(--cl-ink); caret-color:var(--cl-ink); font:400 16px/24px var(--nf-font-ui); pointer-events:auto; touch-action:auto; }
 #cloth-character-login .cl-input::placeholder { color:var(--cl-soft); -webkit-text-fill-color:var(--cl-soft); }
-#cloth-character-login .cl-input::selection { background-color:light-dark(#b9c9a4,#657650); color:var(--cl-ink); -webkit-text-fill-color:var(--cl-ink); }
-/* Strengthen the existing cloth baseline, not a second rectangular field frame. */
+#cloth-character-login .cl-input::selection { background-color:var(--nf-ui-text-selection); color:var(--cl-ink); -webkit-text-fill-color:var(--cl-ink); }
+/* The approved preview uses a quiet, one-pixel boundary on the wrapper only.
+   Keep native input paint/shadow and editing geometry free of focus tricks. */
 #cloth-character-login .cl-input:focus { color:var(--cl-ink); }
 #cloth-character-login .cl-input:focus::placeholder { color:var(--cl-soft); }
 /* Clip only the UA background, never paint an opaque inset over native selection/caret.
    The input exclusively owns its opaque text; there is no Canvas text mirror. */
 #cloth-character-login .cl-input:is(:autofill, :-webkit-autofill) { -webkit-background-clip:text; background-clip:text; }
-#cloth-character-login .cl-field:has(.cl-input[aria-invalid="true"]) { box-shadow:0 2px 0 var(--page-error); }
+#cloth-character-login .cl-field:has(.cl-input[aria-invalid="true"]) { box-shadow:0 0 0 1px var(--page-error); }
 #cloth-character-login .cl-password { padding-right:42px; }
 #cloth-character-login .cl-password-toggle { position:absolute; z-index:3; right:0; top:0; width:44px; height:44px; padding:0; border:0; background:transparent; color:var(--cl-soft); display:flex; align-items:center; justify-content:center; pointer-events:auto; touch-action:manipulation; }
 #cloth-character-login .cl-password-toggle:hover { color:var(--cl-ink); }
@@ -93,7 +107,7 @@
 #cloth-character-login.login-page {
   position:relative; color-scheme: light; height: 100%; min-height: 0; overflow: auto; overflow-x: hidden;
   --cl-display-scale:1;
-  --page-depth:light-dark(#66614b,#070c06);
+  --page-depth:var(--nf-ui-text);
   --auth-muted: var(--page-soft); --auth-ink: var(--page-ink); --auth-error: var(--page-error);
   line-height: 1.5; font-size: 14px; -webkit-font-smoothing: antialiased;
   isolation:isolate;
@@ -139,10 +153,10 @@
 #cloth-character-login[data-renderer="fallback"] .auth-form { width:min(100%,326px); height:auto; transform:none; }
 #cloth-character-login[data-renderer="fallback"] .cl-scene { position:relative; inset:auto; height:auto; min-height:0; padding:0; }
 #cloth-character-login[data-renderer="fallback"] .cl-form { position:relative; inset:auto; width:100%; padding:28px; background:var(--page-paper); pointer-events:auto; border-radius:4px; }
-#cloth-character-login[data-renderer="fallback"] .cl-fallback-title { display:block; margin:0 0 24px; font:400 22px/1.5 "Songti SC",Georgia,serif; }
+#cloth-character-login[data-renderer="fallback"] .cl-fallback-title { display:block; margin:0 0 24px; font:600 22px/1.5 var(--nf-font-ui); }
 #cloth-character-login[data-renderer="fallback"] .cl-field, #cloth-character-login[data-renderer="fallback"] .cl-enter { position:relative; inset:auto; transform:none!important; width:100%!important; color:var(--page-ink); margin:0 0 16px; }
 #cloth-character-login[data-renderer="fallback"] .cl-input::placeholder { color:var(--page-soft); }
-#cloth-character-login[data-renderer="fallback"] .cl-enter { background:var(--page-ink); color:var(--page-paper); margin:8px 0 0; }
+#cloth-character-login[data-renderer="fallback"] .cl-enter { background:var(--nf-ui-accent); color:var(--nf-ui-accent-ink); margin:8px 0 0; }
 #cloth-character-login[data-renderer="fallback"] .auth-support { position:relative; inset:auto; width:100%; margin:12px auto 0; }
 @media (forced-colors:active) {
   #cloth-character-login.login-page::before { display:none; }

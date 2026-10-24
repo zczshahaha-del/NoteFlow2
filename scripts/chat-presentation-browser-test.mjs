@@ -105,7 +105,7 @@ try{
     assert.equal(historySearchStyle.fieldShadow,'none','no replacement outer ring');
     assert.equal(historySearchStyle.radius,'9px');
     assert.equal(historySearchStyle.background,'rgb(227, 232, 238)','the whole existing field softly changes fill on focus');
-    assert.equal(historySearchStyle.icon,'rgb(48, 53, 60)','the search icon makes keyboard focus recognizable without adding lines');
+    assert.equal(historySearchStyle.icon,'rgb(44, 44, 43)','the search icon uses the approved shared warm-gray text for keyboard focus without adding lines');
     const rootFontSize=await page.evaluate(()=>parseFloat(getComputedStyle(document.documentElement).fontSize));
     assert.equal(historySearchStyle.height,mobile?44:2.25*rootFontSize,'preserve existing h-9 sizing and coarse-pointer minimum');
     assert.equal(await historySearch.getAttribute('aria-label'),'搜索历史对话');
@@ -119,7 +119,7 @@ try{
     await page.keyboard.press('Tab');
     await settleHistorySearch();
     assert.equal(await historySearch.evaluate(n=>getComputedStyle(n).boxShadow),'none');
-    assert.equal(await historySearch.evaluate(n=>getComputedStyle(n.parentElement).backgroundColor),'rgb(236, 239, 242)','blur restores the original fill');
+    assert.equal(await historySearch.evaluate(n=>getComputedStyle(n.parentElement).backgroundColor),'rgb(238, 237, 234)','blur restores the shared warm neutral selected fill');
     assert.equal(await historySearch.evaluate(n=>getComputedStyle(n.parentElement.querySelector('svg')).color),'rgb(126, 135, 145)');
     assert.equal(await page.evaluate(()=>getComputedStyle(document.activeElement).outlineStyle),'solid','other menu controls keep keyboard focus');
     await page.keyboard.press('Shift+Tab');assert.equal(await historySearch.evaluate(n=>document.activeElement===n),true);

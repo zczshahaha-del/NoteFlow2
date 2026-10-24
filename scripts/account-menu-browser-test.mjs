@@ -78,6 +78,12 @@ try{
   // Existing settings / trash routing is unchanged; no dangerous action is submitted.
   await panel.getByRole('button',{name:'设置',exact:true}).click();await page.getByRole('dialog',{name:'设置',exact:true}).waitFor();await settled(page);
   assert.equal(await page.getByRole('button',{name:'账号与安全',exact:true}).getAttribute('aria-current'),'page');
+  await page.getByRole('button',{name:'外观',exact:true}).click();await settled(page);
+  assert.equal(await page.locator('.nf-nav[aria-current="page"]').evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(231, 238, 242)');
+  assert.equal(await page.locator('.nf-nav[aria-current="page"]').evaluate(n=>getComputedStyle(n).color),'rgb(49, 95, 125)');
+  assert.equal(await page.locator('.nf-segment button').count(),2,'keep the existing light/dark choices, not mockup-only features');
+  assert.equal(await page.locator('.nf-segment button[aria-pressed="true"]').evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(231, 238, 242)');
+  await page.screenshot({path:join(output,'appearance-'+width+'.png')});
   await page.getByRole('dialog',{name:'设置',exact:true}).press('Escape');await settled(page);
   await open(page);await panel.getByRole('button',{name:/^回收站/}).click();await page.getByRole('dialog',{name:'设置',exact:true}).waitFor();await settled(page);
   assert.equal(await page.getByRole('heading',{name:'回收站',exact:true}).count(),1);
@@ -98,6 +104,12 @@ try{
   assert.equal(await panel.evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(37, 43, 51)');
   assert.equal(await panel.locator('.nf-account-heading .nf-avatar').evaluate(n=>n.getBoundingClientRect().width),28);
   await panel.getByRole('button',{name:'设置',exact:true}).press('Escape');await settled(page);
+  await open(page);await panel.getByRole('button',{name:'设置',exact:true}).click();await page.getByRole('dialog',{name:'设置',exact:true}).waitFor();
+  await page.getByRole('button',{name:'外观',exact:true}).click();await settled(page);
+  assert.equal(await page.locator('.nf-nav[aria-current="page"]').evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(38, 62, 77)');
+  assert.equal(await page.locator('.nf-segment button[aria-pressed="true"]').evaluate(n=>getComputedStyle(n).color),'rgb(155, 200, 225)');
+  if(width===1280)await page.screenshot({path:join(output,'appearance-dark.png')});
+  await page.getByRole('dialog',{name:'设置',exact:true}).press('Escape');await settled(page);
   await page.emulateMedia({reducedMotion:'reduce'});await open(page);
   assert.equal(await panel.evaluate(n=>getComputedStyle(n).animationName),'none');
   assert.equal(await page.locator('.nf-account-trigger .nf-avatar').evaluate(n=>getComputedStyle(n).transitionDuration),'0s');

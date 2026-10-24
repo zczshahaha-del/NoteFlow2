@@ -61,10 +61,12 @@ function createClothLogin(root,cleanups,onEntranceReady) {
   }
   function colors(){
     ['bg','paper','ink','soft','thread','shadow','button','button-ink','metal','shine','face','face-shade','face-ink','rope','scarf','knit','knit-shade','shoe','stitch','error'].forEach(k=>{probe.style.color='var(--cl-'+k+')';palette[k]=getComputedStyle(probe).color;});palette.line=palette.thread;textureDirty=true;dirty=true;
-    // Same 4×5 cloth repeat as paintTexture, including antialiased half-pixel threads.
+    palette.uiFont=getComputedStyle(scene).fontFamily;
+    palette.buttonRadius=parseFloat(getComputedStyle(enter).borderRadius)||4;
+    // Same quiet 4×5 cloth repeat as paintTexture, including half-pixel threads.
     // Decorative only: input values are never copied into this bitmap.
     const tile=document.createElement('canvas');tile.width=8;tile.height=10;
-    const c=tile.getContext('2d');c.scale(2,2);c.globalAlpha=.075;c.lineWidth=.5;
+    const c=tile.getContext('2d');c.scale(2,2);c.globalAlpha=.04;c.lineWidth=.5;
     for(let x=0;x<=4;x+=2){c.strokeStyle=x===2?palette.shine:palette.ink;c.beginPath();c.moveTo(x,0);c.lineTo(x,5);c.stroke();}
     for(let y=0;y<=5;y+=2.5){c.strokeStyle=y===2.5?palette.thread:palette.shine;c.beginPath();c.moveTo(0,y);c.lineTo(4,y);c.stroke();}
     scene.style.setProperty('--cl-input-weave',`url("${tile.toDataURL()}")`);
@@ -297,18 +299,18 @@ function createClothLogin(root,cleanups,onEntranceReady) {
   function paintTexture(){
     const scale=2;texture.width=Math.round(CW*scale);texture.height=CH*scale;tc.setTransform(scale,0,0,scale,0,0);
     tc.fillStyle=palette.paper;tc.fillRect(0,0,CW,CH);
-    tc.save();tc.globalAlpha=.075;tc.lineWidth=.5;
+    tc.save();tc.globalAlpha=.04;tc.lineWidth=.5;
     for(let x=0;x<CW;x+=2){tc.strokeStyle=(Math.round(x/2)%2)?palette.shine:palette.ink;tc.beginPath();tc.moveTo(x,0);tc.lineTo(x,CH);tc.stroke();}
     for(let y=0;y<CH;y+=2.5){tc.strokeStyle=(Math.round(y/2.5)%2)?palette.thread:palette.shine;tc.beginPath();tc.moveTo(0,y);tc.lineTo(CW,y);tc.stroke();}tc.restore();
     tc.strokeStyle=palette.thread;tc.lineWidth=.8;tc.setLineDash([2.5,3]);tc.strokeRect(9,9,CW-18,CH-18);tc.setLineDash([]);
     const pad=28,content=CW-pad*2,small=CW<285;
-    tc.fillStyle=palette.ink;tc.font='400 '+(CW<250?22:small?25:28)+'px -apple-system,"PingFang SC",sans-serif';tc.fillText(formState.title||'登录',pad,93);
+    tc.fillStyle=palette.ink;tc.font='600 '+(CW<250?22:small?25:28)+'px '+palette.uiFont;tc.fillText(formState.title||'登录',pad,93);
     tc.fillStyle=palette.soft;
-    tc.font='400 11px -apple-system,"PingFang SC",sans-serif';tc.fillText(formState.primaryLabel||'邮箱',pad,155);
+    tc.font='400 11px '+palette.uiFont;tc.fillText(formState.primaryLabel||'邮箱',pad,155);
     if(password)tc.fillText(formState.passwordLabel||'密码',pad,238);
-    // Native inputs exclusively own their value, placeholder, caret and baseline.
-    tc.fillStyle=palette.button;tc.beginPath();tc.roundRect(pad,330,content,48,4);tc.fill();
-    tc.fillStyle=palette['button-ink'];tc.font='400 14px -apple-system,"PingFang SC",sans-serif';tc.textAlign='center';tc.fillText(formState.buttonLabel||'获取验证码',CW/2,360);tc.textAlign='left';
+    // Native inputs exclusively own their value, placeholder, caret and boundary.
+    tc.fillStyle=palette.button;tc.beginPath();tc.roundRect(pad,330,content,48,palette.buttonRadius);tc.fill();
+    tc.fillStyle=palette['button-ink'];tc.font='500 14px '+palette.uiFont;tc.textAlign='center';tc.fillText(formState.buttonLabel||'获取验证码',CW/2,360);tc.textAlign='left';
     if(gpu){gl.bindTexture(gl.TEXTURE_2D,gpu.texture);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,texture);}
     textureDirty=false;
   }

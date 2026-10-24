@@ -78,8 +78,9 @@
 .nf-settings-system .nf-settings-navigation { padding: 25px 12px; background: var(--nf-soft); border-right: 1px solid var(--nf-line); overflow-y: auto; }
 .nf-settings-system .nf-brand { padding: 0 12px; margin: 0 0 26px; font-size: 17px; font-weight: 500; }
 .nf-settings-system .nf-nav { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; padding: 0 12px; margin: 3px 0; border: 0; border-radius: var(--nf-radius-control, 9px); color: var(--nf-muted); background: transparent; font-size: var(--nf-font-control, 13px); text-align: left; }
-.nf-settings-system .nf-nav:hover, .nf-settings-system .nf-nav[aria-current="page"] { background: var(--nf-selected); }
-.nf-settings-system .nf-nav[aria-current="page"] { color: var(--nf-text); font-weight: 500; }
+.nf-settings-system .nf-nav:hover { background: var(--nf-selected); }
+.nf-settings-system .nf-nav[aria-current="page"] { background:var(--nf-ui-accent-soft); color:var(--nf-ui-accent-text); font-weight:500; }
+.nf-settings-system .nf-nav[aria-current="page"] svg { color:inherit; }
 .nf-settings-system .nf-settings-content { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .nf-settings-system .nf-content-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; padding: 24px 28px 16px; }
 .nf-settings-system h2 { margin: 0; font-family: inherit; font-size: 19px; font-weight: 500; line-height: 1.4; }
@@ -102,18 +103,18 @@
 .nf-settings-system textarea.nf-input { min-height: 90px; resize: vertical; }
 .nf-settings-system .nf-button { min-height: var(--nf-control-height, 36px); padding: 8px 13px; border: 0; border-radius: var(--nf-radius-control, 9px); background: var(--nf-soft); font-size: var(--nf-font-control, 13px); }
 .nf-settings-system .nf-button:hover { background: var(--nf-selected); }
-.nf-settings-system .nf-primary { background: var(--nf-text); color: var(--nf-surface); }
-.nf-settings-system .nf-primary:hover { background: var(--nf-text); }
+.nf-settings-system .nf-primary { background:var(--nf-ui-accent); color:var(--nf-ui-accent-ink); }
+.nf-settings-system .nf-primary:hover { background:color-mix(in srgb,var(--nf-ui-accent) 90%,black); }
 .nf-settings-system .nf-danger { color: var(--nf-danger); background: var(--nf-danger-soft); }
 .nf-settings-system .nf-danger:hover { background: var(--nf-danger-soft); }
 .nf-settings-system .nf-notice { margin: 10px 0; color: var(--nf-muted); font-size: var(--nf-font-caption, 12px); overflow-wrap: anywhere; }
 .nf-settings-system .nf-error { color: var(--nf-danger); }
 .nf-settings-system .nf-segment { display: flex; flex-shrink: 0; padding: 3px; border-radius: var(--nf-radius-control, 9px); background: var(--nf-soft); }
 .nf-settings-system .nf-segment button { padding: 5px 10px; border: 0; border-radius: 6px; background: transparent; font-size: var(--nf-font-caption, 12px); }
-.nf-settings-system .nf-segment button[aria-pressed="true"] { background: var(--nf-surface); box-shadow: 0 1px 4px var(--nf-shadow); }
+.nf-settings-system .nf-segment button[aria-pressed="true"] { background:var(--nf-ui-accent-soft); color:var(--nf-ui-accent-text); box-shadow:none; }
 .nf-settings-system .nf-switch { position: relative; flex-shrink: 0; width: 44px; height: 32px; border: 0; background: transparent; }
 .nf-settings-system .nf-switch::before { content: ""; position: absolute; width: 40px; height: 24px; left: 2px; top: calc(50% - 12px); border-radius: 16px; background: var(--nf-selected); transition: background-color 180ms ease; }
-.nf-settings-system .nf-switch[aria-pressed="true"]::before { background: var(--nf-text); }
+.nf-settings-system .nf-switch[aria-pressed="true"]::before { background:var(--nf-ui-accent); }
 .nf-settings-system .nf-switch span { position: absolute; left: 5px; top: calc(50% - 9px); width: 18px; height: 18px; border-radius: 50%; background: var(--nf-surface); transition: transform 180ms ease; }
 .nf-settings-system .nf-switch[aria-pressed="true"] span { transform: translateX(16px); }
 .nf-settings-system .nf-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-size: var(--nf-font-caption, 12px); color: var(--nf-muted); }

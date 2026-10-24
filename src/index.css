@@ -2,11 +2,11 @@
 @import "./components/ui-foundation.css";
 
 @theme {
-  --color-jelly-bg: #f5f5f4;
+  --color-jelly-bg: var(--nf-ui-background);
   --color-jelly-surface: #f9f8f7;
   --color-jelly-card: #ffffff;
-  --color-jelly-blue: #3f7898;
-  --color-jelly-blue-deep: #315f7d;
+  --color-jelly-blue: var(--nf-ui-accent);
+  --color-jelly-blue-deep: var(--nf-ui-accent-text);
   --color-jelly-blue-light: #d9e9f2;
   --color-jelly-blue-pale: #edf5f8;
   --color-jelly-text: #2c2c2b;
@@ -23,11 +23,11 @@
 }
 
 .theme-dark {
-  --color-jelly-bg: #0c131a;
+  --color-jelly-bg: var(--nf-ui-background);
   --color-jelly-surface: #111a23;
   --color-jelly-card: #17222d;
-  --color-jelly-blue: #427693;
-  --color-jelly-blue-deep: #9bc8e1;
+  --color-jelly-blue: var(--nf-ui-accent);
+  --color-jelly-blue-deep: var(--nf-ui-accent-text);
   --color-jelly-blue-light: #243b4a;
   --color-jelly-blue-pale: #1c303d;
   --color-jelly-text: #e7eef4;
@@ -197,7 +197,7 @@ button,
   --directory-row-muted: var(--nf-ui-muted);
   --directory-row-icon: var(--nf-ui-icon);
   --directory-row-hover: var(--nf-ui-soft);
-  --directory-row-selected: var(--nf-ui-selected);
+  --directory-row-selected: var(--nf-ui-accent-soft);
 }
 
 .theme-dark .directory-tree .directory-node-list {
@@ -205,7 +205,7 @@ button,
   --directory-row-muted: #afbac5;
   --directory-row-icon: #99a8b7;
   --directory-row-hover: #313a44;
-  --directory-row-selected: #384652;
+  --directory-row-selected: var(--nf-ui-accent-soft);
 }
 
 .directory-tree .directory-node-row {
@@ -227,6 +227,7 @@ button,
 
 .directory-tree .directory-node-row[data-selected="true"] {
   background: var(--directory-row-selected);
+  color: var(--nf-ui-accent-text);
 }
 
 .directory-tree .directory-node-row[data-folder="true"],
@@ -258,7 +259,7 @@ button,
 }
 
 .directory-tree .directory-node-row[data-selected="true"] .directory-node-icon {
-  color: var(--directory-row-muted);
+  color: var(--nf-ui-accent-text);
 }
 
 .directory-tree .directory-node-more {
@@ -433,7 +434,7 @@ button,
 .ui-button-primary {
   border: 1px solid transparent;
   background: var(--color-jelly-blue);
-  color: white;
+  color: var(--nf-ui-accent-ink);
 }
 
 .ui-button-primary:not(:disabled):hover {
@@ -2404,8 +2405,7 @@ button,
 html,
 body,
 #root {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--nf-font-ui);
 }
 
 .document-canvas,
@@ -2550,7 +2550,7 @@ body,
   background: #f8f7f4 !important;
   color: #303234 !important;
   padding: 0 10px !important;
-  font: 600 13px/1 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif !important;
+  font: 600 13px/1 var(--nf-font-ui) !important;
 }
 
 .document-canvas .note-content .code-language-search::placeholder {
@@ -2602,7 +2602,7 @@ body,
   background: #f8f7f4;
   color: #303234;
   padding: 0 10px;
-  font: 600 13px/1 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+  font: 600 13px/1 var(--nf-font-ui);
 }
 
 .code-language-floating-search::placeholder {

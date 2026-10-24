@@ -4,8 +4,8 @@
   --draft-selected: var(--nf-ui-selected, #eceff2);
   --draft-text: var(--nf-ui-text, #30353c);
   --draft-muted: var(--nf-ui-muted, #66717d);
-  --draft-primary: #335f78;
-  --draft-primary-text: #fff;
+  --draft-primary: var(--nf-ui-accent);
+  --draft-primary-text: var(--nf-ui-accent-ink);
   --draft-success: #267955;
   --draft-success-bg: #e6f3ec;
   --draft-danger: var(--nf-ui-danger, #b34c49);
@@ -20,8 +20,8 @@
   --draft-selected: var(--nf-ui-selected, #363f4a);
   --draft-text: var(--nf-ui-text, #e9edf2);
   --draft-muted: var(--nf-ui-muted, #a7b0bc);
-  --draft-primary: #abd3e8;
-  --draft-primary-text: #203749;
+  --draft-primary: var(--nf-ui-accent);
+  --draft-primary-text: var(--nf-ui-accent-ink);
   --draft-success: #8bd7b0;
   --draft-success-bg: #263f35;
   --draft-danger: var(--nf-ui-danger, #ee9e97);

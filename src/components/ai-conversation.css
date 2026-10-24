@@ -6,8 +6,8 @@
   --nf-chat-surface: var(--nf-ui-canvas, #fff);
   --nf-chat-line: var(--nf-ui-line, #e8eaee);
   --nf-chat-focus: #a6acb4;
-  --nf-chat-button: #30343a;
-  --nf-chat-on-button: #fff;
+  --nf-chat-button: var(--nf-ui-accent);
+  --nf-chat-on-button: var(--nf-ui-accent-ink);
   --nf-chat-shadow: rgba(24, 30, 38, .08);
   --nf-chat-scrollbar: color-mix(in srgb, var(--nf-chat-muted) 40%, transparent);
   --nf-chat-scrollbar-hover: color-mix(in srgb, var(--nf-chat-muted) 72%, transparent);
@@ -19,8 +19,8 @@
   --nf-chat-surface: var(--nf-ui-canvas, #1c252e);
   --nf-chat-line: var(--nf-ui-line, #3a424d);
   --nf-chat-focus: #7c8794;
-  --nf-chat-button: #e7e9ec;
-  --nf-chat-on-button: #20272f;
+  --nf-chat-button: var(--nf-ui-accent);
+  --nf-chat-on-button: var(--nf-ui-accent-ink);
   --nf-chat-shadow: rgba(0, 0, 0, .2);
 }
 .nf-ai-conversation .ai-message-list {

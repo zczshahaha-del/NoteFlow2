@@ -46,10 +46,10 @@ const assertInputFocus=async(field,{dark=false}={})=>{
   assert.ok(style.focused,'check the real focused input, not an idle screenshot');
   assert.equal(style.outline,'none','native text fields must not gain a rectangular focus frame');
   assert.equal(style.shadow,'none','native editing layers must not be covered by an input box shadow');
-  assert.equal(style.wrapperShadow,(dark?'rgb(212, 223, 184)':'rgb(93, 112, 79)')+' 0px 2px 0px 0px','the wrapper owns the cloth focus baseline');
+  assert.equal(style.wrapperShadow,(dark?'rgb(66, 118, 147)':'rgb(63, 120, 152)')+' 0px 0px 0px 1px','the approved thin slate-blue boundary belongs to the wrapper, never the native editing paint');
   assert.equal(style.bg,'rgba(0, 0, 0, 0)','the weave stays visible while typing');
   assert.deepEqual(style.borders,['0px','0px','0px','0px']);
-  assert.equal(style.ink,dark?'rgb(237, 240, 221)':'rgb(53, 68, 47)');
+  assert.equal(style.ink,dark?'rgb(233, 237, 242)':'rgb(44, 44, 43)');
   assert.equal(style.transform,'none','move the wrapper, not the editable native layer');
   assert.equal(style.wrapperTransform,'none','editing must use a stable, untransformed field box rather than a cloth affine matrix');
   assert.notEqual(style.clip,'text','native glyphs must never depend on background text clipping');
@@ -71,7 +71,9 @@ const assertMouseEditing=async(page,field)=>{
     observer.observe(n.closest('.cl-field'),{attributes:true,attributeFilter:['style']});
     window.finishNativeEditingLayoutAudit=()=>{count+=observer.takeRecords().length;observer.disconnect();return count;};
   });
-  await page.keyboard.type('x');assert.equal(await field.inputValue(),'x'+value,'click at start positions the real caret');
+  await page.keyboard.type('x');
+  const inserted=await field.inputValue();
+  assert.equal(inserted,'x'+value,'click at start positions the real caret'+(inserted==='x'+value?'':' '+JSON.stringify(await field.evaluate(n=>({rect:n.getBoundingClientRect().toJSON(),padding:getComputedStyle(n).padding,scrollLeft:n.scrollLeft,start:n.selectionStart,end:n.selectionEnd,scale:devicePixelRatio})))));
   await page.keyboard.press('Backspace');assert.equal(await field.inputValue(),value);
   if(await field.getAttribute('type')!=='password'){
     p=await point(value.slice(0,5));await page.mouse.click(p.x,p.y);await page.keyboard.type('z');
@@ -85,6 +87,34 @@ const assertMouseEditing=async(page,field)=>{
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>resolve())));
   assert.equal(await page.evaluate(()=>window.finishNativeEditingLayoutAudit()),0,'caret placement and typing must not keep rewriting the active native field geometry');
   assert.equal(await page.locator('.cl-scene').getAttribute('data-grab'),'idle');
+};
+// A long password scrolls to its end after fill. Its visible left edge is NOT
+// character zero. Test that native scrolled editing separately from the fitting
+// value above instead of treating legitimate horizontal scrolling as a caret bug.
+const assertScrolledPasswordEditing=async(page,field)=>{
+  const original=await field.inputValue(),value='synthetic-long-password-'.repeat(5);
+  await field.fill(value);
+  const points=await field.evaluate(n=>{
+    const r=n.getBoundingClientRect(),s=getComputedStyle(n),scale=r.width/n.offsetWidth;
+    const toggle=n.closest('.cl-field').querySelector('.cl-password-toggle').getBoundingClientRect();
+    return{scroll:n.scrollLeft,start:{x:r.x+(parseFloat(s.paddingLeft)+1)*scale,y:r.y+r.height/2},end:{x:Math.min(r.right-(parseFloat(s.paddingRight)+1)*scale,toggle.left-scale),y:r.y+r.height/2}};
+  });
+  assert.ok(points.scroll>0,'exercise an actually scrolled native password');
+  assert.ok(await field.evaluate((n,p)=>document.elementFromPoint(p.x,p.y)===n,points.end),'the trailing click must hit the input, not the overlapping 44px eye target');
+  await page.mouse.click(points.end.x,points.end.y);
+  assert.equal(await field.getAttribute('type'),'password','mouse editing must not accidentally click the eye');
+  assert.equal(await field.evaluate(n=>n.selectionStart),value.length,'click at the visible trailing edge positions the native caret at the end');
+  await page.keyboard.type('z');assert.equal(await field.inputValue(),value+'z');
+  await page.keyboard.press('Backspace');assert.equal(await field.inputValue(),value);
+  await page.mouse.move(points.end.x,points.end.y);await page.mouse.down();
+  const anchor=await field.evaluate(n=>n.selectionStart);
+  assert.ok(anchor>0,'the drag starts in the visible trailing portion of the scrolled value');
+  await page.mouse.move(points.start.x,points.start.y,{steps:6});await page.mouse.up();
+  const range=await field.evaluate(n=>({start:n.selectionStart,end:n.selectionEnd}));
+  assert.ok(range.start<range.end&&range.end===anchor,`drag selects back from its actual scrolled anchor: ${JSON.stringify({range,anchor})}`);
+  await page.keyboard.type('q');assert.equal(await field.inputValue(),value.slice(0,range.start)+'q'+value.slice(range.end));
+  assert.equal(await page.locator('.cl-scene').getAttribute('data-grab'),'idle');
+  await field.fill(original);
 };
 // Force the browser's real autofill pseudo-state, including its UA blue fill.
 // No saved passwords, profile or real credentials are accessed.
@@ -108,7 +138,7 @@ const assertAutofill=async(field,dark=false)=>{
     autofill:n.matches(':autofill'),clip:s.backgroundClip,ink:s.webkitTextFillColor,caret:s.caretColor,
     font:s.fontSize,opacity:s.opacity,security:s.webkitTextSecurity,type:n.type,autocomplete:n.autocomplete,shadow:s.boxShadow,appearance:s.appearance,
   }});
-  const ink=dark?'rgb(237, 240, 221)':'rgb(53, 68, 47)';
+  const ink=dark?'rgb(233, 237, 242)':'rgb(44, 44, 43)';
   assert.ok(style.autofill,'exercise actual browser autofill styles, not a mock class');
   assert.equal(style.clip,'text','only the UA autofill background is clipped; native text stays opaque');
   assert.equal(style.shadow,'none','never put an opaque inset layer over autofilled caret/selection');
@@ -214,7 +244,7 @@ try {
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);
     const initial=await measure();
     assert.ok(initial.width>=160*scale && initial.width<=270*scale+.1);assert.ok(Math.abs(initial.height-48*scale)<.1);
-    assert.equal(initial.bg,'rgba(0, 0, 0, 0)');assert.equal(initial.radius,'4px');assert.equal(initial.font,'14px');
+    assert.equal(initial.bg,'rgba(0, 0, 0, 0)');assert.equal(initial.radius,'9px');assert.equal(initial.font,'14px');
     assert.equal(await page.locator('.cl-scene').evaluate(n=>n.dataset.entrance),'ready');
     assert.equal(await page.locator('.auth-switch').count(),0);assert.equal(await code.count(),0);
     assert.equal(await page.locator('input').count(),1);assert.equal(await primary.innerText(),'获取验证码');
@@ -371,7 +401,7 @@ try {
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);assert.equal((await measure()).y,initial.y);
     await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));await page.mouse.move(0,0);await page.waitForTimeout(170);
     assert.equal(await page.locator('#cloth-character-login').evaluate(n=>getComputedStyle(n).colorScheme),'dark');
-    assert.equal(await page.locator('.cl-probe').evaluate(n=>getComputedStyle(n).color),'rgb(255, 182, 160)');
+    assert.equal(await page.locator('.cl-probe').evaluate(n=>getComputedStyle(n).color),'rgb(238, 158, 151)');
     await code.focus();await assertInputFocus(code,{dark:true});
     await page.emulateMedia({forcedColors:'active'});
     assert.ok(await code.evaluate(n=>{const s=getComputedStyle(n);return s.outlineStyle==='solid' && s.outlineWidth==='2px'}),'system high contrast retains a real focus indicator when shadows are removed');
@@ -499,11 +529,12 @@ try {
     if(process.env.NOTEFLOW_AUTH_SCREENSHOT_DIR)await page.screenshot({path:process.env.NOTEFLOW_AUTH_SCREENSHOT_DIR+'/noteflow-auth-cloth-dragging-'+width+'.png'});
     await page.mouse.up();assert.equal(await scene.getAttribute('data-grab'),'idle');
     await page.getByRole('button',{name:'使用密码登录',exact:true}).click();
-    const password=page.locator('input[autocomplete="current-password"]');await password.fill('synthetic-only');
+    const password=page.locator('input[autocomplete="current-password"]');await password.fill('native-only');
     await assertInputFocus(password);
     assert.equal(await scene.getAttribute('data-torn'),'0');
     assert.ok(await password.evaluate(n=>n===document.activeElement && getComputedStyle(n).transform==='none' && getComputedStyle(n.closest('.cl-field')).transform==='none'));
     await assertMouseEditing(page,password);
+    await assertScrolledPasswordEditing(page,password);
     await page.getByRole('button',{name:'显示密码',exact:true}).click();assert.equal(await password.getAttribute('type'),'text');
     assert.equal(await page.evaluate(()=>window.authTest.calls.length),0);
     await remount();
