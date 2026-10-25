@@ -1,9 +1,8 @@
 export interface ClothLoginState {
   loading: boolean;
-  primaryLabel: string;
-  passwordLabel: string;
   buttonLabel: string;
   title: string;
+  showBack: boolean;
 }
 export interface ClothLoginController {
   update(state: ClothLoginState): void;

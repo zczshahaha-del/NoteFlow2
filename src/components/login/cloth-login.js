@@ -1,6 +1,6 @@
 // Original solver/actor routines retained; viewport geometry and entry cadence are adapted separately.
 // React owns authentication and field state; this controller only renders the cloth.
-import { clothStageLayout } from './cloth-stage-layout.js';
+import { clothCardLayout, clothStageLayout } from './cloth-stage-layout.js';
 
 export function mountClothLogin(root,onEntranceReady) {
   const cleanups=[];
@@ -40,6 +40,7 @@ function createClothLogin(root,cleanups,onEntranceReady) {
   const LEAD=.20,LAND=3.08,END=LAND+1.97;
   let STEP=.48,LIFT=.40,steps=6,entranceAnnounced=false;
   let W=720,H=650,CW=326,CH=448,OX=197,OY=89,dpr=1,palette={},mode='drag';
+  let card=clothCardLayout();
   let nodes=[],links=[],triangles=[],edgeMap=new Map(),projected=[],indices=[],pins=[],dirty=true,textureDirty=true;
   let grab=null,pending=null,last=0,accumulator=0,raf=0,awakeUntil=0,torn=0,suppressClick=false,focused=false,accepted=false,active=true;
   let gpu=null,frameCount=0,releaseAge=20,relaxRadius=32,clickTimer=0;
@@ -303,14 +304,11 @@ function createClothLogin(root,cleanups,onEntranceReady) {
     for(let x=0;x<CW;x+=2){tc.strokeStyle=(Math.round(x/2)%2)?palette.shine:palette.ink;tc.beginPath();tc.moveTo(x,0);tc.lineTo(x,CH);tc.stroke();}
     for(let y=0;y<CH;y+=2.5){tc.strokeStyle=(Math.round(y/2.5)%2)?palette.thread:palette.shine;tc.beginPath();tc.moveTo(0,y);tc.lineTo(CW,y);tc.stroke();}tc.restore();
     tc.strokeStyle=palette.thread;tc.lineWidth=.8;tc.setLineDash([2.5,3]);tc.strokeRect(9,9,CW-18,CH-18);tc.setLineDash([]);
-    const pad=28,content=CW-pad*2,small=CW<285;
-    tc.fillStyle=palette.ink;tc.font='600 '+(CW<250?22:small?25:28)+'px '+palette.uiFont;tc.fillText(formState.title||'登录',pad,93);
-    tc.fillStyle=palette.soft;
-    tc.font='400 11px '+palette.uiFont;tc.fillText(formState.primaryLabel||'邮箱',pad,155);
-    if(password)tc.fillText(formState.passwordLabel||'密码',pad,238);
+    const pad=28,content=CW-pad*2;
+    tc.fillStyle=palette.ink;tc.font='500 21px '+palette.uiFont;tc.fillText(formState.title||'登录',formState.showBack?60:pad,card.titleY);
     // Native inputs exclusively own their value, placeholder, caret and boundary.
-    tc.fillStyle=palette.button;tc.beginPath();tc.roundRect(pad,330,content,48,palette.buttonRadius);tc.fill();
-    tc.fillStyle=palette['button-ink'];tc.font='500 14px '+palette.uiFont;tc.textAlign='center';tc.fillText(formState.buttonLabel||'获取验证码',CW/2,360);tc.textAlign='left';
+    tc.fillStyle=palette.button;tc.beginPath();tc.roundRect(pad,card.buttonY,content,48,palette.buttonRadius);tc.fill();
+    tc.fillStyle=palette['button-ink'];tc.font='500 14px '+palette.uiFont;tc.textAlign='center';tc.fillText(formState.buttonLabel||'获取验证码',CW/2,card.buttonY+30);tc.textAlign='left';
     if(gpu){gl.bindTexture(gl.TEXTURE_2D,gpu.texture);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,texture);}
     textureDirty=false;
   }
@@ -379,9 +377,10 @@ function createClothLogin(root,cleanups,onEntranceReady) {
       function attribute(buffer,data,location,size){gl.bindBuffer(gl.ARRAY_BUFFER,buffer);if(data)gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.DYNAMIC_DRAW);gl.enableVertexAttribArray(location);gl.vertexAttribPointer(location,size,gl.FLOAT,false,0,0);}
       attribute(gpu.position,pos,gpu.p,3);attribute(gpu.normal,norm,gpu.n,3);attribute(gpu.uv,null,gpu.u,2);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,gpu.index);gl.bindTexture(gl.TEXTURE_2D,gpu.texture);gl.drawElements(gl.TRIANGLES,indices.length,gl.UNSIGNED_SHORT,0);
     }else drawFallback();
-    positionControl(email?.closest('.cl-field'),28,164,CW-56);positionControl(password?.closest('.cl-field'),28,247,CW-56);positionControl(enter,28,330,CW-56);
-    positionControl(root.querySelector('.auth-context'),28,104,CW-56);
-    positionControl(root.querySelector('.auth-feedback'),28,296,CW-56);
+    positionControl(email?.closest('.cl-field'),28,card.primaryY,CW-56);positionControl(password?.closest('.cl-field'),28,card.passwordY,CW-56);positionControl(enter,28,card.buttonY,CW-56);
+    positionControl(root.querySelector('.auth-back'),16,card.headerY,44);
+    positionControl(root.querySelector('.auth-feedback'),28,card.feedbackY,CW-56);
+    positionControl(root.querySelector('.auth-support'),16,card.footerY,CW-32);
     fc.clearRect(0,0,W,H);
     for(const i of pins){const p=projected[i];fc.save();fc.translate(p.x,p.y);fc.shadowColor=palette.shadow;fc.shadowBlur=4;fc.shadowOffsetY=2;
       const g=fc.createLinearGradient(-5,-5,5,5);g.addColorStop(0,palette.shine);g.addColorStop(.55,palette.metal);g.addColorStop(1,palette.thread);fc.fillStyle=g;fc.beginPath();fc.arc(0,0,4.2,0,Math.PI*2);fc.fill();fc.shadowBlur=0;fc.strokeStyle=palette.metal;fc.lineWidth=.7;fc.stroke();fc.restore();}
@@ -605,12 +604,13 @@ function createClothLogin(root,cleanups,onEntranceReady) {
   function resize(){
     const r=scene.getBoundingClientRect();if(r.width<1)return;
     const style=getComputedStyle(scene),width=parseFloat(style.width),height=parseFloat(style.height);
-    const changed=Math.abs(W-width)>.5||Math.abs(H-height)>.5;W=width;H=height;
+    card=clothCardLayout(Boolean(password));
+    const changed=Math.abs(W-width)>.5||Math.abs(H-height)>.5||CH!==card.height;W=width;H=height;
     scene.style.setProperty('--cl-scene-width',W+'px');
-    ({CW,CH,OX,OY,S,ground,endX,steps,STEP,LIFT}=clothStageLayout(W,H));
+    ({CW,CH,OX,OY,S,ground,endX,steps,STEP,LIFT}=clothStageLayout(W,H,Boolean(password)));
     form.style.setProperty('--cl-card-left',OX+'px');form.style.setProperty('--cl-card-width',CW+'px');
-    form.style.setProperty('--cl-support-top',(scene.offsetTop+OY+CH+12)+'px');
     scene.style.setProperty('--cl-card-top',OY+'px');
+    scene.style.setProperty('--cl-card-height',CH+'px');
     // Keep the canvas sharp at the rendered size without enlarging the solver mesh.
     dpr=Math.min(devicePixelRatio||1,2)*r.width/W;
     if(!entryStarted)entryOffset=W+32-OX;else if(changed)finishEntrance();
@@ -633,6 +633,7 @@ function createClothLogin(root,cleanups,onEntranceReady) {
     update(state){
       if(destroyed)return;
       formState={...formState,...state};refreshFields();
+      if(CH!==clothCardLayout(Boolean(password)).height){resize();return;}
       textureDirty=true;dirty=true;render();wake();
     },
     destroy(){

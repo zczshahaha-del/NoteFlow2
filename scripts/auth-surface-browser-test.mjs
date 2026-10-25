@@ -41,14 +41,18 @@ const errors=[],requests=[],reports=[];
 const assertInputFocus=async(field,{dark=false}={})=>{
   const style=await field.evaluate(n=>{
     const s=getComputedStyle(n);
-    return {focused:n===document.activeElement,outline:s.outlineStyle,shadow:s.boxShadow,wrapperShadow:getComputedStyle(n.closest('.cl-field')).boxShadow,bg:s.backgroundColor,
+    const wrapper=getComputedStyle(n.closest('.cl-field'));
+    return {focused:n===document.activeElement,outline:s.outlineStyle,shadow:s.boxShadow,wrapperShadow:wrapper.boxShadow,wrapperBorders:[wrapper.borderTopWidth,wrapper.borderRightWidth,wrapper.borderBottomWidth,wrapper.borderLeftWidth],baseline:wrapper.borderBottomColor,wrapperBg:wrapper.backgroundColor,bg:s.backgroundColor,
       borders:[s.borderTopWidth,s.borderRightWidth,s.borderBottomWidth,s.borderLeftWidth],
       ink:s.webkitTextFillColor,transform:s.transform,wrapperTransform:getComputedStyle(n.closest('.cl-field')).transform,clip:s.backgroundClip};
   });
   assert.ok(style.focused,'check the real focused input, not an idle screenshot');
   assert.equal(style.outline,'none','native text fields must not gain a rectangular focus frame');
   assert.equal(style.shadow,'none','native editing layers must not be covered by an input box shadow');
-  assert.equal(style.wrapperShadow,(dark?'rgb(66, 118, 147)':'rgb(63, 120, 152)')+' 0px 0px 0px 1px','the approved thin slate-blue boundary belongs to the wrapper, never the native editing paint');
+  assert.equal(style.wrapperShadow,'none','the common field has no enclosing shadow');
+  assert.deepEqual(style.wrapperBorders,['0px','0px','1px','0px'],'every field uses only one thin baseline');
+  assert.equal(style.baseline,dark?'rgb(66, 118, 147)':'rgb(63, 120, 152)','focus colors the baseline without enclosing the input');
+  assert.equal(style.wrapperBg,'rgba(0, 0, 0, 0)');
   assert.equal(style.bg,'rgba(0, 0, 0, 0)','the weave stays visible while typing');
   assert.deepEqual(style.borders,['0px','0px','0px','0px']);
   assert.equal(style.ink,dark?'rgb(233, 237, 242)':'rgb(44, 44, 43)');
@@ -207,7 +211,7 @@ const assertAutofillSelectionVisible=async(page,field)=>{
 };
 let activePage;
 try {
-  for(const width of (process.env.NOTEFLOW_AUTH_ANIMATION_ONLY ? [] : [1920,1280,1024,736,320])) {
+  for(const width of (process.env.NOTEFLOW_AUTH_ANIMATION_ONLY || process.env.NOTEFLOW_AUTH_FALLBACK_ONLY ? [] : [1920,1280,1024,736,320])) {
     const context=await browser.newContext({viewport:{width,height:width>=1200?1000:850},deviceScaleFactor,reducedMotion:'reduce'});
     await context.route('**/*',route=>{
       if(route.request().url()==='https://auth-fixture.invalid/') return route.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'});
@@ -231,18 +235,26 @@ try {
     const touchTargets=async()=>assert.ok(await page.locator('.auth-page button').evaluateAll(nodes=>nodes.filter(n=>n.getBoundingClientRect().width>0).every(n=>{const r=n.getBoundingClientRect();return r.width>=44 && r.height>=44})));
     const displayScale=()=>page.locator('#cloth-character-login').evaluate(n=>parseFloat(getComputedStyle(n).getPropertyValue('--cl-display-scale')));
     const scale=await displayScale();
+    const cardHeight=()=>page.locator('.cl-scene').evaluate(n=>parseFloat(n.style.getPropertyValue('--cl-card-height')));
+    const assertInternalActions=async()=>assert.ok(await page.locator('.auth-support').evaluate(n=>{
+      const scene=n.closest('.cl-scene'),r=scene.getBoundingClientRect(),scale=r.height/parseFloat(getComputedStyle(scene).height);
+      const x=r.left+parseFloat(n.closest('form').style.getPropertyValue('--cl-card-left'))*scale;
+      const y=r.top+parseFloat(scene.style.getPropertyValue('--cl-card-top'))*scale;
+      const w=parseFloat(n.closest('form').style.getPropertyValue('--cl-card-width'))*scale,h=parseFloat(scene.style.getPropertyValue('--cl-card-height'))*scale;
+      return [n,...n.querySelectorAll('button')].every(el=>{const b=el.getBoundingClientRect();return b.left>=x+8*scale && b.right<=x+w-8*scale && b.top>=y+8*scale && b.bottom<=y+h-8*scale});
+    }),'every secondary action stays within the stitched cloth in every mode');
     const compactDelivery=async()=>{
       const currentScale=await displayScale();
-      assert.ok(Math.abs(await page.locator('.auth-support').evaluate(n=>n.getBoundingClientRect().height)-44*currentScale)<.1,'only secondary account actions remain below the card');
+      assert.ok(Math.abs(await page.locator('.auth-support').evaluate(n=>n.getBoundingClientRect().height)-44*currentScale)<.1,'secondary actions use one internal row');
       assert.ok(Math.abs(await page.locator('.auth-options').evaluate(n=>n.getBoundingClientRect().height)-44*currentScale)<.1,'account actions must not wrap into another paragraph');
-      assert.ok(await page.locator('.auth-context').evaluate(n=>{
+      assert.ok(await page.locator('.auth-back').evaluate(n=>{
         const scene=n.closest('.cl-scene'),r=scene.getBoundingClientRect(),scale=r.height/parseFloat(getComputedStyle(scene).height);
         const left=r.left+parseFloat(n.closest('form').style.getPropertyValue('--cl-card-left'))*scale;
         const top=r.top+parseFloat(scene.style.getPropertyValue('--cl-card-top'))*scale;
-        return [n,n.querySelector('button'),scene.querySelector('.auth-send'),scene.querySelector('.auth-feedback')].every(el=>{
-          const b=el.getBoundingClientRect();return b.left>=left-1 && b.right<=left+parseFloat(n.closest('form').style.getPropertyValue('--cl-card-width'))*scale+1&&b.top>=top&&b.bottom<=top+448*scale;
+        return [n,n.querySelector('button'),scene.querySelector('.auth-send'),scene.querySelector('.auth-feedback'),scene.querySelector('.auth-support')].every(el=>{
+          const b=el.getBoundingClientRect();return b.left>=left-1 && b.right<=left+parseFloat(n.closest('form').style.getPropertyValue('--cl-card-width'))*scale+1&&b.top>=top&&b.bottom<=top+parseFloat(scene.style.getPropertyValue('--cl-card-height'))*scale;
         });
-      }),'recipient, change action, resend and feedback belong inside the actual cloth card');
+      }),'back, resend, feedback and secondary actions belong inside the actual cloth card');
       assert.ok(await page.locator('.auth-send').evaluate(n=>{
         const r=n.getBoundingClientRect(),field=n.closest('.cl-field').getBoundingClientRect();return r.left>=field.left&&r.right<=field.right+.1&&r.top>=field.top-.1&&r.bottom<=field.bottom+.1;
       }),'resend is integrated into the code field');
@@ -250,12 +262,13 @@ try {
         const s=getComputedStyle(n),c=document.createElement('canvas').getContext('2d');c.font=s.font;
         return n.clientWidth-parseFloat(s.paddingLeft)-parseFloat(s.paddingRight)>=Math.max(c.measureText('888888').width,c.measureText(n.placeholder).width);
       }),'six digits and their placeholder fit beside resend, including 320px');
-      assert.equal(await page.locator('.auth-context svg,.auth-support .auth-feedback,.auth-delivery').count(),0,'no pencil or detached delivery/error row');
+      assert.equal(await page.locator('.auth-context,.auth-recipient,.auth-change-email,.auth-support .auth-feedback,.auth-delivery').count(),0,'no visible recipient, change-email or detached delivery/error row');
       assert.equal(await page.locator('.auth-code-actions').count(),0);
       await touchTargets();
     };
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);
     const initial=await measure();
+    const compactHeight=await cardHeight();await assertInternalActions();
     assert.ok(initial.width>=160*scale && initial.width<=270*scale+.1);assert.ok(Math.abs(initial.height-48*scale)<.1);
     assert.equal(initial.bg,'rgba(0, 0, 0, 0)');assert.equal(initial.radius,'9px');assert.equal(initial.font,'14px');
     assert.equal(await page.locator('.cl-scene').evaluate(n=>n.dataset.entrance),'ready');
@@ -269,9 +282,9 @@ try {
     assert.ok(await page.locator('.cl-scene').evaluate(n=>{
       const stage=n.getBoundingClientRect(),root=n.closest('.auth-page').getBoundingClientRect();
       const scale=stage.height/parseFloat(getComputedStyle(n).height),top=stage.y+parseFloat(n.style.getPropertyValue('--cl-card-top'))*scale;
-      const bottom=n.closest('form').querySelector('.auth-options').getBoundingClientRect().bottom;
+      const bottom=top+parseFloat(n.style.getPropertyValue('--cl-card-height'))*scale;
       return stage.x===root.x && Math.abs(stage.width-root.width)<1 && Math.abs((top+bottom)/2-(root.y+root.height/2))<1;
-    }),'the resting card and account actions are vertically centered in the viewport');
+    }),'the resting card including internal actions is vertically centered in the viewport');
     await touchTargets();assert.ok(await primary.isDisabled());await shot('login');
     await page.locator('.site-brand').focus();await page.keyboard.press('Tab');
     await assertInputFocus(email);await shot('email-focused');
@@ -314,6 +327,9 @@ try {
     assert.match(await page.locator('.auth-send').innerText(),/后重发/);
     await page.getByRole('button',{name:'使用密码登录',exact:true}).click();
     const password=page.locator('input[autocomplete="current-password"]');await password.fill('synthetic-password');
+    assert.equal(await page.locator('form').getAttribute('aria-label'),'密码登录');
+    assert.equal(await cardHeight(),compactHeight+80,'only a second input row increases card height');
+    await assertInternalActions();
     await assertInputFocus(password);
     const eye=page.getByRole('button',{name:'显示密码',exact:true});
     assert.equal(await eye.innerText(),'');assert.equal(await eye.locator('svg').count(),1);
@@ -374,7 +390,7 @@ try {
     await newPassword.dispatchEvent('keyup',{key:'A',modifierCapsLock:true});
     await page.getByRole('status').filter({hasText:'大写锁定已开启'}).waitFor();
     assert.equal(await page.getByRole('status').getAttribute('data-quiet'),'false','a quiet delivery success must not hide a password warning');
-    assert.ok(Math.abs(await page.getByRole('status').evaluate(n=>n.getBoundingClientRect().height)-28*scale)<.1);
+    assert.ok(Math.abs(await page.getByRole('status').evaluate(n=>n.getBoundingClientRect().height)-36*scale)<.1);
     await newPassword.dispatchEvent('keyup',{key:'A',modifierCapsLock:false});await compactDelivery();await primary.click();
     await page.getByRole('status').filter({hasText:'密码已更新'}).waitFor();assert.equal(await password.inputValue(),'');
     assert.equal(await page.getByRole('status').getAttribute('data-quiet'),'false','reset completion is an important visible state');
@@ -386,33 +402,33 @@ try {
     await code.dispatchEvent('keydown',{key:'Enter',isComposing:true});assert.equal(await page.evaluate(()=>window.authTest.completed),3);
     await page.evaluate(()=>window.authTest.hold=true);await primary.click();assert.ok(await code.isDisabled());
     assert.ok(await page.getByRole('button',{name:'注册',exact:true}).isDisabled());
-    assert.ok(await page.getByRole('button',{name:'修改邮箱',exact:true}).isDisabled());
+    assert.ok(await page.getByRole('button',{name:'返回邮箱',exact:true}).isDisabled());
     const count=await page.evaluate(()=>window.authTest.calls.length);await page.locator('form').dispatchEvent('submit');
     assert.equal(await page.evaluate(()=>window.authTest.calls.length),count);await release();await page.waitForFunction(()=>window.authTest.completed===4);
-    await page.getByRole('button',{name:'修改邮箱',exact:true}).click();await email.fill('cancel@example.com');
+    await page.getByRole('button',{name:'返回邮箱',exact:true}).click();await email.fill('cancel@example.com');
     await page.evaluate(()=>window.authTest.hold=true);await primary.click();await page.getByRole('button',{name:'取消等待',exact:true}).click();
     await release();assert.equal(await code.inputValue(),'');assert.match(await page.locator('.auth-send').innerText(),/后重发/);
     assert.match(await page.getByRole('status').innerText(),/已停止等待/);assert.ok(await page.evaluate(()=>window.authTest.calls.at(-1).aborted));
-    await page.getByRole('button',{name:'修改邮箱',exact:true}).click();
+    await page.getByRole('button',{name:'返回邮箱',exact:true}).click();
     const cancelCount=await page.evaluate(()=>window.authTest.calls.length);await primary.click();
     assert.equal(await page.evaluate(()=>window.authTest.calls.length),cancelCount);assert.equal(await code.inputValue(),'');
-    await page.getByRole('button',{name:'修改邮箱',exact:true}).click();await email.fill('edit@example.com');
+    await page.getByRole('button',{name:'返回邮箱',exact:true}).click();await email.fill('edit@example.com');
     await page.evaluate(()=>window.authTest.hold=true);await primary.click();await code.fill('222222');await release();
     assert.equal(await code.inputValue(),'222222');assert.ok(await page.evaluate(()=>window.authTest.calls.at(-1).aborted));
-    await page.getByRole('button',{name:'修改邮箱',exact:true}).click();await email.fill('failure@example.com');
+    await page.getByRole('button',{name:'返回邮箱',exact:true}).click();await email.fill('failure@example.com');
     await page.evaluate(()=>window.authTest.fail=true);await primary.click();await page.getByRole('alert').waitFor();
     assert.ok(await primary.isDisabled());assert.match(await page.locator('.auth-send').innerText(),/后重发/);
-    await page.getByRole('button',{name:'修改邮箱',exact:true}).click();assert.equal(await email.inputValue(),'failure@example.com');
+    await page.getByRole('button',{name:'返回邮箱',exact:true}).click();assert.equal(await email.inputValue(),'failure@example.com');
     await page.evaluate(()=>window.authTest.development=false);
     const longAddress='long.alias.'.repeat(4)+'@'+'subdomain.'.repeat(4)+'example.com';
     await email.fill(longAddress);await primary.click();await page.getByRole('status').filter({hasText:'已发送'}).waitFor();
     assert.equal(await code.inputValue(),'');assert.equal(await page.evaluate(()=>window.authTest.completed),4);
     await compactDelivery();await shot('delivery');
-    assert.equal(await page.locator('.auth-recipient').getAttribute('title'),longAddress);
-    assert.ok(await page.locator('.auth-context .sr-only').innerText().then(text=>text.includes(longAddress)),'the code field retains the full accessible recipient');
-    assert.equal(await code.getAttribute('aria-describedby'),await page.locator('.auth-context .sr-only').getAttribute('id'),'the full delivery address still describes the code field');
-    assert.ok(await page.locator('.auth-recipient').evaluate(n=>getComputedStyle(n).textOverflow==='ellipsis' && n.scrollWidth>n.clientWidth),'long domains truncate visually instead of stacking lines');
-    assert.ok(!(await page.locator('.auth-recipient').innerText()).includes('long.alias'),'the visible recipient no longer repeats the full account');
+    assert.equal(await page.locator('.auth-recipient').count(),0,'the verification card never displays an email');
+    assert.ok(await page.locator('.auth-destination').innerText().then(text=>text.includes(longAddress)),'the code field retains its full screen-reader destination');
+    assert.equal(await code.getAttribute('aria-describedby'),await page.locator('.auth-destination').getAttribute('id'));
+    assert.ok(await page.locator('.auth-destination').evaluate(n=>getComputedStyle(n).clipPath==='inset(50%)'));
+    assert.equal(await page.locator('form').getAttribute('aria-label'),'输入验证码');
     await code.fill('314159');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);assert.equal((await measure()).y,initial.y);
     await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));await page.mouse.move(0,0);await page.waitForTimeout(170);
@@ -448,7 +464,7 @@ try {
     await page.waitForFunction(()=>document.querySelector('.auth-form').getAttribute('aria-busy')==='false');
     assert.equal(await page.evaluate(()=>window.authTest.calls.at(-1).body.purpose),'login');
     await compactDelivery();assert.ok(await page.locator('.auth-send').isDisabled());
-    await page.getByRole('button',{name:'修改邮箱',exact:true}).click();await email.fill('gateway@example.com');
+    await page.getByRole('button',{name:'返回邮箱',exact:true}).click();await email.fill('gateway@example.com');
     await page.evaluate(()=>window.authTest.gateway=true);await primary.click();
     await page.getByRole('alert').filter({hasText:'暂时连接不上服务，请稍后重试。'}).waitFor();
     assert.equal(await code.inputValue(),'','a failed send never fills a code or announces success');
@@ -457,10 +473,10 @@ try {
     await shot('gateway-error');
     await code.fill('123456');await page.evaluate(()=>window.authTest.gateway=true);await primary.click();
     await page.getByRole('alert').filter({hasText:'暂时连接不上服务，请稍后重试。'}).waitFor();assert.equal(await code.inputValue(),'123456','gateway failures preserve the entered code');
-    await page.getByRole('button',{name:'修改邮箱',exact:true}).click();await email.fill('offline@example.com');
+    await page.getByRole('button',{name:'返回邮箱',exact:true}).click();await email.fill('offline@example.com');
     await page.evaluate(()=>window.authTest.networkFailure=true);await primary.click();
     await page.getByRole('alert').filter({hasText:'请检查网络后重试'}).waitFor();await compactDelivery();
-    reports.push({width,initial,emailFirst:true,explicitRegistration:true,stablePrimaryAcrossEmailCode:true,purposeIsolation:true,failureRetry:true,cancelStale:true,passwordReset:true,realAuthServicePayloads:true,inCardDelivery:true,gatewayAndNetworkErrors:true,maskedRecipient:true,sixDigitsFit:true,quietSuccessAnnouncement:true,importantFeedbackVisible:true,cooldownResend:true,integratedInputFocus:true,nativeAutofillStyle:true,noAutofillCanvasDuplicate:true,autofillPasswordMasked:true,mouseCaretAndDragSelection:true,autofillToManualEditing:true,passwordEyeIcon:true,keyboardFocus:true,nativeValidationRetained:true,forcedColors:true,dark:true,reducedMotion:true,shortViewport:true,longEmail:true,storageDeniedAuthSucceeds:true});
+    reports.push({width,initial,emailFirst:true,explicitRegistration:true,stablePrimaryAcrossEmailCode:true,contentDrivenCardHeight:true,allSecondaryActionsInside:true,purposeIsolation:true,failureRetry:true,cancelStale:true,passwordReset:true,realAuthServicePayloads:true,inCardDelivery:true,gatewayAndNetworkErrors:true,noVisibleRecipient:true,sixDigitsFit:true,quietSuccessAnnouncement:true,importantFeedbackVisible:true,cooldownResend:true,integratedInputFocus:true,nativeAutofillStyle:true,noAutofillCanvasDuplicate:true,autofillPasswordMasked:true,mouseCaretAndDragSelection:true,autofillToManualEditing:true,passwordEyeIcon:true,keyboardFocus:true,nativeValidationRetained:true,forcedColors:true,dark:true,reducedMotion:true,shortViewport:true,longEmail:true,storageDeniedAuthSucceeds:true});
     await context.close();
   }
   // Normal-motion integration: same component, synthetic auth only, no real network.
@@ -498,7 +514,7 @@ try {
     window.clothAudit=()=>({frames:frames.size,listeners:listeners.length,resize:observers.resize.size,intersection:observers.intersection.size,mutation:observers.mutation.size});
     window.clothListenerDetails=()=>listeners.map(x=>({type:x.type,target:x.target===window?'window':x.target===document?'document':'media',callback:String(x.callback).slice(0,100)}));
   })();`;
-  for (const width of [1920,1280,736,320]) {
+  for (const width of (process.env.NOTEFLOW_AUTH_FALLBACK_ONLY ? [] : [1920,1280,736,320])) {
     const context=await browser.newContext({viewport:{width,height:1000},deviceScaleFactor,reducedMotion:'no-preference'});
     await context.route('**/*',route=>route.request().url()==='https://auth-fixture.invalid/'?
       route.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'}):route.abort());
@@ -546,7 +562,7 @@ try {
       const r=n.getBoundingClientRect(),form=n.closest('form'),w=parseFloat(form.style.getPropertyValue('--cl-card-width'));
       const x=parseFloat(form.style.getPropertyValue('--cl-card-left')),y=parseFloat(n.style.getPropertyValue('--cl-card-top'));
       const scale=r.height/parseFloat(getComputedStyle(n).height);
-      return {x:r.x+(x+12)*scale,y:r.y+(y+420)*scale,w:w*scale};
+      return {x:r.x+(x+12)*scale,y:r.y+(y+parseFloat(n.style.getPropertyValue('--cl-card-height'))-28)*scale,w:w*scale};
     });
     // Lower-left hem pulled upwards; releasing then editing must recover and remain usable.
     const beforeDragFrames=Number(await scene.getAttribute('data-frames'));
@@ -606,7 +622,7 @@ try {
       await page.setViewportSize({width,height:1254});
       await page.waitForFunction(()=>{
         const n=document.querySelector('.cl-scene'),r=n.getBoundingClientRect(),scale=r.height/parseFloat(getComputedStyle(n).height),top=r.y+parseFloat(n.style.getPropertyValue('--cl-card-top'))*scale;
-        const bottom=n.closest('form').querySelector('.auth-options').getBoundingClientRect().bottom;
+        const bottom=top+parseFloat(n.style.getPropertyValue('--cl-card-height'))*scale;
         return Math.abs((top+bottom)/2-innerHeight/2)<1;
       });
     }
@@ -619,11 +635,11 @@ try {
     await page.mouse.move(q.x,q.y);await page.mouse.down();await page.mouse.move(Math.max(14,q.x-100),q.y-170,{steps:12});
     assert.equal(await scene.getAttribute('data-grab'),'holding');
     await page.waitForFunction(frames=>Number(document.querySelector('.cl-scene').dataset.frames)>frames,frames);
-    for(const selector of ['.auth-context','.auth-feedback'])assert.ok(await page.locator(selector).evaluate(n=>getComputedStyle(n).transform.startsWith('matrix(')),'in-card recipient and feedback follow the same cloth transform');
+    for(const selector of ['.auth-back','.auth-feedback','.auth-support'])assert.ok(await page.locator(selector).evaluate(n=>getComputedStyle(n).transform.startsWith('matrix(')),'all in-card actions and feedback follow the cloth transform');
     await page.mouse.up();
     const motionCode=page.getByRole('textbox',{name:'验证码',exact:true});await motionCode.focus();await assertInputFocus(motionCode);
     assert.ok(await page.locator('.cl-card-ui').evaluateAll(nodes=>nodes.every(n=>getComputedStyle(n).transform==='none')),'editing flattens auxiliary UI without adding a matrix to native fields');
-    await page.getByRole('button',{name:'修改邮箱',exact:true}).click();
+    await page.getByRole('button',{name:'返回邮箱',exact:true}).click();
     assert.equal(await page.getByRole('textbox',{name:'邮箱',exact:true}).inputValue(),'motion@example.com');
     assert.equal(await scene.getAttribute('data-grab'),'idle','change-email click must not start a cloth drag');
     reports.push({width,displayScale,normalEntrance:true,landingSeconds:3.08,screenEdgeEntrance:true,auxiliaryInertUntilArrival:true,viewportCentered:true,dragRebound:true,inCardFeedbackDrag:true,noGrabPositionCircle:true,pointerInterruptions:true,inputDuringEntrance:true,strictModeMountUnmountCleanup:true});
@@ -647,6 +663,14 @@ try {
       await assertAutofill(email);await assertAutofill(page.locator('input[autocomplete="current-password"]'));
     });
     await page.locator('.auth-submit').click();await page.waitForFunction(()=>window.authTest.completed===1);
+    await page.getByRole('button',{name:'使用验证码登录',exact:true}).click();await page.locator('.auth-submit').click();
+    const fallbackCode=page.getByRole('textbox',{name:'验证码',exact:true});await fallbackCode.waitFor();
+    await page.getByRole('status').filter({hasText:'开发环境'}).waitFor();
+    assert.equal(await fallbackCode.inputValue(),'314159');await fallbackCode.focus();await assertInputFocus(fallbackCode);
+    assert.equal(await page.locator('.auth-recipient,.auth-context').count(),0);
+    assert.ok(await page.getByRole('button',{name:'返回邮箱',exact:true}).isVisible());
+    assert.ok(await page.locator('.auth-support').evaluate(n=>n.closest('.cl-form')!==null));
+    await page.getByRole('button',{name:'返回邮箱',exact:true}).click();assert.equal(await email.inputValue(),'fallback@example.com');
     assert.equal(await page.locator('[data-cloth-ready]').count(),0);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),320);
     assert.ok(await page.locator('.cl-email').evaluate(n=>getComputedStyle(n).color!=='rgba(0, 0, 0, 0)'));

@@ -80,21 +80,21 @@
 #cloth-character-login .cl-cloth { pointer-events: none; touch-action: auto; }
 #cloth-character-login .cl-drag-surface { position:absolute; inset:0; z-index:2; clip-path:polygon(0 0,0 0,0 0); touch-action:none; cursor:grab; }
 #cloth-character-login .cl-drag-surface:active { cursor:grabbing; }
-#cloth-character-login .cl-field { --cl-input-surface:color-mix(in srgb,var(--cl-paper) 96.5%,black); position:absolute; left:0; top:0; height:44px; border-radius:var(--nf-radius-control); background:var(--cl-input-surface); box-shadow:0 0 0 1px var(--page-line); transform-origin:0 0; pointer-events:auto; }
-#cloth-character-login .cl-field:focus-within { box-shadow:0 0 0 1px var(--cl-focus); }
-#cloth-character-login .cl-field-weave { position:absolute; inset:0; z-index:2; border-radius:inherit; pointer-events:none; background-image:var(--cl-input-weave); background-size:4px 5px; background-position:-28px -164px; }
-#cloth-character-login .cl-password-field .cl-field-weave { background-position:-28px -247px; }
-#cloth-character-login .cl-input { position:absolute; z-index:1; left:0; top:0; width:100%; height:44px; padding:0 12px 3px; border:0; border-radius:inherit; outline:none; appearance:none; box-shadow:none; background:transparent; color:var(--cl-ink); -webkit-text-fill-color:var(--cl-ink); caret-color:var(--cl-ink); font:400 16px/24px var(--nf-font-ui); pointer-events:auto; touch-action:auto; }
+#cloth-character-login .cl-field { position:absolute; left:0; top:0; height:44px; border:0; border-bottom:1px solid var(--cl-thread); border-radius:0; background:transparent; box-shadow:none; transform-origin:0 0; pointer-events:auto; }
+#cloth-character-login .cl-field:focus-within { border-bottom-color:var(--cl-focus); }
+#cloth-character-login .cl-field-weave { position:absolute; inset:0; z-index:2; pointer-events:none; background-image:var(--cl-input-weave); background-size:4px 5px; background-position:-28px -128px; }
+#cloth-character-login .cl-password-field .cl-field-weave { background-position:-28px -208px; }
+#cloth-character-login .cl-input { position:absolute; z-index:1; left:0; top:0; width:100%; height:44px; padding:0 0 3px; border:0; border-radius:0; outline:none; appearance:none; box-shadow:none; background:transparent; color:var(--cl-ink); -webkit-text-fill-color:var(--cl-ink); caret-color:var(--cl-ink); font:400 16px/24px var(--nf-font-ui); pointer-events:auto; touch-action:auto; }
 #cloth-character-login .cl-input::placeholder { color:var(--cl-soft); -webkit-text-fill-color:var(--cl-soft); }
 #cloth-character-login .cl-input::selection { background-color:var(--nf-ui-text-selection); color:var(--cl-ink); -webkit-text-fill-color:var(--cl-ink); }
-/* The approved preview uses a quiet, one-pixel boundary on the wrapper only.
+/* A single quiet baseline on the wrapper is shared by every authentication state.
    Keep native input paint/shadow and editing geometry free of focus tricks. */
 #cloth-character-login .cl-input:focus { color:var(--cl-ink); }
 #cloth-character-login .cl-input:focus::placeholder { color:var(--cl-soft); }
 /* Clip only the UA background, never paint an opaque inset over native selection/caret.
    The input exclusively owns its opaque text; there is no Canvas text mirror. */
 #cloth-character-login .cl-input:is(:autofill, :-webkit-autofill) { -webkit-background-clip:text; background-clip:text; }
-#cloth-character-login .cl-field:has(.cl-input[aria-invalid="true"]) { box-shadow:0 0 0 1px var(--page-error); }
+#cloth-character-login .cl-field:has(.cl-input[aria-invalid="true"],.cl-input:user-invalid) { border-bottom-color:var(--page-error); }
 #cloth-character-login .cl-password { padding-right:42px; }
 #cloth-character-login .cl-password-toggle { position:absolute; z-index:3; right:0; top:0; width:44px; height:44px; padding:0; border:0; background:transparent; color:var(--cl-soft); display:flex; align-items:center; justify-content:center; pointer-events:auto; touch-action:manipulation; }
 #cloth-character-login .cl-password-toggle:hover { color:var(--cl-ink); }
@@ -130,14 +130,13 @@
 #cloth-character-login .cl-enter:hover, #cloth-character-login .cl-enter:active { background:transparent; color:transparent; }
 #cloth-character-login .cl-enter:disabled { cursor:default; }
 #cloth-character-login .cl-password-toggle { min-width:44px; min-height:44px; }
-#cloth-character-login .auth-support { position:absolute; z-index:5; top:var(--cl-support-top); left:var(--cl-card-left); width:var(--cl-card-width,326px); margin:0 0 20px; padding:0 8px; color:var(--page-soft); visibility:hidden; opacity:0; pointer-events:none; transition:opacity 160ms ease-out; }
+#cloth-character-login .auth-support { height:44px; margin:0; padding:0; color:var(--page-soft); visibility:hidden; opacity:0; pointer-events:none; transition:opacity 160ms ease-out; }
 #cloth-character-login[data-entered="true"] .auth-support { visibility:visible; opacity:1; pointer-events:auto; }
 #cloth-character-login[data-renderer="loading"]:not([data-cloth-ready]) .cl-form { visibility:hidden; }
 #cloth-character-login .cl-card-ui { position:absolute; left:0; top:0; transform-origin:0 0; pointer-events:auto; }
-#cloth-character-login .auth-context { height:44px; display:flex; align-items:center; gap:8px; color:var(--page-soft); font-size:11px; }
-#cloth-character-login .auth-recipient { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-#cloth-character-login .auth-context .auth-change-email { flex:none; padding:0; font-size:11px; }
-#cloth-character-login .auth-feedback { height:28px; display:flex; align-items:center; padding:0; color:var(--page-soft); font-size:11px; line-height:14px; overflow:hidden; overflow-wrap:anywhere; }
+#cloth-character-login .auth-back { height:44px; }
+#cloth-character-login .auth-back .auth-text { width:44px; height:44px; padding:0; color:var(--page-ink); }
+#cloth-character-login .auth-feedback { height:36px; display:flex; align-items:center; padding:0; color:var(--page-soft); font-size:12px; line-height:18px; overflow:hidden; overflow-wrap:anywhere; }
 #cloth-character-login .auth-feedback span { display:block; max-height:100%; overflow:auto; }
 #cloth-character-login .auth-feedback[data-error="true"] { color:var(--page-error); }
 #cloth-character-login .auth-feedback[data-empty="true"] { height:0; padding:0; }
@@ -145,7 +144,7 @@
 #cloth-character-login .auth-text { border:0; background:transparent; color:var(--page-soft); padding:0 4px; font-size:12px; min-width:44px; min-height:44px; border-radius:4px; display:inline-flex; align-items:center; justify-content:center; }
 #cloth-character-login .auth-text:hover:not(:disabled) { color:var(--page-ink); text-decoration:underline; text-underline-offset:3px; }
 #cloth-character-login .auth-text:disabled { opacity:.6; cursor:default; }
-#cloth-character-login .auth-options { min-height:44px; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:0 12px; }
+#cloth-character-login .auth-options { min-height:44px; display:flex; flex-wrap:nowrap; justify-content:center; align-items:center; gap:0 8px; white-space:nowrap; }
 #cloth-character-login .cl-code { padding-right:90px; }
 #cloth-character-login .auth-send { position:absolute; z-index:3; right:0; top:0; width:84px; height:44px; padding:0 6px; color:var(--nf-ui-accent-text); white-space:nowrap; font-size:11px; font-variant-numeric:tabular-nums; }
 /* Show card-bound auxiliary controls only once the card itself has arrived. */
@@ -156,13 +155,14 @@
 #cloth-character-login[data-renderer="fallback"] .auth-form { width:min(100%,326px); height:auto; transform:none; }
 #cloth-character-login[data-renderer="fallback"] .cl-scene { position:relative; inset:auto; height:auto; min-height:0; padding:0; }
 #cloth-character-login[data-renderer="fallback"] .cl-form { position:relative; inset:auto; width:100%; padding:28px; background:var(--page-paper); pointer-events:auto; border-radius:4px; }
-#cloth-character-login[data-renderer="fallback"] .cl-fallback-title { display:block; margin:0 0 24px; font:600 22px/1.5 var(--nf-font-ui); }
+#cloth-character-login[data-renderer="fallback"] .cl-fallback-title { display:block; margin:0 0 24px; font:500 21px/1.5 var(--nf-font-ui); }
+#cloth-character-login[data-renderer="fallback"] .cl-form:has(.auth-back) .cl-fallback-title { padding-left:32px; }
 #cloth-character-login[data-renderer="fallback"] .cl-field, #cloth-character-login[data-renderer="fallback"] .cl-enter { position:relative; inset:auto; transform:none!important; width:100%!important; color:var(--page-ink); margin:0 0 16px; }
 #cloth-character-login[data-renderer="fallback"] .cl-card-ui { position:relative; inset:auto; transform:none!important; width:100%!important; }
-#cloth-character-login[data-renderer="fallback"] .auth-context { margin:-12px 0 8px; }
+#cloth-character-login[data-renderer="fallback"] .auth-back { position:absolute; left:16px; top:22px; width:44px!important; }
 #cloth-character-login[data-renderer="fallback"] .cl-input::placeholder { color:var(--page-soft); }
 #cloth-character-login[data-renderer="fallback"] .cl-enter { background:var(--nf-ui-accent); color:var(--nf-ui-accent-ink); margin:8px 0 0; }
-#cloth-character-login[data-renderer="fallback"] .auth-support { position:relative; inset:auto; width:100%; margin:12px auto 0; }
+#cloth-character-login[data-renderer="fallback"] .auth-support { position:relative; inset:auto; width:calc(100% + 24px)!important; margin:12px -12px 0; }
 @media (forced-colors:active) {
   #cloth-character-login.login-page::before { display:none; }
   #cloth-character-login .cl-field { --cl-input-surface:Field; background:Field; }

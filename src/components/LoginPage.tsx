@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { ChevronLeft, Eye, EyeOff } from "lucide-react";
 import { confirmPasswordReset, requestEmailLoginCode, requestPasswordReset } from "../services/auth";
 import type { ClothLoginController, ClothLoginState } from "./login/cloth-login.js";
 import "./login/cloth-login.css";
@@ -41,7 +41,6 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
   const loginRoot = useRef<HTMLElement>(null);
   const cloth = useRef<ClothLoginController | null>(null);
   const address = email.trim().toLowerCase();
-  const maskedAddress = address.replace(/^([^@]{1,2})[^@]*@/, "$1…@");
   const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address);
   const key = `${mode}:${address}`;
   const seconds = Math.max(0, Math.ceil(((deadlines.current.get(key) || 0) - now) / 1000));
@@ -50,16 +49,15 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
   const showPassword = (mode === "reset" && step === "verify") || (mode === "login" && method === "password");
   const ready = validEmail && (!showCode || /^\d{6}$/.test(code)) && (!showPassword || password.length >= (mode === "reset" ? 8 : 6));
   const buttonLabel = sending ? "正在发送…" : busy ? "请稍候…" : needsCode && step === "email" ? "获取验证码" : mode === "register" ? "创建账号" : mode === "reset" ? "保存新密码" : "登录";
-  const title = mode === "reset" ? "重设密码" : mode === "register" ? "创建账号" : "登录";
+  const title = mode === "reset" ? "重设密码" : showCode ? "输入验证码" : mode === "register" ? "创建账号" : showPassword ? "密码登录" : "登录";
   const feedbackText = feedback.error ? feedback.text : capsLock ? "大写锁定已开启" : feedback.text || (sending ? "正在发送验证码…" : "");
   // Sending is already expressed by the primary action and delivery controls.
   // Keep the live announcement without adding another visible paragraph.
   const quietFeedback = !feedback.error && !capsLock && (feedback.quiet || (!feedback.text && sending));
   const awaitingEntrance = !entranceReady && renderer !== "fallback";
   const presentation = useMemo<ClothLoginState>(() => ({
-    loading: busy || sending, primaryLabel: showCode ? "验证码" : "邮箱",
-    passwordLabel: mode === "reset" ? "新密码" : "密码", buttonLabel, title,
-  }), [busy, sending, showCode, mode, buttonLabel, title]);
+    loading: busy || sending, buttonLabel, title, showBack: showCode,
+  }), [busy, sending, showCode, buttonLabel, title]);
   const latestPresentation = useRef(presentation);
   latestPresentation.current = presentation;
 
@@ -203,14 +201,15 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
           <div className="cl-drag-surface" aria-hidden="true" />
           <div className="cl-form">
             <h2 className="cl-fallback-title" aria-hidden="true">{title}</h2>
-            {showCode && <div className="cl-card-ui auth-context" inert={awaitingEntrance} aria-hidden={awaitingEntrance}>
-              <span className="auth-recipient" title={address} aria-hidden="true">{maskedAddress}</span>
-              <span id={`${id}-destination`} className="sr-only">验证码邮箱：{address}</span>
-              <button type="button" className="auth-text auth-change-email" aria-label="修改邮箱" aria-describedby={`${id}-destination`} disabled={busy} onClick={editEmail}>更换</button>
-            </div>}
+            {showCode && <>
+              <span id={`${id}-destination`} className="auth-destination sr-only">验证码邮箱：{address}</span>
+              <div className="cl-card-ui auth-back" inert={awaitingEntrance} aria-hidden={awaitingEntrance}>
+                <button type="button" className="auth-text" aria-label="返回邮箱" title="返回邮箱" disabled={busy} onClick={editEmail}><ChevronLeft size={18} aria-hidden="true" /></button>
+              </div>
+            </>}
             <div className="auth-fields" key={`${mode}:${method}:${step}`}>
               {!showCode && <div className="cl-field cl-primary-field"><label className="sr-only" htmlFor={`${id}-email`}>邮箱</label>
-                <input className="cl-email cl-input" ref={emailInput} id={`${id}-email`} name="email" type="email" autoComplete="email" inputMode="email" placeholder="输入你的邮箱地址" required disabled={busy} value={email}
+                <input className="cl-email cl-input" ref={emailInput} id={`${id}-email`} name="email" type="email" autoComplete="email" inputMode="email" placeholder="邮箱地址" required disabled={busy} value={email}
                   onPointerDownCapture={prepareAutofillEditing}
                   onChange={event => { stopSend(); setEmail(event.target.value); setCode(""); clearFeedback(); }} />
                 <span className="cl-field-weave" aria-hidden="true" /></div>}
@@ -225,7 +224,7 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
               {showPassword && <div className="cl-field cl-password-field"><label className="sr-only" htmlFor={`${id}-password`}>{mode === "reset" ? "新密码" : "密码"}</label>
                 <input className="cl-password cl-input" ref={passwordInput} id={`${id}-password`} name="password" type={visible ? "text" : "password"} autoComplete={mode === "reset" ? "new-password" : "current-password"}
                   onPointerDownCapture={prepareAutofillEditing}
-                  placeholder={mode === "reset" ? "至少 8 位" : "你的密码"} minLength={mode === "reset" ? 8 : 6} required disabled={busy} value={password}
+                  placeholder={mode === "reset" ? "新密码，至少 8 位" : "密码"} minLength={mode === "reset" ? 8 : 6} required disabled={busy} value={password}
                   onChange={event => { setPassword(event.target.value); clearFeedback(); }} onKeyUp={event => setCapsLock(event.getModifierState("CapsLock"))} onBlur={() => setCapsLock(false)} />
                 <span className="cl-field-weave" aria-hidden="true" />
                 <button type="button" className="cl-password-toggle" disabled={busy} aria-label={visible ? "隐藏密码" : "显示密码"} title={visible ? "隐藏密码" : "显示密码"} aria-pressed={visible}
@@ -235,19 +234,19 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
               <span>{feedbackText}</span>
             </div>
             <button ref={submitButton} className="cl-enter auth-submit" type="submit" disabled={!ready || busy || sending}>{buttonLabel}</button>
+            <div className="cl-card-ui auth-support" inert={awaitingEntrance} aria-hidden={awaitingEntrance}>
+              <div className="auth-options">
+                {mode === "login" && <button type="button" className="auth-text" aria-label={method === "code" ? "使用密码登录" : "使用验证码登录"} disabled={busy} onClick={changeMethod}>{method === "code" ? "密码登录" : "验证码登录"}</button>}
+                {mode === "reset" && <button type="button" className="auth-text" disabled={busy} onClick={() => changeMode("login")}>返回登录</button>}
+                {mode === "login" && showPassword && <button type="button" className="auth-text" aria-label="忘记密码？" disabled={busy} onClick={() => changeMode("reset")}>忘记密码</button>}
+                {mode !== "reset" && <button type="button" className="auth-text" disabled={busy} onClick={() => changeMode(mode === "login" ? "register" : "login")}>{mode === "login" ? "注册" : "登录"}</button>}
+              </div>
+            </div>
           </div>
           <canvas className="cl-fx" aria-hidden="true" />
           <span className="cl-bubble" hidden aria-hidden="true" /><span className="cl-probe" aria-hidden="true" />
           <p className="cl-status sr-only" aria-hidden="true" />
         </section>
-        <div className="auth-support" inert={awaitingEntrance} aria-hidden={awaitingEntrance}>
-          <div className="auth-options">
-            {mode === "login" && <button type="button" className="auth-text" aria-label={method === "code" ? "使用密码登录" : "使用验证码登录"} disabled={busy} onClick={changeMethod}>{method === "code" ? "密码登录" : "验证码登录"}</button>}
-            {mode === "reset" && <button type="button" className="auth-text" disabled={busy} onClick={() => changeMode("login")}>返回登录</button>}
-            {mode === "login" && showPassword && <button type="button" className="auth-text" aria-label="忘记密码？" disabled={busy} onClick={() => changeMode("reset")}>忘记密码</button>}
-            {mode !== "reset" && <button type="button" className="auth-text" disabled={busy} onClick={() => changeMode(mode === "login" ? "register" : "login")}>{mode === "login" ? "注册" : "登录"}</button>}
-          </div>
-        </div>
       </form>
     </div>
   </main>;
