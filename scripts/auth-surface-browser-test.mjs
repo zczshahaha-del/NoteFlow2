@@ -15,10 +15,12 @@ const logo = 'data:image/svg+xml;base64,' + readFileSync(new URL('../public/note
 const source = `import React from 'react'; import {createRoot} from 'react-dom/client';
 import LoginPage from ${JSON.stringify(root + 'src/components/LoginPage.tsx')};
 import {login,loginWithEmailCode,register} from ${JSON.stringify(root + 'src/services/auth.ts')};
-const api=window.authTest={calls:[],hold:false,pending:[],fail:false,completed:0,development:true};
+const api=window.authTest={calls:[],hold:false,pending:[],fail:false,gateway:false,networkFailure:false,completed:0,development:true};
 window.fetch=async (url,init={})=>{const body=JSON.parse(init.body||'{}');api.calls.push({url:String(url),body,aborted:false});
 const call=api.calls.at(-1);init.signal?.addEventListener('abort',()=>call.aborted=true);
 if(api.hold)await new Promise(resolve=>api.pending.push(resolve));
+if(api.gateway){api.gateway=false;return new Response('Bad Gateway',{status:502,headers:{'Content-Type':'text/plain'}})}
+if(api.networkFailure){api.networkFailure=false;throw new TypeError('Failed to fetch')}
 if(api.fail){const detail=typeof api.fail==='string'?api.fail:'合成失败，请重试。';api.fail=false;return new Response(JSON.stringify({detail}),{status:400})}
 return new Response(JSON.stringify(String(url).endsWith('/request')?{message:'验证码已发送，请检查邮箱。',...(String(url).includes('password-reset') || !api.development?{}:{developmentCode:'314159'})}:
 String(url).includes('password-reset')?{message:'密码已更新，请重新登录。'}:{user:{id:'synthetic',email:body.email,displayName:'合成用户',emailVerified:true}}),{status:200,headers:{'Content-Type':'application/json'}})};
@@ -231,13 +233,24 @@ try {
     const scale=await displayScale();
     const compactDelivery=async()=>{
       const currentScale=await displayScale();
-      assert.ok(Math.abs(await page.locator('.auth-support').evaluate(n=>n.getBoundingClientRect().height)-88*currentScale)<.1,'delivery and account actions occupy only two scaled rows');
+      assert.ok(Math.abs(await page.locator('.auth-support').evaluate(n=>n.getBoundingClientRect().height)-44*currentScale)<.1,'only secondary account actions remain below the card');
       assert.ok(Math.abs(await page.locator('.auth-options').evaluate(n=>n.getBoundingClientRect().height)-44*currentScale)<.1,'account actions must not wrap into another paragraph');
-      assert.ok(await page.locator('.auth-delivery').evaluate(n=>{
-        const r=n.getBoundingClientRect(),scale=parseFloat(getComputedStyle(n.closest('main')).getPropertyValue('--cl-display-scale'));return Math.abs(r.height-44*scale)<.1 && [...n.children].every(child=>{
-          const b=child.getBoundingClientRect();return b.left>=r.left && b.right<=r.right+.1 && b.height>=44;
+      assert.ok(await page.locator('.auth-context').evaluate(n=>{
+        const scene=n.closest('.cl-scene'),r=scene.getBoundingClientRect(),scale=r.height/parseFloat(getComputedStyle(scene).height);
+        const left=r.left+parseFloat(n.closest('form').style.getPropertyValue('--cl-card-left'))*scale;
+        const top=r.top+parseFloat(scene.style.getPropertyValue('--cl-card-top'))*scale;
+        return [n,n.querySelector('button'),scene.querySelector('.auth-send'),scene.querySelector('.auth-feedback')].every(el=>{
+          const b=el.getBoundingClientRect();return b.left>=left-1 && b.right<=left+parseFloat(n.closest('form').style.getPropertyValue('--cl-card-width'))*scale+1&&b.top>=top&&b.bottom<=top+448*scale;
         });
-      }),'editable email and resend stay on the same line, including narrow screens');
+      }),'recipient, change action, resend and feedback belong inside the actual cloth card');
+      assert.ok(await page.locator('.auth-send').evaluate(n=>{
+        const r=n.getBoundingClientRect(),field=n.closest('.cl-field').getBoundingClientRect();return r.left>=field.left&&r.right<=field.right+.1&&r.top>=field.top-.1&&r.bottom<=field.bottom+.1;
+      }),'resend is integrated into the code field');
+      assert.ok(await code.evaluate(n=>{
+        const s=getComputedStyle(n),c=document.createElement('canvas').getContext('2d');c.font=s.font;
+        return n.clientWidth-parseFloat(s.paddingLeft)-parseFloat(s.paddingRight)>=Math.max(c.measureText('888888').width,c.measureText(n.placeholder).width);
+      }),'six digits and their placeholder fit beside resend, including 320px');
+      assert.equal(await page.locator('.auth-context svg,.auth-support .auth-feedback,.auth-delivery').count(),0,'no pencil or detached delivery/error row');
       assert.equal(await page.locator('.auth-code-actions').count(),0);
       await touchTargets();
     };
@@ -361,7 +374,7 @@ try {
     await newPassword.dispatchEvent('keyup',{key:'A',modifierCapsLock:true});
     await page.getByRole('status').filter({hasText:'大写锁定已开启'}).waitFor();
     assert.equal(await page.getByRole('status').getAttribute('data-quiet'),'false','a quiet delivery success must not hide a password warning');
-    assert.ok(Math.abs(await page.getByRole('status').evaluate(n=>n.getBoundingClientRect().height)-44*scale)<.1);
+    assert.ok(Math.abs(await page.getByRole('status').evaluate(n=>n.getBoundingClientRect().height)-28*scale)<.1);
     await newPassword.dispatchEvent('keyup',{key:'A',modifierCapsLock:false});await compactDelivery();await primary.click();
     await page.getByRole('status').filter({hasText:'密码已更新'}).waitFor();assert.equal(await password.inputValue(),'');
     assert.equal(await page.getByRole('status').getAttribute('data-quiet'),'false','reset completion is an important visible state');
@@ -391,12 +404,15 @@ try {
     assert.ok(await primary.isDisabled());assert.match(await page.locator('.auth-send').innerText(),/后重发/);
     await page.getByRole('button',{name:'修改邮箱',exact:true}).click();assert.equal(await email.inputValue(),'failure@example.com');
     await page.evaluate(()=>window.authTest.development=false);
-    await email.fill('long.alias.'.repeat(4)+'@example.com');await primary.click();await page.getByRole('status').filter({hasText:'已发送'}).waitFor();
+    const longAddress='long.alias.'.repeat(4)+'@'+'subdomain.'.repeat(4)+'example.com';
+    await email.fill(longAddress);await primary.click();await page.getByRole('status').filter({hasText:'已发送'}).waitFor();
     assert.equal(await code.inputValue(),'');assert.equal(await page.evaluate(()=>window.authTest.completed),4);
     await compactDelivery();await shot('delivery');
-    assert.equal(await page.getByRole('button',{name:'修改邮箱',exact:true}).getAttribute('title'),'long.alias.'.repeat(4)+'@example.com');
-    assert.equal(await code.getAttribute('aria-describedby'),await page.locator('.auth-destination span').getAttribute('id'),'the full delivery address still describes the code field');
-    assert.ok(await page.locator('.auth-destination span').evaluate(n=>getComputedStyle(n).textOverflow==='ellipsis' && n.scrollWidth>n.clientWidth),'long addresses truncate visually instead of stacking lines');
+    assert.equal(await page.locator('.auth-recipient').getAttribute('title'),longAddress);
+    assert.ok(await page.locator('.auth-context .sr-only').innerText().then(text=>text.includes(longAddress)),'the code field retains the full accessible recipient');
+    assert.equal(await code.getAttribute('aria-describedby'),await page.locator('.auth-context .sr-only').getAttribute('id'),'the full delivery address still describes the code field');
+    assert.ok(await page.locator('.auth-recipient').evaluate(n=>getComputedStyle(n).textOverflow==='ellipsis' && n.scrollWidth>n.clientWidth),'long domains truncate visually instead of stacking lines');
+    assert.ok(!(await page.locator('.auth-recipient').innerText()).includes('long.alias'),'the visible recipient no longer repeats the full account');
     await code.fill('314159');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);assert.equal((await measure()).y,initial.y);
     await page.evaluate(()=>document.documentElement.classList.add('theme-dark'));await page.mouse.move(0,0);await page.waitForTimeout(170);
@@ -432,10 +448,22 @@ try {
     await page.waitForFunction(()=>document.querySelector('.auth-form').getAttribute('aria-busy')==='false');
     assert.equal(await page.evaluate(()=>window.authTest.calls.at(-1).body.purpose),'login');
     await compactDelivery();assert.ok(await page.locator('.auth-send').isDisabled());
-    reports.push({width,initial,emailFirst:true,explicitRegistration:true,stablePrimaryAcrossEmailCode:true,purposeIsolation:true,failureRetry:true,cancelStale:true,passwordReset:true,realAuthServicePayloads:true,compactDelivery:true,quietSuccessAnnouncement:true,importantFeedbackVisible:true,cooldownResend:true,integratedInputFocus:true,nativeAutofillStyle:true,noAutofillCanvasDuplicate:true,autofillPasswordMasked:true,mouseCaretAndDragSelection:true,autofillToManualEditing:true,passwordEyeIcon:true,keyboardFocus:true,nativeValidationRetained:true,forcedColors:true,dark:true,reducedMotion:true,shortViewport:true,longEmail:true,storageDeniedAuthSucceeds:true});
+    await page.getByRole('button',{name:'修改邮箱',exact:true}).click();await email.fill('gateway@example.com');
+    await page.evaluate(()=>window.authTest.gateway=true);await primary.click();
+    await page.getByRole('alert').filter({hasText:'暂时连接不上服务，请稍后重试。'}).waitFor();
+    assert.equal(await code.inputValue(),'','a failed send never fills a code or announces success');
+    await compactDelivery();assert.ok(await page.locator('.auth-send').isDisabled(),'an uncertain send still retains cooldown to avoid duplicate mail');
+    assert.ok(!(await page.locator('main').innerText()).includes('Bad Gateway'),'raw gateway responses never appear in the UI');
+    await shot('gateway-error');
+    await code.fill('123456');await page.evaluate(()=>window.authTest.gateway=true);await primary.click();
+    await page.getByRole('alert').filter({hasText:'暂时连接不上服务，请稍后重试。'}).waitFor();assert.equal(await code.inputValue(),'123456','gateway failures preserve the entered code');
+    await page.getByRole('button',{name:'修改邮箱',exact:true}).click();await email.fill('offline@example.com');
+    await page.evaluate(()=>window.authTest.networkFailure=true);await primary.click();
+    await page.getByRole('alert').filter({hasText:'请检查网络后重试'}).waitFor();await compactDelivery();
+    reports.push({width,initial,emailFirst:true,explicitRegistration:true,stablePrimaryAcrossEmailCode:true,purposeIsolation:true,failureRetry:true,cancelStale:true,passwordReset:true,realAuthServicePayloads:true,inCardDelivery:true,gatewayAndNetworkErrors:true,maskedRecipient:true,sixDigitsFit:true,quietSuccessAnnouncement:true,importantFeedbackVisible:true,cooldownResend:true,integratedInputFocus:true,nativeAutofillStyle:true,noAutofillCanvasDuplicate:true,autofillPasswordMasked:true,mouseCaretAndDragSelection:true,autofillToManualEditing:true,passwordEyeIcon:true,keyboardFocus:true,nativeValidationRetained:true,forcedColors:true,dark:true,reducedMotion:true,shortViewport:true,longEmail:true,storageDeniedAuthSucceeds:true});
     await context.close();
   }
-  // Normal-motion integration: same production component, no auth/network actions.
+  // Normal-motion integration: same component, synthetic auth only, no real network.
   const auditSource = `(()=>{
     window.clothLabels=new Set();
     window.clothArcRadii=new Set();
@@ -582,7 +610,23 @@ try {
         return Math.abs((top+bottom)/2-innerHeight/2)<1;
       });
     }
-    reports.push({width,displayScale,normalEntrance:true,landingSeconds:3.08,screenEdgeEntrance:true,auxiliaryInertUntilArrival:true,viewportCentered:true,dragRebound:true,noGrabPositionCircle:true,pointerInterruptions:true,inputDuringEntrance:true,strictModeMountUnmountCleanup:true});
+    // New in-card UI follows cloth drag, then returns to stable native editing.
+    await page.getByRole('textbox',{name:'邮箱',exact:true}).fill('motion@example.com');
+    await page.evaluate(()=>window.authTest.gateway=true);await page.locator('.auth-submit').click();
+    await page.getByRole('alert').filter({hasText:'暂时连接不上服务'}).waitFor();
+    if(process.env.NOTEFLOW_AUTH_SCREENSHOT_DIR)await page.screenshot({path:process.env.NOTEFLOW_AUTH_SCREENSHOT_DIR+'/noteflow-auth-cloth-card-feedback-normal-'+width+'.png'});
+    const q=await grip(),frames=Number(await scene.getAttribute('data-frames'));
+    await page.mouse.move(q.x,q.y);await page.mouse.down();await page.mouse.move(Math.max(14,q.x-100),q.y-170,{steps:12});
+    assert.equal(await scene.getAttribute('data-grab'),'holding');
+    await page.waitForFunction(frames=>Number(document.querySelector('.cl-scene').dataset.frames)>frames,frames);
+    for(const selector of ['.auth-context','.auth-feedback'])assert.ok(await page.locator(selector).evaluate(n=>getComputedStyle(n).transform.startsWith('matrix(')),'in-card recipient and feedback follow the same cloth transform');
+    await page.mouse.up();
+    const motionCode=page.getByRole('textbox',{name:'验证码',exact:true});await motionCode.focus();await assertInputFocus(motionCode);
+    assert.ok(await page.locator('.cl-card-ui').evaluateAll(nodes=>nodes.every(n=>getComputedStyle(n).transform==='none')),'editing flattens auxiliary UI without adding a matrix to native fields');
+    await page.getByRole('button',{name:'修改邮箱',exact:true}).click();
+    assert.equal(await page.getByRole('textbox',{name:'邮箱',exact:true}).inputValue(),'motion@example.com');
+    assert.equal(await scene.getAttribute('data-grab'),'idle','change-email click must not start a cloth drag');
+    reports.push({width,displayScale,normalEntrance:true,landingSeconds:3.08,screenEdgeEntrance:true,auxiliaryInertUntilArrival:true,viewportCentered:true,dragRebound:true,inCardFeedbackDrag:true,noGrabPositionCircle:true,pointerInterruptions:true,inputDuringEntrance:true,strictModeMountUnmountCleanup:true});
     await context.close();
   }
   // No Canvas at all: the same native form still submits to the existing auth service.

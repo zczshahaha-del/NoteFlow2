@@ -1,10 +1,12 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Eye, EyeOff, Pencil } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { confirmPasswordReset, requestEmailLoginCode, requestPasswordReset } from "../services/auth";
 import type { ClothLoginController, ClothLoginState } from "./login/cloth-login.js";
 import "./login/cloth-login.css";
 
 type Mode = "login" | "register" | "reset";
+const authErrorMessage = (error: unknown, fallback: string) => error instanceof TypeError && /fetch|network|load failed/i.test(error.message)
+  ? "暂时连接不上服务，请检查网络后重试。" : error instanceof Error ? error.message : fallback;
 interface LoginPageProps {
   onSignIn: (email: string, password: string) => Promise<void>;
   onEmailCodeSignIn: (email: string, code: string) => Promise<void>;
@@ -39,6 +41,7 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
   const loginRoot = useRef<HTMLElement>(null);
   const cloth = useRef<ClothLoginController | null>(null);
   const address = email.trim().toLowerCase();
+  const maskedAddress = address.replace(/^([^@]{1,2})[^@]*@/, "$1…@");
   const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address);
   const key = `${mode}:${address}`;
   const seconds = Math.max(0, Math.ceil(((deadlines.current.get(key) || 0) - now) / 1000));
@@ -52,6 +55,7 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
   // Sending is already expressed by the primary action and delivery controls.
   // Keep the live announcement without adding another visible paragraph.
   const quietFeedback = !feedback.error && !capsLock && (feedback.quiet || (!feedback.text && sending));
+  const awaitingEntrance = !entranceReady && renderer !== "fallback";
   const presentation = useMemo<ClothLoginState>(() => ({
     loading: busy || sending, primaryLabel: showCode ? "验证码" : "邮箱",
     passwordLabel: mode === "reset" ? "新密码" : "密码", buttonLabel, title,
@@ -150,7 +154,7 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
       setFeedback({ text: typeof developmentCode === "string" ? "开发环境验证码已自动填入。" : result.message, error: false, quiet: true });
     } catch (error) {
       if (!mounted.current || version !== sendVersion.current) return;
-      setFeedback({ text: error instanceof Error ? error.message : "发送失败，请稍后重试。", error: true });
+      setFeedback({ text: authErrorMessage(error, "发送失败，请稍后重试。"), error: true });
     } finally {
       if (mounted.current && version === sendVersion.current) { setSending(false); sendRequest.current = null; }
     }
@@ -178,7 +182,7 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
       else if (method === "code") await onEmailCodeSignIn(address, code);
       else await onSignIn(address, password);
     } catch (error) {
-      if (mounted.current) setFeedback({ text: error instanceof Error ? error.message : "操作失败，请重试。", error: true });
+      if (mounted.current) setFeedback({ text: authErrorMessage(error, "操作失败，请重试。"), error: true });
     } finally {
       submitting.current = false;
       if (mounted.current) { setBusy(false); window.requestAnimationFrame(() => { if (document.activeElement === document.body) submitButton.current?.focus(); }); }
@@ -199,6 +203,11 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
           <div className="cl-drag-surface" aria-hidden="true" />
           <div className="cl-form">
             <h2 className="cl-fallback-title" aria-hidden="true">{title}</h2>
+            {showCode && <div className="cl-card-ui auth-context" inert={awaitingEntrance} aria-hidden={awaitingEntrance}>
+              <span className="auth-recipient" title={address} aria-hidden="true">{maskedAddress}</span>
+              <span id={`${id}-destination`} className="sr-only">验证码邮箱：{address}</span>
+              <button type="button" className="auth-text auth-change-email" aria-label="修改邮箱" aria-describedby={`${id}-destination`} disabled={busy} onClick={editEmail}>更换</button>
+            </div>}
             <div className="auth-fields" key={`${mode}:${method}:${step}`}>
               {!showCode && <div className="cl-field cl-primary-field"><label className="sr-only" htmlFor={`${id}-email`}>邮箱</label>
                 <input className="cl-email cl-input" ref={emailInput} id={`${id}-email`} name="email" type="email" autoComplete="email" inputMode="email" placeholder="输入你的邮箱地址" required disabled={busy} value={email}
@@ -206,10 +215,13 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
                   onChange={event => { stopSend(); setEmail(event.target.value); setCode(""); clearFeedback(); }} />
                 <span className="cl-field-weave" aria-hidden="true" /></div>}
               {showCode && <div className="cl-field cl-primary-field"><label className="sr-only" htmlFor={`${id}-code`}>验证码</label>
-                <input className="cl-email cl-input" ref={codeInput} id={`${id}-code`} name="code" type="text" inputMode="numeric" autoComplete="one-time-code" placeholder="6 位验证码" maxLength={6} required disabled={busy} value={code}
+                <input className="cl-email cl-input cl-code" ref={codeInput} id={`${id}-code`} name="code" type="text" inputMode="numeric" autoComplete="one-time-code" placeholder="6 位数字" maxLength={6} required disabled={busy} value={code}
                   onPointerDownCapture={prepareAutofillEditing}
                   aria-describedby={`${id}-destination`} onChange={event => { stopSend(); setCode(event.target.value.replace(/\D/g, "").slice(0, 6)); clearFeedback(); }} />
-                <span className="cl-field-weave" aria-hidden="true" /></div>}
+                <span className="cl-field-weave" aria-hidden="true" />
+                <button type="button" className="auth-text auth-send" aria-label={sending ? "取消等待" : seconds > 0 ? `${seconds}s 后重发` : "重新发送验证码"} disabled={busy || (!sending && seconds > 0)} onClick={() => {
+                  if (sending) { stopSend(); setFeedback({ text: "已停止等待；若邮件已发送，仍可使用验证码。", error: false }); } else void sendCode();
+                }}>{sending ? "取消等待" : seconds > 0 ? `${seconds}s 后重发` : "重新发送"}</button></div>}
               {showPassword && <div className="cl-field cl-password-field"><label className="sr-only" htmlFor={`${id}-password`}>{mode === "reset" ? "新密码" : "密码"}</label>
                 <input className="cl-password cl-input" ref={passwordInput} id={`${id}-password`} name="password" type={visible ? "text" : "password"} autoComplete={mode === "reset" ? "new-password" : "current-password"}
                   onPointerDownCapture={prepareAutofillEditing}
@@ -219,24 +231,16 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
                 <button type="button" className="cl-password-toggle" disabled={busy} aria-label={visible ? "隐藏密码" : "显示密码"} title={visible ? "隐藏密码" : "显示密码"} aria-pressed={visible}
                   onClick={() => { setVisible(!visible); passwordInput.current?.focus(); }}>{visible ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}</button></div>}
             </div>
+            <div id={`${id}-feedback`} className="cl-card-ui auth-feedback" inert={awaitingEntrance} aria-hidden={awaitingEntrance} data-error={feedback.error} data-empty={!feedbackText} data-quiet={Boolean(quietFeedback)} role={feedback.error ? "alert" : "status"} aria-live="polite" aria-atomic="true">
+              <span>{feedbackText}</span>
+            </div>
             <button ref={submitButton} className="cl-enter auth-submit" type="submit" disabled={!ready || busy || sending}>{buttonLabel}</button>
           </div>
           <canvas className="cl-fx" aria-hidden="true" />
           <span className="cl-bubble" hidden aria-hidden="true" /><span className="cl-probe" aria-hidden="true" />
           <p className="cl-status sr-only" aria-hidden="true" />
         </section>
-        <div className="auth-support" inert={!entranceReady && renderer !== "fallback"} aria-hidden={!entranceReady && renderer !== "fallback"}>
-          <div id={`${id}-feedback`} className="auth-feedback" data-error={feedback.error} data-empty={!feedbackText} data-quiet={Boolean(quietFeedback)} role={feedback.error ? "alert" : "status"} aria-live="polite" aria-atomic="true">
-            <span>{feedbackText}</span>
-          </div>
-          {showCode && <div className="auth-delivery">
-            <button type="button" className="auth-text auth-destination" aria-label="修改邮箱" aria-describedby={`${id}-destination`} title={address} disabled={busy} onClick={editEmail}>
-              <span id={`${id}-destination`}>{address}</span><Pencil size={12} aria-hidden="true" />
-            </button>
-            <button type="button" className="auth-text auth-send" aria-label={sending ? "取消等待" : seconds > 0 ? `${seconds}s 后重发` : "重新发送验证码"} disabled={busy || (!sending && seconds > 0)} onClick={() => {
-              if (sending) { stopSend(); setFeedback({ text: "已停止等待；若邮件已发送，仍可使用验证码。", error: false }); } else void sendCode();
-            }}>{sending ? "取消等待" : seconds > 0 ? `${seconds}s 后重发` : "重新发送"}</button>
-          </div>}
+        <div className="auth-support" inert={awaitingEntrance} aria-hidden={awaitingEntrance}>
           <div className="auth-options">
             {mode === "login" && <button type="button" className="auth-text" aria-label={method === "code" ? "使用密码登录" : "使用验证码登录"} disabled={busy} onClick={changeMethod}>{method === "code" ? "密码登录" : "验证码登录"}</button>}
             {mode === "reset" && <button type="button" className="auth-text" disabled={busy} onClick={() => changeMode("login")}>返回登录</button>}

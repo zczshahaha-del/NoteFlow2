@@ -341,7 +341,7 @@ function createClothLogin(root,cleanups,onEntranceReady) {
   }
   function positionControl(el,x,y,w){
     if(!el)return;
-    if(el.classList.contains('cl-field')){
+    if(el.matches('.cl-field,.cl-card-ui')){
       el.style.width=w+'px';
       // Editing already flattens this cloth patch. Use a normal, stable hit-test box
       // instead of keeping the browser's caret/selection inside an animated matrix.
@@ -380,6 +380,8 @@ function createClothLogin(root,cleanups,onEntranceReady) {
       attribute(gpu.position,pos,gpu.p,3);attribute(gpu.normal,norm,gpu.n,3);attribute(gpu.uv,null,gpu.u,2);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,gpu.index);gl.bindTexture(gl.TEXTURE_2D,gpu.texture);gl.drawElements(gl.TRIANGLES,indices.length,gl.UNSIGNED_SHORT,0);
     }else drawFallback();
     positionControl(email?.closest('.cl-field'),28,164,CW-56);positionControl(password?.closest('.cl-field'),28,247,CW-56);positionControl(enter,28,330,CW-56);
+    positionControl(root.querySelector('.auth-context'),28,104,CW-56);
+    positionControl(root.querySelector('.auth-feedback'),28,296,CW-56);
     fc.clearRect(0,0,W,H);
     for(const i of pins){const p=projected[i];fc.save();fc.translate(p.x,p.y);fc.shadowColor=palette.shadow;fc.shadowBlur=4;fc.shadowOffsetY=2;
       const g=fc.createLinearGradient(-5,-5,5,5);g.addColorStop(0,palette.shine);g.addColorStop(.55,palette.metal);g.addColorStop(1,palette.thread);fc.fillStyle=g;fc.beginPath();fc.arc(0,0,4.2,0,Math.PI*2);fc.fill();fc.shadowBlur=0;fc.strokeStyle=palette.metal;fc.lineWidth=.7;fc.stroke();fc.restore();}
@@ -551,7 +553,7 @@ function createClothLogin(root,cleanups,onEntranceReady) {
   // The full composition may be enlarged; hit testing stays in solver coordinates.
   function pointer(e){const b=scene.getBoundingClientRect();return {x:(e.clientX-b.left)*W/b.width,y:(e.clientY-b.top)*H/b.height};}
   listen(scene,'pointerdown',e=>{
-    if(e.button!==0||pending||grab||e.target.closest('input,button'))return;
+    if(e.button!==0||pending||grab||e.target.closest('input,button,.cl-card-ui'))return;
     const p=pointer(e),h=hit(p);if(!h)return;
     if(entryTime<LAND){finishEntrance();render();}
     pending={...h,id:e.pointerId,start:p,latest:p};

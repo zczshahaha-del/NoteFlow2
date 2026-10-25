@@ -133,7 +133,11 @@
 #cloth-character-login .auth-support { position:absolute; z-index:5; top:var(--cl-support-top); left:var(--cl-card-left); width:var(--cl-card-width,326px); margin:0 0 20px; padding:0 8px; color:var(--page-soft); visibility:hidden; opacity:0; pointer-events:none; transition:opacity 160ms ease-out; }
 #cloth-character-login[data-entered="true"] .auth-support { visibility:visible; opacity:1; pointer-events:auto; }
 #cloth-character-login[data-renderer="loading"]:not([data-cloth-ready]) .cl-form { visibility:hidden; }
-#cloth-character-login .auth-feedback { height:44px; display:flex; align-items:center; padding:6px 0; color:var(--page-soft); font-size:12px; line-height:18px; overflow:hidden; overflow-wrap:anywhere; }
+#cloth-character-login .cl-card-ui { position:absolute; left:0; top:0; transform-origin:0 0; pointer-events:auto; }
+#cloth-character-login .auth-context { height:44px; display:flex; align-items:center; gap:8px; color:var(--page-soft); font-size:11px; }
+#cloth-character-login .auth-recipient { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#cloth-character-login .auth-context .auth-change-email { flex:none; padding:0; font-size:11px; }
+#cloth-character-login .auth-feedback { height:28px; display:flex; align-items:center; padding:0; color:var(--page-soft); font-size:11px; line-height:14px; overflow:hidden; overflow-wrap:anywhere; }
 #cloth-character-login .auth-feedback span { display:block; max-height:100%; overflow:auto; }
 #cloth-character-login .auth-feedback[data-error="true"] { color:var(--page-error); }
 #cloth-character-login .auth-feedback[data-empty="true"] { height:0; padding:0; }
@@ -142,11 +146,10 @@
 #cloth-character-login .auth-text:hover:not(:disabled) { color:var(--page-ink); text-decoration:underline; text-underline-offset:3px; }
 #cloth-character-login .auth-text:disabled { opacity:.6; cursor:default; }
 #cloth-character-login .auth-options { min-height:44px; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:0 12px; }
-#cloth-character-login .auth-delivery { display:flex; align-items:center; gap:12px; height:44px; }
-#cloth-character-login .auth-destination { flex:1; min-width:44px; justify-content:flex-start; gap:6px; padding-inline:0; }
-#cloth-character-login .auth-destination span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-#cloth-character-login .auth-destination svg { flex:none; opacity:.7; }
-#cloth-character-login .auth-send { flex:none; white-space:nowrap; font-variant-numeric:tabular-nums; }
+#cloth-character-login .cl-code { padding-right:90px; }
+#cloth-character-login .auth-send { position:absolute; z-index:3; right:0; top:0; width:84px; height:44px; padding:0 6px; color:var(--nf-ui-accent-text); white-space:nowrap; font-size:11px; font-variant-numeric:tabular-nums; }
+/* Show card-bound auxiliary controls only once the card itself has arrived. */
+#cloth-character-login:not([data-entered="true"]) .cl-card-ui { visibility:hidden; pointer-events:none; }
 #cloth-character-login .cl-fallback-title { display:none; }
 /* Progressive fallback when canvas/WebGL or animation initialization is unavailable. */
 #cloth-character-login[data-renderer="fallback"] .page-main { display:flex; justify-content:center; align-items:center; min-height:600px; padding:72px 24px 32px; }
@@ -155,6 +158,8 @@
 #cloth-character-login[data-renderer="fallback"] .cl-form { position:relative; inset:auto; width:100%; padding:28px; background:var(--page-paper); pointer-events:auto; border-radius:4px; }
 #cloth-character-login[data-renderer="fallback"] .cl-fallback-title { display:block; margin:0 0 24px; font:600 22px/1.5 var(--nf-font-ui); }
 #cloth-character-login[data-renderer="fallback"] .cl-field, #cloth-character-login[data-renderer="fallback"] .cl-enter { position:relative; inset:auto; transform:none!important; width:100%!important; color:var(--page-ink); margin:0 0 16px; }
+#cloth-character-login[data-renderer="fallback"] .cl-card-ui { position:relative; inset:auto; transform:none!important; width:100%!important; }
+#cloth-character-login[data-renderer="fallback"] .auth-context { margin:-12px 0 8px; }
 #cloth-character-login[data-renderer="fallback"] .cl-input::placeholder { color:var(--page-soft); }
 #cloth-character-login[data-renderer="fallback"] .cl-enter { background:var(--nf-ui-accent); color:var(--nf-ui-accent-ink); margin:8px 0 0; }
 #cloth-character-login[data-renderer="fallback"] .auth-support { position:relative; inset:auto; width:100%; margin:12px auto 0; }

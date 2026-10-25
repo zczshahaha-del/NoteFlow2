@@ -86,6 +86,13 @@ try {
     SoftMenu,
   } = await vite.ssrLoadModule("/src/testing/frontendHarness.ts");
   traceFrontend("harness-loaded");
+  const { readApiError } = await vite.ssrLoadModule("/src/services/api.ts");
+  for (const [status, body, contentType] of [[502,"Bad Gateway","text/plain"],[502,"<html>Bad Gateway</html>","text/html"],[504,"","text/plain"]]) {
+    assert.equal(await readApiError(new Response(body,{status,headers:{"Content-Type":contentType}})),"暂时连接不上服务，请稍后重试。");
+  }
+  assert.equal(await readApiError(new Response("Service Unavailable",{status:503})),"服务暂时不可用，请稍后重试。");
+  assert.equal(await readApiError(new Response(JSON.stringify({detail:"验证码不正确或已过期"}),{status:400,headers:{"Content-Type":"application/json"}})),"验证码不正确或已过期");
+  assert.equal(await readApiError(new Response(JSON.stringify({detail:"索引服务尚未就绪"}),{status:503,headers:{"Content-Type":"application/json"}})),"索引服务尚未就绪","structured service errors remain actionable");
 
   const initialState = useAppStore.getInitialState();
   useAppStore.setState(initialState, true);
@@ -1467,7 +1474,8 @@ try {
   console.log(JSON.stringify({
     ok: true,
     storeAssertions: 10,
-    componentAssertionGroups: 46,
+    componentAssertionGroups: 47,
+    apiErrorCoverage: ["plain-502","html-502","empty-504","plain-503","business-400-retained","structured-503-retained"],
     chatTimeCoverage: ["China-time", "legacy-naive-UTC", "microseconds", "explicit-offsets", "date-rollover", "midnight", "invalid-time-hidden"],
     components: [
       "SoftMenu",

@@ -99,8 +99,12 @@ export async function publicApiFetch(path: string, init: RequestInit = {}): Prom
 }
 
 export async function readApiError(response: Response): Promise<string> {
+  // Reverse proxies may return plain English or an HTML error page rather than
+  // our JSON contract. Never expose that infrastructure response as UI copy.
+  const gatewayMessage = response.status === 502 || response.status === 504 ? "暂时连接不上服务，请稍后重试。"
+    : response.status === 503 ? "服务暂时不可用，请稍后重试。" : "";
   const text = await response.text().catch(() => "");
-  if (!text) return response.statusText || "请求失败";
+  if (!text) return gatewayMessage || response.statusText || "请求失败";
 
   try {
     const data = JSON.parse(text) as {
@@ -112,8 +116,9 @@ export async function readApiError(response: Response): Promise<string> {
     if (Array.isArray(data.detail) && data.detail.length > 0) return "请求参数有误，请检查后再试。";
     if (typeof data.error === "object" && data.error?.message) return data.error.message;
     if (typeof data.error === "string" && data.error) return data.error;
-    return response.statusText || "请求失败";
+    return gatewayMessage || response.statusText || "请求失败";
   } catch {
+    if (gatewayMessage) return gatewayMessage;
     const isHtml = text.trimStart().startsWith("<!doctype") || text.trimStart().startsWith("<html");
     if (isHtml) {
       return "API 返回了前端 HTML 页面，说明 /api 没有正确转发到后端。请检查 Nginx /api 反向代理或 VITE_API_BASE_URL。";
