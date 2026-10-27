@@ -18,3 +18,5 @@
 记忆与 AI 运行架构的重规划提案见[整体架构、记忆与意图识别重规划](architecture/architecture-replanning-2026-10-24.md)；该文为待实施方案，当前运行事实仍以源码及现有架构文档为准。
 
 允许放弃旧技术选型后的独立方案见[从零架构设计与技术选型调研](architecture/greenfield-architecture-2026-10-25.md)：比较领域 harness、全 TypeScript、托管 Agent 与本地优先路线，给出正文、任务、检索、记忆、部署及验证设计。该文为研究提案，尚未实施或完成候选运行 PoC，不替代当前运行说明。
+
+从用户操作理解当前 Agent，按顺序阅读[当前 Agent 全链路分支图解](architecture/agent-flow-explained-2026-10-27.md)：覆盖对话 / 全库、选区 / 当前笔记、创建、修改、记忆、澄清、重试、停止与恢复，并标明已确认的入口限制。
