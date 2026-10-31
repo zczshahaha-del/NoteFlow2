@@ -61,6 +61,13 @@ async def main():
                 await call(client, "POST", "/memory-console/activate")
                 key = prefix + "-message"
                 sid = await gateway.submit(active, "我刚开始学习 Go，喜欢通俗的中文和简短例子。", source_key=key)
+                async with AsyncSessionLocal() as session:
+                    queued = await session.scalar(select(IntegrationOutbox).where(IntegrationOutbox.aggregate_id == sid))
+                    assert queued.status == 'memory_pending'
+                    legacy_visible = await session.scalar(select(IntegrationOutbox.id).where(
+                        IntegrationOutbox.aggregate_id == sid, IntegrationOutbox.status.in_(['pending','processing'])))
+                    assert legacy_visible is None
+                cases.append('legacy worker cannot claim new memory jobs')
                 assert sid == await gateway.submit(active, "我刚开始学习 Go，喜欢通俗的中文和简短例子。", source_key=key)
                 await process(sid)
                 records = await gateway.read(active, query="用户希望怎样解释 Go？")

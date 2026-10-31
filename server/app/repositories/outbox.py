@@ -9,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.db import IntegrationOutbox
 from app.utils import random_id
 
+MANAGED_MEMORY_TOPICS = frozenset({"memory.retain.requested", "memory.source.delete"})
+
 
 class OutboxRepository:
     def __init__(self, session: AsyncSession):
@@ -25,6 +27,10 @@ class OutboxRepository:
             idempotency_key=idempotency_key, payload=payload,
             trace_id=trace_id, max_attempts=max_attempts,
         )
+        if topic in MANAGED_MEMORY_TOPICS:
+            # Older NoteFlow workers claim every generic pending row but do not
+            # understand these topics. Keep both ready and leased states distinct.
+            values["status"] = "memory_pending"
         statement = insert(IntegrationOutbox).values(**values).on_conflict_do_nothing(
             index_elements=[IntegrationOutbox.idempotency_key]
         ).returning(IntegrationOutbox.id)
@@ -47,8 +53,11 @@ class OutboxRepository:
                 IntegrationOutbox.attempts < IntegrationOutbox.max_attempts,
                 or_(
                     (IntegrationOutbox.status == "pending") & (IntegrationOutbox.available_at <= now),
+                    (IntegrationOutbox.status == "memory_pending") & (IntegrationOutbox.available_at <= now),
                     (IntegrationOutbox.status == "processing") & (IntegrationOutbox.heartbeat_at < stale_at),
                     (IntegrationOutbox.status == "processing") & (IntegrationOutbox.heartbeat_at.is_(None)) & (IntegrationOutbox.locked_at < stale_at),
+                    (IntegrationOutbox.status == "memory_processing") & (IntegrationOutbox.heartbeat_at < stale_at),
+                    (IntegrationOutbox.status == "memory_processing") & (IntegrationOutbox.heartbeat_at.is_(None)) & (IntegrationOutbox.locked_at < stale_at),
                 ),
             )
             .order_by(IntegrationOutbox.available_at, IntegrationOutbox.created_at)
@@ -57,7 +66,7 @@ class OutboxRepository:
         )
         if item is None:
             return None
-        item.status = "processing"
+        item.status = "memory_processing" if item.topic in MANAGED_MEMORY_TOPICS else "processing"
         item.locked_by = worker_id
         item.locked_at = now
         item.heartbeat_at = now
@@ -84,5 +93,5 @@ class OutboxRepository:
             item.status = "dead"
             item.processed_at = datetime.utcnow()
         else:
-            item.status = "pending"
+            item.status = "memory_pending" if item.topic in MANAGED_MEMORY_TOPICS else "pending"
             item.available_at = datetime.utcnow() + timedelta(seconds=min(300, 2 ** min(item.attempts, 8)))

@@ -46,7 +46,7 @@ async def overview(user: CurrentUser = Depends(console_user)):
         return {"engine": state.get("engine", cfg.MEMORY_ENGINE), "mission": state.get("mission", DEFAULT_MISSION),
             "ruleVersion": state.get("ruleVersion", 1), "history": state.get("ruleHistory", []),
             "reviewNewFacts": state.get("reviewNewFacts", False),
-            "jobs": [{"id": j.id, "sourceId": j.aggregate_id, "status": j.status,
+            "jobs": [{"id": j.id, "sourceId": j.aggregate_id, "status": {"memory_pending": "pending", "memory_processing": "processing"}.get(j.status, j.status),
                       "attempts": j.attempts, "sourceStatus": sources.get(j.aggregate_id), "error": j.error_code} for j in jobs]}
 
 
@@ -67,7 +67,7 @@ async def retry(job_id: str, user: CurrentUser = Depends(console_user)):
             or source.generation != state.get("generation", 0) or source.rule_version != state.get("ruleVersion", 1)):
             raise HTTPException(409, "开关或规则已变化，旧任务不会重新写入。")
         from datetime import datetime
-        item.status, item.attempts, item.available_at = "pending", 0, datetime.utcnow()
+        item.status, item.attempts, item.available_at = "memory_pending", 0, datetime.utcnow()
         item.error_code = item.last_error = None
         await session.commit()
     from app.workers.outbox_worker import notify_outbox_worker

@@ -37,7 +37,7 @@ async def _process_one() -> bool:
         async with AsyncSessionLocal() as session:
             async with session.begin():
                 item = await session.get(type(item), item_id, with_for_update=True)
-                if item is None or item.status != "processing" or item.locked_by != _worker_id:
+                if item is None or item.status not in {"processing", "memory_processing"} or item.locked_by != _worker_id:
                     return True
                 repository = OutboxRepository(session)
                 try:
