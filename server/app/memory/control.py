@@ -28,11 +28,10 @@ def save_control(settings, value):
 
 
 async def engine_name(session, user_id):
-    _, value = await control(session, user_id)
-    return value.get("engine", cfg.MEMORY_ENGINE)
+    # Engine selection belongs to deployment configuration, not user settings.
+    # Ignore the old per-account opt-in marker, including explicit legacy values.
+    return cfg.MEMORY_ENGINE
 
 
 async def uses_hindsight(user_id):
-    from app.database import AsyncSessionLocal
-    async with AsyncSessionLocal() as session:
-        return await engine_name(session, user_id) == "hindsight"
+    return cfg.MEMORY_ENGINE == "hindsight"

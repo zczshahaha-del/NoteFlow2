@@ -28,7 +28,7 @@ async def main():
         async with httpx.AsyncClient(base_url='http://127.0.0.1:' + port, timeout=40) as client:
             assert (await client.get('/api/memory-console')).status_code == 401
             client.headers['Authorization'] = 'Bearer ' + create_token(user_id, email, 'Synthetic', session_id)
-            assert (await client.post('/api/memory-console/activate')).status_code == 200
+            assert (await client.get('/api/memory-console')).json()['engine'] == 'hindsight'
             result = await client.post('/api/memories', json={'content':'我希望用通俗的中文和简短例子解释技术问题。','memoryType':'preference'})
             assert result.status_code == 200, (result.status_code, result.text[:200])
             memory = result.json()['memory']

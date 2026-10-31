@@ -29,7 +29,7 @@ class PreviewInput(BaseModel):
 
 async def require_engine(user_id):
     if not await uses_hindsight(user_id):
-        raise HTTPException(409, "请先启用自建记忆库。旧记忆仍保留。")
+        raise HTTPException(503, "记忆规则服务暂不可用，请稍后重试。")
 
 
 @router.get("")
@@ -43,7 +43,7 @@ async def overview(user: CurrentUser = Depends(console_user)):
         sources = {s.id: s.status for s in (await session.scalars(select(MemorySource).where(
             MemorySource.user_id == user.id, MemorySource.id.in_([j.aggregate_id for j in jobs])))).all()}
         await session.commit()
-        return {"engine": state.get("engine", cfg.MEMORY_ENGINE), "mission": state.get("mission", DEFAULT_MISSION),
+        return {"engine": cfg.MEMORY_ENGINE, "mission": state.get("mission", DEFAULT_MISSION),
             "ruleVersion": state.get("ruleVersion", 1), "history": state.get("ruleHistory", []),
             "reviewNewFacts": state.get("reviewNewFacts", False),
             "jobs": [{"id": j.id, "sourceId": j.aggregate_id, "status": {"memory_pending": "pending", "memory_processing": "processing"}.get(j.status, j.status),
@@ -75,17 +75,6 @@ async def retry(job_id: str, user: CurrentUser = Depends(console_user)):
     return {"status": "pending"}
 
 
-@router.post("/activate")
-async def activate(user: CurrentUser = Depends(console_user)):
-    async with AsyncSessionLocal() as session:
-        await lock_owner(session, user.id)
-        settings, state = await control(session, user.id)
-        await configured_engine().ensure_bank(user.id, state.get("mission", DEFAULT_MISSION))
-        save_control(settings, {**state, "engine": "hindsight", "generation": state.get("generation", 0) + 1})
-        await session.commit()
-    return {"engine": "hindsight"}
-
-
 @router.put("/rules")
 async def rules(payload: RuleInput, user: CurrentUser = Depends(console_user)):
     await require_engine(user.id)
@@ -95,7 +84,7 @@ async def rules(payload: RuleInput, user: CurrentUser = Depends(console_user)):
         version = state.get("ruleVersion", 1)
         if version != payload.expectedVersion:
             raise HTTPException(409, "规则已更新，请刷新后重试。")
-        await configured_engine().configure(user.id, payload.mission.strip())
+        await configured_engine().ensure_bank(user.id, payload.mission.strip())
         history = ([{"version": version, "mission": state.get("mission", DEFAULT_MISSION)}] + state.get("ruleHistory", []))[:10]
         save_control(settings, {**state, "mission": payload.mission.strip(), "ruleVersion": version + 1, "ruleHistory": history})
         await session.commit()

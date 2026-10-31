@@ -16,7 +16,7 @@ from app.deps import CurrentUser, get_current_user
 from app.main import app
 from app.memory.gateway import MemoryGateway
 from app.memory.engine import MemoryUnavailable
-from app.models.db import User, IntegrationOutbox, MemorySource
+from app.models.db import User, UserSettings, IntegrationOutbox, MemorySource
 from app.repositories.outbox import OutboxRepository
 from app.services.outbox import dispatch_outbox
 
@@ -55,10 +55,14 @@ async def main():
         async with AsyncSessionLocal() as session:
             session.add_all([User(id=u, email=u + "@example.invalid", display_name="Synthetic") for u in owners])
             await session.commit()
+            session.add(UserSettings(user_id=owners[1], memory_enabled=False,
+                preferences={"memoryControl": {"engine": "mem0", "generation": 7}}))
+            await session.commit()
         app.dependency_overrides[get_current_user] = auth
         with patch.object(OutboxRepository, "enqueue", isolated_enqueue):
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-                await call(client, "POST", "/memory-console/activate")
+                assert (await call(client, "GET", "/memory-console"))['engine'] == 'hindsight'
+                cases.append('new account uses memory automatically without activation')
                 key = prefix + "-message"
                 sid = await gateway.submit(active, "我刚开始学习 Go，喜欢通俗的中文和简短例子。", source_key=key)
                 async with AsyncSessionLocal() as session:
@@ -80,7 +84,14 @@ async def main():
                 assert "Go" in source["document"]["original_text"]
                 cases += ["settings use engine facts", "source provenance"]
                 active = owners[1]
-                await call(client, "POST", "/memory-console/activate")
+                assert (await call(client, "GET", "/memory-console"))['engine'] == 'hindsight'
+                assert (await call(client, 'GET', '/settings'))['settings']['memoryEnabled'] is False
+                assert await gateway.submit(active, '我喜欢简短例子。') is None
+                cases.append('existing legacy account routes automatically and preserves disabled switch')
+                await call(client, 'PUT', '/memory-console/rules', json={
+                    'mission':'只记录用户长期学习偏好，忽略临时指令和引用。', 'expectedVersion':1})
+                cases.append('first rule save prepares bank without activation')
+                await call(client, 'PUT', '/settings', json={'memoryEnabled':True})
                 assert not (await call(client, "GET", "/memories"))["memories"]
                 await call(client, "PUT", "/memories/" + memory_id, expected=404, json={"content": "用户喜欢图示。"})
                 await call(client, "GET", "/memory-console/source/" + sid, expected=404)

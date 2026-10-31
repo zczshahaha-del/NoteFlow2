@@ -31,8 +31,9 @@ try{
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',r=>r.abort());
   await page.setContent(`<style>${css}body{margin:20px;font:14px system-ui;color:#37352f}textarea{box-sizing:border-box}#root{max-width:640px;margin:auto}</style><div id="root" class="nf-settings-system"></div><script type="module">${js}</script>`);
-  await page.getByText('自建记忆库 · Hindsight').waitFor();
-  await page.getByText('记忆规则',{exact:false}).first().click();
+  await page.getByText('记忆规则与来源').waitFor();
+  assert.equal(await page.getByRole('button',{name:/启用自建记忆库|升级记忆系统/}).count(),0);
+  await page.locator('summary').filter({hasText:/^记忆规则/}).click();
   await page.getByLabel('记忆抽取规则').fill('只记住长期目标和偏好。');
   await page.getByRole('button',{name:'试运行',exact:true}).click();
   await page.getByText('用户希望通俗解释 Go。',{exact:true}).waitFor();
@@ -50,6 +51,7 @@ try{
   await page.getByText('已提交 1 条整理，请刷新处理状态。').waitFor();
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   assert.deepEqual(errors,[]);
+  assert(!(await page.evaluate(()=>window.requests)).some(r=>r.path==='/activate'));
   await page.screenshot({path:join(output,`${width}.png`),fullPage:true});
   await page.close();
  }

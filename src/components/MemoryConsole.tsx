@@ -37,8 +37,7 @@ export default function MemoryConsole({ onChange }: { onChange: () => void }) {
     {error && <p className="nf-notice nf-error" role="alert">{error}</p>}
     {notice && <p className="nf-notice" role="status">{notice}</p>}
     {!data ? <p className="nf-notice">正在读取记忆服务…</p> : <>
-      <div className="nf-list-heading"><span>{data.engine === 'hindsight' ? '自建记忆库 · Hindsight' : '当前使用原记忆库'}</span><button type="button" className="nf-button" disabled={busy} onClick={() => void run(async () => { await refresh(); onChange(); })}>刷新状态</button></div>
-      {data.engine !== 'hindsight' && <><p className="nf-notice">启用后，新记忆进入自建记忆库。原有记录保留，可在下面逐条选择导入。</p><button type="button" className="nf-button" disabled={busy} onClick={() => void run(async () => { await memoryConsole('/activate', 'POST'); await refresh(); onChange(); })}>启用自建记忆库</button></>}
+      <div className="nf-list-heading"><span>记忆规则与来源</span><button type="button" className="nf-button" disabled={busy} onClick={() => void run(async () => { await refresh(); onChange(); })}>刷新状态</button></div>
       {data.engine === 'hindsight' && <>
         {data.reviewNewFacts && <p className="nf-notice">你修订过记忆，后续自动整理的新事实需确认后才会用于回答。</p>}
         <details><summary>记忆规则 <span>版本 {data.ruleVersion}</span></summary>
