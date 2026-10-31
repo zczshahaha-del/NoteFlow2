@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import cfg
 from app.models.db import IntegrationOutbox, MemoryShadowRun, Note, UserMemory
 from app.memory.policy import memory_is_eligible
-from app.providers.mem0 import get_mem0_provider
+from app.providers.memory_registry import legacy_memory_index as get_mem0_provider
 from app.observability.context import current_trace
 from app.repositories.outbox import OutboxRepository
 from app.utils import random_id
@@ -31,8 +31,22 @@ async def enqueue_memory_sync(
 
 
 async def dispatch_outbox(session: AsyncSession, item: IntegrationOutbox) -> None:
+    if item.topic == "memory.retain.requested":
+        from app.memory.gateway import MemoryGateway
+        await MemoryGateway().process(session, item)
+        return
+    if item.topic == "memory.source.delete":
+        from app.memory.engine import configured_engine
+        from app.models.db import MemorySource
+        source = await session.get(MemorySource, item.aggregate_id)
+        if source and source.user_id == item.user_id and source.status == "deleted":
+            await configured_engine().delete_source(item.user_id, source.id)
+        return
     if item.topic == "memory.sync.requested":
         if not item.user_id:
+            return
+        from app.memory.control import engine_name
+        if await engine_name(session, item.user_id) != "mem0":
             return
         memory = await session.scalar(
             select(UserMemory).where(

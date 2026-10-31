@@ -61,6 +61,23 @@ class UserSettings(Base):
     user: Mapped["User"] = relationship(back_populates="settings")
 
 
+class MemorySource(Base):
+    """Control/provenance only. Formal facts live in the memory engine."""
+    __tablename__ = "memory_sources"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    source_key: Mapped[str] = mapped_column(String(160), nullable=False)
+    engine: Mapped[str] = mapped_column(String(32), default="hindsight")
+    status: Mapped[str] = mapped_column(String(32), default="queued", index=True)
+    generation: Mapped[int] = mapped_column(Integer, default=0)
+    rule_version: Mapped[int] = mapped_column(Integer, default=1)
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("user_id", "source_key", name="uq_memory_source_owner_key"),)
+
+
 class UserSession(Base):
     __tablename__ = "user_sessions"
 

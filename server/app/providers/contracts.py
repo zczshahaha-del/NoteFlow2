@@ -78,7 +78,8 @@ class VectorStoreProvider(Protocol):
 class MemoryProvider(Protocol):
     name: str
 
-    async def search(self, *, user_id: str, query: str, limit: int = 8) -> list[dict]: ...
+    async def search(self, *, user_id: str, query: str, limit: int = 8,
+                     metadata_filters: dict[str, str] | None = None) -> list[dict]: ...
 
     async def add(self, *, user_id: str, content: str, metadata: dict | None = None) -> dict: ...
 

@@ -61,6 +61,10 @@ def _dt(value: Optional[datetime]) -> Optional[str]:
 
 
 def _memory_out(memory: UserMemory) -> dict:
+    from app.memory.engine import MemoryRecord
+    if isinstance(memory, MemoryRecord):
+        from app.memory.gateway import public_record
+        return public_record(memory)
     return {
         "id": memory.id,
         "memoryType": memory.memory_type,
@@ -133,6 +137,21 @@ async def extract_memory(
     payload: MemoryExtractPayload,
     user: CurrentUser = Depends(memory_user),
 ):
+    from app.memory.control import uses_hindsight
+    if await uses_hindsight(user.id):
+        from app.memory.control import DEFAULT_MISSION, control
+        from app.database import AsyncSessionLocal
+        from app.memory.gateway import MemoryGateway
+        async with AsyncSessionLocal() as session:
+            _, state = await control(session, user.id)
+        try:
+            result = await MemoryGateway().preview(user.id, mission=state.get("mission", DEFAULT_MISSION), text=payload.text)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        return {"candidates": [{"content": fact, "memoryType": "personal_info", "canonicalKey": "", "value": fact,
+            "layer": "semantic", "importance": 3, "confidence": None, "shouldSave": True,
+            "source": "user_explicit", "scope": "global", "tags": []} for fact in result["facts"]],
+            "reason": "" if result["facts"] else "没有提取到长期事实。"}
     history = [
         ChatMessage(role=str(item.get("role") or "user"), text=str(item.get("text") or ""))
         for item in payload.history[-8:]
@@ -175,8 +194,12 @@ async def update_memory(
 @router.delete("/memories/{memory_id}")
 async def delete_memory(
     memory_id: str,
+    confirmedSource: bool = Query(False),
     user: CurrentUser = Depends(memory_user),
 ):
+    from app.memory.control import uses_hindsight
+    if await uses_hindsight(user.id) and not confirmedSource:
+        raise HTTPException(status_code=409, detail="请先查看删除影响并确认删除整个来源。")
     try:
         memory = await MemoryService().delete(user.id, memory_id)
     except LookupError as error:
@@ -196,9 +219,11 @@ async def get_memory_context(
 
 @router.get("/memories/provider")
 async def get_memory_provider(user: CurrentUser = Depends(memory_user)):
+    from app.memory.control import uses_hindsight
+    provider = "hindsight" if await uses_hindsight(user.id) else "mem0"
     return {
-        "provider": "mem0",
-        "configuredProvider": "mem0",
+        "provider": provider,
+        "configuredProvider": provider,
         "shadow": False,
         "memoryEnabledByDefault": True,
     }

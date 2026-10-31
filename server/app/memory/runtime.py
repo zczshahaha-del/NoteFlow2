@@ -6,7 +6,7 @@ import time
 from app.config import cfg
 from app.memory.policy import filter_eligible_memories
 from app.models.db import MemoryShadowRun, UserMemory
-from app.providers.mem0 import get_mem0_provider
+from app.providers.memory_registry import legacy_memory_index as get_mem0_provider
 from app.services.observability import record_metric
 from app.utils import random_id
 

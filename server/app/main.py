@@ -5,11 +5,13 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import cfg
 from app.database import init_db, init_redis
-from app.routers import auth, knowledge, notes, drafts, edits, memories, ai, agent, health, settings, attachments, chat_sessions
+from app.routers import auth, knowledge, notes, drafts, edits, memories, ai, agent, health, settings, attachments, chat_sessions, memory_console
+from app.memory.engine import MemoryUnavailable
 from app.schemas.common import API_ERROR_RESPONSES
 from app.services.observability import install_observability
 from app.services.index_worker import start_index_worker, stop_index_worker
@@ -63,6 +65,14 @@ app.include_router(attachments.router, prefix="/api")
 app.include_router(drafts.router, prefix="/api")
 app.include_router(edits.router, prefix="/api")
 app.include_router(memories.router, prefix="/api")
+app.include_router(memory_console.router, prefix="/api")
+
+
+@app.exception_handler(MemoryUnavailable)
+async def memory_unavailable_handler(request, exc):
+    return JSONResponse(status_code=503, content={"detail": str(exc)})
+
+
 app.include_router(settings.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(agent.router, prefix="/api")

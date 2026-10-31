@@ -1126,7 +1126,7 @@ async def chat(
                 else:
                     tool_summary, memories = await _save_memory_from_question(user.id, payload.question, payload.history)
                     action = "save_memory"
-                    output_summary = f"保存 {len(memories)} 条长期记忆"
+                    output_summary = tool_summary
                 trace = await _record_tool_trace(
                     user_id=user.id,
                     run_id=run_id,
@@ -1148,6 +1148,16 @@ async def chat(
                         "长期记忆工具已完成，正在组织回复。",
                     )
                 )
+                from app.memory.control import uses_hindsight
+                if action != "list_memories" and await uses_hindsight(user.id):
+                    # Management acknowledgements use actual operation results;
+                    # queued/empty saves cannot be rewritten into success by an LLM.
+                    yield _sse_format(_choice_delta(tool_summary))
+                    await _finish_agent_run(user_id=user.id, session_id=session_id,
+                        run_id=run_id, status="completed", answer=tool_summary)
+                    yield _sse_format(_agent_done_event(session_id, run_id, "completed"))
+                    yield "data: [DONE]\n\n"
+                    return
                 memory_result_context = _memory_tool_context(action, memories, payload.question)
                 chat_req = ChatRequest(
                     question=payload.question,

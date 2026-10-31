@@ -38,7 +38,13 @@ async def is_user_memory_enabled(session, user_id: str) -> bool:
 
 
 async def update_user_memory_enabled(session, user_id: str, enabled: bool) -> UserSettings:
+    from app.memory.control import lock_owner, save_control
+    await lock_owner(session, user_id)
     settings = await get_or_create_user_settings(session, user_id)
+    if bool(settings.memory_enabled) != bool(enabled):
+        state = dict((settings.preferences or {}).get("memoryControl") or {})
+        state["generation"] = int(state.get("generation", 0)) + 1
+        save_control(settings, state)
     settings.memory_enabled = bool(enabled)
     settings.updated_at = datetime.utcnow()
     await session.flush()

@@ -120,7 +120,7 @@ def memory_tool_context(action: str, memories: list[dict], question: str) -> str
         f"用户原话：{question}\n"
         f"工具结果：\n{memory_text}\n\n"
         "请自然回复用户。"
-        "如果用户明确要求‘记住’，可以简短说‘好，我记住了’。"
+        "只有工具结果含已保存的事实时才能确认记住；结果为空时如实说明未保存或仍在整理。"
         "如果用户只是自然分享个人信息、兴趣、状态或目标，不要说已经保存，不要提‘长期记忆’，也不要问要不要保存。"
         "不要机械复述模板；围绕用户这句话正常接话。"
     )
@@ -154,6 +154,14 @@ async def auto_save_memory_from_question(
     """Run the independent model-based MemoryWriter after the primary action."""
     if not (question or "").strip():
         return []
+    from app.memory.control import uses_hindsight
+    if await uses_hindsight(user_id):
+        from app.memory.gateway import MemoryGateway
+        try:
+            await MemoryGateway().submit(user_id, question)
+        except Exception:
+            logger.warning("Implicit memory queue submission failed")
+        return []
     try:
         _, memories = await save_memory_from_question(user_id, question, history)
         return memories
@@ -169,6 +177,15 @@ async def save_memory_from_question(
     question: str,
     history: list[AgentChatMessageIn] | None = None,
 ) -> tuple[str, list[dict]]:
+    from app.memory.control import uses_hindsight
+    if await uses_hindsight(user_id):
+        from app.memory.gateway import MemoryGateway, public_record
+        gateway = MemoryGateway()
+        source_id = await gateway.submit(user_id, question, metadata={"source": "user_explicit"})
+        if source_id is None:
+            return "没有保存记忆：功能已关闭或内容不适合长期保存。", []
+        records = await gateway.wait(user_id, source_id)
+        return (f"已保存 {len(records)} 条记忆。" if records else "整理尚未完成或没有形成长期事实，请到记忆管理查看处理状态。"), [public_record(r) for r in records]
     candidates = await extract_memory_candidates_smart(question, "global", chat_history_for_memory(history))
     storable = [
         (candidate, memory_candidate_status(candidate))
@@ -392,6 +409,9 @@ async def delete_memories_from_question(
     canonical_keys: list[str] | None = None,
     memory_types: list[str] | None = None,
 ) -> tuple[str, list[dict]]:
+    from app.memory.control import uses_hindsight
+    if await uses_hindsight(user_id):
+        return "请在设置的记忆管理中选择具体记录，查看关联影响后删除；也可以先停用。", []
     if canonical_keys is not None or memory_types is not None:
         keys = {
             str(item).strip()
@@ -446,6 +466,11 @@ async def disable_memory_for_user(user_id: str) -> tuple[str, list[dict]]:
 
 
 async def list_memories_for_agent(user_id: str) -> tuple[str, list[dict]]:
+    from app.memory.control import uses_hindsight
+    if await uses_hindsight(user_id):
+        from app.memory.gateway import MemoryGateway, public_record
+        records = await MemoryGateway().read(user_id, include_archived=False, limit=50)
+        return _format_memory_list(records), [public_record(r) for r in records]
     async with AsyncSessionLocal() as db:
         memories = await find_memories(db, user_id, include_deleted=False, limit=50)
         active = filter_eligible_memories(memories, limit=8)
@@ -458,6 +483,11 @@ async def query_memories_for_agent(
     history: list[AgentChatMessageIn] | None = None,
     read_plan: MemoryReadPlan | None = None,
 ) -> tuple[str, list[dict]]:
+    from app.memory.control import uses_hindsight
+    if await uses_hindsight(user_id):
+        from app.memory.gateway import MemoryGateway, public_record
+        records = await MemoryGateway().read(user_id, query=(read_plan.query or question) if read_plan else question, limit=8)
+        return _format_memory_list(records), [public_record(r) for r in records]
     # The public Agent path passes the single validated TurnPlan projection.
     # This broad plan is only for trusted internal/direct callers.
     read_plan = read_plan or broad_memory_read_plan(
@@ -579,6 +609,12 @@ async def save_episode_memory(
 
 
 async def history_recall_context(user_id: str, question: str) -> tuple[str, list[dict]]:
+    from app.memory.control import uses_hindsight
+    if await uses_hindsight(user_id):
+        from app.memory.gateway import MemoryGateway, public_record
+        from app.memory.presentation import format_context
+        records = await MemoryGateway().read(user_id, query=question, limit=8)
+        return format_context(records), [public_record(r) for r in records]
     async with AsyncSessionLocal() as db:
         memories = await find_memories(
             db,

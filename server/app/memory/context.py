@@ -25,6 +25,15 @@ class MemoryContextService:
     ) -> str:
         if not requested:
             return ""
+        from app.memory.control import uses_hindsight
+        if await uses_hindsight(user_id):
+            from app.memory.gateway import MemoryGateway
+            from app.memory.engine import MemoryUnavailable
+            from app.memory.presentation import format_context
+            try:
+                return format_context(await MemoryGateway().read(user_id, query=query, scopes=scopes, limit=6))
+            except MemoryUnavailable:
+                return ""
         async with AsyncSessionLocal() as session:
             if not await is_user_memory_enabled(session, user_id):
                 return ""
