@@ -54,7 +54,6 @@ from app.memory.agent import (
     memory_fallback_answer as _memory_fallback_answer,
     memory_tool_context as _memory_tool_context,
     query_memories_for_agent as _query_memories_for_agent,
-    save_episode_memory as _save_episode_memory,
     save_memory_from_question as _save_memory_from_question,
     delete_memories_from_question as _delete_memories_from_question,
     disable_memory_for_user as _disable_memory_for_user,
@@ -341,20 +340,10 @@ async def _resolve_checkpoint_by_id(
             if payload.get("noteId"):
                 working_extra["relatedNoteId"] = payload.get("noteId")
             payload = _patch_working_memory_status(payload, status, working_extra)
-            if status in {"resolved", "cancelled", "failed"}:
-                event_type, summary, episode_tags_list = _episode_summary_from_checkpoint(
-                    checkpoint.checkpoint_type,
-                    payload,
-                    status,
-                )
-                await _save_episode_memory(
-                    db,
-                    user_id=user_id,
-                    event_type=event_type,
-                    summary=summary,
-                    source="work_memory",
-                    tags=episode_tags_list,
-                )
+            # Task outcomes belong to the checkpoint/run history. They are not
+            # user facts and must not create long-term memories or index jobs.
+            # Meaningful experiences can still enter through the explicit or
+            # conversational memory flow, independently of task completion.
         checkpoint.payload = payload
         checkpoint.status = status
         checkpoint.resolved_at = datetime.utcnow() if status != "waiting_user_confirm" else None
