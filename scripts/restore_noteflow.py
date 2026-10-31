@@ -55,11 +55,20 @@ def main() -> int:
     parser.add_argument("--container", default="noteflow-postgres")
     parser.add_argument("--user", default="noteflow")
     parser.add_argument("--create", action="store_true")
+    parser.add_argument("--hindsight-container", default=None)
+    parser.add_argument("--hindsight-target-database", default=None)
     args = parser.parse_args()
+    manifest = verify_backup(args.backup.resolve())
+    if manifest.get('memoryEngine') == 'hindsight' and not (args.hindsight_container and args.hindsight_target_database):
+        raise ValueError('This backup requires restoring its paired Hindsight database and NoteFlow controls together.')
     restore_database(
         args.backup.resolve(), container=args.container, target_database=args.target_database,
         user=args.user, create=args.create,
     )
+    if args.hindsight_container and args.hindsight_target_database:
+        from hindsight_db import hindsight_db
+        hindsight_db('restore', container=args.hindsight_container, target=args.hindsight_target_database,
+            payload=(args.backup / 'hindsight-postgres.dump').read_bytes())
     print(json.dumps({"restored": True, "targetDatabase": args.target_database}, ensure_ascii=False))
     return 0
 

@@ -31,8 +31,12 @@ def _run(command: list[str], *, binary: bool = False, input_data=None):
     )
 
 
-def create_backup(output_dir: Path, *, container: str, database: str, user: str) -> dict:
+def create_backup(output_dir: Path, *, container: str, database: str, user: str, hindsight_container: str | None = "auto") -> dict:
+    if hindsight_container == "auto":
+        probe = subprocess.run(["docker", "container", "inspect", "noteflow-hindsight"], capture_output=True)
+        hindsight_container = "noteflow-hindsight" if probe.returncode == 0 else None
     output_dir.mkdir(parents=True, exist_ok=False)
+    output_dir.chmod(0o700)
     dump_path = output_dir / "noteflow-postgres.dump"
     dump = _run(
         ["docker", "exec", container, "pg_dump", "-U", user, "-d", database, "-Fc", "--no-owner"],
@@ -64,6 +68,12 @@ def create_backup(output_dir: Path, *, container: str, database: str, user: str)
     config_path.write_text(json.dumps(config_schema, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     files = [dump_path, attachment_path, config_path]
+    if hindsight_container:
+        from hindsight_db import hindsight_db
+        memory_dump = output_dir / "hindsight-postgres.dump"
+        memory_dump.write_bytes(hindsight_db('backup', container=hindsight_container))
+        memory_dump.chmod(0o600)
+        files.append(memory_dump)
     manifest = {
         "version": 1,
         "createdAt": datetime.now(timezone.utc).isoformat(),
@@ -73,6 +83,8 @@ def create_backup(output_dir: Path, *, container: str, database: str, user: str)
             {"name": path.name, "bytes": path.stat().st_size, "sha256": _sha256(path)} for path in files
         ],
         "containsRuntimeSecrets": False,
+        "memoryEngine": "hindsight" if hindsight_container else "legacy",
+        "consistency": "Run while NoteFlow API/workers are stopped; restore both databases from the same backup.",
     }
     (output_dir / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
@@ -86,8 +98,10 @@ def main() -> int:
     parser.add_argument("--container", default="noteflow-postgres")
     parser.add_argument("--database", default="noteflow")
     parser.add_argument("--user", default="noteflow")
+    parser.add_argument("--hindsight-container", default="auto")
     args = parser.parse_args()
-    manifest = create_backup(args.output.resolve(), container=args.container, database=args.database, user=args.user)
+    manifest = create_backup(args.output.resolve(), container=args.container, database=args.database, user=args.user,
+                             hindsight_container=args.hindsight_container)
     print(json.dumps(manifest, ensure_ascii=False))
     return 0
 
