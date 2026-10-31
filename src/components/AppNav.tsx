@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import "./menu-ui.css";
+import MemoryConsole, { MemorySourceView } from './MemoryConsole';
+import { memoryConsole } from '../services/memoryConsole';
 import {
   Check,
   ChevronRight,
@@ -424,7 +426,11 @@ export default function AccountMenu({
   const removeMemory = async (memory: UserMemoryRecord) => {
     setMemoryError("");
     try {
-      await deleteMemory(memory.id);
+      if (memory.provider === 'hindsight') {
+        const impact = await memoryConsole('/impact/' + encodeURIComponent(memory.id));
+        if (!window.confirm(`删除此来源及关联的 ${impact.memories.length} 条记忆？\n\n${impact.memories.map((m: UserMemoryRecord) => m.content).join('\n')}\n\n原聊天或笔记不会因此删除。`)) return;
+      }
+      await deleteMemory(memory.id, memory.provider === 'hindsight');
       setMemories((current) => current.filter((item) => item.id !== memory.id));
       if (editingMemoryId === memory.id) {
         setEditingMemoryId(null);
@@ -543,6 +549,7 @@ export default function AccountMenu({
                 <button type="button" className="nf-row" aria-expanded={memoryOpen} onClick={() => setMemoryOpen((open) => !open)}><span>记忆管理</span><span className="nf-row-end">{pendingMemoryCount ? activeMemoryCount + " 条 · " + pendingMemoryCount + " 待确认" : activeMemoryCount + " 条"}<ChevronDown size={14} strokeWidth={1.6} /></span></button>
                 {memoryError && <p className="nf-notice nf-error" role="alert">{memoryError}</p>}
                 {memoryOpen && <div className="nf-detail">
+                  <MemoryConsole onChange={() => void reloadMemories()} />
                   <div className="nf-list-heading"><span>记忆列表</span><button type="button" className="nf-button" onClick={() => void reloadMemories()}>刷新</button></div>
                   {memoryLoading ? <p className="nf-notice" role="status">正在加载记忆…</p> : memories.filter((memory) => memory.status !== "deleted").length === 0 ? <p className="nf-notice">暂无长期记忆</p> : groupMemories(memories).map(([label, items]) => <div key={label}>
                     <p className="nf-notice">{label}</p>
@@ -550,8 +557,9 @@ export default function AccountMenu({
                       const isEditing = editingMemoryId === memory.id;
                       const archived = memory.status === "archived", pending = memory.status === "pending";
                       return <div key={memory.id} className="nf-record">
-                        <div className="nf-record-meta"><span>{memoryLayerLabel(memory.layer)} · 重要度 {memory.importance}</span><span>{pending ? "待确认" : archived ? "已停用" : "启用中"}</span></div>
+                        <div className="nf-record-meta"><span>{memory.provider === 'hindsight' ? '用户事实 · 可追溯来源' : `${memoryLayerLabel(memory.layer)} · 重要度 ${memory.importance}`}</span><span>{pending ? "待确认" : archived ? "已停用" : "启用中"}</span></div>
                         {isEditing ? <textarea value={editingContent} aria-label="记忆内容" onChange={(event) => setEditingContent(event.target.value)} className="nf-input" /> : <p className="nf-record-title">{memory.content}</p>}
+                        {memory.sourceRef && <MemorySourceView sourceId={memory.sourceRef} />}
                         <div className="nf-record-actions">{isEditing ? <>
                           <button type="button" className="nf-icon-button" onClick={() => void saveEditMemory(memory)} aria-label="保存记忆"><Check size={16} strokeWidth={1.6} /></button>
                           <button type="button" className="nf-icon-button" onClick={() => { setEditingMemoryId(null); setEditingContent(""); }} aria-label="取消编辑"><X size={16} strokeWidth={1.6} /></button>

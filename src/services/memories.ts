@@ -17,6 +17,8 @@ export type MemoryType =
 export type MemoryStatus = "active" | "pending" | "archived" | "deleted" | string;
 
 export interface UserMemoryRecord {
+  provider?: string;
+  sourceRef?: string;
   id: string;
   memoryType: MemoryType;
   content: string;
@@ -228,8 +230,8 @@ export async function updateMemory(
   return data.memory;
 }
 
-export async function deleteMemory(memoryId: string): Promise<UserMemoryRecord> {
-  const response = await apiFetch(`/api/memories/${encodeURIComponent(memoryId)}`, {
+export async function deleteMemory(memoryId: string, confirmedSource = false): Promise<UserMemoryRecord> {
+  const response = await apiFetch(`/api/memories/${encodeURIComponent(memoryId)}${confirmedSource ? '?confirmedSource=true' : ''}`, {
     method: "DELETE",
   });
   if (!response.ok) throw new Error(await readApiError(response));

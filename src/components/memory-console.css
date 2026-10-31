@@ -1,0 +1,17 @@
+.nf-memory-console{padding:12px 0;border-bottom:1px solid var(--nf-line,#e8e7e4);margin-bottom:16px}
+.nf-memory-console details,.nf-memory-source{margin:14px 0}
+.nf-memory-console summary,.nf-memory-source summary{cursor:pointer;font-size:14px;color:var(--nf-muted,#777);padding:6px 0}
+.nf-memory-console summary span{font-size:12px;margin-left:8px}
+.nf-memory-console label{display:block;margin:12px 0;font-size:13px}
+.nf-memory-console textarea{display:block;width:100%;min-height:100px;margin-top:8px;resize:vertical}
+.nf-memory-console select{display:block;margin-top:6px;max-width:100%;padding:6px;background:transparent;color:inherit;border:1px solid var(--nf-line,#ddd);border-radius:6px}
+.nf-memory-preview{padding:10px 14px;border-radius:8px;background:var(--nf-soft,#f5f5f3);margin:10px 0;font-size:14px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}
+.nf-memory-graph{width:100%;max-height:350px;margin:12px 0;overflow:visible}
+.nf-memory-graph line{stroke:#c7d2d9;stroke-width:1.2}
+.nf-memory-graph circle{fill:#427b96;stroke:var(--nf-surface,#fff);stroke-width:2}
+.nf-memory-graph text{font-size:10px;fill:var(--nf-muted,#777)}
+.nf-memory-graph g{cursor:pointer;outline-offset:4px}
+.nf-memory-console .nf-memory-import{display:flex;align-items:flex-start;gap:9px;padding:8px 0;font-size:14px;line-height:1.6}
+.nf-memory-import input{margin-top:5px;flex:none}
+.nf-memory-import small{display:block;color:var(--nf-muted,#888);font-size:12px}
+.nf-memory-source{font-size:13px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}
