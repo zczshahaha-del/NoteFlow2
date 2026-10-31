@@ -1148,8 +1148,8 @@ async def chat(
                         "长期记忆工具已完成，正在组织回复。",
                     )
                 )
-                from app.memory.control import uses_hindsight
-                if action != "list_memories" and await uses_hindsight(user.id):
+                from app.memory.control import uses_engine
+                if action != "list_memories" and await uses_engine(user.id):
                     # Management acknowledgements use actual operation results;
                     # queued/empty saves cannot be rewritten into success by an LLM.
                     yield _sse_format(_choice_delta(tool_summary))

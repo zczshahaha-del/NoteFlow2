@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 from sqlalchemy import text
-from app.config import cfg
 from app.services.user_settings import get_or_create_user_settings
 
 DEFAULT_MISSION = (
@@ -27,11 +26,8 @@ def save_control(settings, value):
     settings.preferences = {**(settings.preferences or {}), "memoryControl": value}
 
 
-async def engine_name(session, user_id):
-    # Engine selection belongs to deployment configuration, not user settings.
-    # Ignore the old per-account opt-in marker, including explicit legacy values.
-    return cfg.MEMORY_ENGINE
-
-
-async def uses_hindsight(user_id):
-    return cfg.MEMORY_ENGINE == "hindsight"
+async def uses_engine(user_id):
+    # Deployment selects a formal-fact engine or the legacy local-fact/index
+    # backend. Old per-account opt-in values never change this boundary.
+    from app.providers.memory_registry import uses_legacy_index
+    return not uses_legacy_index()

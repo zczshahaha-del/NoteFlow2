@@ -8,13 +8,13 @@ import { join } from 'node:path';
 const { chromium } = createRequire(import.meta.url)(process.env.NOTEFLOW_PLAYWRIGHT_MODULE || 'playwright');
 const component = fileURLToPath(new URL('../src/components/MemoryConsole.tsx', import.meta.url));
 const entry = `import React from 'react';import{createRoot}from'react-dom/client';import MemoryConsole from ${JSON.stringify(component)};
-let version=1,mission='只记住用户长期学习偏好。';window.requests=[];window.changed=0;
+let version=1,mission='只记住用户长期学习偏好。';window.omitCapabilities=false;window.requests=[];window.changed=0;
 window.fetch=async(input,init={})=>{const p=String(input).replace('/api/memory-console','');window.requests.push({path:p,method:init.method||'GET'});let body={};
-if(!p)body={engine:'hindsight',mission,ruleVersion:version,history:[{version:0,mission:'旧规则'}],jobs:[{id:'j',status:'succeeded'}]};
+if(!p)body={engine:'reference',capabilities:window.omitCapabilities?undefined:{rules:true,graph:true,sources:true,importLegacy:true},mission,ruleVersion:version,history:[{version:0,mission:'旧规则'}],jobs:[{id:'j',status:'succeeded'}]};
 else if(p==='/preview')body={facts:['用户希望通俗解释 Go。']};
 else if(p==='/rules'){version++;mission=JSON.parse(init.body).mission;body={version};}
-else if(p==='/graph')body={nodes:[{id:'m1',text:'用户学习 Go',document_id:'s1'},{id:'m2',text:'用户喜欢通俗解释',document_id:'s1'}],edges:[{source:'m1',target:'m2',linkType:'semantic'}]};
-else if(p==='/source/s1')body={ruleVersion:1,createdAt:'2026-10-31',document:{original_text:'我刚开始学习 Go，希望通俗解释。'}};
+else if(p==='/graph')body={nodes:[{id:'m1',content:'用户学习 Go',sourceRef:'s1'},{id:'m2',content:'用户喜欢通俗解释',sourceRef:'s1'}],edges:[{source:'m1',target:'m2',relation:'语义关联'}]};
+else if(p==='/source/s1')body={ruleVersion:1,createdAt:'2026-10-31',document:{content:'我刚开始学习 Go，希望通俗解释。'}};
 else if(p==='/legacy')body={memories:[{id:'old',content:'用户喜欢例子',suggested:true,status:'active'}]};
 else if(p==='/import')body={submitted:1};
 return new Response(JSON.stringify(body),{headers:{'Content-Type':'application/json'}});};
@@ -53,7 +53,12 @@ try{
   assert.deepEqual(errors,[]);
   assert(!(await page.evaluate(()=>window.requests)).some(r=>r.path==='/activate'));
   await page.screenshot({path:join(output,`${width}.png`),fullPage:true});
+  await page.evaluate(()=>{window.omitCapabilities=true;});
+  await page.getByRole('button',{name:'刷新状态',exact:true}).click();
+  await page.getByText('记忆规则与来源',{exact:true}).waitFor();
+  await page.waitForFunction(()=>!document.querySelector('[aria-label="记忆抽取规则"]'));
+  assert.deepEqual(errors,[], 'Missing capabilities must not crash mixed-version clients');
   await page.close();
  }
- console.log(JSON.stringify({ok:true,widths:[736,320],rules:true,preview:true,history:true,graphKeyboard:true,provenance:true,import:true,syntheticOnly:true,output}));
+ console.log(JSON.stringify({ok:true,widths:[736,320],rules:true,preview:true,history:true,graphKeyboard:true,provenance:true,import:true,providerIndependent:true,missingCapabilitiesSafe:true,syntheticOnly:true,output}));
 }finally{await browser.close();}

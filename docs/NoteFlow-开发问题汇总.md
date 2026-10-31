@@ -1520,6 +1520,10 @@ UI-06 / UI-17 仍部分解决，UI-20 仍未解决；本稿审美评审明确未
 
 2026-10-31 架构成熟度复核（沿用 AI-18 的模块解耦条目，不新增 ID）：静态核对确认新引擎协议的 list / recall / get 仍返回开放 dict，`memory/gateway.py` 直接转换 Hindsight 的 text / document_id / fact_type / invalidated 状态，并在执行中判断具体引擎名；工厂固定构造 Hindsight。已有替身注入测试和当前引擎实测不能等同于生产引擎替换验收。根因是适配器与本项目领域结果的归一化尚未完全收拢。处理方向为将厂商字段 / 状态转换放回适配器，治理层消费统一事实与生命周期语义；需要用第二种实现验证契约并单独演练迁移，当前未修改代码、未实跑替换，状态仍部分解决。账号级人工修订后全面待确认属于已验收但偏保守的现有取舍，尚未证明是最佳产品策略。整体判断与外部依据见[架构取舍与成熟度复核](architecture/architecture-decisions-review-2026-10-31.md)；关联主题 `docs: 复核记忆架构取舍与未完成边界`。
 
+2026-10-31 字段隔离落地（AI-18 子项延续）：引擎协议改为 MemoryFact / MemoryChanges / MemoryDocument / MemoryGraph，列表过滤显式化；Hindsight 适配器负责 text、document_id、fact_type、valid / invalidated、图谱包装和来源字段转换。Gateway 不再识别厂商名称 / 原始字段，配置注册集中到 providers；聊天 / 生成 / 编辑 / 设置通过统一入口。旧 Mem0 索引返回 MemoryIndexHit / MemoryIndexWrite，SDK metadata 和事件转换也收回适配器，兼容数据字段保留。界面按 capabilities / sourceRef 显示功能和来源删除确认，不以 provider 名称决定行为；未知引擎状态不进入回答。生命周期、账号级人工修订保护和旧数据保留规则未改。
+
+本轮验证：后端 270 项结束（262 通过、8 按原门槛跳过）；内存参考引擎与真实治理 / 应用入口覆盖隔离、修订 / 待确认、停用恢复、失败删除屏障、旧队列、图谱来源；真实 Hindsight / PostgreSQL / ASGI 23 个场景通过，含隔离恢复。build、前端 47 组 / 10 项 store、记忆开关 8 项和 736 / 320px 隔离浏览器通过。首次组件 fixture 无 capabilities 暴露解引用异常，已补缺失值保护与新版 fixture，并复验旧能力响应不崩溃。本机开发 API 8082 已加载新版，5173 代理及真实 HTTP / worker / 归一化来源图谱通过，合成账号 / 事实与演练库清理。该字段隔离子项已运行验证，但整个 AI-18 仍部分解决：生产第二引擎、历史数据迁移、长期语义质量及生产验收仍待完成，不把内存参考实现当成 Mem0 可直接替换。详见[实施与生命周期契约](architecture/memory-engine-boundary-2026-10-31.md)，关联提交主题 `refactor: 统一记忆引擎契约并隔离厂商字段`。不增加同义 ID，累计 144 不变。
+
 ### AI-19：可选记忆读取失败会终止普通聊天（部分解决）
 
 现象与复现：2026-10-31 对正式只读图注入记忆读取 TimeoutError，普通 chat 且计划包含 user_memory 时返回 status=failed、error_code=memory_read_failed，回答函数调用次数为 0。此为隔离故障复现，未断言用户曾在真实聊天遭遇同一异常。

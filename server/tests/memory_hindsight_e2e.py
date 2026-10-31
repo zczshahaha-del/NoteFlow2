@@ -81,7 +81,7 @@ async def main():
                 listing = await call(client, "GET", "/memories")
                 assert listing["memories"] and listing["memories"][0]["provider"] == "hindsight"
                 source = await call(client, "GET", "/memory-console/source/" + sid)
-                assert "Go" in source["document"]["original_text"]
+                assert "Go" in source["document"]["content"]
                 cases += ["settings use engine facts", "source provenance"]
                 active = owners[1]
                 assert (await call(client, "GET", "/memory-console"))['engine'] == 'hindsight'

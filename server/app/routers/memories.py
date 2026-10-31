@@ -137,8 +137,8 @@ async def extract_memory(
     payload: MemoryExtractPayload,
     user: CurrentUser = Depends(memory_user),
 ):
-    from app.memory.control import uses_hindsight
-    if await uses_hindsight(user.id):
+    from app.memory.control import uses_engine
+    if await uses_engine(user.id):
         from app.memory.control import DEFAULT_MISSION, control
         from app.database import AsyncSessionLocal
         from app.memory.gateway import MemoryGateway
@@ -197,8 +197,8 @@ async def delete_memory(
     confirmedSource: bool = Query(False),
     user: CurrentUser = Depends(memory_user),
 ):
-    from app.memory.control import uses_hindsight
-    if await uses_hindsight(user.id) and not confirmedSource:
+    from app.memory.control import uses_engine
+    if await uses_engine(user.id) and not confirmedSource:
         raise HTTPException(status_code=409, detail="请先查看删除影响并确认删除整个来源。")
     try:
         memory = await MemoryService().delete(user.id, memory_id)
@@ -219,8 +219,7 @@ async def get_memory_context(
 
 @router.get("/memories/provider")
 async def get_memory_provider(user: CurrentUser = Depends(memory_user)):
-    from app.memory.control import uses_hindsight
-    provider = "hindsight" if await uses_hindsight(user.id) else "mem0"
+    provider = cfg.MEMORY_ENGINE
     return {
         "provider": provider,
         "configuredProvider": provider,

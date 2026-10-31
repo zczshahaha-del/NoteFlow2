@@ -4,9 +4,13 @@ import asyncio
 import unittest
 from unittest.mock import patch
 
+from app.config import cfg
 from app.memory.policy import classify_memory_content, filter_eligible_memories
 from app.memory.runtime import resolve_memory_read
 from app.providers.mem0 import Mem0Provider
+from app.providers.contracts import MemoryIndexHit
+from app.models.db import IntegrationOutbox, UserMemory
+from app.services.outbox import dispatch_outbox
 from app.providers.resilience import AsyncCircuitBreaker, CircuitOpenError
 from app.memory.planning import memory_read_plan_from_turn_plan
 from app.services.turn_planner import IntentParameters, PrimaryIntent, TurnPlan
@@ -56,12 +60,7 @@ class MemoryRecord:
 class UnrelatedMem0Provider:
     async def search(self, **kwargs):
         del kwargs
-        return [
-            {
-                "id": "mem0-unrelated",
-                "metadata": {"noteflow_memory_id": "nf-unrelated"},
-            }
-        ]
+        return [MemoryIndexHit(memory_id="nf-unrelated", external_id="mem0-unrelated")]
 
 
 class RecordingSession:
@@ -79,8 +78,9 @@ class Mem0IntegrationTest(unittest.IsolatedAsyncioTestCase):
         added = await provider.add(user_id="u-1", content="用户偏好：简洁", metadata={"noteflow_memory_id": "nf-1"})
         rows = await provider.search(user_id="u-1", query="怎么回答", limit=6)
         deleted = await provider.delete(user_id="u-1", memory_id="mem0-1")
-        self.assertEqual(added["id"], "mem0-1")
-        self.assertEqual(rows[0]["metadata"]["noteflow_memory_id"], "nf-1")
+        self.assertEqual(added.external_id, "mem0-1")
+        self.assertEqual(added.operation, "created")
+        self.assertEqual(rows[0].memory_id, "nf-1")
         self.assertTrue(deleted)
         self.assertFalse(client.calls[0][2]["infer"])
         self.assertEqual(client.calls[1][2]["filters"], {"user_id": "u-1"})
@@ -100,6 +100,26 @@ class Mem0IntegrationTest(unittest.IsolatedAsyncioTestCase):
             client.calls[0][2]["filters"],
             {"user_id": "u-1", "noteflow_memory_id": "nf-name"},
         )
+
+    async def test_legacy_outbox_consumes_normalized_write_result(self):
+        memory = UserMemory(id='nf-1', user_id='u-1', memory_type='preference',
+                            content='用户偏好简洁', status='active', scope='global',
+                            source='user_explicit', canonical_key='preference.general',
+                            provider_metadata={}, tags=[])
+
+        class ProjectionSession(RecordingSession):
+            async def scalar(self, statement):
+                return memory
+
+        provider = Mem0Provider(client_factory=FakeMem0)
+        session = ProjectionSession()
+        item = IntegrationOutbox(topic='memory.sync.requested', user_id='u-1', aggregate_id='nf-1', payload={})
+        with patch('app.services.outbox.legacy_memory_index', return_value=provider), patch.object(cfg, 'MEMORY_ENGINE', 'mem0'):
+            await dispatch_outbox(session, item)
+        self.assertEqual(memory.external_id, 'mem0-1')
+        self.assertEqual(memory.external_provider, 'mem0')
+        self.assertEqual(memory.provider_metadata['indexEvent'], 'created')
+        self.assertEqual(len(session.added), 1)
 
     async def test_circuit_opens_and_recovers_only_after_cooldown(self):
         breaker = AsyncCircuitBreaker(2, 60, 60)
@@ -124,7 +144,7 @@ class Mem0IntegrationTest(unittest.IsolatedAsyncioTestCase):
             MemoryRecord(memory_id="nf-height", content="用户身高：180cm", canonical_key="profile.height"),
         ]
 
-        with patch("app.memory.runtime.get_mem0_provider", return_value=UnrelatedMem0Provider()):
+        with patch("app.memory.runtime.legacy_memory_index", return_value=UnrelatedMem0Provider()):
             result = await resolve_memory_read(
                 session,
                 user_id="u-1",

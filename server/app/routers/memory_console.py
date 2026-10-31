@@ -8,8 +8,8 @@ from app.database import AsyncSessionLocal
 from app.deps import CurrentUser
 from app.deps import redis_rate_limit
 from app.config import cfg
-from app.memory.control import DEFAULT_MISSION, control, lock_owner, save_control, uses_hindsight
-from app.memory.engine import configured_engine
+from app.memory.control import DEFAULT_MISSION, control, lock_owner, save_control, uses_engine
+from app.providers.memory_registry import configured_engine
 from app.memory.gateway import MemoryGateway, public_record
 from app.models.db import MemorySource, IntegrationOutbox, UserMemory
 
@@ -28,7 +28,7 @@ class PreviewInput(BaseModel):
 
 
 async def require_engine(user_id):
-    if not await uses_hindsight(user_id):
+    if not await uses_engine(user_id):
         raise HTTPException(503, "记忆规则服务暂不可用，请稍后重试。")
 
 
@@ -43,7 +43,10 @@ async def overview(user: CurrentUser = Depends(console_user)):
         sources = {s.id: s.status for s in (await session.scalars(select(MemorySource).where(
             MemorySource.user_id == user.id, MemorySource.id.in_([j.aggregate_id for j in jobs])))).all()}
         await session.commit()
-        return {"engine": cfg.MEMORY_ENGINE, "mission": state.get("mission", DEFAULT_MISSION),
+        managed = await uses_engine(user.id)
+        return {"engine": cfg.MEMORY_ENGINE,
+            "capabilities": {"rules": managed, "graph": managed, "sources": managed, "importLegacy": managed},
+            "mission": state.get("mission", DEFAULT_MISSION),
             "ruleVersion": state.get("ruleVersion", 1), "history": state.get("ruleHistory", []),
             "reviewNewFacts": state.get("reviewNewFacts", False),
             "jobs": [{"id": j.id, "sourceId": j.aggregate_id, "status": {"memory_pending": "pending", "memory_processing": "processing"}.get(j.status, j.status),
@@ -122,7 +125,8 @@ async def source(source_id: str, user: CurrentUser = Depends(console_user)):
             raise HTTPException(404, "来源不存在。")
         document = await configured_engine().document(user.id, source.id)
         return {"id": source.id, "status": source.status, "ruleVersion": source.rule_version,
-                "createdAt": source.created_at.isoformat(), "document": document}
+                "createdAt": source.created_at.isoformat(),
+                "document": {"id": document.id, "content": document.content} if document else None}
 
 
 @router.get("/legacy")

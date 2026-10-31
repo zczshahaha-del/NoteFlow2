@@ -426,11 +426,11 @@ export default function AccountMenu({
   const removeMemory = async (memory: UserMemoryRecord) => {
     setMemoryError("");
     try {
-      if (memory.provider === 'hindsight') {
+      if (Boolean(memory.sourceRef)) {
         const impact = await memoryConsole('/impact/' + encodeURIComponent(memory.id));
         if (!window.confirm(`删除此来源及关联的 ${impact.memories.length} 条记忆？\n\n${impact.memories.map((m: UserMemoryRecord) => m.content).join('\n')}\n\n原聊天或笔记不会因此删除。`)) return;
       }
-      await deleteMemory(memory.id, memory.provider === 'hindsight');
+      await deleteMemory(memory.id, Boolean(memory.sourceRef));
       setMemories((current) => current.filter((item) => item.id !== memory.id));
       if (editingMemoryId === memory.id) {
         setEditingMemoryId(null);
@@ -557,7 +557,7 @@ export default function AccountMenu({
                       const isEditing = editingMemoryId === memory.id;
                       const archived = memory.status === "archived", pending = memory.status === "pending";
                       return <div key={memory.id} className="nf-record">
-                        <div className="nf-record-meta"><span>{memory.provider === 'hindsight' ? '用户事实 · 可追溯来源' : `${memoryLayerLabel(memory.layer)} · 重要度 ${memory.importance}`}</span><span>{pending ? "待确认" : archived ? "已停用" : "启用中"}</span></div>
+                        <div className="nf-record-meta"><span>{Boolean(memory.sourceRef) ? '用户事实 · 可追溯来源' : `${memoryLayerLabel(memory.layer)} · 重要度 ${memory.importance}`}</span><span>{pending ? "待确认" : archived ? "已停用" : "启用中"}</span></div>
                         {isEditing ? <textarea value={editingContent} aria-label="记忆内容" onChange={(event) => setEditingContent(event.target.value)} className="nf-input" /> : <p className="nf-record-title">{memory.content}</p>}
                         {memory.sourceRef && <MemorySourceView sourceId={memory.sourceRef} />}
                         <div className="nf-record-actions">{isEditing ? <>

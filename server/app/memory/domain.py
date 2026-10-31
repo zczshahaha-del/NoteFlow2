@@ -715,8 +715,8 @@ async def build_memory_context(
     memory_types: Iterable[str] | None = None,
     limit: int = 6,
 ) -> str:
-    from app.memory.control import engine_name
-    if await engine_name(session, user_id) == "hindsight":
+    from app.memory.control import uses_engine
+    if await uses_engine(user_id):
         from app.memory.context import MemoryContextService
         return await MemoryContextService().context(user_id=user_id, requested=True, query=query,
             scopes=list(scopes or []), memory_types=list(memory_types or []))

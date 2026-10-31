@@ -6,6 +6,7 @@ from datetime import datetime
 
 from app.database import AsyncSessionLocal
 from app.models.db import UserMemory
+from app.memory.engine import MemoryRecord
 from app.repositories.memories import MemoryRepository
 from app.memory.domain import (
     add_memory_event,
@@ -38,9 +39,9 @@ class MemoryService:
         }
         return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:32]
 
-    async def list(self, user_id: str, *, memory_types: list[str], include_deleted: bool) -> list[UserMemory]:
-        from app.memory.control import uses_hindsight
-        if await uses_hindsight(user_id):
+    async def list(self, user_id: str, *, memory_types: list[str], include_deleted: bool) -> list[UserMemory | MemoryRecord]:
+        from app.memory.control import uses_engine
+        if await uses_engine(user_id):
             from app.memory.gateway import MemoryGateway
             return await MemoryGateway().read(user_id, memory_types=memory_types)
         async with AsyncSessionLocal() as session:
@@ -60,9 +61,9 @@ class MemoryService:
         memory_types: list[str],
         scopes: list[str],
         limit: int,
-    ) -> list[UserMemory]:
-        from app.memory.control import uses_hindsight
-        if await uses_hindsight(user_id):
+    ) -> list[UserMemory | MemoryRecord]:
+        from app.memory.control import uses_engine
+        if await uses_engine(user_id):
             from app.memory.gateway import MemoryGateway
             return await MemoryGateway().read(user_id, query=query, scopes=scopes, limit=limit)
         async with AsyncSessionLocal() as session:
@@ -79,9 +80,9 @@ class MemoryService:
             await session.commit()
             return active
 
-    async def create(self, user_id: str, payload) -> UserMemory:
-        from app.memory.control import uses_hindsight
-        if await uses_hindsight(user_id):
+    async def create(self, user_id: str, payload) -> UserMemory | MemoryRecord:
+        from app.memory.control import uses_engine
+        if await uses_engine(user_id):
             from app.memory.gateway import MemoryGateway
             gateway = MemoryGateway()
             source_id = await gateway.submit(user_id, payload.content, metadata={
@@ -125,9 +126,9 @@ class MemoryService:
             await session.refresh(memory)
             return memory
 
-    async def update(self, user_id: str, memory_id: str, payload) -> UserMemory:
-        from app.memory.control import uses_hindsight
-        if await uses_hindsight(user_id):
+    async def update(self, user_id: str, memory_id: str, payload) -> UserMemory | MemoryRecord:
+        from app.memory.control import uses_engine
+        if await uses_engine(user_id):
             from app.memory.gateway import MemoryGateway
             return await MemoryGateway().curated(user_id, memory_id, content=payload.content, status=payload.status)
         async with AsyncSessionLocal() as session:
@@ -185,9 +186,9 @@ class MemoryService:
             await session.refresh(memory)
             return memory
 
-    async def delete(self, user_id: str, memory_id: str) -> UserMemory:
-        from app.memory.control import uses_hindsight
-        if await uses_hindsight(user_id):
+    async def delete(self, user_id: str, memory_id: str) -> UserMemory | MemoryRecord:
+        from app.memory.control import uses_engine
+        if await uses_engine(user_id):
             from app.memory.gateway import MemoryGateway
             return await MemoryGateway().delete(user_id, memory_id)
         async with AsyncSessionLocal() as session:

@@ -6,6 +6,7 @@ import threading
 from typing import Any, Callable
 
 from app.config import cfg
+from app.providers.contracts import MemoryIndexHit, MemoryIndexWrite
 from app.providers.resilience import AsyncCircuitBreaker
 
 
@@ -101,7 +102,7 @@ class Mem0Provider:
         query: str,
         limit: int = 8,
         metadata_filters: dict[str, str] | None = None,
-    ) -> list[dict]:
+    ) -> list[MemoryIndexHit]:
         filters: dict[str, Any] = {"user_id": user_id}
         if metadata_filters:
             filters.update(
@@ -118,9 +119,14 @@ class Mem0Provider:
                 filters=filters,
             )
         )
-        return _results(result)
+        hits = []
+        for row in _results(result):
+            metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+            memory_id = str(metadata.get("noteflow_memory_id") or row.get("noteflow_memory_id") or row.get("noteflowMemoryId") or "")
+            hits.append(MemoryIndexHit(memory_id=memory_id, external_id=str(row.get("id") or "")))
+        return hits
 
-    async def add(self, *, user_id: str, content: str, metadata: dict | None = None) -> dict:
+    async def add(self, *, user_id: str, content: str, metadata: dict | None = None) -> MemoryIndexWrite:
         result = await self._call(
             lambda: self._get_client().add(
                 content,
@@ -132,7 +138,9 @@ class Mem0Provider:
         rows = _results(result)
         if not rows or not rows[0].get("id"):
             raise RuntimeError("Mem0 add returned no external id")
-        return rows[0]
+        return MemoryIndexWrite(external_id=str(rows[0]["id"]), operation={
+            "ADD": "created", "UPDATE": "updated", "DELETE": "deleted", "NONE": "unchanged",
+        }.get(str(rows[0].get("event") or "").upper(), "unknown"))
 
     async def delete(self, *, user_id: str, memory_id: str) -> bool:
         # Ownership is verified against NoteFlow's projection before this method is called.

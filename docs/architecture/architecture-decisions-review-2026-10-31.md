@@ -47,6 +47,8 @@ flowchart TB
 
 ## 公开设计依据
 
+同日后续实施：[记忆引擎字段隔离与生命周期契约](memory-engine-boundary-2026-10-31.md) 已将开放字典和厂商状态转换收进适配器，补齐另一种内存参考引擎及真实 Hindsight 验证。上述限制第 1 项所述源码是实施前的复核基线；当前已完成字段隔离子项，真实引擎替换、历史迁移与长期质量仍未验收。
+
 - [微软：外部系统的适配与隔离边界](https://learn.microsoft.com/en-us/azure/architecture/patterns/anti-corruption-layer)：转换层可位于应用内部，也可独立部署；讨论了引入成本和适用条件。此模式对应接口转换，不代表应把全部业务规则塞入适配器。
 - [Martin Fowler：Monolith First](https://martinfowler.com/bliki/MonolithFirst.html)：提出先保持简单、逐步认识模块边界的理由，也明确这种建议有适用条件，不能当作所有项目的定律。
 - [Hindsight：每用户一个记忆库的官方示例](https://hindsight.vectorize.io/cookbook/recipes/per-user-memory)：展示应用负责用户到 bank 的对应、召回及回答流程；它不能替代 NoteFlow 自己的权限、开关和用户删除承诺。

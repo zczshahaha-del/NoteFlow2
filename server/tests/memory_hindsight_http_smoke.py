@@ -37,6 +37,11 @@ async def main():
             assert context.status_code == 200 and '中文' in context.json()['context']
             overview = (await client.get('/api/memory-console')).json()
             assert any(j['status'] == 'succeeded' for j in overview['jobs'])
+            assert overview['capabilities']['rules'] and overview['capabilities']['graph']
+            source = (await client.get('/api/memory-console/source/' + memory['sourceRef'])).json()
+            assert '中文' in source['document']['content'] and 'original_text' not in source['document']
+            graph = (await client.get('/api/memory-console/graph')).json()
+            assert graph['nodes'] and all('content' in node and 'sourceRef' in node for node in graph['nodes'])
             if '--outage' in sys.argv:
                 subprocess.run(['docker','stop','noteflow-hindsight'],check=True,capture_output=True)
                 try:
@@ -56,7 +61,7 @@ async def main():
                             if (await client.get('http://127.0.0.1:8888/health')).status_code == 200: break
                         except httpx.HTTPError: pass
                         await asyncio.sleep(.5)
-            print(json.dumps({'ok':True,'realHttp':True,'sessionAuth':True,'backgroundWorker':True,'sharedContext':True,'realOutage':'--outage' in sys.argv}))
+            print(json.dumps({'ok':True,'realHttp':True,'sessionAuth':True,'backgroundWorker':True,'sharedContext':True,'normalizedSourceAndGraph':True,'capabilities':True,'realOutage':'--outage' in sys.argv}))
     finally:
         await HindsightProvider().delete_bank(user_id)
         async with AsyncSessionLocal() as session:

@@ -974,12 +974,12 @@ try {
   const apiCalls = [];
   let failSessions = false, failMemorySetting = false;
   const sessionFixture = (id, current) => ({ id, current, userAgent: "Chrome/130 Mac OS X", ipAddress: null, createdAt: "2026-01-01T00:00:00Z", lastSeenAt: "2026-01-01T00:00:00Z", expiresAt: "2027-01-01T00:00:00Z" });
-  const memoryFixture = { id: "memory-ui-test", memoryType: "preference", content: "偏好简洁排版", layer: "semantic", importance: 3, status: "pending" };
+  const memoryFixture = { provider: "reference", sourceRef: "source-ui-test", id: "memory-ui-test", memoryType: "preference", content: "偏好简洁排版", layer: "semantic", importance: 3, status: "pending" };
   const accountFetch = async (input, options = {}) => {
     const path = new URL(String(input), "http://127.0.0.1").pathname;
     const method = options.method ?? "GET";
     const payload = options.body ? JSON.parse(options.body) : null;
-    apiCalls.push({ path, method, payload });
+    apiCalls.push({ path, method, payload, search: new URL(String(input), "http://127.0.0.1").search });
     let data = {}, status = 200;
     if (path === "/api/settings") {
       if (method === "PUT" && failMemorySetting) { status = 500; data = { detail: "保存设置失败" }; }
@@ -990,6 +990,8 @@ try {
     } else if (path.startsWith("/api/auth/sessions/")) data = { currentSessionRevoked: path.endsWith("/current-device") };
     else if (path.endsWith("/email-change/request")) data = { message: "验证码已发送", developmentCode: "123456" };
     else if (path.endsWith("/email-change/confirm")) data = { user: { id: "test-user", email: "test@example.com", displayName: "test", emailVerified: true } };
+    else if (path === "/api/memory-console") data = { engine: "reference", capabilities: { rules: true, graph: true, sources: true, importLegacy: true }, mission: "用户偏好", ruleVersion: 1, history: [], jobs: [] };
+    else if (path === "/api/memory-console/impact/memory-ui-test") data = { sourceId: "source-ui-test", memories: [memoryFixture] };
     else if (path === "/api/memories") data = { memories: [memoryFixture] };
     else if (path === "/api/memories/memory-ui-test") data = { memory: { ...memoryFixture, ...payload, status: method === "DELETE" ? "deleted" : payload?.status ?? "active" } };
     return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
@@ -1107,7 +1109,15 @@ try {
   assert.ok(activeSettings().querySelector('textarea[aria-label="记忆内容"]'));
   await clickAccount(activeSettings().querySelector('button[aria-label="保存记忆"]'));
   assert.ok(apiCalls.some(call => call.payload?.reason === "profile_memory_edit"));
-  await clickAccount(activeSettings().querySelector('button[aria-label="删除记忆"]'));
+  const originalMemoryConfirm = window.confirm;
+  let confirmedMemoryImpact = "";
+  window.confirm = message => { confirmedMemoryImpact = message; return true; };
+  try {
+    await clickAccount(activeSettings().querySelector('button[aria-label="删除记忆"]'));
+  } finally { window.confirm = originalMemoryConfirm; }
+  assert.match(confirmedMemoryImpact, /关联的 1 条记忆/);
+  assert.ok(apiCalls.some(call => call.path === "/api/memory-console/impact/memory-ui-test"));
+  assert.ok(apiCalls.some(call => call.method === "DELETE" && call.search === "?confirmedSource=true"), "Source deletion confirmation is independent of provider name");
   assert.doesNotMatch(activeSettings().textContent, /偏好简洁排版/);
   await clickAccount(settingAction("数据管理"));
   assert.ok(settingAction("导出笔记备份")); assert.ok(settingAction("导出完整数据"));

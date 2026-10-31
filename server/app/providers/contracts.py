@@ -79,8 +79,22 @@ class MemoryProvider(Protocol):
     name: str
 
     async def search(self, *, user_id: str, query: str, limit: int = 8,
-                     metadata_filters: dict[str, str] | None = None) -> list[dict]: ...
+                     metadata_filters: dict[str, str] | None = None) -> list[MemoryIndexHit]: ...
 
-    async def add(self, *, user_id: str, content: str, metadata: dict | None = None) -> dict: ...
+    async def add(self, *, user_id: str, content: str, metadata: dict | None = None) -> MemoryIndexWrite: ...
 
     async def delete(self, *, user_id: str, memory_id: str) -> bool: ...
+
+
+@dataclass(frozen=True)
+class MemoryIndexHit:
+    """A ranked reference to a NoteFlow-owned legacy fact, never a fact itself."""
+
+    memory_id: str
+    external_id: str
+
+
+@dataclass(frozen=True)
+class MemoryIndexWrite:
+    external_id: str
+    operation: str

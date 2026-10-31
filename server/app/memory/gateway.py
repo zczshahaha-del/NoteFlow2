@@ -8,8 +8,9 @@ from datetime import datetime
 from sqlalchemy import select
 
 from app.database import AsyncSessionLocal
-from app.memory.control import DEFAULT_MISSION, control, engine_name, lock_owner, save_control
-from app.memory.engine import MemoryRecord, configured_engine
+from app.memory.control import DEFAULT_MISSION, control, uses_engine, lock_owner, save_control
+from app.memory.engine import MemoryChanges, MemoryEngine, MemoryFact, MemoryRecord
+from app.providers.memory_registry import configured_engine
 from app.memory.policy import classify_memory_content
 from app.models.db import MemorySource, IntegrationOutbox, UserSettings
 from app.observability.context import current_trace
@@ -17,20 +18,15 @@ from app.repositories.outbox import OutboxRepository
 from app.utils import random_id
 
 
-def record(row, source):
+def record(fact: MemoryFact, source, *, provider: str):
     metadata = source.metadata_json or {}
-    def date(value):
-        try:
-            return datetime.fromisoformat(value.replace("Z", "+00:00")) if value else None
-        except ValueError:
-            return None
     return MemoryRecord(
-        id=row["id"], content=row.get("text", ""), source_ref=source.id,
-        status="pending" if row["id"] in metadata.get("pendingIds", []) else "archived" if row.get("state") == "invalidated" else "active",
+        id=fact.id, content=fact.content, source_ref=source.id,
+        status="pending" if fact.id in metadata.get("pendingIds", []) else fact.status,
         memory_type=metadata.get("memoryType", "personal_info"),
         source=metadata.get("source", "user_message"), scope=metadata.get("scope", "global"),
-        created_at=source.created_at, updated_at=date(row.get("updated_at")) or source.updated_at,
-        tags=row.get("tags") or [], canonical_key=metadata.get("canonicalKey", ""),
+        created_at=source.created_at, updated_at=fact.updated_at or source.updated_at,
+        tags=list(fact.tags), canonical_key=metadata.get("canonicalKey", ""), provider=provider,
     )
 
 
@@ -44,8 +40,8 @@ def public_record(memory):
 
 
 class MemoryGateway:
-    def __init__(self, engine=None):
-        self.engine = engine or configured_engine()
+    def __init__(self, engine: MemoryEngine | None = None):
+        self.engine = engine if engine is not None else configured_engine()
 
     async def preview(self, user_id, *, mission, text):
         if not classify_memory_content(text).allowed:
@@ -54,7 +50,8 @@ class MemoryGateway:
         try:
             await self.engine.ensure_bank(test_owner, mission.strip())
             await self.engine.retain(test_owner, content=text, source_id="preview", metadata={"source": "synthetic_preview"})
-            return {"facts": [row.get("text", "") for row in await self.engine.list(test_owner)]}
+            return {"facts": [fact.content for fact in await self.engine.list(test_owner)
+                              if fact.status == "active" and not fact.derived]}
         finally:
             await self.engine.delete_bank(test_owner)
 
@@ -96,15 +93,15 @@ class MemoryGateway:
                 # also enforces current curation state instead of stale scores.
                 if query is not None:
                     try:
-                        row = await self.engine.get(user_id, row["id"])
+                        row = await self.engine.get(user_id, row.id)
                     except LookupError:
                         continue
-                source = sources.get(row.get("document_id"))
-                if not source or row.get("fact_type") == "observation":
+                source = sources.get(row.source_id)
+                if not source or row.derived or row.status == "unavailable":
                     continue
-                if row["id"] in (source.metadata_json or {}).get("hiddenIds", []):
+                if row.id in (source.metadata_json or {}).get("hiddenIds", []):
                     continue
-                item = record(row, source)
+                item = record(row, source, provider=self.engine.name)
                 if not classify_memory_content(item.content).allowed:
                     continue
                 if (query is not None or not include_archived) and item.status != "active":
@@ -159,7 +156,7 @@ class MemoryGateway:
         source = await session.get(MemorySource, item.aggregate_id)
         if not source or source.user_id != item.user_id or source.status != "queued":
             return
-        if (not settings.memory_enabled or await engine_name(session, item.user_id) != "hindsight"
+        if (not settings.memory_enabled or not await uses_engine(item.user_id)
             or source.generation != state.get("generation", 0) or source.rule_version != state.get("ruleVersion", 1)):
             source.status = "skipped"
             item.payload = {}
@@ -171,18 +168,19 @@ class MemoryGateway:
         await self.engine.delete_source(item.user_id, source.id)
         await self.engine.retain(item.user_id, content=item.payload["content"], source_id=source.id,
                                  metadata={"source": "user_message", "rule_version": source.rule_version})
-        rows = await self.engine.list(item.user_id, document_id=source.id)
+        rows = [fact for fact in await self.engine.list(item.user_id, source_id=source.id)
+                if fact.source_id == source.id and not fact.derived and fact.status != "unavailable"]
         published = await self.sources(session, item.user_id)
-        previous = await self.engine.list(item.user_id, state="valid") if published else []
+        previous = await self.engine.list(item.user_id, status="active") if published else []
         normalize = lambda text: "".join(text.split()).casefold()
-        known = {normalize(r.get("text", "")) for r in previous if r.get("document_id") in published}
+        known = {normalize(fact.content) for fact in previous if fact.source_id in published and not fact.derived}
         hidden, pending = [], []
         for row in rows:
-            duplicate = normalize(row.get("text", "")) in known
+            duplicate = normalize(row.content) in known
             if duplicate or (state.get("reviewNewFacts", False) and (source.metadata_json or {}).get("source") != "user_explicit"):
-                await self.engine.curate(item.user_id, row["id"], {"state": "invalidated",
-                    "reason": "duplicate" if duplicate else "pending user review: protect manual curation"})
-                (hidden if duplicate else pending).append(row["id"])
+                await self.engine.curate(item.user_id, row.id, MemoryChanges(status="archived",
+                    reason="duplicate" if duplicate else "pending user review: protect manual curation"))
+                (hidden if duplicate else pending).append(row.id)
         source.metadata_json = {**(source.metadata_json or {}), "hiddenIds": hidden, "pendingIds": pending}
         source.status = "stored" if rows else "empty"
         item.payload = {}
@@ -194,14 +192,12 @@ class MemoryGateway:
             await lock_owner(session, user_id)
             row = await self.engine.get(user_id, memory_id)
             sources = await self.sources(session, user_id)
-            source = sources.get(row.get("document_id"))
+            source = sources.get(row.source_id)
             if source is None:
                 raise LookupError("memory not found")
-            changes = {"reason": "NoteFlow user curation"}
             if content is not None:
                 if not content.strip() or len(content) > 2000 or not classify_memory_content(content).allowed:
                     raise ValueError("记忆内容为空、过长或包含不适合保存的信息。")
-                changes["text"] = content.strip()
                 settings, state = await control(session, user_id)
                 # Subsequent automatic facts require confirmation after a manual
                 # correction, rather than silently introducing a contradictory copy.
@@ -209,31 +205,33 @@ class MemoryGateway:
             if status is not None:
                 if status not in {"active", "archived"}:
                     raise ValueError("这里只支持启用或停用；彻底删除请使用删除来源。")
-                changes["state"] = "valid" if status == "active" else "invalidated"
+            changes = MemoryChanges(content=content.strip() if content is not None else None,
+                                    status=status, reason="NoteFlow user curation")
             row = await self.engine.curate(user_id, memory_id, changes)
             if status is not None:
                 source.metadata_json = {**(source.metadata_json or {}), "pendingIds": [
                     key for key in (source.metadata_json or {}).get("pendingIds", []) if key != memory_id]}
             await session.commit()
-            return record(row, source)
+            return record(row, source, provider=self.engine.name)
 
     async def delete_impact(self, user_id, memory_id):
         async with AsyncSessionLocal() as session:
             row = await self.engine.get(user_id, memory_id)
-            source = (await self.sources(session, user_id)).get(row.get("document_id"))
+            source = (await self.sources(session, user_id)).get(row.source_id)
             if source is None:
                 raise LookupError("memory not found")
-            rows = await self.engine.list(user_id, document_id=source.id)
-            return {"sourceId": source.id, "memories": [public_record(record(r, source)) for r in rows]}
+            rows = await self.engine.list(user_id, source_id=source.id)
+            return {"sourceId": source.id, "memories": [public_record(record(r, source, provider=self.engine.name))
+                for r in rows if r.source_id == source.id and not r.derived and r.status != "unavailable"]}
 
     async def delete(self, user_id, memory_id):
         async with AsyncSessionLocal() as session:
             await lock_owner(session, user_id)
             row = await self.engine.get(user_id, memory_id)
-            source = (await self.sources(session, user_id)).get(row.get("document_id"))
+            source = (await self.sources(session, user_id)).get(row.source_id)
             if source is None:
                 raise LookupError("memory not found")
-            result = record(row, source)
+            result = record(row, source, provider=self.engine.name)
             # Persist a barrier before touching the engine. Failed external
             # deletion remains hidden and is retried, never reported as success.
             source.status = "deleted"
@@ -246,9 +244,11 @@ class MemoryGateway:
 
     async def graph(self, user_id):
         records = await self.read(user_id, limit=500, include_archived=False)
-        allowed = {r.id for r in records}
+        allowed = {r.id: r for r in records}
         graph = await self.engine.graph(user_id)
-        nodes = [n.get("data", n) for n in graph.get("nodes", []) if n.get("data", n).get("id") in allowed]
-        edges = [e.get("data", e) for e in graph.get("edges", [])
-                 if e.get("data", e).get("source") in allowed and e.get("data", e).get("target") in allowed]
+        nodes = [{"id": node.id, "content": allowed[node.id].content, "sourceRef": allowed[node.id].source_ref}
+                 for node in graph.nodes if node.id in allowed]
+        visible = {node["id"] for node in nodes}
+        edges = [{"source": edge.source, "target": edge.target, "relation": edge.relation}
+                 for edge in graph.edges if edge.source in visible and edge.target in visible]
         return {"nodes": nodes, "edges": edges}

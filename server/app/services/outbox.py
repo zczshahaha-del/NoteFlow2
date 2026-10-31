@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import cfg
 from app.models.db import IntegrationOutbox, MemoryShadowRun, Note, UserMemory
 from app.memory.policy import memory_is_eligible
-from app.providers.memory_registry import legacy_memory_index as get_mem0_provider
+from app.providers.memory_registry import legacy_memory_index
 from app.observability.context import current_trace
 from app.repositories.outbox import OutboxRepository
 from app.utils import random_id
@@ -36,7 +36,7 @@ async def dispatch_outbox(session: AsyncSession, item: IntegrationOutbox) -> Non
         await MemoryGateway().process(session, item)
         return
     if item.topic == "memory.source.delete":
-        from app.memory.engine import configured_engine
+        from app.providers.memory_registry import configured_engine
         from app.models.db import MemorySource
         source = await session.get(MemorySource, item.aggregate_id)
         if source and source.user_id == item.user_id and source.status == "deleted":
@@ -45,8 +45,8 @@ async def dispatch_outbox(session: AsyncSession, item: IntegrationOutbox) -> Non
     if item.topic == "memory.sync.requested":
         if not item.user_id:
             return
-        from app.memory.control import engine_name
-        if await engine_name(session, item.user_id) != "mem0":
+        from app.memory.control import uses_engine
+        if await uses_engine(item.user_id):
             return
         memory = await session.scalar(
             select(UserMemory).where(
@@ -56,10 +56,10 @@ async def dispatch_outbox(session: AsyncSession, item: IntegrationOutbox) -> Non
         )
         if memory is None:
             return
-        provider = get_mem0_provider()
+        provider = legacy_memory_index()
         operation = str((item.payload or {}).get("operation") or "upsert")
         started = time.perf_counter()
-        old_external_id = memory.external_id if memory.external_provider == "mem0" else None
+        old_external_id = memory.external_id if memory.external_provider == provider.name else None
         should_delete = operation == "delete" or not memory_is_eligible(memory)
         if old_external_id and (should_delete or operation == "upsert"):
             await provider.delete(user_id=memory.user_id, memory_id=old_external_id)
@@ -78,13 +78,13 @@ async def dispatch_outbox(session: AsyncSession, item: IntegrationOutbox) -> Non
                     "source": memory.source,
                 },
             )
-            external_id = str(result.get("id") or "") or None
-            memory.external_provider = "mem0" if external_id else None
+            external_id = result.external_id or None
+            memory.external_provider = provider.name if external_id else None
             memory.external_id = external_id
             memory.provider_metadata = {
                 **(memory.provider_metadata or {}),
-                "mem0Event": result.get("event"),
-                "mem0SyncedAt": int(time.time()),
+                "indexEvent": result.operation,
+                "indexSyncedAt": int(time.time()),
             }
         session.add(
             MemoryShadowRun(

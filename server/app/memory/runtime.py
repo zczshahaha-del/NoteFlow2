@@ -6,19 +6,10 @@ import time
 from app.config import cfg
 from app.memory.policy import filter_eligible_memories
 from app.models.db import MemoryShadowRun, UserMemory
-from app.providers.memory_registry import legacy_memory_index as get_mem0_provider
+from app.providers.memory_registry import legacy_memory_index
+from app.providers.contracts import MemoryIndexHit
 from app.services.observability import record_metric
 from app.utils import random_id
-
-
-def _noteflow_id(item: dict) -> str:
-    metadata = item.get("metadata") if isinstance(item.get("metadata"), dict) else {}
-    return str(
-        metadata.get("noteflow_memory_id")
-        or item.get("noteflow_memory_id")
-        or item.get("noteflowMemoryId")
-        or ""
-    )
 
 
 async def resolve_memory_read(
@@ -48,10 +39,10 @@ async def resolve_memory_read(
 
     started = time.perf_counter()
     status, error_code = "success", None
-    mem0_rows: list[dict] = []
+    mem0_rows: list[MemoryIndexHit] = []
     try:
         if candidate_ids:
-            mem0_rows = await get_mem0_provider().search(
+            mem0_rows = await legacy_memory_index().search(
                 user_id=user_id,
                 query=query,
                 limit=limit,
@@ -61,7 +52,7 @@ async def resolve_memory_read(
         status, error_code = "failed", type(exc).__name__
         record_metric("memory", "mem0_read", status="failed")
 
-    mem0_ids = [memory_id for row in mem0_rows if (memory_id := _noteflow_id(row))]
+    mem0_ids = [row.memory_id for row in mem0_rows if row.memory_id]
     allowed_ids = set(candidate_ids)
     hard_violation = any(memory_id not in allowed_ids for memory_id in mem0_ids)
     overlap = len(allowed_ids.intersection(mem0_ids)) / max(1, len(allowed_ids.union(mem0_ids)))

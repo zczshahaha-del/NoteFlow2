@@ -25,8 +25,8 @@ class MemoryContextService:
     ) -> str:
         if not requested:
             return ""
-        from app.memory.control import uses_hindsight
-        if await uses_hindsight(user_id):
+        from app.memory.control import uses_engine
+        if await uses_engine(user_id):
             from app.memory.gateway import MemoryGateway
             from app.memory.engine import MemoryUnavailable
             from app.memory.presentation import format_context

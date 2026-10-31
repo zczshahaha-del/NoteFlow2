@@ -154,8 +154,8 @@ async def auto_save_memory_from_question(
     """Run the independent model-based MemoryWriter after the primary action."""
     if not (question or "").strip():
         return []
-    from app.memory.control import uses_hindsight
-    if await uses_hindsight(user_id):
+    from app.memory.control import uses_engine
+    if await uses_engine(user_id):
         from app.memory.gateway import MemoryGateway
         try:
             await MemoryGateway().submit(user_id, question)
@@ -177,8 +177,8 @@ async def save_memory_from_question(
     question: str,
     history: list[AgentChatMessageIn] | None = None,
 ) -> tuple[str, list[dict]]:
-    from app.memory.control import uses_hindsight
-    if await uses_hindsight(user_id):
+    from app.memory.control import uses_engine
+    if await uses_engine(user_id):
         from app.memory.gateway import MemoryGateway, public_record
         gateway = MemoryGateway()
         source_id = await gateway.submit(user_id, question, metadata={"source": "user_explicit"})
@@ -409,8 +409,8 @@ async def delete_memories_from_question(
     canonical_keys: list[str] | None = None,
     memory_types: list[str] | None = None,
 ) -> tuple[str, list[dict]]:
-    from app.memory.control import uses_hindsight
-    if await uses_hindsight(user_id):
+    from app.memory.control import uses_engine
+    if await uses_engine(user_id):
         return "请在设置的记忆管理中选择具体记录，查看关联影响后删除；也可以先停用。", []
     if canonical_keys is not None or memory_types is not None:
         keys = {
@@ -466,8 +466,8 @@ async def disable_memory_for_user(user_id: str) -> tuple[str, list[dict]]:
 
 
 async def list_memories_for_agent(user_id: str) -> tuple[str, list[dict]]:
-    from app.memory.control import uses_hindsight
-    if await uses_hindsight(user_id):
+    from app.memory.control import uses_engine
+    if await uses_engine(user_id):
         from app.memory.gateway import MemoryGateway, public_record
         records = await MemoryGateway().read(user_id, include_archived=False, limit=50)
         return _format_memory_list(records), [public_record(r) for r in records]
@@ -483,8 +483,8 @@ async def query_memories_for_agent(
     history: list[AgentChatMessageIn] | None = None,
     read_plan: MemoryReadPlan | None = None,
 ) -> tuple[str, list[dict]]:
-    from app.memory.control import uses_hindsight
-    if await uses_hindsight(user_id):
+    from app.memory.control import uses_engine
+    if await uses_engine(user_id):
         from app.memory.gateway import MemoryGateway, public_record
         records = await MemoryGateway().read(user_id, query=(read_plan.query or question) if read_plan else question, limit=8)
         return _format_memory_list(records), [public_record(r) for r in records]
@@ -609,8 +609,8 @@ async def save_episode_memory(
 
 
 async def history_recall_context(user_id: str, question: str) -> tuple[str, list[dict]]:
-    from app.memory.control import uses_hindsight
-    if await uses_hindsight(user_id):
+    from app.memory.control import uses_engine
+    if await uses_engine(user_id):
         from app.memory.gateway import MemoryGateway, public_record
         from app.memory.presentation import format_context
         records = await MemoryGateway().read(user_id, query=question, limit=8)
