@@ -255,7 +255,19 @@ def build_readonly_graph(
         try:
             return {"memory_context": await deps.memory_recall(state)}
         except Exception as exc:
-            return {"error_code": "memory_read_failed", "error_message": str(exc), "status": "failed"}
+            # Personalization is optional in this read-only answer flow. Keep
+            # explicit memory-management failures on their separate tool path.
+            # Do not expose provider errors (URLs/credentials) in public traces
+            # or reuse a previous checkpoint's memory after a failed refresh.
+            await deps.emit(RuntimeEvent(
+                type="tool_trace", status="failed", code="memory_read_failed",
+                sessionId=state.get("session_id"), runId=state.get("run_id"),
+                payload={
+                    "toolName": "memory_recall", "action": "optional_context",
+                    "metadata": {"degraded": True, "reason": type(exc).__name__},
+                },
+            ))
+            return {"memory_context": "", "suppress_memory_write": True}
 
     async def general_chat(state: ReadonlyAgentState) -> dict[str, Any]:
         return {"context_mode": "general", "context_text": "", "sources": [], "rag_called": False}

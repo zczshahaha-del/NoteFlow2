@@ -53,6 +53,53 @@ class FakeReadonlyTools:
 
 
 class LangGraphReadonlyTest(unittest.TestCase):
+    def test_optional_memory_failure_does_not_fail_answer_or_reuse_stale_context(self) -> None:
+        tools = FakeReadonlyTools()
+        captured = []
+
+        async def unavailable(_state):
+            raise TimeoutError("synthetic-secret-do-not-expose")
+
+        async def answer(state):
+            captured.append(state.get("memory_context"))
+            async for chunk in tools.answer(state):
+                yield chunk
+
+        dependencies = tools.dependencies()
+        dependencies.memory_recall = unavailable
+        dependencies.answer_stream = answer
+        state = new_readonly_state(
+            user_id="u", question="解释一下缓存", mode="chat",
+            turn_plan={"context_sources": ["user_memory"]},
+        )
+        state["memory_context"] = "stale personalization from an earlier checkpoint"
+        result = asyncio.run(invoke_readonly_graph(state, dependencies=dependencies))
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["answer"], "answer")
+        self.assertEqual(captured, [""])
+        self.assertEqual(tools.answer_calls, 1)
+        self.assertEqual(tools.memory_write_calls, 0)
+        self.assertEqual(result["error_code"], "")
+        traces = [event for event in tools.events if event.get("toolName") == "memory_recall"]
+        self.assertEqual(len(traces), 1)
+        self.assertEqual(traces[0]["status"], "failed")
+        self.assertEqual(traces[0]["metadata"], {"degraded": True, "reason": "TimeoutError"})
+        self.assertNotIn("synthetic-secret", str(tools.events))
+
+    def test_disabled_memory_never_calls_recall_or_writer(self) -> None:
+        tools = FakeReadonlyTools()
+        result = asyncio.run(invoke_readonly_graph(
+            new_readonly_state(
+                user_id="u", question="解释一下缓存", mode="chat", memory_enabled=False,
+                turn_plan={"context_sources": ["user_memory"]},
+            ),
+            dependencies=tools.dependencies(),
+        ))
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(tools.memory_calls, 0)
+        self.assertEqual(tools.memory_write_calls, 0)
+
     def test_reply_retry_keeps_recall_but_skips_memory_write(self) -> None:
         tools = FakeReadonlyTools()
         state = new_readonly_state(user_id="u", question="原问题", mode="chat", memory_enabled=True)
