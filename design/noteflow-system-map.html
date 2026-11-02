@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>NoteFlow · 系统架构</title>
+  <style>
+  #nf-system-map { --map-gap:calc(var(--font-size-base) * 2.5); color:var(--foreground); }
+  #nf-system-map .map-heading { display:flex; align-items:start; padding-inline-end:96px; margin-bottom:calc(var(--font-size-base) * 1.1); }
+  #nf-system-map .map-controls { margin-bottom:calc(var(--font-size-base) * .8); }
+  #nf-system-map .map-position { display:grid; gap:calc(var(--font-size-base) * .35); min-height:calc(var(--font-size-base) * 5); margin-bottom:calc(var(--font-size-base) * .65); }
+  #nf-system-map .map-legend { display:flex; flex-wrap:wrap; gap:calc(var(--font-size-base) * .6) calc(var(--font-size-base) * 1.2); margin-bottom:calc(var(--font-size-base) * .6); }
+  #nf-system-map .map-legend > span { display:inline-flex; align-items:center; gap:6px; }
+  #nf-system-map .map-key { display:inline-block; width:20px; height:0; border-top:1px solid var(--muted-foreground); }
+  #nf-system-map .map-key-data { border-top-style:dashed; }
+  #nf-system-map .map-key-active { border-top:2px solid var(--viz-series-1); }
+  #nf-system-map .map-board { position:relative; }
+  #nf-system-map .map-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); column-gap:calc(var(--font-size-base) * 1.65); row-gap:var(--map-gap); padding:8px 24px 12px; align-items:start; }
+  #nf-system-map .map-node { position:relative; min-width:0; display:grid; gap:calc(var(--font-size-base) * .5); transition:opacity .25s ease; }
+  #nf-system-map .map-node[data-span="all"] { grid-column:1 / -1; width:65%; justify-self:center; }
+  #nf-system-map .map-node[data-node="db"] { width:100%; }
+  #nf-system-map .map-node[data-col="1"] { grid-column:1; }
+  #nf-system-map .map-node[data-col="2"] { grid-column:2; }
+  #nf-system-map .map-node[data-col="3"] { grid-column:3; }
+  #nf-system-map .map-node[data-row="1"] { grid-row:1; }
+  #nf-system-map .map-node[data-row="2"] { grid-row:2; }
+  #nf-system-map .map-node[data-row="3"] { grid-row:3; }
+  #nf-system-map .map-node[data-row="4"] { grid-row:4; }
+  #nf-system-map .map-node[data-row="5"] { grid-row:5; }
+  #nf-system-map .map-node[data-row="6"] { grid-row:6; }
+  #nf-system-map .map-node[data-row="7"] { grid-row:7; }
+  #nf-system-map .map-node[data-row="8"] { grid-row:8; }
+  #nf-system-map .map-node-meta { display:flex; justify-content:space-between; gap:8px; }
+  #nf-system-map .map-inner { display:grid; gap:calc(var(--font-size-base) * .6); overflow-wrap:anywhere; }
+  #nf-system-map .map-inner[hidden] { display:none; }
+  #nf-system-map .map-inner ol { margin:0; padding-left:calc(var(--font-size-base) * 1.4); display:grid; gap:calc(var(--font-size-base) * .4); }
+  #nf-system-map .map-inner details { overflow-wrap:anywhere; }
+  #nf-system-map .map-inner summary { color:var(--muted-foreground); }
+  #nf-system-map .map-source { display:grid; gap:calc(var(--font-size-base) * .35); margin-top:calc(var(--font-size-base) * .5); }
+  #nf-system-map .map-source code { white-space:normal; overflow-wrap:anywhere; }
+  #nf-system-map .map-wires { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
+  #nf-system-map .map-wires path { fill:none; stroke:color-mix(in srgb,var(--muted-foreground) 50%,transparent); stroke-width:1.3; }
+  #nf-system-map .map-wires .wire-data { stroke-dasharray:4 5; }
+  #nf-system-map .map-wires .wire-route { stroke:color-mix(in srgb,var(--muted-foreground) 42%,transparent); }
+  #nf-system-map .map-wires .wire-active { stroke:var(--viz-series-1); stroke-width:2; stroke-dasharray:none; }
+  #nf-system-map .map-wires .wire-hit { stroke:transparent; stroke-width:18; pointer-events:stroke; }
+  #nf-system-map .map-wires .wire-packet { fill:var(--viz-series-1); stroke:none; }
+  #nf-system-map .map-wires .wire-arrow { fill:var(--muted-foreground); stroke:none; }
+  #nf-system-map .map-wires .wire-arrow-active { fill:var(--viz-series-1); stroke:none; }
+  #nf-system-map .map-foot { margin-top:calc(var(--font-size-base) * .8); }
+  @media (max-width:559px) {
+    #nf-system-map { --map-gap:calc(var(--font-size-base) * 2); }
+    #nf-system-map .map-grid { grid-template-columns:minmax(0,1fr); padding-inline:24px; }
+    #nf-system-map .map-node[data-node] { grid-column:1; grid-row:auto; width:100%; }
+    #nf-system-map .map-heading { padding-inline-end:90px; }
+    #nf-system-map .map-position { min-height:calc(var(--font-size-base) * 7); }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    #nf-system-map .map-node { transition:none; }
+  }
+</style>
+  <style>
+    :root {
+      color-scheme:light dark; --font-size-base:14px;
+      --background:#f5f7f9; --foreground:#26333f; --card:#fff; --card-foreground:#26333f;
+      --popover:#fff; --popover-foreground:#26333f; --primary:#355f79; --primary-foreground:#fff;
+      --secondary:#edf2f6; --secondary-foreground:#35516a; --muted:#edf1f4; --muted-foreground:#677581;
+      --accent:#eaf3f8; --accent-foreground:#355f79; --border:#dfe6ec; --ring:#5289aa;
+      --viz-series-1:#4c88ad; --surface:#fff; --canvas:#f9fbfc; --dot:#d8e1e7;
+      --shadow:0 2px 6px #22394f04,0 10px 28px #22394f06;
+    }
+    @media(prefers-color-scheme:dark) {
+      :root { --background:#11191f; --foreground:#e2eaf0; --card:#1a252e; --card-foreground:#e2eaf0;
+        --popover:#1a252e; --popover-foreground:#e2eaf0; --primary:#85b5d1; --primary-foreground:#122430;
+        --secondary:#24333f; --secondary-foreground:#b3cedf; --muted:#23313b; --muted-foreground:#9aabb7;
+        --accent:#223b4b; --accent-foreground:#b6d7e9; --border:#30414e; --ring:#85b5d1;
+        --viz-series-1:#85b5d1; --surface:#17222a; --canvas:#131e26; --dot:#2a3944;
+        --shadow:0 2px 6px #0001,0 10px 28px #0002; }
+    }
+    * {box-sizing:border-box}
+    body {margin:0;background:var(--background);color:var(--foreground);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+    button,select {font:inherit}
+    button {cursor:pointer}
+    button:disabled {cursor:default;opacity:.45}
+    button:focus-visible,select:focus-visible,summary:focus-visible {outline:3px solid var(--ring);outline-offset:3px}
+    h1,h2,p {margin:0}
+    .site-bar {height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 36px;border-bottom:1px solid var(--border);background:var(--surface);gap:20px}
+    .site-brand {display:flex;align-items:center;gap:12px;font-size:18px;font-weight:650;letter-spacing:-.5px}
+    .brand-mark {width:30px;height:30px;display:grid;grid-template-columns:repeat(2,1fr);gap:4px;transform:rotate(-7deg)}
+    .brand-mark i {border-radius:4px;background:var(--primary)}
+    .brand-mark i:nth-child(2) {opacity:.55}.brand-mark i:nth-child(3) {opacity:.3}
+    .bar-divider {height:20px;width:1px;background:var(--border);margin:0 5px}
+    .bar-label {font-size:13px;font-weight:400;letter-spacing:0;color:var(--muted-foreground)}
+    .bar-actions {display:flex;align-items:center;gap:20px;font-size:12px;color:var(--muted-foreground)}
+    .motion-toggle {border:1px solid var(--border);background:var(--surface);border-radius:30px;padding:8px 14px;display:flex;gap:8px;align-items:center;color:var(--foreground);font-size:12px}
+    .motion-lamp {width:6px;height:6px;border-radius:50%;background:var(--viz-series-1);box-shadow:0 0 0 4px color-mix(in srgb,var(--viz-series-1) 10%,transparent)}
+    .atlas-layout {max-width:1660px;margin:auto;display:grid;grid-template-columns:226px minmax(0,1fr);min-height:calc(100vh - 72px)}
+    .scenario-sidebar {border-right:1px solid var(--border);padding:36px 18px 26px;align-self:start;position:sticky;top:0;display:flex;flex-direction:column;gap:28px}
+    .sidebar-caption {padding:0 14px;font-size:11px;color:var(--muted-foreground);letter-spacing:1.5px;margin-bottom:12px}
+    .scenario-list {display:grid;gap:6px}
+    .scenario-link {border:0;background:transparent;border-radius:11px;padding:12px 14px;display:flex;align-items:center;gap:11px;text-align:left;color:var(--muted-foreground);width:100%;transition:background .2s,color .2s}
+    .scenario-link:hover {background:var(--muted);color:var(--foreground)}
+    .scenario-link[aria-current="true"] {background:var(--accent);color:var(--accent-foreground);font-weight:600}
+    .nav-symbol {font-size:11px;font-weight:500;font-variant-numeric:tabular-nums;width:20px;flex-shrink:0;color:var(--muted-foreground)}
+    .scenario-link[aria-current="true"] .nav-symbol {color:var(--accent-foreground)}
+    .sidebar-note {padding:18px 14px 0;border-top:1px solid var(--border);font-size:12px;color:var(--muted-foreground);display:grid;gap:10px}
+    .sidebar-note strong {color:var(--foreground);font-weight:500}
+    .atlas-workspace {min-width:0;padding:38px 36px 30px}
+    .page-hero {display:flex;justify-content:space-between;gap:24px;align-items:center;margin-bottom:26px}
+    .eyebrow {font-size:10px;letter-spacing:2px;color:var(--muted-foreground);margin-bottom:8px;font-weight:600}
+    h1 {font-size:29px;letter-spacing:-1px;font-weight:650;line-height:1.3}
+    .hero-description {font-size:13px;color:var(--muted-foreground);margin-top:9px}
+    .hero-note {font-size:11px;color:var(--muted-foreground);border:1px solid var(--border);padding:7px 11px;border-radius:30px;white-space:nowrap;background:var(--surface)}
+    #nf-system-map .map-heading {display:none}
+    #nf-system-map .map-controls {display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 18px}
+    #nf-system-map .map-controls>.form-label {display:none}
+    .viz-row {display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .btn {border:1px solid var(--border);background:var(--surface);color:var(--foreground);border-radius:9px;padding:9px 14px;transition:box-shadow .2s,border-color .2s,background .2s;min-height:38px}
+    .btn:not(:disabled):hover {background:var(--muted);border-color:var(--muted-foreground)}
+    .btn-primary {background:var(--primary);color:var(--primary-foreground);border-color:var(--primary);font-weight:500}
+    .btn-primary:not(:disabled):hover {background:color-mix(in srgb,var(--primary) 90%,var(--foreground));border-color:var(--primary)}
+    .btn-ghost {border-color:transparent;background:transparent;color:var(--muted-foreground)}
+    .text-small {font-size:12px}.text-muted {color:var(--muted-foreground)}
+    .tabular-nums {font-variant-numeric:tabular-nums}
+    .form-select {display:block;width:100%;max-width:100%;padding:10px 12px;background:var(--surface);color:var(--foreground);border:1px solid var(--border);border-radius:9px;margin-top:8px;font-size:14px}
+    #nf-system-map .map-position {position:relative;background:var(--surface);border:1px solid var(--border);border-radius:13px;min-height:0;padding:14px 18px;gap:4px;margin-bottom:15px;box-shadow:var(--shadow)}
+    #nf-map-count {color:var(--primary);font-weight:600;font-size:11px;letter-spacing:.3px}
+    #nf-map-action {font-weight:500;font-size:14px}
+    #nf-map-payload {font-size:12px}
+    #nf-system-map .map-legend {gap:12px 22px;font-size:11px;margin:0 0 20px;padding:0 3px}
+    #nf-system-map .map-board {background-color:var(--canvas);background-image:radial-gradient(var(--dot) .7px,transparent .7px);background-size:18px 18px;border:1px solid var(--border);border-radius:20px;padding:22px 8px 18px;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--surface) 70%,transparent)}
+    #nf-system-map .map-grid {column-gap:24px;row-gap:36px;padding:8px 24px 12px}
+    #nf-system-map .map-node {gap:8px}
+    #nf-system-map .map-node[data-span="all"] {max-width:520px;width:65%}
+    #nf-system-map .map-node[data-node="db"] {max-width:none;width:100%}
+    #nf-system-map .map-node-meta {font-size:11px;gap:6px;color:var(--muted-foreground);padding:0 5px;align-items:center}
+    #nf-system-map [data-indicator] {font-size:14px;color:var(--muted-foreground)}
+    #nf-system-map .viz-tile {width:100%;padding:15px 16px 14px;min-height:91px;border:1px solid var(--border);border-radius:13px;background:var(--surface);text-align:left;box-shadow:var(--shadow);position:relative;font-size:14px;font-weight:600;color:var(--foreground);overflow:hidden}
+    #nf-system-map .viz-tile>span {display:block;padding-top:24px;position:relative}
+    #nf-system-map .viz-tile .text-small {font-size:11px;font-weight:400;color:var(--muted-foreground);display:inline-block;margin-top:3px}
+    #nf-system-map .viz-tile:hover {border-color:color-mix(in srgb,var(--viz-series-1) 55%,var(--border));background:var(--surface);box-shadow:0 4px 20px color-mix(in srgb,var(--viz-series-1) 11%,transparent)}
+    #nf-system-map .viz-tile[aria-pressed="true"] {border-color:var(--viz-series-1);background:color-mix(in srgb,var(--accent) 35%,var(--surface));box-shadow:0 0 0 3px color-mix(in srgb,var(--viz-series-1) 10%,transparent),var(--shadow)}
+    #nf-system-map .map-node[data-node="db"] .viz-tile {background:color-mix(in srgb,var(--accent) 50%,var(--surface))}
+    #nf-system-map .map-inner {background:var(--surface);border-left:2px solid color-mix(in srgb,var(--viz-series-1) 35%,var(--border));padding:14px 12px;border-radius:0 8px 8px 0;font-size:12px;gap:14px;box-shadow:var(--shadow)}
+    #nf-system-map .map-inner ol {gap:9px;padding-left:17px}
+    #nf-system-map .map-inner summary {font-size:11px;cursor:pointer}
+    #nf-system-map .map-source {font-size:11px;gap:8px;line-height:1.6}
+    #nf-system-map .map-source code {font:11px/1.6 ui-monospace,SFMono-Regular,monospace;color:var(--muted-foreground)}
+    #nf-system-map .map-foot {padding:14px 4px 0;font-size:11px;color:var(--muted-foreground)}
+    #nf-system-map .map-wires path {stroke:color-mix(in srgb,var(--muted-foreground) 40%,transparent)}
+    #nf-system-map .map-wires .wire-active {stroke:var(--viz-series-1);stroke-width:2.2}
+    #nf-system-map .map-wires .wire-hit {stroke:transparent}
+    #nf-system-map .map-wires .wire-arrow {fill:var(--muted-foreground);stroke:none}
+    #nf-system-map .map-wires .wire-arrow-active {fill:var(--viz-series-1);stroke:none}
+    .mini {position:absolute;top:0;left:0;width:40px;height:19px;display:flex;align-items:center;gap:4px;color:var(--viz-series-1)}
+    .mini b {display:block;background:currentColor;border-radius:3px;font-weight:400;transform-origin:center}
+    .mini-lines {flex-direction:column;align-items:start;gap:3px;justify-content:center}
+    .mini-lines b {height:3px;width:29px;animation:assemble 4.6s ease-in-out infinite}
+    .mini-lines b:nth-child(2) {width:38px;opacity:.55;animation-delay:.2s}
+    .mini-lines b:nth-child(3) {width:22px;opacity:.3;animation-delay:.4s}
+    .mini-network {justify-content:space-between}
+    .mini-network:before {content:"";position:absolute;height:1px;background:currentColor;opacity:.25;width:34px;left:3px;top:9px}
+    .mini-network b {height:7px;width:7px;border-radius:50%;animation:connect 4.4s ease-in-out infinite;position:relative}
+    .mini-network b:nth-child(2) {animation-delay:.5s}.mini-network b:nth-child(3) {animation-delay:1s}
+    .mini-stack {flex-direction:column;align-items:start;gap:3px;justify-content:center}
+    .mini-stack b {height:4px;width:33px;border-radius:50%;animation:store 5s ease-in-out infinite}
+    .mini-stack b:nth-child(2) {opacity:.55;animation-delay:.2s}.mini-stack b:nth-child(3) {opacity:.25;animation-delay:.4s}
+    .mini-wave b {height:14px;width:4px;animation:wave 2.7s ease-in-out infinite}
+    .mini-wave b:nth-child(2) {height:10px;animation-delay:.2s}.mini-wave b:nth-child(3) {height:18px;animation-delay:.4s}.mini-wave b:nth-child(4) {height:12px;animation-delay:.6s}.mini-wave b:nth-child(5) {height:8px;animation-delay:.8s}
+    .map-node[data-awake="false"] .mini b {animation-play-state:paused}
+    .is-motion-off .mini b {animation-play-state:paused!important}
+    .is-motion-off .mini b {transform:none!important;opacity:.6}
+    .is-motion-off .motion-lamp {box-shadow:none;opacity:.45}
+    .viz-tile[aria-pressed="true"] .mini b {animation-duration:1.8s}
+    @keyframes assemble {0%,16%,88%,100%{transform:translateX(0)}40%,64%{transform:translateX(5px)}}
+    @keyframes connect {0%,20%,80%,100%{transform:scale(.8);opacity:.45}45%,60%{transform:scale(1.12);opacity:1}}
+    @keyframes store {0%,20%,85%,100%{transform:translateY(0)}45%,65%{transform:translateY(2px)}}
+    @keyframes wave {0%,100%{transform:scaleY(.45);opacity:.45}50%{transform:scaleY(1);opacity:1}}
+    @media(max-width:1100px) {
+      .atlas-layout {grid-template-columns:190px minmax(0,1fr)}
+      .scenario-sidebar {padding-inline:10px}.scenario-link {font-size:12px;padding:11px 10px;gap:6px}
+      .atlas-workspace {padding:30px 22px}
+      #nf-system-map .map-grid {column-gap:16px;padding-inline:18px}
+      #nf-system-map .viz-tile {padding-inline:12px}
+      #nf-system-map .map-node-meta {font-size:11px}
+      .site-bar {padding-inline:24px}
+    }
+    @media(max-width:820px) {
+      .atlas-layout {display:block}.scenario-sidebar {display:none}
+      .atlas-workspace {padding:28px 20px}
+      #nf-system-map .map-controls>.form-label {display:block;flex:1 1 280px;font-size:12px;color:var(--muted-foreground)}
+      #nf-system-map .map-controls {gap:12px}.hero-note {display:none}.bar-actions>span {display:none}
+      #nf-system-map .map-node-meta {font-size:11px}
+    }
+    @media(max-width:559px) {
+      .site-bar {height:62px;padding:0 18px}.bar-label,.bar-divider {display:none}.site-brand {font-size:16px}
+      .motion-toggle {font-size:11px;padding:7px 10px}.atlas-workspace {padding:24px 14px}
+      h1 {font-size:26px}.page-hero {margin-bottom:20px}
+      #nf-system-map .map-board {padding:14px 0;border-radius:14px}
+      #nf-system-map .map-node[data-span="all"] {width:100%;max-width:none}
+      #nf-system-map .map-grid {padding-inline:24px}
+      #nf-system-map .map-node-meta {font-size:11px}
+      #nf-system-map .map-controls>.form-label {flex-basis:100%}
+      #nf-system-map .map-legend {font-size:10px;gap:8px 12px}
+      #nf-system-map .viz-tile {min-height:88px}
+    }
+    @media(min-width:560px) and (max-width:680px) {
+      #nf-system-map .map-grid {grid-template-columns:minmax(0,1fr)}
+      #nf-system-map .map-node[data-node] {grid-column:1;grid-row:auto;width:100%;max-width:none}
+    }
+    @media(prefers-reduced-motion:reduce) {* {scroll-behavior:auto!important}.mini b {animation:none!important}}
+  </style>
+</head>
+<body>
+  <header class="site-bar">
+    <div class="site-brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>NoteFlow<span class="bar-divider"></span><span class="bar-label">Architecture</span></div>
+    <div class="bar-actions"><span>当前实现 · 交互演示</span><button type="button" class="motion-toggle" id="atlas-motion" aria-pressed="true"><span class="motion-lamp" aria-hidden="true"></span><span>动效开启</span></button></div>
+  </header>
+  <main class="atlas-layout">
+    <aside class="scenario-sidebar" aria-label="选择演示流程">
+      <div><div class="sidebar-caption">SYSTEM MAP</div><div class="scenario-list"><button type="button" class="scenario-link" data-scenario="overview" aria-current="true"><span class="nav-symbol">◎</span>整个系统</button></div></div>
+      <div><div class="sidebar-caption">沿一次操作看</div><nav class="scenario-list">
+        <button type="button" class="scenario-link" data-scenario="chat"><span class="nav-symbol">01</span>普通聊天</button>
+        <button type="button" class="scenario-link" data-scenario="qa"><span class="nav-symbol">02</span>全库问答</button>
+        <button type="button" class="scenario-link" data-scenario="save"><span class="nav-symbol">03</span>手动保存</button>
+        <button type="button" class="scenario-link" data-scenario="create"><span class="nav-symbol">04</span>AI 新建笔记</button>
+        <button type="button" class="scenario-link" data-scenario="preview"><span class="nav-symbol">05</span>修改预览</button>
+        <button type="button" class="scenario-link" data-scenario="quick"><span class="nav-symbol">06</span>选区快捷修改</button>
+        <button type="button" class="scenario-link" data-scenario="remember"><span class="nav-symbol">07</span>保存记忆</button>
+        <button type="button" class="scenario-link" data-scenario="attachment"><span class="nav-symbol">08</span>上传附件</button>
+      </nav></div>
+      <div class="sidebar-note"><strong>一张图，逐层看</strong><span>点模块展开内部步骤。</span><span>选操作，跟着数据走。</span><span>仅作架构演示<br>不连接你的业务数据</span></div>
+    </aside>
+    <section class="atlas-workspace" aria-label="交互架构画布">
+      <div class="page-hero"><div><div class="eyebrow">NOTEFLOW / SYSTEM ARCHITECTURE</div><h1>系统架构</h1><p class="hero-description">从一次操作，到回答与保存。</p></div><span class="hero-note">基于代码 · 非实时监控</span></div>
+      <div id="nf-system-map" aria-label="NoteFlow 可展开的系统架构与数据流">
+  <header class="map-heading">
+    <div><h2>NoteFlow · 系统地图</h2><span class="text-small text-muted">当前实现 · 模块可以展开 · 数据可以沿路看</span></div>
+  </header>
+  <div class="viz-controls map-controls">
+    <label class="form-label" for="nf-map-scenario">看一次操作
+      <select id="nf-map-scenario" class="form-select">
+        <option value="overview">整个系统</option>
+        <option value="chat">普通聊天：读取个人记忆后回答</option>
+        <option value="qa">全库问答：找笔记，再回答</option>
+        <option value="save">手动编辑：保存，再更新索引</option>
+        <option value="create">AI 新建：草稿，再确认保存</option>
+        <option value="preview">AI 修改：预览，再确认应用</option>
+        <option value="quick">选区快捷修改：采用，再自动保存</option>
+        <option value="remember">保存记忆：检查、排队、整理</option>
+        <option value="attachment">上传附件：文件与元数据</option>
+      </select>
+    </label>
+    <div class="viz-row">
+      <button type="button" class="btn btn-primary" id="nf-map-play" disabled>播放路径</button>
+      <button type="button" class="btn" id="nf-map-next" disabled>下一步</button>
+      <button type="button" class="btn btn-ghost" id="nf-map-fold" disabled>收起已展开</button>
+    </div>
+  </div>
+  <div class="map-position" aria-live="polite" aria-atomic="true">
+    <span id="nf-map-count" class="text-small text-muted tabular-nums">全貌</span>
+    <span id="nf-map-action">所有模块在同一张图里；连线表示调用或数据依赖。</span>
+    <span id="nf-map-payload" class="text-small text-muted">流程演示，不是线上实时追踪</span>
+  </div>
+  <div class="map-legend text-small text-muted">
+    <span><span class="map-key"></span>调用 / 返回</span>
+    <span><span class="map-key map-key-data"></span>读写 / 规则</span>
+    <span><span class="map-key map-key-active"></span>当前流向</span>
+    <span>点模块展开，点连线看数据</span>
+  </div>
+  <div class="map-board" id="nf-map-board">
+    <svg class="map-wires" aria-hidden="true" focusable="false"></svg>
+    <div class="map-grid" id="nf-map-grid"></div>
+  </div>
+  <footer class="map-foot text-small text-muted">
+    <span id="nf-map-foot">浏览器 → 一个 FastAPI 后端 → 项目数据库、模型服务与 Hindsight。展开只看内部，始终保留全图。</span>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const root = document.getElementById('nf-system-map');
+  const board = root.querySelector('#nf-map-board');
+  const grid = root.querySelector('#nf-map-grid');
+  const svg = root.querySelector('.map-wires');
+  const chooser = root.querySelector('#nf-map-scenario');
+  const play = root.querySelector('#nf-map-play');
+  const next = root.querySelector('#nf-map-next');
+  const fold = root.querySelector('#nf-map-fold');
+  const action = root.querySelector('#nf-map-action');
+  const payload = root.querySelector('#nf-map-payload');
+  const count = root.querySelector('#nf-map-count');
+  const foot = root.querySelector('#nf-map-foot');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const nodes = [
+    { id:'ui', title:'前端工作区', sub:'输入、编辑、审阅与显示', icon:'layout-panel-left', type:'浏览器 · React / Tiptap', row:1, span:'all',
+      steps:['输入问题 / 编辑笔记 / 选择文字','Zustand 保存当前操作与页面状态','HTTP 发命令，SSE 接收流式结果','编辑日志与离线队列保留未同步输入'],
+      note:'选区快捷改写的候选先回到编辑器；点击采用后才替换，仍可撤销。浏览器不直接连数据库。',
+      sources:['src/store/index.tsx','src/store/persistence.ts','src/services/offlineQueue.ts'] },
+    { id:'api', title:'登录检查与业务接口', sub:'验身份、校验请求、分入口', icon:'shield-check', type:'后端 · FastAPI', row:2, span:'all',
+      steps:['检查登录会话与当前账号','按入口校验参数、检查限流','聊天 → 任务分流；保存 → 笔记服务','设置 / 记忆 / 附件 → 对应接口'],
+      note:'Redis 保存限流计数，不保存笔记正文。Redis 不可用时有限流内存回退；普通保存不需要模型判断意图。',
+      sources:['server/app/deps.py','server/app/routers/agent.py','server/app/routers/notes.py','server/app/main.py'] },
+    { id:'router', title:'任务判断与分流', sub:'这次回答、写作，还是管记忆？', icon:'git-branch', type:'后端 · Agent', row:3, span:'all',
+      steps:['对话：识别提示词 → 模型提出计划','程序校验：意图、必填项、可用来源','缺信息 → 追问；有效 → 对应业务','全库搜索：程序固定路径，跳过意图模型'],
+      note:'模型只提出计划，程序决定能否执行。选区快捷改写、手动保存和附件上传直接走专用接口。',
+      sources:['server/app/services/turn_planner.py','server/app/agent/langgraph_turn.py','server/app/routers/agent.py'] },
+    { id:'notes', title:'笔记、草稿与修改', sub:'正式正文与候选稿分开', icon:'file-pen-line', type:'后端 · 笔记业务', row:4, col:1,
+      steps:['手动保存：检查账号与预期版本','新建：大纲 → 分节生成 → 草稿审阅','修改：确定范围 → 独立修改预览','用户确认 → 再检查原文 → 保存版本','保存正式内容，同时安排索引任务'],
+      note:'选区快捷改写是例外：只返回候选文字，不写服务器预览。普通保存仍有跨设备并发缺口（UI-45），不能当成已解决。',
+      sources:['server/app/routers/notes.py','server/app/routers/drafts.py','server/app/routers/edits.py','server/app/services/note_edit.py'] },
+    { id:'context', title:'回答与资料组织', sub:'按本轮需要选择资料', icon:'messages-square', type:'后端 · 只读回答', row:4, col:2,
+      steps:['普通聊天：问题 + 近期聊天','按计划与开关读取相关个人记忆','笔记问答：选区 / 当前正文 / 检索片段','整理资料与引用，交给提示词拼装'],
+      note:'当前笔记 / 选区问答与全库问答跳过个人记忆召回；全库没有命中时直接说明未找到。contextScope 硬边界仍待完善（AI-17）。',
+      sources:['server/app/agent/langgraph_readonly.py','server/app/services/ai.py','server/app/rag/pipeline/service.py'] },
+    { id:'memory', title:'记忆管理', sub:'决定哪些能存、哪些能用', icon:'list-filter', type:'后端 · 项目自己的规则', row:4, col:3,
+      steps:['写入前：账号、开关、安全、重复检查','规则与来源状态保存在项目数据库','保存来源和待办，后台整理事实','读取时排除停用、待确认、已删来源','删除先设不可读屏障，再清理引擎'],
+      note:'它是现有后端里的服务，不是另一个 AI。记忆故障可降级普通回答；用户原话才是自动提取输入，任务取消流水不应变成个人经历。',
+      sources:['server/app/memory/gateway.py','server/app/memory/service.py','server/app/memory/context.py'] },
+    { id:'index', title:'检索与索引', sub:'让保存过的笔记能被找到', icon:'search', type:'后端 · RAG / 索引任务', row:5, col:1,
+      steps:['保存后：后台领取索引任务','解析正文 → 分段 → 生成向量','片段 / 向量写入项目数据库','查询：词项 / 标题 / 向量召回','校验账号、来源版本，返回片段与引用'],
+      note:'索引是可重建的派生数据，不能覆盖正式正文。保存成功与索引完成是两个时点；普通列表搜索另有 note_library 路径。',
+      sources:['server/app/services/markdown_index.py','server/app/services/index_worker.py','server/app/services/note_library.py','server/app/rag/pipeline/service.py'] },
+    { id:'prompt', title:'提示词拼装', sub:'模板 + 本轮资料 → 模型消息', icon:'braces', type:'后端 · 代码内的模板 / 函数', row:5, col:2,
+      steps:['选择识别 / 回答 / 写作对应模板','填入问题、要求、原文或选区','加入本轮允许的资料与记忆','生成模型请求；输出再由程序校验'],
+      note:'目前散布在各服务的代码中，图里按职责合并展示。没有独立提示词平台；Git 有历史，独立发布与调用版本关联仍未完成（AI-16）。',
+      sources:['server/app/services/turn_planner.py','server/app/services/ai.py','server/app/services/prompts.py','server/app/services/note_edit.py'] },
+    { id:'worker', title:'记忆后台任务', sub:'排队后再整理，不阻塞主回答', icon:'list-todo', type:'后端 · 持久队列 / Outbox', row:5, col:3,
+      steps:['从项目数据库领取待办','再查开关、规则版本、来源代数','过期 / 已删任务 → 跳过','有效来源 → 调用统一记忆接口','写回处理状态；失败保留重试'],
+      note:'队列在数据库，不是仅放在进程内存。当前 worker 随 FastAPI 同进程启动，尚非独立微服务。',
+      sources:['server/app/workers/outbox_worker.py','server/app/services/outbox.py','server/app/memory/gateway.py','server/app/main.py'] },
+    { id:'model', title:'AI 模型接口', sub:'识别、回答、写作、生成向量', icon:'sparkles', type:'后端适配 → 外部模型', row:6, col:2,
+      steps:['接收组织好的消息或待嵌入文本','按用途调用聊天 / 写作 / 向量模型','返回文字、结构化计划或向量','业务程序校验结果，不直接授权落库'],
+      note:'一次操作可能多次调用模型。模型输出的候选稿不等于正式笔记；普通保存与上传文件不调用 AI。',
+      sources:['server/app/providers/','server/app/services/ai.py','server/app/services/turn_planner.py'] },
+    { id:'adapter', title:'统一记忆接口', sub:'项目契约 → 引擎适配器', icon:'plug', type:'后端 · MemoryEngine', row:6, col:3,
+      steps:['项目只调用统一的读写 / 修订接口','Hindsight 适配器转换请求与字段','厂商状态 → active / archived 等状态','事实、来源、图谱转换后交回记忆管理'],
+      note:'当前正式事实引擎只有 Hindsight。旧 Mem0 是另一条本地事实索引兼容路径，不代表已有可直接切换的第二个正式引擎。',
+      sources:['server/app/memory/engine.py','server/app/providers/memory_registry.py','server/app/providers/hindsight.py'] },
+    { id:'files', title:'附件服务与文件', sub:'文件本体在磁盘 / 挂载卷', icon:'paperclip', type:'后端服务 + 文件存储', row:7, col:1,
+      steps:['业务接口校验上传与访问','AttachmentService 调用 ObjectStorage','文件本体写入配置的附件目录','元数据与归属写入项目数据库'],
+      note:'文件不在正文表里。文件操作与 SQL 不是同一事务；失败补偿仍待完善（UI-46），生产实际附件备份路径也待验收。',
+      sources:['server/app/services/attachment_service.py','server/app/services/object_storage.py'] },
+    { id:'runtime', title:'任务运行与检查点', sub:'记录运行、等待与生成进度', icon:'route', type:'后端 · LangGraph / Worker', row:7, col:2,
+      steps:['AgentRun 记录本轮业务运行','LangGraph 记录节点与等待检查点','草稿 worker 推进后台章节生成','状态与检查点存入项目数据库'],
+      note:'这层协助推进和恢复流程，不拥有笔记正文。并非每个接口都走 LangGraph；完整执行追踪与恢复语义仍待完善（AI-13 / AI-15）。',
+      sources:['server/app/agent/','server/app/services/agent_checkpoints.py','server/app/services/draft_worker.py'] },
+    { id:'hindsight', title:'Hindsight 记忆引擎', sub:'整理事实、关联关系与召回', icon:'brain', type:'独立服务 + 自己的数据库', row:7, col:3,
+      steps:['接收来源原文与提取规则 mission','提取事实与关系，保存来源原文','事实 / 关系保存在 Hindsight 的数据库','收到查询 → 返回相关候选事实'],
+      note:'项目数据库管规则、来源状态和待办；引擎数据库管事实与关系。返回项目后，还要经过记忆管理的可用性过滤。',
+      sources:['server/app/providers/hindsight.py','docs/architecture/memory-engine-boundary-2026-10-31.md'] },
+    { id:'db', title:'项目数据库 · PostgreSQL', sub:'正文 / 版本 / 草稿 · 会话 / 检查点 · 规则 / 来源 / 队列 · 检索片段 / 向量 · 附件元数据', icon:'database', type:'NoteFlow 自己的数据', row:8, span:'all',
+      steps:['正式资料：笔记正文、版本、草稿、修改预览','对话与运行：会话、运行记录、图检查点','记忆控制：规则、来源状态、持久队列','派生检索：分段、索引、向量，可重建','附件记录：名称、位置、账号归属，不含文件本体'],
+      note:'这些可以在同一个 PostgreSQL 里，由不同表承担职责。数据库是被多个模块调用的存储，不是所有请求都只在最后经过的一步。',
+      sources:['server/app/models/db.py','server/app/repositories/','server/app/services/agent_checkpoints.py'] }
+  ];
+  const S = (from,to,title,data,kind='call') => ({from,to,title,data,kind});
+  const planning = [
+    S('router','prompt','组织意图识别提示','本轮消息 + 近期聊天 + 当前笔记 ID / 选区预览','data'),
+    S('prompt','model','请模型提出计划','识别提示 + JSON Schema'),
+    S('model','router','校验模型计划','意图、目标、来源；无效则修复或追问')
+  ];
+  const scenarios = {
+    overview:{ foot:'浏览器 → 一个 FastAPI 后端 → 项目数据库、模型服务与 Hindsight。展开只看内部，始终保留全图。', steps:[] },
+    chat:{ foot:'示例前提：记忆已开启、计划要求个人记忆且存在可用事实。失败可降级；自动保存新记忆是可选后续，见“保存记忆”。', steps:[
+      S('ui','api','发送一个普通问题','问题 + 近期聊天 + 页面状态'),
+      S('api','runtime','建立本轮运行','已认证账号 + 会话 + 本轮 runId'),
+      S('runtime','db','记录运行与检查点','运行状态；不是长期记忆','data'),
+      S('api','router','进入对话任务判断','mode=chat'), ...planning,
+      S('router','context','选择普通回答','本轮计划要求 user_memory'),
+      S('context','memory','申请相关个人记忆','账号 + 问题 + 允许的业务范围'),
+      S('db','memory','读取记忆控制信息','开关、来源状态、人工修订 / 删除屏障','data'),
+      S('memory','adapter','通过统一接口召回','该账号下的记忆查询'),
+      S('adapter','hindsight','查询记忆引擎','引擎适配后的账号库与查询'),
+      S('hindsight','adapter','返回相关事实','引擎原生事实 / 状态'),
+      S('adapter','memory','转换为项目契约','MemoryFact：content、source_id、status'),
+      S('memory','context','交回可用记忆','排除停用、待确认、已删、隐藏与不适用事实','data'),
+      S('context','prompt','组织回答资料','问题 + 近期聊天 + 过滤后的记忆','data'),
+      S('prompt','model','请求模型回答','回答模板 + 本轮消息'),
+      S('model','ui','通过 API / SSE 流式返回','答案逐段显示；本轮没有修改笔记') ] },
+    qa:{ foot:'全库问答只找当前账号笔记；跳过意图模型与个人记忆召回。没有可用来源时直接说明未找到，不编造笔记证据。', steps:[
+      S('ui','api','在全库模式发送问题','mode=ask_notes + 问题 + 近期聊天'),
+      S('api','router','采用程序固定计划','knowledge_base；跳过意图模型'),
+      S('router','context','进入笔记问答','要求笔记证据与来源编号'),
+      S('context','index','查找相关笔记片段','账号范围 + 查询问题'),
+      S('index','db','读取检索数据','标题 / 词项 / 向量索引与有效来源','data'),
+      S('db','index','返回候选片段','本人有效笔记的派生片段','data'),
+      S('index','context','整理可用依据','融合排序后的片段 + 引用编号','data'),
+      S('context','prompt','组织有依据的回答','问题 + 近期聊天 + 笔记片段','data'),
+      S('prompt','model','请模型按资料回答','严格笔记回答与引用规则'),
+      S('model','context','校验回答引用','核对引用编号，必要时修正输出'),
+      S('context','ui','通过 API / SSE 返回','答案 + 可查看的笔记来源') ] },
+    save:{ foot:'保存先返回确认，索引随后完成。普通保存的跨设备原子并发保护仍未解决（UI-45）；这里展示成功路径。', steps:[
+      S('ui','api','发送手动编辑内容','正文 + 笔记 ID + 预期 hash / 更新时间'),
+      S('api','notes','直接进入保存服务','跳过任务判断与 AI 模型'),
+      S('notes','db','读取本人当前正文','按账号 / 笔记定位原文','data'),
+      S('db','notes','检查预期版本','不匹配则冲突返回，保留本地修改','data'),
+      S('notes','db','提交正式内容与索引待办','笔记正文 + 历史版本 + 索引任务','data'),
+      S('db','api','数据库提交成功','返回保存版本与更新时间'),
+      S('api','ui','确认已保存','清理已确认的本地修改；索引可能仍排队'),
+      S('db','index','后台领取索引任务','已保存版本与任务','data'),
+      S('index','model','生成检索向量','正文分段；这是嵌入请求，不是聊天提示'),
+      S('model','index','返回向量','每个片段的嵌入结果'),
+      S('index','db','更新可检索内容','片段 + 向量 + 来源版本，派生数据','data') ] },
+    create:{ foot:'这是分多次点击 / 请求推进的成功路径；生成的内容先在草稿中。示例省略可选写作记忆；后台章节生成由现有 draft worker 推进。', steps:[
+      S('ui','api','请求新建一篇笔记','用户提出主题与要求'),
+      S('api','router','识别创建任务','对话模式'), ...planning,
+      S('router','notes','提取标题与明确要求','不凭空补造用户要求'),
+      S('notes','ui','显示创建卡片','可编辑标题与要求，等待用户开始'),
+      S('ui','api','确认开始生成','用户点击开始，不是自动保存'),
+      S('api','notes','启动草稿流程','大纲生成 → 查看 / 调整大纲'),
+      S('notes','prompt','组织写作提示','主题 + 要求 + 大纲 / 本节上下文','data'),
+      S('prompt','model','生成大纲或章节','多次模型调用按实际步骤推进'),
+      S('model','notes','返回候选内容','大纲 / 分节正文，仍是草稿'),
+      S('notes','runtime','安排后续章节生成','批量生成任务由 draft worker 推进'),
+      S('runtime','db','持久保存草稿与进度','已生成章节、停止 / 失败 / 重试状态','data'),
+      S('notes','ui','提供草稿审阅与编辑','未生成完的章节不伪装成完成'),
+      S('ui','api','用户确认保存到笔记','这是另一次明确操作'),
+      S('api','notes','执行保存正式笔记','检查账号、内容与任务状态'),
+      S('notes','db','提交正式正文与索引任务','候选草稿成为正式笔记；索引随后处理','data'),
+      S('db','api','返回提交结果','正式笔记 ID 与内容版本'),
+      S('api','ui','打开保存后的笔记','后续可编辑、检索') ] },
+    preview:{ foot:'这条是服务器修改预览路径：原文先不动，确认后才提交。原文变化会阻止应用；SQL 与图授权的故障窗口仍待验收。', steps:[
+      S('ui','api','明确请求生成修改预览','目标笔记 / 范围 / 修改要求'),
+      S('api','notes','定位本人原文与修改范围','从预览按钮发起，不再走聊天意图判断'),
+      S('db','notes','读取原文版本','目标正文、选区或章节','data'),
+      S('notes','prompt','构造限定范围的修改提示','原文 + 要求；示例未启用可选写作记忆','data'),
+      S('prompt','model','生成候选修改','要求返回可验证的修改结果'),
+      S('model','notes','校验修改结果','定位、格式、空结果等检查'),
+      S('notes','db','保存独立修改预览','候选稿 + 原文 hash，正式正文保持不变','data'),
+      S('notes','ui','返回修改预览','用户可编辑、继续调整或取消'),
+      S('ui','api','点击应用修改','明确采用当前候选稿'),
+      S('api','notes','重新检查原文并执行应用','锁定预览 / 笔记，检查 hash 与重复应用'),
+      S('notes','db','提交修改与旧版本','正式正文 + 历史版本 + 索引任务 + 应用状态','data'),
+      S('db','api','返回应用结果','SQL 提交后的笔记与版本'),
+      S('api','ui','更新正文显示','用户看到已应用，索引后台更新') ] },
+    quick:{ foot:'选区快捷改写不走聊天 Planner、不建立服务器修改预览。候选采用与服务器保存是两步；未保存输入与撤销由编辑器保留。', steps:[
+      S('ui','api','点击选区工具栏的 AI 改一下','选区快照 + 自定义意见 + 可选当前候选稿'),
+      S('api','notes','验证笔记归属','编辑器持有实际选区位置，后端只生成文字'),
+      S('notes','prompt','组织选区改写提示','选中 Markdown + 要求；示例未启用可选记忆','data'),
+      S('prompt','model','润色或继续修改候选','保留范围与原意约束'),
+      S('model','api','只返回候选文字','newContent；不写正式正文或持久预览'),
+      S('api','ui','就近显示候选','等待采用 / 继续调整 / 取消'),
+      S('ui','ui','点击采用，替换准确选区','编辑器事务，可一步撤销；原文变化则阻止采用'),
+      S('ui','api','随后自动保存编辑器内容','普通笔记保存请求，仍带预期版本'),
+      S('api','notes','进入普通保存','保留失败 / 冲突时的本地输入'),
+      S('notes','db','提交正文、版本与索引任务','沿用普通保存边界，UI-45 仍待完善','data'),
+      S('db','api','返回保存结果','正文提交确认'),
+      S('api','ui','显示已保存','后台更新索引') ] },
+    remember:{ foot:'显式记忆命令 / 可选自动记忆最终共用管理入口。后台整理完成才有事实；关闭、规则变化或来源删除后，旧任务不得复活数据。', steps:[
+      S('ui','api','明确要求记住稳定偏好','合成示例：“我希望解释先给整体图”'),
+      S('api','router','识别记忆命令','对话模式'), ...planning,
+      S('router','memory','提交需要记住的原话','不是任务完成 / 取消流水'),
+      S('db','memory','读取保存条件','开关、账号规则、来源代数','data'),
+      S('memory','db','保存来源与持久待办','通过安全 / 去重检查才入队；两者同事务','data'),
+      S('db','worker','领取待处理来源','持久队列可重试','data'),
+      S('worker','memory','重新核对当前有效性','开关、规则版本、来源状态；不匹配跳过'),
+      S('worker','adapter','请求整理原文','当前 mission + 来源 ID + 原始内容'),
+      S('adapter','hindsight','配置规则并保存来源','适配器转换为 Hindsight 请求'),
+      S('hindsight','hindsight','引擎提取并保存事实 / 关系','在 Hindsight 自己的数据库内处理'),
+      S('hindsight','adapter','返回整理后的事实','可能无可用事实；人工保护下可能待确认'),
+      S('adapter','worker','按统一结果收尾','事实字段与状态已经归一化'),
+      S('worker','db','写回来源处理状态','完成 / 空结果 / 重试；来源控制仍由项目负责','data') ] },
+    attachment:{ foot:'这是当前正常上传顺序。文件与 SQL 提交不能一起回滚，失败一致性仍未解决（UI-46）；此演示不掩盖这个缺口。', steps:[
+      S('ui','api','上传附件','文件内容 + 账号会话'),
+      S('api','files','校验并写入文件存储','AttachmentService → LocalObjectStorage'),
+      S('files','db','提交附件元数据','文件位置、名称、大小与归属；不是文件本体','data'),
+      S('db','api','返回数据库提交结果','此时文件与元数据正常就位'),
+      S('api','ui','显示附件访问结果','后续读取仍校验账号权限') ] }
+  };
+  const overview = [
+    S('ui','api','HTTP / SSE','前端操作进入后端；结果沿接口返回'),
+    S('api','router','聊天 / 全库','聊天才需要任务判断；全库有固定路由'),
+    S('api','notes','笔记专用接口','手动保存与选区快捷改写直接进入业务服务'),
+    S('api','files','附件专用接口','文件上传 / 访问不经过 AI'),
+    S('api','runtime','运行记录','聊天任务记录 runId，草稿后台任务记录生成进度'),
+    S('router','notes','创建 / 修改','交给笔记业务，不直接写数据库'),
+    S('router','context','只读回答','组织本轮需要的资料'),
+    S('router','memory','记忆命令','写入 / 查询 / 修订 / 关闭'),
+    S('context','prompt','问题与资料','选区、原文、笔记片段或允许的记忆','data'),
+    S('notes','index','索引待办','正式保存后安排持久索引任务','data'),
+    S('context','index','查询笔记','检索相关片段与引用'),
+    S('context','memory','按需读记忆','普通对话在开关和计划允许时调用'),
+    S('notes','prompt','写作输入','标题、要求、原文范围与上下文','data'),
+    S('prompt','model','调用模型','拼装消息后才发起模型请求'),
+    S('model','ui','通过接口返回结果','回答按 SSE 输出；候选稿等待审阅后才保存'),
+    S('memory','worker','保存来源与排队','经项目数据库持久化，不是仅内存任务','data'),
+    S('worker','adapter','整理记忆','后台复查来源后调用引擎'),
+    S('adapter','hindsight','引擎调用','统一接口隔离具体厂商'),
+    S('index','db','索引读写','保存 / 查询派生片段与向量','data'),
+    S('runtime','db','运行状态','业务运行记录与 LangGraph 检查点','data'),
+    S('files','db','附件元数据','文件本体留在磁盘 / 卷','data'),
+    S('memory','db','规则与来源','来源状态、删除屏障、任务队列','data'),
+    S('notes','db','笔记数据','正文、历史、草稿、预览','data')
+  ];
+  const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const nodeEls = new Map();
+  const buttons = new Map();
+  for (const n of nodes) {
+    const section = document.createElement('section');
+    section.className = 'map-node';
+    section.dataset.node = n.id;
+    section.dataset.row = n.row;
+    if (n.span) section.dataset.span = n.span;
+    if (n.col) section.dataset.col = n.col;
+    section.innerHTML = `<div class="map-node-meta text-small text-muted"><span>${esc(n.type)}</span><span data-indicator>＋</span></div>
+      <button type="button" class="btn viz-tile" id="nf-map-node-${n.id}" aria-expanded="false" aria-controls="nf-map-inner-${n.id}" aria-pressed="false"><span>${esc(n.title)}<br><span class="text-small">${esc(n.sub)}</span></span></button>
+      <div class="map-inner text-small" id="nf-map-inner-${n.id}" hidden><ol>${n.steps.map(t=>`<li>${esc(t)}</li>`).join('')}</ol>
+      <details><summary class="cursor-interaction">代码与当前边界</summary><div class="map-source"><span>${esc(n.note)}</span>${n.sources.map(p=>`<code>${esc(p)}</code>`).join('')}</div></details></div>`;
+    grid.append(section);
+    nodeEls.set(n.id,section);
+    const button = section.querySelector('button');
+    buttons.set(n.id,button);
+    button.addEventListener('click',() => {
+      animateLayout(() => {
+        if (state.expanded.has(n.id)) state.expanded.delete(n.id); else state.expanded.add(n.id);
+        updateExpanded();
+      });
+      saveState();
+    });
+    section.querySelector('details').addEventListener('toggle',() => { draw(); });
+  }
+  let state = { scenario:'overview', step:-1, expanded:new Set(), playing:false };
+  let timer = null;
+  let layoutFrame = null;
+  let packetAnimation = null;
+  let lastLineKey = '';
+  let lastGeometry = '';
+  const stateSender = `nf-map-${Math.random().toString(36).slice(2)}`;
+  const ns = 'http://www.w3.org/2000/svg';
+  const make = (name, attrs={}) => {
+    const el = document.createElementNS(ns,name);
+    for (const [k,v] of Object.entries(attrs)) el.setAttribute(k,String(v));
+    return el;
+  };
+  const getSteps = () => scenarios[state.scenario].steps;
+  const current = () => getSteps()[state.step];
+  function saveState() {
+    if (!window.openai?.setWidgetState) return;
+    window.openai.setWidgetState({
+      modelContent:{design:'noteflow-system-map-v1',scenario:state.scenario,step:state.step,expandedModules:[...state.expanded]},
+      privateContent:{scenario:state.scenario,step:state.step,expanded:[...state.expanded],sender:stateSender}
+    }).catch(()=>{});
+  }
+  function restore(saved) {
+    const val = saved?.privateContent || saved?.modelContent || saved;
+    if (!val || !Object.hasOwn(scenarios,val.scenario)) return;
+    // The host may synchronously echo our optimistic snapshot. Applying that
+    // echo would stop playback and interrupt layout motion on every click.
+    if (val.sender === stateSender) return;
+    stop();
+    state.scenario = val.scenario;
+    state.step = Number.isInteger(val.step) ? Math.max(-1,Math.min(val.step,getSteps().length-1)) : -1;
+    const expanded = val.expanded || val.expandedModules || [];
+    state.expanded = new Set(Array.isArray(expanded) ? expanded.filter(id=>nodeEls.has(id)) : []);
+    updateExpanded(); update();
+  }
+  function updateExpanded() {
+    for (const [id,el] of nodeEls) {
+      const expanded = state.expanded.has(id);
+      el.querySelector('.map-inner').hidden = !expanded;
+      el.querySelector('button').setAttribute('aria-expanded',String(expanded));
+      el.querySelector('[data-indicator]').textContent = expanded ? '−' : '＋';
+    }
+    fold.disabled = !state.expanded.size;
+  }
+  function stop() {
+    state.playing = false;
+    clearTimeout(timer); timer = null;
+    play.textContent = state.step === getSteps().length-1 && getSteps().length ? '重看路径' : '播放路径';
+  }
+  function update() {
+    chooser.value = state.scenario;
+    const steps = getSteps();
+    const selected = current();
+    const included = new Set(steps.flatMap(s=>[s.from,s.to]));
+    for (const [id,el] of nodeEls) {
+      el.dataset.dim = String(state.scenario !== 'overview' && !included.has(id));
+      buttons.get(id).setAttribute('aria-pressed',String(!!selected && (selected.from===id || selected.to===id)));
+    }
+    play.disabled = !steps.length;
+    next.disabled = !steps.length || state.step >= steps.length-1;
+    play.textContent = state.playing ? '暂停' : state.step===steps.length-1 && steps.length ? '重看路径' : '播放路径';
+    count.textContent = !steps.length ? '全貌' : state.step<0 ? `路径 · ${steps.length} 步` : `${state.step+1} / ${steps.length}`;
+    action.textContent = selected?.title || (!steps.length ? '所有模块在同一张图里；连线表示调用或数据依赖。' : '路径已亮起，可以播放，也可以逐步查看。');
+    payload.textContent = selected?.data || '流程演示，不是线上实时追踪';
+    foot.textContent = scenarios[state.scenario].foot;
+    draw();
+  }
+  function snapshot() { return new Map([...nodeEls].map(([id,el])=>[id,el.getBoundingClientRect()])); }
+  function animateLayout(change) {
+    if (layoutFrame) cancelAnimationFrame(layoutFrame);
+    for (const el of nodeEls.values()) el.getAnimations().forEach(a=>a.cancel());
+    const before = snapshot();
+    change();
+    if (reduced.matches || root.dataset.motion==='off') { draw(); return; }
+    for (const [id,el] of nodeEls) {
+      const after = el.getBoundingClientRect();
+      const previous = before.get(id);
+      if (previous && Math.abs(previous.top-after.top)+Math.abs(previous.left-after.left)>1) {
+        el.animate([{transform:`translate(${previous.left-after.left}px,${previous.top-after.top}px)`},{transform:'translate(0,0)'}],{duration:360,easing:'cubic-bezier(.2,.8,.2,1)'});
+      }
+    }
+    const started=performance.now();
+    const tick=now=>{ draw(false); if(now-started<390) layoutFrame=requestAnimationFrame(tick); else {layoutFrame=null;draw();} };
+    layoutFrame=requestAnimationFrame(tick);
+  }
+  function coords(id) {
+    const b=board.getBoundingClientRect();
+    const r=buttons.get(id).getBoundingClientRect();
+    const section=nodeEls.get(id).getBoundingClientRect();
+    return {x:r.left-b.left,y:section.top-b.top,w:r.width,h:section.height,cx:r.left-b.left+r.width/2,cy:r.top-b.top+r.height/2};
+  }
+  function curve(s,index) {
+    const a=coords(s.from), b=coords(s.to), width=board.clientWidth;
+    const mobile=getComputedStyle(grid).gridTemplateColumns.trim().split(/\s+/).length===1;
+    const sourceRow=nodes.find(n=>n.id===s.from).row;
+    const targetRow=nodes.find(n=>n.id===s.to).row;
+    if(s.from===s.to) {
+      const x=a.x+a.w, y=a.cy;
+      return `M ${x} ${y-12} C ${Math.min(width-2,x+22)} ${y-32},${Math.min(width-2,x+22)} ${y+32},${x} ${y+12}`;
+    }
+    if(mobile) {
+      const sameNext = nodes.findIndex(n=>n.id===s.to)-nodes.findIndex(n=>n.id===s.from)===1;
+      if(sameNext) return `M ${a.cx} ${a.y+a.h+3} L ${b.cx} ${b.y-5}`;
+      const lane=s.kind==='data'?8:width-8;
+      const ax=lane<width/2?a.x-3:a.x+a.w+3;
+      const bx=lane<width/2?b.x-3:b.x+b.w+3;
+      return `M ${ax} ${a.cy} C ${lane} ${a.cy},${lane} ${a.cy},${lane} ${a.cy+Math.sign(b.cy-a.cy)*14} L ${lane} ${b.cy-Math.sign(b.cy-a.cy)*14} Q ${lane} ${b.cy},${bx} ${b.cy}`;
+    }
+    const dbTarget=s.to==='db'||s.from==='db';
+    if(dbTarget) {
+      const down=s.to==='db', source=down?a:b, store=down?b:a;
+      const sourceId=down?s.from:s.to;
+      const lane = source.cx<width/3?12:source.cx>width*2/3||sourceId!=='runtime'?width-12:width/2;
+      const endX = source.cx<width/3?store.x+store.w*.15:source.cx>width*2/3?store.x+store.w*.85:store.cx;
+      const start={x:source.cx,y:source.y+source.h+3},end={x:endX,y:store.y-5};
+      const d=`M ${start.x} ${start.y} C ${start.x} ${start.y+14},${lane} ${start.y+14},${lane} ${start.y+26} L ${lane} ${end.y-12} Q ${lane} ${end.y},${end.x} ${end.y}`;
+      if(down) return d;
+      return `M ${end.x} ${end.y} Q ${lane} ${end.y},${lane} ${end.y-12} L ${lane} ${start.y+26} C ${lane} ${start.y+14},${start.x} ${start.y+14},${start.x} ${start.y}`;
+    }
+    if(sourceRow===targetRow) {
+      const right=b.cx>a.cx;
+      return `M ${right?a.x+a.w+3:a.x-3} ${a.cy} L ${right?b.x-5:b.x+b.w+5} ${b.cy}`;
+    }
+    const down=b.cy>a.cy;
+    const adjacent=Math.abs(sourceRow-targetRow)<=1;
+    if(adjacent) {
+      const x1=a.cx,y1=down?a.y+a.h+3:a.y-3,x2=b.cx,y2=down?b.y-5:b.y+b.h+5;
+      const fromRowEdge=down
+        ?Math.max(...nodes.filter(n=>n.row===sourceRow).map(n=>{const r=coords(n.id);return r.y+r.h;}))
+        :Math.max(...nodes.filter(n=>n.row===targetRow).map(n=>{const r=coords(n.id);return r.y+r.h;}));
+      const mid=down?(fromRowEdge+b.y)/2:(fromRowEdge+a.y)/2;
+      return `M ${x1} ${y1} L ${x1} ${mid} C ${x1} ${mid},${x2} ${mid},${x2} ${y2}`;
+    }
+    const lane=s.to==='ui'||s.from==='memory'||s.from==='hindsight'?width-5:5;
+    if(down) {
+      const startY=a.y+a.h+3,startTurn=startY+10,endY=b.y-5,endTurn=b.y-18;
+      return `M ${a.cx} ${startY} Q ${a.cx} ${startTurn},${a.cx+Math.sign(lane-a.cx)*12} ${startTurn} L ${lane-Math.sign(lane-a.cx)*12} ${startTurn} Q ${lane} ${startTurn},${lane} ${startTurn+12} L ${lane} ${endTurn-12} Q ${lane} ${endTurn},${lane>width/2?lane-12:lane+12} ${endTurn} L ${b.cx-Math.sign(b.cx-lane)*12} ${endTurn} Q ${b.cx} ${endTurn},${b.cx} ${endY}`;
+    }
+    const startY=a.y-5,startTurn=a.y-18,endY=b.y+b.h+5,endTurn=endY+12;
+    return `M ${a.cx} ${startY} Q ${a.cx} ${startTurn},${a.cx+Math.sign(lane-a.cx)*12} ${startTurn} L ${lane-Math.sign(lane-a.cx)*12} ${startTurn} Q ${lane} ${startTurn},${lane} ${startTurn-12} L ${lane} ${endTurn+12} Q ${lane} ${endTurn},${lane>width/2?lane-12:lane+12} ${endTurn} L ${b.cx-Math.sign(b.cx-lane)*12} ${endTurn} Q ${b.cx} ${endTurn},${b.cx} ${endY}`;
+  }
+  function draw(animatePacket=true) {
+    if(!board.clientWidth) return;
+    const selected=current();
+    const steps=getSteps();
+    const routeSet=new Set(steps.map(s=>`${s.from}|${s.to}`));
+    const all=[...overview];
+    for(const s of steps) if(!all.some(e=>e.from===s.from&&e.to===s.to)) all.push(s);
+    const width=board.clientWidth,height=board.offsetHeight;
+    const geometry=`${state.scenario}:${state.step}:${width}:${height}:`+[...nodeEls.keys()].map(id=>{
+      const r=coords(id);return [r.x,r.y,r.w,r.h,r.cy].map(v=>Math.round(v*10)).join(',');
+    }).join('|');
+    if(geometry===lastGeometry) return;
+    lastGeometry=geometry;
+    svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
+    svg.replaceChildren();
+    const defs=make('defs');
+    for(const active of [false,true]) {
+      const marker=make('marker',{id:`nf-map-arrow-${active?'active':'base'}`,viewBox:'0 0 8 8',refX:7,refY:4,markerWidth:6,markerHeight:6,orient:'auto-start-reverse'});
+      marker.append(make('path',{d:'M 0 0 L 8 4 L 0 8 Z',class:active?'wire-arrow-active':'wire-arrow'})); defs.append(marker);
+    }
+    svg.append(defs);
+    for(const [i,s] of all.entries()) {
+      const inRoute=routeSet.has(`${s.from}|${s.to}`);
+      const active=selected&&selected.from===s.from&&selected.to===s.to;
+      if(state.scenario!=='overview'&&!inRoute) continue;
+      const d=curve(s,i);
+      const path=make('path',{d,class:`${s.kind==='data'?'wire-data':''} ${inRoute?'wire-route':''} ${active?'wire-active':''}`,'data-from':s.from,'data-to':s.to,'marker-end':`url(#nf-map-arrow-${active?'active':'base'})`});
+      svg.append(path);
+      const hit=make('path',{d,class:'wire-hit cursor-interaction','data-tooltip':`${s.title}：${s.data}`});
+      hit.addEventListener('click',()=>{
+        if(state.scenario!=='overview') {
+          const found=steps.findIndex(e=>e.from===s.from&&e.to===s.to);
+          stop(); state.step=found; update(); saveState();
+        } else { count.textContent='连线';action.textContent=s.title;payload.textContent=s.data; }
+      });
+      svg.append(hit);
+      if(active) {
+        path.dataset.activeWire='true';
+        const length=path.getTotalLength();
+        const key=`${state.scenario}:${state.step}`;
+        const packet=make('circle',{r:4,class:'wire-packet'});
+        const end=path.getPointAtLength(length);
+        packet.setAttribute('cx',end.x);packet.setAttribute('cy',end.y);svg.append(packet);
+        if(animatePacket&&!reduced.matches&&root.dataset.motion!=='off'&&key!==lastLineKey) {
+          if(packetAnimation) cancelAnimationFrame(packetAnimation);
+          const started=performance.now();
+          const tick=now=>{
+            if(!packet.isConnected) {packetAnimation=null;return;}
+            const fraction=Math.min(1,(now-started)/850);
+            const p=path.getPointAtLength(length*(fraction*fraction*(3-2*fraction)));
+            packet.setAttribute('cx',p.x);packet.setAttribute('cy',p.y);
+            if(fraction<1) packetAnimation=requestAnimationFrame(tick); else packetAnimation=null;
+          };
+          packetAnimation=requestAnimationFrame(tick);
+        }
+      }
+    }
+    if(selected&&animatePacket) lastLineKey=`${state.scenario}:${state.step}`;
+  }
+  function advance() {
+    if(state.step<getSteps().length-1) state.step++;
+    if(state.step===getSteps().length-1) stop();
+    update();
+  }
+  function schedule() {
+    timer=setTimeout(()=>{if(!state.playing)return;advance();if(state.playing)schedule();else saveState();},2200);
+  }
+  chooser.addEventListener('change',()=>{
+    stop();state.scenario=chooser.value;state.step=-1;lastLineKey='';update();saveState();
+  });
+  play.addEventListener('click',()=>{
+    if(state.playing) {stop();update();saveState();return;}
+    if(state.step>=getSteps().length-1) state.step=-1;
+    state.playing=true;advance();if(state.playing)schedule();saveState();
+  });
+  next.addEventListener('click',()=>{stop();advance();saveState();});
+  fold.addEventListener('click',()=>{animateLayout(()=>{state.expanded.clear();updateExpanded();});saveState();});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.playing){stop();update();}});
+  new ResizeObserver(()=>draw(false)).observe(board);
+  reduced.addEventListener('change',()=>{if(packetAnimation)cancelAnimationFrame(packetAnimation);packetAnimation=null;draw(false);});
+  root.addEventListener('nf:motionchange',()=>{
+    if(root.dataset.motion==='off'){
+      if(packetAnimation)cancelAnimationFrame(packetAnimation);
+      packetAnimation=null;
+      for(const el of nodeEls.values())el.getAnimations().forEach(animation=>animation.cancel());
+      stop();update();
+    }
+  });
+  window.addEventListener('openai:set_globals',event=>{if(event.detail?.globals?.widgetState)restore(event.detail.globals.widgetState);});
+  root.addEventListener('keydown',event=>{if(event.key==='Escape'&&state.playing){stop();update();saveState();}});
+  if(window.lucide) window.lucide.createIcons({attrs:{width:16,height:16}});
+  update();
+  if(window.openai?.widgetState)restore(window.openai.widgetState);
+})();
+</script>
+
+    </section>
+  </main>
+  <script>
+  (()=>{
+    const root=document.getElementById('nf-system-map');
+    const picker=document.getElementById('nf-map-scenario');
+    const links=[...document.querySelectorAll('[data-scenario]')];
+    const sync=()=>links.forEach(el=>el.setAttribute('aria-current',String(el.dataset.scenario===picker.value)));
+    links.forEach(el=>el.addEventListener('click',()=>{picker.value=el.dataset.scenario;picker.dispatchEvent(new Event('change',{bubbles:true}));sync();}));
+    picker.addEventListener('change',sync);
+    const variants={memory:'network',hindsight:'network',adapter:'network',router:'network',db:'stack',files:'stack',notes:'stack',model:'wave'};
+    const observer=new IntersectionObserver(entries=>entries.forEach(entry=>entry.target.dataset.awake=String(entry.isIntersecting)),{rootMargin:'80px'});
+    for(const node of root.querySelectorAll('.map-node')){
+      const kind=variants[node.dataset.node]||'lines';
+      const mark=document.createElement('span');mark.className=`mini mini-${kind}`;mark.setAttribute('aria-hidden','true');
+      for(let i=0;i<(kind==='wave'?5:3);i++)mark.append(document.createElement('b'));
+      node.querySelector('.viz-tile>span').prepend(mark);observer.observe(node);
+    }
+    const motion=document.getElementById('atlas-motion');
+    const preference=matchMedia('(prefers-reduced-motion:reduce)');
+    let enabled=!preference.matches;
+    function setMotion(){
+      document.body.classList.toggle('is-motion-off',!enabled);
+      root.dataset.motion=enabled?'on':'off';
+      motion.setAttribute('aria-pressed',String(enabled));
+      motion.querySelector('span:last-child').textContent=preference.matches?'系统减少动效':enabled?'动效开启':'动效暂停';
+      motion.disabled=preference.matches;
+      root.dispatchEvent(new CustomEvent('nf:motionchange'));
+    }
+    motion.addEventListener('click',()=>{enabled=!enabled;setMotion();});
+    preference.addEventListener('change',()=>{enabled=!preference.matches;setMotion();});
+    setMotion();sync();
+  })();
+  </script>
+</body>
+</html>

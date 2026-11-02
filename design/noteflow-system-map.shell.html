@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>NoteFlow · 系统架构</title>
+  <style>
+    :root {
+      color-scheme:light dark; --font-size-base:14px;
+      --background:#f5f7f9; --foreground:#26333f; --card:#fff; --card-foreground:#26333f;
+      --popover:#fff; --popover-foreground:#26333f; --primary:#355f79; --primary-foreground:#fff;
+      --secondary:#edf2f6; --secondary-foreground:#35516a; --muted:#edf1f4; --muted-foreground:#677581;
+      --accent:#eaf3f8; --accent-foreground:#355f79; --border:#dfe6ec; --ring:#5289aa;
+      --viz-series-1:#4c88ad; --surface:#fff; --canvas:#f9fbfc; --dot:#d8e1e7;
+      --shadow:0 2px 6px #22394f04,0 10px 28px #22394f06;
+    }
+    @media(prefers-color-scheme:dark) {
+      :root { --background:#11191f; --foreground:#e2eaf0; --card:#1a252e; --card-foreground:#e2eaf0;
+        --popover:#1a252e; --popover-foreground:#e2eaf0; --primary:#85b5d1; --primary-foreground:#122430;
+        --secondary:#24333f; --secondary-foreground:#b3cedf; --muted:#23313b; --muted-foreground:#9aabb7;
+        --accent:#223b4b; --accent-foreground:#b6d7e9; --border:#30414e; --ring:#85b5d1;
+        --viz-series-1:#85b5d1; --surface:#17222a; --canvas:#131e26; --dot:#2a3944;
+        --shadow:0 2px 6px #0001,0 10px 28px #0002; }
+    }
+    * {box-sizing:border-box}
+    body {margin:0;background:var(--background);color:var(--foreground);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+    button,select {font:inherit}
+    button {cursor:pointer}
+    button:disabled {cursor:default;opacity:.45}
+    button:focus-visible,select:focus-visible,summary:focus-visible {outline:3px solid var(--ring);outline-offset:3px}
+    h1,h2,p {margin:0}
+    .site-bar {height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 36px;border-bottom:1px solid var(--border);background:var(--surface);gap:20px}
+    .site-brand {display:flex;align-items:center;gap:12px;font-size:18px;font-weight:650;letter-spacing:-.5px}
+    .brand-mark {width:30px;height:30px;display:grid;grid-template-columns:repeat(2,1fr);gap:4px;transform:rotate(-7deg)}
+    .brand-mark i {border-radius:4px;background:var(--primary)}
+    .brand-mark i:nth-child(2) {opacity:.55}.brand-mark i:nth-child(3) {opacity:.3}
+    .bar-divider {height:20px;width:1px;background:var(--border);margin:0 5px}
+    .bar-label {font-size:13px;font-weight:400;letter-spacing:0;color:var(--muted-foreground)}
+    .bar-actions {display:flex;align-items:center;gap:20px;font-size:12px;color:var(--muted-foreground)}
+    .motion-toggle {border:1px solid var(--border);background:var(--surface);border-radius:30px;padding:8px 14px;display:flex;gap:8px;align-items:center;color:var(--foreground);font-size:12px}
+    .motion-lamp {width:6px;height:6px;border-radius:50%;background:var(--viz-series-1);box-shadow:0 0 0 4px color-mix(in srgb,var(--viz-series-1) 10%,transparent)}
+    .atlas-layout {max-width:1660px;margin:auto;display:grid;grid-template-columns:226px minmax(0,1fr);min-height:calc(100vh - 72px)}
+    .scenario-sidebar {border-right:1px solid var(--border);padding:36px 18px 26px;align-self:start;position:sticky;top:0;display:flex;flex-direction:column;gap:28px}
+    .sidebar-caption {padding:0 14px;font-size:11px;color:var(--muted-foreground);letter-spacing:1.5px;margin-bottom:12px}
+    .scenario-list {display:grid;gap:6px}
+    .scenario-link {border:0;background:transparent;border-radius:11px;padding:12px 14px;display:flex;align-items:center;gap:11px;text-align:left;color:var(--muted-foreground);width:100%;transition:background .2s,color .2s}
+    .scenario-link:hover {background:var(--muted);color:var(--foreground)}
+    .scenario-link[aria-current="true"] {background:var(--accent);color:var(--accent-foreground);font-weight:600}
+    .nav-symbol {font-size:11px;font-weight:500;font-variant-numeric:tabular-nums;width:20px;flex-shrink:0;color:var(--muted-foreground)}
+    .scenario-link[aria-current="true"] .nav-symbol {color:var(--accent-foreground)}
+    .sidebar-note {padding:18px 14px 0;border-top:1px solid var(--border);font-size:12px;color:var(--muted-foreground);display:grid;gap:10px}
+    .sidebar-note strong {color:var(--foreground);font-weight:500}
+    .atlas-workspace {min-width:0;padding:38px 36px 30px}
+    .page-hero {display:flex;justify-content:space-between;gap:24px;align-items:center;margin-bottom:26px}
+    .eyebrow {font-size:10px;letter-spacing:2px;color:var(--muted-foreground);margin-bottom:8px;font-weight:600}
+    h1 {font-size:29px;letter-spacing:-1px;font-weight:650;line-height:1.3}
+    .hero-description {font-size:13px;color:var(--muted-foreground);margin-top:9px}
+    .hero-note {font-size:11px;color:var(--muted-foreground);border:1px solid var(--border);padding:7px 11px;border-radius:30px;white-space:nowrap;background:var(--surface)}
+    #nf-system-map .map-heading {display:none}
+    #nf-system-map .map-controls {display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 18px}
+    #nf-system-map .map-controls>.form-label {display:none}
+    .viz-row {display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .btn {border:1px solid var(--border);background:var(--surface);color:var(--foreground);border-radius:9px;padding:9px 14px;transition:box-shadow .2s,border-color .2s,background .2s;min-height:38px}
+    .btn:not(:disabled):hover {background:var(--muted);border-color:var(--muted-foreground)}
+    .btn-primary {background:var(--primary);color:var(--primary-foreground);border-color:var(--primary);font-weight:500}
+    .btn-primary:not(:disabled):hover {background:color-mix(in srgb,var(--primary) 90%,var(--foreground));border-color:var(--primary)}
+    .btn-ghost {border-color:transparent;background:transparent;color:var(--muted-foreground)}
+    .text-small {font-size:12px}.text-muted {color:var(--muted-foreground)}
+    .tabular-nums {font-variant-numeric:tabular-nums}
+    .form-select {display:block;width:100%;max-width:100%;padding:10px 12px;background:var(--surface);color:var(--foreground);border:1px solid var(--border);border-radius:9px;margin-top:8px;font-size:14px}
+    #nf-system-map .map-position {position:relative;background:var(--surface);border:1px solid var(--border);border-radius:13px;min-height:0;padding:14px 18px;gap:4px;margin-bottom:15px;box-shadow:var(--shadow)}
+    #nf-map-count {color:var(--primary);font-weight:600;font-size:11px;letter-spacing:.3px}
+    #nf-map-action {font-weight:500;font-size:14px}
+    #nf-map-payload {font-size:12px}
+    #nf-system-map .map-legend {gap:12px 22px;font-size:11px;margin:0 0 20px;padding:0 3px}
+    #nf-system-map .map-board {background-color:var(--canvas);background-image:radial-gradient(var(--dot) .7px,transparent .7px);background-size:18px 18px;border:1px solid var(--border);border-radius:20px;padding:22px 8px 18px;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--surface) 70%,transparent)}
+    #nf-system-map .map-grid {column-gap:24px;row-gap:36px;padding:8px 24px 12px}
+    #nf-system-map .map-node {gap:8px}
+    #nf-system-map .map-node[data-span="all"] {max-width:520px;width:65%}
+    #nf-system-map .map-node[data-node="db"] {max-width:none;width:100%}
+    #nf-system-map .map-node-meta {font-size:11px;gap:6px;color:var(--muted-foreground);padding:0 5px;align-items:center}
+    #nf-system-map [data-indicator] {font-size:14px;color:var(--muted-foreground)}
+    #nf-system-map .viz-tile {width:100%;padding:15px 16px 14px;min-height:91px;border:1px solid var(--border);border-radius:13px;background:var(--surface);text-align:left;box-shadow:var(--shadow);position:relative;font-size:14px;font-weight:600;color:var(--foreground);overflow:hidden}
+    #nf-system-map .viz-tile>span {display:block;padding-top:24px;position:relative}
+    #nf-system-map .viz-tile .text-small {font-size:11px;font-weight:400;color:var(--muted-foreground);display:inline-block;margin-top:3px}
+    #nf-system-map .viz-tile:hover {border-color:color-mix(in srgb,var(--viz-series-1) 55%,var(--border));background:var(--surface);box-shadow:0 4px 20px color-mix(in srgb,var(--viz-series-1) 11%,transparent)}
+    #nf-system-map .viz-tile[aria-pressed="true"] {border-color:var(--viz-series-1);background:color-mix(in srgb,var(--accent) 35%,var(--surface));box-shadow:0 0 0 3px color-mix(in srgb,var(--viz-series-1) 10%,transparent),var(--shadow)}
+    #nf-system-map .map-node[data-node="db"] .viz-tile {background:color-mix(in srgb,var(--accent) 50%,var(--surface))}
+    #nf-system-map .map-inner {background:var(--surface);border-left:2px solid color-mix(in srgb,var(--viz-series-1) 35%,var(--border));padding:14px 12px;border-radius:0 8px 8px 0;font-size:12px;gap:14px;box-shadow:var(--shadow)}
+    #nf-system-map .map-inner ol {gap:9px;padding-left:17px}
+    #nf-system-map .map-inner summary {font-size:11px;cursor:pointer}
+    #nf-system-map .map-source {font-size:11px;gap:8px;line-height:1.6}
+    #nf-system-map .map-source code {font:11px/1.6 ui-monospace,SFMono-Regular,monospace;color:var(--muted-foreground)}
+    #nf-system-map .map-foot {padding:14px 4px 0;font-size:11px;color:var(--muted-foreground)}
+    #nf-system-map .map-wires path {stroke:color-mix(in srgb,var(--muted-foreground) 40%,transparent)}
+    #nf-system-map .map-wires .wire-active {stroke:var(--viz-series-1);stroke-width:2.2}
+    #nf-system-map .map-wires .wire-hit {stroke:transparent}
+    #nf-system-map .map-wires .wire-arrow {fill:var(--muted-foreground);stroke:none}
+    #nf-system-map .map-wires .wire-arrow-active {fill:var(--viz-series-1);stroke:none}
+    .mini {position:absolute;top:0;left:0;width:40px;height:19px;display:flex;align-items:center;gap:4px;color:var(--viz-series-1)}
+    .mini b {display:block;background:currentColor;border-radius:3px;font-weight:400;transform-origin:center}
+    .mini-lines {flex-direction:column;align-items:start;gap:3px;justify-content:center}
+    .mini-lines b {height:3px;width:29px;animation:assemble 4.6s ease-in-out infinite}
+    .mini-lines b:nth-child(2) {width:38px;opacity:.55;animation-delay:.2s}
+    .mini-lines b:nth-child(3) {width:22px;opacity:.3;animation-delay:.4s}
+    .mini-network {justify-content:space-between}
+    .mini-network:before {content:"";position:absolute;height:1px;background:currentColor;opacity:.25;width:34px;left:3px;top:9px}
+    .mini-network b {height:7px;width:7px;border-radius:50%;animation:connect 4.4s ease-in-out infinite;position:relative}
+    .mini-network b:nth-child(2) {animation-delay:.5s}.mini-network b:nth-child(3) {animation-delay:1s}
+    .mini-stack {flex-direction:column;align-items:start;gap:3px;justify-content:center}
+    .mini-stack b {height:4px;width:33px;border-radius:50%;animation:store 5s ease-in-out infinite}
+    .mini-stack b:nth-child(2) {opacity:.55;animation-delay:.2s}.mini-stack b:nth-child(3) {opacity:.25;animation-delay:.4s}
+    .mini-wave b {height:14px;width:4px;animation:wave 2.7s ease-in-out infinite}
+    .mini-wave b:nth-child(2) {height:10px;animation-delay:.2s}.mini-wave b:nth-child(3) {height:18px;animation-delay:.4s}.mini-wave b:nth-child(4) {height:12px;animation-delay:.6s}.mini-wave b:nth-child(5) {height:8px;animation-delay:.8s}
+    .map-node[data-awake="false"] .mini b {animation-play-state:paused}
+    .is-motion-off .mini b {animation-play-state:paused!important}
+    .is-motion-off .mini b {transform:none!important;opacity:.6}
+    .is-motion-off .motion-lamp {box-shadow:none;opacity:.45}
+    .viz-tile[aria-pressed="true"] .mini b {animation-duration:1.8s}
+    @keyframes assemble {0%,16%,88%,100%{transform:translateX(0)}40%,64%{transform:translateX(5px)}}
+    @keyframes connect {0%,20%,80%,100%{transform:scale(.8);opacity:.45}45%,60%{transform:scale(1.12);opacity:1}}
+    @keyframes store {0%,20%,85%,100%{transform:translateY(0)}45%,65%{transform:translateY(2px)}}
+    @keyframes wave {0%,100%{transform:scaleY(.45);opacity:.45}50%{transform:scaleY(1);opacity:1}}
+    @media(max-width:1100px) {
+      .atlas-layout {grid-template-columns:190px minmax(0,1fr)}
+      .scenario-sidebar {padding-inline:10px}.scenario-link {font-size:12px;padding:11px 10px;gap:6px}
+      .atlas-workspace {padding:30px 22px}
+      #nf-system-map .map-grid {column-gap:16px;padding-inline:18px}
+      #nf-system-map .viz-tile {padding-inline:12px}
+      #nf-system-map .map-node-meta {font-size:11px}
+      .site-bar {padding-inline:24px}
+    }
+    @media(max-width:820px) {
+      .atlas-layout {display:block}.scenario-sidebar {display:none}
+      .atlas-workspace {padding:28px 20px}
+      #nf-system-map .map-controls>.form-label {display:block;flex:1 1 280px;font-size:12px;color:var(--muted-foreground)}
+      #nf-system-map .map-controls {gap:12px}.hero-note {display:none}.bar-actions>span {display:none}
+      #nf-system-map .map-node-meta {font-size:11px}
+    }
+    @media(max-width:559px) {
+      .site-bar {height:62px;padding:0 18px}.bar-label,.bar-divider {display:none}.site-brand {font-size:16px}
+      .motion-toggle {font-size:11px;padding:7px 10px}.atlas-workspace {padding:24px 14px}
+      h1 {font-size:26px}.page-hero {margin-bottom:20px}
+      #nf-system-map .map-board {padding:14px 0;border-radius:14px}
+      #nf-system-map .map-node[data-span="all"] {width:100%;max-width:none}
+      #nf-system-map .map-grid {padding-inline:24px}
+      #nf-system-map .map-node-meta {font-size:11px}
+      #nf-system-map .map-controls>.form-label {flex-basis:100%}
+      #nf-system-map .map-legend {font-size:10px;gap:8px 12px}
+      #nf-system-map .viz-tile {min-height:88px}
+    }
+    @media(min-width:560px) and (max-width:680px) {
+      #nf-system-map .map-grid {grid-template-columns:minmax(0,1fr)}
+      #nf-system-map .map-node[data-node] {grid-column:1;grid-row:auto;width:100%;max-width:none}
+    }
+    @media(prefers-reduced-motion:reduce) {* {scroll-behavior:auto!important}.mini b {animation:none!important}}
+  </style>
+</head>
+<body>
+  <header class="site-bar">
+    <div class="site-brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>NoteFlow<span class="bar-divider"></span><span class="bar-label">Architecture</span></div>
+    <div class="bar-actions"><span>当前实现 · 交互演示</span><button type="button" class="motion-toggle" id="atlas-motion" aria-pressed="true"><span class="motion-lamp" aria-hidden="true"></span><span>动效开启</span></button></div>
+  </header>
+  <main class="atlas-layout">
+    <aside class="scenario-sidebar" aria-label="选择演示流程">
+      <div><div class="sidebar-caption">SYSTEM MAP</div><div class="scenario-list"><button type="button" class="scenario-link" data-scenario="overview" aria-current="true"><span class="nav-symbol">◎</span>整个系统</button></div></div>
+      <div><div class="sidebar-caption">沿一次操作看</div><nav class="scenario-list">
+        <button type="button" class="scenario-link" data-scenario="chat"><span class="nav-symbol">01</span>普通聊天</button>
+        <button type="button" class="scenario-link" data-scenario="qa"><span class="nav-symbol">02</span>全库问答</button>
+        <button type="button" class="scenario-link" data-scenario="save"><span class="nav-symbol">03</span>手动保存</button>
+        <button type="button" class="scenario-link" data-scenario="create"><span class="nav-symbol">04</span>AI 新建笔记</button>
+        <button type="button" class="scenario-link" data-scenario="preview"><span class="nav-symbol">05</span>修改预览</button>
+        <button type="button" class="scenario-link" data-scenario="quick"><span class="nav-symbol">06</span>选区快捷修改</button>
+        <button type="button" class="scenario-link" data-scenario="remember"><span class="nav-symbol">07</span>保存记忆</button>
+        <button type="button" class="scenario-link" data-scenario="attachment"><span class="nav-symbol">08</span>上传附件</button>
+      </nav></div>
+      <div class="sidebar-note"><strong>一张图，逐层看</strong><span>点模块展开内部步骤。</span><span>选操作，跟着数据走。</span><span>仅作架构演示<br>不连接你的业务数据</span></div>
+    </aside>
+    <section class="atlas-workspace" aria-label="交互架构画布">
+      <div class="page-hero"><div><div class="eyebrow">NOTEFLOW / SYSTEM ARCHITECTURE</div><h1>系统架构</h1><p class="hero-description">从一次操作，到回答与保存。</p></div><span class="hero-note">基于代码 · 非实时监控</span></div>
+      <!-- SYSTEM_MAP_SOURCE -->
+    </section>
+  </main>
+  <script>
+  (()=>{
+    const root=document.getElementById('nf-system-map');
+    const picker=document.getElementById('nf-map-scenario');
+    const links=[...document.querySelectorAll('[data-scenario]')];
+    const sync=()=>links.forEach(el=>el.setAttribute('aria-current',String(el.dataset.scenario===picker.value)));
+    links.forEach(el=>el.addEventListener('click',()=>{picker.value=el.dataset.scenario;picker.dispatchEvent(new Event('change',{bubbles:true}));sync();}));
+    picker.addEventListener('change',sync);
+    const variants={memory:'network',hindsight:'network',adapter:'network',router:'network',db:'stack',files:'stack',notes:'stack',model:'wave'};
+    const observer=new IntersectionObserver(entries=>entries.forEach(entry=>entry.target.dataset.awake=String(entry.isIntersecting)),{rootMargin:'80px'});
+    for(const node of root.querySelectorAll('.map-node')){
+      const kind=variants[node.dataset.node]||'lines';
+      const mark=document.createElement('span');mark.className=`mini mini-${kind}`;mark.setAttribute('aria-hidden','true');
+      for(let i=0;i<(kind==='wave'?5:3);i++)mark.append(document.createElement('b'));
+      node.querySelector('.viz-tile>span').prepend(mark);observer.observe(node);
+    }
+    const motion=document.getElementById('atlas-motion');
+    const preference=matchMedia('(prefers-reduced-motion:reduce)');
+    let enabled=!preference.matches;
+    function setMotion(){
+      document.body.classList.toggle('is-motion-off',!enabled);
+      root.dataset.motion=enabled?'on':'off';
+      motion.setAttribute('aria-pressed',String(enabled));
+      motion.querySelector('span:last-child').textContent=preference.matches?'系统减少动效':enabled?'动效开启':'动效暂停';
+      motion.disabled=preference.matches;
+      root.dispatchEvent(new CustomEvent('nf:motionchange'));
+    }
+    motion.addEventListener('click',()=>{enabled=!enabled;setMotion();});
+    preference.addEventListener('change',()=>{enabled=!preference.matches;setMotion();});
+    setMotion();sync();
+  })();
+  </script>
+</body>
+</html>
