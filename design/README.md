@@ -4,7 +4,7 @@
 
 ## 系统地图 · 单页可展开的架构解释
 
-[完整 HTML 页面](noteflow-system-map.html) / [图与数据源稿](noteflow-system-map.source.html) / [页面模板](noteflow-system-map.shell.html) / [说明与验证](../docs/architecture/system-map-interactive-2026-11-03.md)。15 个模块保留在一张图，原地展开内部步骤；八种操作可播放或单步查看数据。独立灰蓝页面包含场景导航、点阵画布和模块自身的关系 / 拼合 / 存储 / 生成动效，可暂停并遵循减少动效。最终 HTML 的六宽度、全部模块鼠标展开、八条路径、播放暂停、键盘与深色已隔离检查；不连接真实业务数据，最终观感与理解度待用户确认。
+[完整 HTML 页面](noteflow-system-map.html) / [图与数据源稿](noteflow-system-map.source.html) / [页面模板](noteflow-system-map.shell.html) / [说明与验证](../docs/architecture/system-map-interactive-2026-11-03.md)。15 个模块保留在一张图，原地展开；八类操作默认单步，可前进 / 返回，自动播放可选每步 4 / 6 / 10 秒并在确认点暂停。当前橙色粗线、完成蓝色和浅灰待行路径便于区分。独立灰蓝页面包含场景导航、点阵画布和模块动效，可全局暂停并遵循减少动效。六宽度 / 短屏、完整路径、计时 / 键盘 / 悬浮阅读条与深色已隔离检查；不连接业务数据，模块内部子流程重画及最终理解度仍待后续验收。
 
 ## 笔记归页 · 美学精修候选待评审
 

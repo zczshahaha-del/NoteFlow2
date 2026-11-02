@@ -2,7 +2,7 @@
   <header class="map-heading">
     <div><h2>NoteFlow · 系统地图</h2><span class="text-small text-muted">当前实现 · 模块可以展开 · 数据可以沿路看</span></div>
   </header>
-  <div class="viz-controls map-controls">
+  <div class="viz-controls map-scenario-controls">
     <label class="form-label" for="nf-map-scenario">看一次操作
       <select id="nf-map-scenario" class="form-select">
         <option value="overview">整个系统</option>
@@ -16,22 +16,35 @@
         <option value="attachment">上传附件：文件与元数据</option>
       </select>
     </label>
-    <div class="viz-row">
-      <button type="button" class="btn btn-primary" id="nf-map-play" disabled>播放路径</button>
-      <button type="button" class="btn" id="nf-map-next" disabled>下一步</button>
-      <button type="button" class="btn btn-ghost" id="nf-map-fold" disabled>收起已展开</button>
+  </div>
+  <div class="map-reader" id="nf-map-reader">
+  <div class="viz-controls map-controls">
+    <div class="viz-row map-step-controls" role="group" aria-label="阅读步骤">
+      <label class="form-label" for="nf-map-mode">阅读方式
+        <select class="form-select" id="nf-map-mode"><option value="manual">单步阅读</option><option value="auto">自动播放</option></select>
+      </label>
+      <button type="button" class="btn" id="nf-map-prev" disabled>上一步</button>
+      <button type="button" class="btn btn-primary" id="nf-map-next" disabled>下一步</button>
+      <button type="button" class="btn" id="nf-map-play" hidden disabled>开始播放</button>
+      <label class="form-label map-auto-speed" for="nf-map-speed" hidden>停留时间
+        <select class="form-select" id="nf-map-speed"><option value="4000">每步 4 秒</option><option value="6000" selected>每步 6 秒</option><option value="10000">每步 10 秒</option></select>
+      </label>
     </div>
   </div>
   <div class="map-position" aria-live="polite" aria-atomic="true">
     <span id="nf-map-count" class="text-small text-muted tabular-nums">全貌</span>
     <span id="nf-map-action">所有模块在同一张图里；连线表示调用或数据依赖。</span>
     <span id="nf-map-payload" class="text-small text-muted">流程演示，不是线上实时追踪</span>
+    <span id="nf-map-reading" class="text-small text-muted">选择操作后，点击下一步慢慢看</span>
+  </div>
   </div>
   <div class="map-legend text-small text-muted">
     <span><span class="map-key"></span>调用 / 返回</span>
     <span><span class="map-key map-key-data"></span>读写 / 规则</span>
-    <span><span class="map-key map-key-active"></span>当前流向</span>
+    <span><span class="map-key map-key-active"></span>正在看</span>
+    <span><span class="map-key map-key-complete"></span>已走过</span>
     <span>点模块展开，点连线看数据</span>
+    <button type="button" class="btn btn-ghost" id="nf-map-fold" disabled>收起已展开</button>
   </div>
   <div class="map-board" id="nf-map-board">
     <svg class="map-wires" aria-hidden="true" focusable="false"></svg>
@@ -42,7 +55,8 @@
   </footer>
 </div>
 <style>
-  #nf-system-map { --map-gap:calc(var(--font-size-base) * 2.5); color:var(--foreground); }
+  #nf-system-map { --map-gap:calc(var(--font-size-base) * 2.5); --map-active:var(--viz-series-2); color:var(--foreground); }
+  #nf-system-map [hidden] { display:none !important; }
   #nf-system-map .map-heading { display:flex; align-items:start; padding-inline-end:96px; margin-bottom:calc(var(--font-size-base) * 1.1); }
   #nf-system-map .map-controls { margin-bottom:calc(var(--font-size-base) * .8); }
   #nf-system-map .map-position { display:grid; gap:calc(var(--font-size-base) * .35); min-height:calc(var(--font-size-base) * 5); margin-bottom:calc(var(--font-size-base) * .65); }
@@ -50,7 +64,8 @@
   #nf-system-map .map-legend > span { display:inline-flex; align-items:center; gap:6px; }
   #nf-system-map .map-key { display:inline-block; width:20px; height:0; border-top:1px solid var(--muted-foreground); }
   #nf-system-map .map-key-data { border-top-style:dashed; }
-  #nf-system-map .map-key-active { border-top:2px solid var(--viz-series-1); }
+  #nf-system-map .map-key-active { border-top:3px solid var(--map-active); }
+  #nf-system-map .map-key-complete { border-top:2px solid var(--viz-series-1); }
   #nf-system-map .map-board { position:relative; }
   #nf-system-map .map-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); column-gap:calc(var(--font-size-base) * 1.65); row-gap:var(--map-gap); padding:8px 24px 12px; align-items:start; }
   #nf-system-map .map-node { position:relative; min-width:0; display:grid; gap:calc(var(--font-size-base) * .5); transition:opacity .25s ease; }
@@ -79,11 +94,12 @@
   #nf-system-map .map-wires path { fill:none; stroke:color-mix(in srgb,var(--muted-foreground) 50%,transparent); stroke-width:1.3; }
   #nf-system-map .map-wires .wire-data { stroke-dasharray:4 5; }
   #nf-system-map .map-wires .wire-route { stroke:color-mix(in srgb,var(--muted-foreground) 42%,transparent); }
-  #nf-system-map .map-wires .wire-active { stroke:var(--viz-series-1); stroke-width:2; stroke-dasharray:none; }
+  #nf-system-map .map-wires .wire-complete { stroke:var(--viz-series-1); stroke-width:1.6; }
+  #nf-system-map .map-wires .wire-active { stroke:var(--map-active); stroke-width:3; }
   #nf-system-map .map-wires .wire-hit { stroke:transparent; stroke-width:18; pointer-events:stroke; }
-  #nf-system-map .map-wires .wire-packet { fill:var(--viz-series-1); stroke:none; }
+  #nf-system-map .map-wires .wire-packet { fill:var(--map-active); stroke:none; }
   #nf-system-map .map-wires .wire-arrow { fill:var(--muted-foreground); stroke:none; }
-  #nf-system-map .map-wires .wire-arrow-active { fill:var(--viz-series-1); stroke:none; }
+  #nf-system-map .map-wires .wire-arrow-active { fill:var(--map-active); stroke:none; }
   #nf-system-map .map-foot { margin-top:calc(var(--font-size-base) * .8); }
   @media (max-width:559px) {
     #nf-system-map { --map-gap:calc(var(--font-size-base) * 2); }
@@ -104,7 +120,11 @@
   const svg = root.querySelector('.map-wires');
   const chooser = root.querySelector('#nf-map-scenario');
   const play = root.querySelector('#nf-map-play');
+  const previous = root.querySelector('#nf-map-prev');
   const next = root.querySelector('#nf-map-next');
+  const mode = root.querySelector('#nf-map-mode');
+  const speed = root.querySelector('#nf-map-speed');
+  const reading = root.querySelector('#nf-map-reading');
   const fold = root.querySelector('#nf-map-fold');
   const action = root.querySelector('#nf-map-action');
   const payload = root.querySelector('#nf-map-payload');
@@ -173,7 +193,7 @@
       note:'这些可以在同一个 PostgreSQL 里，由不同表承担职责。数据库是被多个模块调用的存储，不是所有请求都只在最后经过的一步。',
       sources:['server/app/models/db.py','server/app/repositories/','server/app/services/agent_checkpoints.py'] }
   ];
-  const S = (from,to,title,data,kind='call') => ({from,to,title,data,kind});
+  const S = (from,to,title,data,kind='call',waitForUser=false) => ({from,to,title,data,kind,waitForUser});
   const planning = [
     S('router','prompt','组织意图识别提示','本轮消息 + 近期聊天 + 当前笔记 ID / 选区预览','data'),
     S('prompt','model','请模型提出计划','识别提示 + JSON Schema'),
@@ -225,7 +245,7 @@
       S('ui','api','请求新建一篇笔记','用户提出主题与要求'),
       S('api','router','识别创建任务','对话模式'), ...planning,
       S('router','notes','提取标题与明确要求','不凭空补造用户要求'),
-      S('notes','ui','显示创建卡片','可编辑标题与要求，等待用户开始'),
+      S('notes','ui','显示创建卡片','可编辑标题与要求，等待用户开始','call',true),
       S('ui','api','确认开始生成','用户点击开始，不是自动保存'),
       S('api','notes','启动草稿流程','大纲生成 → 查看 / 调整大纲'),
       S('notes','prompt','组织写作提示','主题 + 要求 + 大纲 / 本节上下文','data'),
@@ -233,7 +253,7 @@
       S('model','notes','返回候选内容','大纲 / 分节正文，仍是草稿'),
       S('notes','runtime','安排后续章节生成','批量生成任务由 draft worker 推进'),
       S('runtime','db','持久保存草稿与进度','已生成章节、停止 / 失败 / 重试状态','data'),
-      S('notes','ui','提供草稿审阅与编辑','未生成完的章节不伪装成完成'),
+      S('notes','ui','提供草稿审阅与编辑','未生成完的章节不伪装成完成','call',true),
       S('ui','api','用户确认保存到笔记','这是另一次明确操作'),
       S('api','notes','执行保存正式笔记','检查账号、内容与任务状态'),
       S('notes','db','提交正式正文与索引任务','候选草稿成为正式笔记；索引随后处理','data'),
@@ -247,7 +267,7 @@
       S('prompt','model','生成候选修改','要求返回可验证的修改结果'),
       S('model','notes','校验修改结果','定位、格式、空结果等检查'),
       S('notes','db','保存独立修改预览','候选稿 + 原文 hash，正式正文保持不变','data'),
-      S('notes','ui','返回修改预览','用户可编辑、继续调整或取消'),
+      S('notes','ui','返回修改预览','用户可编辑、继续调整或取消','call',true),
       S('ui','api','点击应用修改','明确采用当前候选稿'),
       S('api','notes','重新检查原文并执行应用','锁定预览 / 笔记，检查 hash 与重复应用'),
       S('notes','db','提交修改与旧版本','正式正文 + 历史版本 + 索引任务 + 应用状态','data'),
@@ -259,7 +279,7 @@
       S('notes','prompt','组织选区改写提示','选中 Markdown + 要求；示例未启用可选记忆','data'),
       S('prompt','model','润色或继续修改候选','保留范围与原意约束'),
       S('model','api','只返回候选文字','newContent；不写正式正文或持久预览'),
-      S('api','ui','就近显示候选','等待采用 / 继续调整 / 取消'),
+      S('api','ui','就近显示候选','等待采用 / 继续调整 / 取消','call',true),
       S('ui','ui','点击采用，替换准确选区','编辑器事务，可一步撤销；原文变化则阻止采用'),
       S('ui','api','随后自动保存编辑器内容','普通笔记保存请求，仍带预期版本'),
       S('api','notes','进入普通保存','保留失败 / 冲突时的本地输入'),
@@ -339,7 +359,7 @@
     });
     section.querySelector('details').addEventListener('toggle',() => { draw(); });
   }
-  let state = { scenario:'overview', step:-1, expanded:new Set(), playing:false };
+  let state = { scenario:'overview', step:-1, expanded:new Set(), playing:false, mode:'manual', delayMs:6000 };
   let timer = null;
   let layoutFrame = null;
   let packetAnimation = null;
@@ -357,8 +377,8 @@
   function saveState() {
     if (!window.openai?.setWidgetState) return;
     window.openai.setWidgetState({
-      modelContent:{design:'noteflow-system-map-v1',scenario:state.scenario,step:state.step,expandedModules:[...state.expanded]},
-      privateContent:{scenario:state.scenario,step:state.step,expanded:[...state.expanded],sender:stateSender}
+      modelContent:{design:'noteflow-system-map-v2-reading',scenario:state.scenario,step:state.step,mode:state.mode,delayMs:state.delayMs,expandedModules:[...state.expanded]},
+      privateContent:{scenario:state.scenario,step:state.step,mode:state.mode,delayMs:state.delayMs,expanded:[...state.expanded],sender:stateSender}
     }).catch(()=>{});
   }
   function restore(saved) {
@@ -370,6 +390,8 @@
     stop();
     state.scenario = val.scenario;
     state.step = Number.isInteger(val.step) ? Math.max(-1,Math.min(val.step,getSteps().length-1)) : -1;
+    state.mode = val.mode==='auto'?'auto':'manual';
+    state.delayMs = [4000,6000,10000].includes(val.delayMs)?val.delayMs:6000;
     const expanded = val.expanded || val.expandedModules || [];
     state.expanded = new Set(Array.isArray(expanded) ? expanded.filter(id=>nodeEls.has(id)) : []);
     updateExpanded(); update();
@@ -386,7 +408,8 @@
   function stop() {
     state.playing = false;
     clearTimeout(timer); timer = null;
-    play.textContent = state.step === getSteps().length-1 && getSteps().length ? '重看路径' : '播放路径';
+    if(packetAnimation)cancelAnimationFrame(packetAnimation);
+    packetAnimation=null;
   }
   function update() {
     chooser.value = state.scenario;
@@ -397,14 +420,27 @@
       el.dataset.dim = String(state.scenario !== 'overview' && !included.has(id));
       buttons.get(id).setAttribute('aria-pressed',String(!!selected && (selected.from===id || selected.to===id)));
     }
-    play.disabled = !steps.length;
+    play.disabled = !steps.length || !!selected?.waitForUser;
+    previous.disabled = !steps.length || state.step<=0;
     next.disabled = !steps.length || state.step >= steps.length-1;
-    play.textContent = state.playing ? '暂停' : state.step===steps.length-1 && steps.length ? '重看路径' : '播放路径';
+    mode.value = state.mode;
+    speed.value = String(state.delayMs);
+    play.hidden = state.mode!=='auto';
+    speed.closest('label').hidden = state.mode!=='auto';
+    play.textContent = selected?.waitForUser ? '等待确认' : state.playing ? '暂停' : state.step===steps.length-1 && steps.length ? '重新播放' : state.step>0?'继续播放':'开始播放';
+    next.textContent = selected?.waitForUser ? '继续演示' : '下一步';
     count.textContent = !steps.length ? '全貌' : state.step<0 ? `路径 · ${steps.length} 步` : `${state.step+1} / ${steps.length}`;
-    action.textContent = selected?.title || (!steps.length ? '所有模块在同一张图里；连线表示调用或数据依赖。' : '路径已亮起，可以播放，也可以逐步查看。');
+    action.textContent = selected?.title || (!steps.length ? '所有模块在同一张图里；连线表示调用或数据依赖。' : '点击下一步，查看数据如何流转。');
     payload.textContent = selected?.data || '流程演示，不是线上实时追踪';
+    reading.textContent = !steps.length ? '选择一种操作，从第一步开始' : selected?.waitForUser
+      ? '实际流程在这里等待用户确认 · 点击继续演示后才往下走'
+      : state.step===steps.length-1 ? '已到最后一步，可以用上一步回看'
+      : state.mode==='manual' ? '单步阅读 · 点击下一步才继续'
+      : state.playing ? `自动播放 · 每步 ${state.delayMs/1000} 秒，随时暂停`
+      : '已暂停 · 可以单步查看或继续播放';
     foot.textContent = scenarios[state.scenario].foot;
     draw();
+    root.dispatchEvent(new CustomEvent('nf:readerchange'));
   }
   function snapshot() { return new Map([...nodeEls].map(([id,el])=>[id,el.getBoundingClientRect()])); }
   function animateLayout(change) {
@@ -501,12 +537,16 @@
       marker.append(make('path',{d:'M 0 0 L 8 4 L 0 8 Z',class:active?'wire-arrow-active':'wire-arrow'})); defs.append(marker);
     }
     svg.append(defs);
-    for(const [i,s] of all.entries()) {
+    const isCurrent=s=>!!selected&&selected.from===s.from&&selected.to===s.to;
+    // Draw the selected connection last so shared outer lanes cannot hide it.
+    const ordered=all.slice().sort((a,b)=>Number(isCurrent(a))-Number(isCurrent(b)));
+    for(const [i,s] of ordered.entries()) {
       const inRoute=routeSet.has(`${s.from}|${s.to}`);
       const active=selected&&selected.from===s.from&&selected.to===s.to;
+      const complete=!active&&steps.some((step,at)=>at<state.step&&step.from===s.from&&step.to===s.to);
       if(state.scenario!=='overview'&&!inRoute) continue;
       const d=curve(s,i);
-      const path=make('path',{d,class:`${s.kind==='data'?'wire-data':''} ${inRoute?'wire-route':''} ${active?'wire-active':''}`,'data-from':s.from,'data-to':s.to,'marker-end':`url(#nf-map-arrow-${active?'active':'base'})`});
+      const path=make('path',{d,class:`${s.kind==='data'?'wire-data':''} ${inRoute?'wire-route':''} ${complete?'wire-complete':''} ${active?'wire-active':''}`,'data-from':s.from,'data-to':s.to,'marker-end':`url(#nf-map-arrow-${active?'active':'base'})`});
       svg.append(path);
       const hit=make('path',{d,class:'wire-hit cursor-interaction','data-tooltip':`${s.title}：${s.data}`});
       hit.addEventListener('click',()=>{
@@ -541,21 +581,29 @@
   }
   function advance() {
     if(state.step<getSteps().length-1) state.step++;
-    if(state.step===getSteps().length-1) stop();
+    if(state.step===getSteps().length-1 || current()?.waitForUser) stop();
     update();
   }
   function schedule() {
-    timer=setTimeout(()=>{if(!state.playing)return;advance();if(state.playing)schedule();else saveState();},2200);
+    clearTimeout(timer);
+    timer=setTimeout(()=>{if(!state.playing)return;advance();if(state.playing)schedule();else saveState();},state.delayMs);
   }
   chooser.addEventListener('change',()=>{
-    stop();state.scenario=chooser.value;state.step=-1;lastLineKey='';update();saveState();
+    stop();state.scenario=chooser.value;state.step=getSteps().length?0:-1;lastLineKey='';update();saveState();
   });
   play.addEventListener('click',()=>{
     if(state.playing) {stop();update();saveState();return;}
-    if(state.step>=getSteps().length-1) state.step=-1;
-    state.playing=true;advance();if(state.playing)schedule();saveState();
+    if(current()?.waitForUser) {stop();update();return;}
+    if(state.step>=getSteps().length-1 || state.step<0) state.step=0;
+    state.playing=true;update();schedule();saveState();
   });
   next.addEventListener('click',()=>{stop();advance();saveState();});
+  previous.addEventListener('click',()=>{stop();if(state.step>0)state.step--;update();saveState();});
+  mode.addEventListener('change',()=>{stop();state.mode=mode.value==='auto'?'auto':'manual';update();saveState();});
+  speed.addEventListener('change',()=>{
+    state.delayMs=[4000,6000,10000].includes(Number(speed.value))?Number(speed.value):6000;
+    if(state.playing)schedule();update();saveState();
+  });
   fold.addEventListener('click',()=>{animateLayout(()=>{state.expanded.clear();updateExpanded();});saveState();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.playing){stop();update();}});
   new ResizeObserver(()=>draw(false)).observe(board);
@@ -569,7 +617,12 @@
     }
   });
   window.addEventListener('openai:set_globals',event=>{if(event.detail?.globals?.widgetState)restore(event.detail.globals.widgetState);});
-  root.addEventListener('keydown',event=>{if(event.key==='Escape'&&state.playing){stop();update();saveState();}});
+  root.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&state.playing){stop();update();saveState();}
+    if(event.target.closest('select,input,textarea,[contenteditable="true"]'))return;
+    if(event.key==='ArrowRight'&&!next.disabled){event.preventDefault();next.click();}
+    if(event.key==='ArrowLeft'&&!previous.disabled){event.preventDefault();previous.click();}
+  });
   if(window.lucide) window.lucide.createIcons({attrs:{width:16,height:16}});
   update();
   if(window.openai?.widgetState)restore(window.openai.widgetState);
