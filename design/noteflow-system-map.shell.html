@@ -101,6 +101,53 @@
     #nf-system-map .map-inner summary {font-size:11px;cursor:pointer}
     #nf-system-map .map-source {font-size:11px;gap:8px;line-height:1.6}
     #nf-system-map .map-source code {font:11px/1.6 ui-monospace,SFMono-Regular,monospace;color:var(--muted-foreground)}
+    #nf-system-map .module-detail {display:block;padding:22px;border:1px solid var(--border);border-radius:15px;background:var(--surface);box-shadow:var(--shadow);animation:detail-enter .28s ease-out;overflow-wrap:anywhere}
+    #nf-system-map .detail-heading {display:flex;justify-content:space-between;align-items:start;gap:16px}
+    #nf-system-map .detail-kicker {font-size:11px;color:var(--primary)}
+    #nf-system-map .detail-heading h3 {font-size:18px;font-weight:600;margin:5px 0 7px;letter-spacing:-.3px}
+    #nf-system-map .detail-heading p {font-size:13px;color:var(--muted-foreground);max-width:720px}
+    #nf-system-map .detail-heading>button {flex-shrink:0}
+    #nf-system-map .detail-branches {display:flex;gap:7px;flex-wrap:wrap;margin:18px 0 12px}
+    #nf-system-map .detail-branches .btn {font-size:12px;padding:8px 12px}
+    #nf-system-map .detail-branches .btn[aria-pressed="true"] {background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+    #nf-system-map .detail-live {font-size:11px;color:var(--muted-foreground);margin-bottom:16px}
+    #nf-system-map .detail-canvas {display:grid;gap:30px;padding:3px 8px}
+    #nf-system-map .detail-port {position:relative;background:var(--canvas);border:1px solid var(--border);border-radius:11px;padding:13px 15px;z-index:1;min-width:0}
+    #nf-system-map .detail-label {font-size:11px;color:var(--muted-foreground);display:block;margin-bottom:6px}
+    #nf-system-map .detail-port-links {display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+    #nf-system-map .detail-port p {font-size:13px;margin:8px 0 0}
+    #nf-system-map .detail-port-direction {font-size:11px;color:var(--muted-foreground)}
+    #nf-system-map .detail-portal {font:inherit;font-size:11px;color:var(--primary);background:var(--accent);border:0;border-radius:5px;padding:4px 7px;max-width:100%;text-align:left;overflow-wrap:anywhere}
+    #nf-system-map .detail-portal:hover {background:var(--secondary)}
+    #nf-system-map .detail-portal-label {font-size:11px;color:var(--primary)}
+    #nf-system-map .detail-chain {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:30px 24px;align-items:stretch}
+    #nf-system-map .inner-step {position:relative;z-index:1;min-width:0;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;transition:background .2s,border-color .2s}
+    #nf-system-map .inner-step-heading {display:flex;align-items:start;gap:8px;flex-wrap:wrap}
+    #nf-system-map .inner-step-heading strong {font-size:13px;font-weight:600;flex:1;min-width:80px}
+    #nf-system-map .inner-step-number {width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--muted);font-size:10px;color:var(--muted-foreground);flex-shrink:0}
+    #nf-system-map .inner-step p {font-size:12px;color:var(--muted-foreground);margin-top:9px}
+    #nf-system-map .inner-step.is-current {border-color:var(--map-active);background:color-mix(in srgb,var(--map-active) 5%,var(--surface));box-shadow:0 0 0 2px color-mix(in srgb,var(--map-active) 10%,transparent)}
+    #nf-system-map .inner-step.is-current .inner-step-number {background:var(--map-active);color:var(--surface)}
+    #nf-system-map .inner-step.is-complete {border-color:color-mix(in srgb,var(--viz-series-1) 55%,var(--border))}
+    #nf-system-map .inner-step-now {font-size:10px;color:var(--map-active);flex-shrink:0}
+    #nf-system-map .inner-dependency {margin-top:10px;font-size:11px;color:var(--muted-foreground)}
+    #nf-system-map .inner-wait {display:inline-block;margin-top:10px;font-size:11px;color:var(--primary);border-bottom:1px dashed var(--primary)}
+    #nf-system-map .detail-alternative {display:flex;align-items:start;gap:10px;margin-top:18px;font-size:12px;color:var(--muted-foreground);padding:12px 0;border-top:1px solid var(--border)}
+    #nf-system-map .detail-alternative>span {font-size:11px;flex-shrink:0;color:var(--primary)}
+    #nf-system-map .detail-technical {border-top:1px solid var(--border);margin-top:16px;padding-top:12px}
+    #nf-system-map .detail-wires {z-index:0;overflow:visible}
+    #nf-system-map .detail-wires .detail-line {fill:none;stroke:var(--border);stroke-width:1.4;stroke-linejoin:round}
+    #nf-system-map .detail-wires .detail-line-complete {stroke:var(--viz-series-1)}
+    #nf-system-map .detail-wires .detail-line-current {stroke:var(--map-active);stroke-width:2.5}
+    #nf-system-map .detail-wires .detail-arrow-future {fill:var(--muted-foreground)}
+    #nf-system-map .detail-wires .detail-arrow-complete {fill:var(--viz-series-1)}
+    #nf-system-map .detail-wires .detail-arrow-current {fill:var(--map-active)}
+    #nf-system-map .map-wires .wire-detail {stroke:var(--viz-series-1);stroke-width:1;stroke-dasharray:3 4;opacity:.6}
+    #nf-system-map .wire-payload-label {pointer-events:none}
+    #nf-system-map .wire-payload-label rect {fill:var(--surface);stroke:color-mix(in srgb,var(--map-active) 50%,var(--border));stroke-width:1}
+    #nf-system-map .wire-payload-label text {font-size:11px;fill:var(--foreground)}
+    @keyframes detail-enter {from {transform:translateY(10px)}to{transform:translateY(0)}}
+    .is-motion-off .module-detail {animation:none!important}
     #nf-system-map .map-foot {padding:14px 4px 0;font-size:11px;color:var(--muted-foreground)}
     #nf-system-map .map-wires path {stroke:color-mix(in srgb,var(--muted-foreground) 40%,transparent)}
     #nf-system-map .map-wires .wire-complete {stroke:var(--viz-series-1);stroke-width:1.6}
@@ -168,12 +215,20 @@
       #nf-system-map .map-step-controls .form-select {font-size:16px;min-height:44px}
       #nf-system-map .map-legend {font-size:10px;gap:8px 12px}
       #nf-system-map .viz-tile {min-height:88px}
+      #nf-system-map .module-detail {padding:14px}
+      #nf-system-map .detail-heading {gap:8px}
+      #nf-system-map .detail-heading h3 {font-size:16px}
+      #nf-system-map .detail-heading .btn {padding:7px 9px}
+      #nf-system-map .detail-canvas {padding-inline:0}
+      #nf-system-map .detail-alternative {display:block}
+      #nf-system-map .detail-alternative p {margin-top:7px}
+      #nf-system-map .detail-branches .btn {min-height:44px}
     }
     @media(min-width:560px) and (max-width:680px) {
-      #nf-system-map .map-grid {grid-template-columns:minmax(0,1fr)}
+      #nf-system-map .map-grid {--map-columns:1;grid-template-columns:minmax(0,1fr)}
       #nf-system-map .map-node[data-node] {grid-column:1;grid-row:auto;width:100%;max-width:none}
     }
-    @media(prefers-reduced-motion:reduce) {* {scroll-behavior:auto!important}.mini b {animation:none!important}}
+    @media(prefers-reduced-motion:reduce) {* {scroll-behavior:auto!important}.mini b,.module-detail {animation:none!important}}
     @media(prefers-color-scheme:dark) {#nf-system-map {--map-active:#ffbb70}}
     @media(max-height:600px) {#nf-system-map .map-reader {position:relative;top:0}}
   </style>
@@ -196,7 +251,7 @@
         <button type="button" class="scenario-link" data-scenario="remember"><span class="nav-symbol">07</span>保存记忆</button>
         <button type="button" class="scenario-link" data-scenario="attachment"><span class="nav-symbol">08</span>上传附件</button>
       </nav></div>
-      <div class="sidebar-note"><strong>一张图，逐层看</strong><span>点模块展开内部步骤。</span><span>选操作，跟着数据走。</span><span>仅作架构演示<br>不连接你的业务数据</span></div>
+      <div class="sidebar-note"><strong>一张图，逐层看</strong><span>点模块，看输入、处理与输出。</span><span>选操作，跟着数据走。</span><span>仅作架构演示<br>不连接你的业务数据</span></div>
     </aside>
     <section class="atlas-workspace" aria-label="交互架构画布">
       <div class="page-hero"><div><div class="eyebrow">NOTEFLOW / SYSTEM ARCHITECTURE</div><h1>系统架构</h1><p class="hero-description">从一次操作，到回答与保存。</p></div><span class="hero-note">基于代码 · 非实时监控</span></div>

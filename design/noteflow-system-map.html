@@ -18,7 +18,10 @@
   #nf-system-map .map-key-active { border-top:3px solid var(--map-active); }
   #nf-system-map .map-key-complete { border-top:2px solid var(--viz-series-1); }
   #nf-system-map .map-board { position:relative; }
-  #nf-system-map .map-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); column-gap:calc(var(--font-size-base) * 1.65); row-gap:var(--map-gap); padding:8px 24px 12px; align-items:start; }
+  #nf-system-map .map-grid { --map-columns:3; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); column-gap:calc(var(--font-size-base) * 1.65); row-gap:var(--map-gap); padding:8px 24px 12px; align-items:start; }
+  #nf-system-map .module-detail { grid-column:1/-1; min-width:0; }
+  #nf-system-map .detail-canvas { position:relative; }
+  #nf-system-map .detail-wires { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
   #nf-system-map .map-node { position:relative; min-width:0; display:grid; gap:calc(var(--font-size-base) * .5); transition:opacity .25s ease; }
   #nf-system-map .map-node[data-span="all"] { grid-column:1 / -1; width:65%; justify-self:center; }
   #nf-system-map .map-node[data-node="db"] { width:100%; }
@@ -54,7 +57,7 @@
   #nf-system-map .map-foot { margin-top:calc(var(--font-size-base) * .8); }
   @media (max-width:559px) {
     #nf-system-map { --map-gap:calc(var(--font-size-base) * 2); }
-    #nf-system-map .map-grid { grid-template-columns:minmax(0,1fr); padding-inline:24px; }
+    #nf-system-map .map-grid { --map-columns:1; grid-template-columns:minmax(0,1fr); padding-inline:24px; }
     #nf-system-map .map-node[data-node] { grid-column:1; grid-row:auto; width:100%; }
     #nf-system-map .map-heading { padding-inline-end:90px; }
     #nf-system-map .map-position { min-height:calc(var(--font-size-base) * 7); }
@@ -159,6 +162,53 @@
     #nf-system-map .map-inner summary {font-size:11px;cursor:pointer}
     #nf-system-map .map-source {font-size:11px;gap:8px;line-height:1.6}
     #nf-system-map .map-source code {font:11px/1.6 ui-monospace,SFMono-Regular,monospace;color:var(--muted-foreground)}
+    #nf-system-map .module-detail {display:block;padding:22px;border:1px solid var(--border);border-radius:15px;background:var(--surface);box-shadow:var(--shadow);animation:detail-enter .28s ease-out;overflow-wrap:anywhere}
+    #nf-system-map .detail-heading {display:flex;justify-content:space-between;align-items:start;gap:16px}
+    #nf-system-map .detail-kicker {font-size:11px;color:var(--primary)}
+    #nf-system-map .detail-heading h3 {font-size:18px;font-weight:600;margin:5px 0 7px;letter-spacing:-.3px}
+    #nf-system-map .detail-heading p {font-size:13px;color:var(--muted-foreground);max-width:720px}
+    #nf-system-map .detail-heading>button {flex-shrink:0}
+    #nf-system-map .detail-branches {display:flex;gap:7px;flex-wrap:wrap;margin:18px 0 12px}
+    #nf-system-map .detail-branches .btn {font-size:12px;padding:8px 12px}
+    #nf-system-map .detail-branches .btn[aria-pressed="true"] {background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+    #nf-system-map .detail-live {font-size:11px;color:var(--muted-foreground);margin-bottom:16px}
+    #nf-system-map .detail-canvas {display:grid;gap:30px;padding:3px 8px}
+    #nf-system-map .detail-port {position:relative;background:var(--canvas);border:1px solid var(--border);border-radius:11px;padding:13px 15px;z-index:1;min-width:0}
+    #nf-system-map .detail-label {font-size:11px;color:var(--muted-foreground);display:block;margin-bottom:6px}
+    #nf-system-map .detail-port-links {display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+    #nf-system-map .detail-port p {font-size:13px;margin:8px 0 0}
+    #nf-system-map .detail-port-direction {font-size:11px;color:var(--muted-foreground)}
+    #nf-system-map .detail-portal {font:inherit;font-size:11px;color:var(--primary);background:var(--accent);border:0;border-radius:5px;padding:4px 7px;max-width:100%;text-align:left;overflow-wrap:anywhere}
+    #nf-system-map .detail-portal:hover {background:var(--secondary)}
+    #nf-system-map .detail-portal-label {font-size:11px;color:var(--primary)}
+    #nf-system-map .detail-chain {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:30px 24px;align-items:stretch}
+    #nf-system-map .inner-step {position:relative;z-index:1;min-width:0;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;transition:background .2s,border-color .2s}
+    #nf-system-map .inner-step-heading {display:flex;align-items:start;gap:8px;flex-wrap:wrap}
+    #nf-system-map .inner-step-heading strong {font-size:13px;font-weight:600;flex:1;min-width:80px}
+    #nf-system-map .inner-step-number {width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--muted);font-size:10px;color:var(--muted-foreground);flex-shrink:0}
+    #nf-system-map .inner-step p {font-size:12px;color:var(--muted-foreground);margin-top:9px}
+    #nf-system-map .inner-step.is-current {border-color:var(--map-active);background:color-mix(in srgb,var(--map-active) 5%,var(--surface));box-shadow:0 0 0 2px color-mix(in srgb,var(--map-active) 10%,transparent)}
+    #nf-system-map .inner-step.is-current .inner-step-number {background:var(--map-active);color:var(--surface)}
+    #nf-system-map .inner-step.is-complete {border-color:color-mix(in srgb,var(--viz-series-1) 55%,var(--border))}
+    #nf-system-map .inner-step-now {font-size:10px;color:var(--map-active);flex-shrink:0}
+    #nf-system-map .inner-dependency {margin-top:10px;font-size:11px;color:var(--muted-foreground)}
+    #nf-system-map .inner-wait {display:inline-block;margin-top:10px;font-size:11px;color:var(--primary);border-bottom:1px dashed var(--primary)}
+    #nf-system-map .detail-alternative {display:flex;align-items:start;gap:10px;margin-top:18px;font-size:12px;color:var(--muted-foreground);padding:12px 0;border-top:1px solid var(--border)}
+    #nf-system-map .detail-alternative>span {font-size:11px;flex-shrink:0;color:var(--primary)}
+    #nf-system-map .detail-technical {border-top:1px solid var(--border);margin-top:16px;padding-top:12px}
+    #nf-system-map .detail-wires {z-index:0;overflow:visible}
+    #nf-system-map .detail-wires .detail-line {fill:none;stroke:var(--border);stroke-width:1.4;stroke-linejoin:round}
+    #nf-system-map .detail-wires .detail-line-complete {stroke:var(--viz-series-1)}
+    #nf-system-map .detail-wires .detail-line-current {stroke:var(--map-active);stroke-width:2.5}
+    #nf-system-map .detail-wires .detail-arrow-future {fill:var(--muted-foreground)}
+    #nf-system-map .detail-wires .detail-arrow-complete {fill:var(--viz-series-1)}
+    #nf-system-map .detail-wires .detail-arrow-current {fill:var(--map-active)}
+    #nf-system-map .map-wires .wire-detail {stroke:var(--viz-series-1);stroke-width:1;stroke-dasharray:3 4;opacity:.6}
+    #nf-system-map .wire-payload-label {pointer-events:none}
+    #nf-system-map .wire-payload-label rect {fill:var(--surface);stroke:color-mix(in srgb,var(--map-active) 50%,var(--border));stroke-width:1}
+    #nf-system-map .wire-payload-label text {font-size:11px;fill:var(--foreground)}
+    @keyframes detail-enter {from {transform:translateY(10px)}to{transform:translateY(0)}}
+    .is-motion-off .module-detail {animation:none!important}
     #nf-system-map .map-foot {padding:14px 4px 0;font-size:11px;color:var(--muted-foreground)}
     #nf-system-map .map-wires path {stroke:color-mix(in srgb,var(--muted-foreground) 40%,transparent)}
     #nf-system-map .map-wires .wire-complete {stroke:var(--viz-series-1);stroke-width:1.6}
@@ -226,12 +276,20 @@
       #nf-system-map .map-step-controls .form-select {font-size:16px;min-height:44px}
       #nf-system-map .map-legend {font-size:10px;gap:8px 12px}
       #nf-system-map .viz-tile {min-height:88px}
+      #nf-system-map .module-detail {padding:14px}
+      #nf-system-map .detail-heading {gap:8px}
+      #nf-system-map .detail-heading h3 {font-size:16px}
+      #nf-system-map .detail-heading .btn {padding:7px 9px}
+      #nf-system-map .detail-canvas {padding-inline:0}
+      #nf-system-map .detail-alternative {display:block}
+      #nf-system-map .detail-alternative p {margin-top:7px}
+      #nf-system-map .detail-branches .btn {min-height:44px}
     }
     @media(min-width:560px) and (max-width:680px) {
-      #nf-system-map .map-grid {grid-template-columns:minmax(0,1fr)}
+      #nf-system-map .map-grid {--map-columns:1;grid-template-columns:minmax(0,1fr)}
       #nf-system-map .map-node[data-node] {grid-column:1;grid-row:auto;width:100%;max-width:none}
     }
-    @media(prefers-reduced-motion:reduce) {* {scroll-behavior:auto!important}.mini b {animation:none!important}}
+    @media(prefers-reduced-motion:reduce) {* {scroll-behavior:auto!important}.mini b,.module-detail {animation:none!important}}
     @media(prefers-color-scheme:dark) {#nf-system-map {--map-active:#ffbb70}}
     @media(max-height:600px) {#nf-system-map .map-reader {position:relative;top:0}}
   </style>
@@ -254,11 +312,213 @@
         <button type="button" class="scenario-link" data-scenario="remember"><span class="nav-symbol">07</span>保存记忆</button>
         <button type="button" class="scenario-link" data-scenario="attachment"><span class="nav-symbol">08</span>上传附件</button>
       </nav></div>
-      <div class="sidebar-note"><strong>一张图，逐层看</strong><span>点模块展开内部步骤。</span><span>选操作，跟着数据走。</span><span>仅作架构演示<br>不连接你的业务数据</span></div>
+      <div class="sidebar-note"><strong>一张图，逐层看</strong><span>点模块，看输入、处理与输出。</span><span>选操作，跟着数据走。</span><span>仅作架构演示<br>不连接你的业务数据</span></div>
     </aside>
     <section class="atlas-workspace" aria-label="交互架构画布">
       <div class="page-hero"><div><div class="eyebrow">NOTEFLOW / SYSTEM ARCHITECTURE</div><h1>系统架构</h1><p class="hero-description">从一次操作，到回答与保存。</p></div><span class="hero-note">基于代码 · 非实时监控</span></div>
-      <div id="nf-system-map" aria-label="NoteFlow 可展开的系统架构与数据流">
+      <script>
+// Explanatory examples only. No account data or runtime telemetry is read here.
+(() => {
+  const step=(id,title,body,options={})=>({id,title,body,...options});
+  const branch=(id,title,from,input,to,output,steps,aside='')=>({id,title,from,input,to,output,steps,aside});
+  const modules={
+    ui:{purpose:'接收你的操作，保留正在编辑的内容，把回答和候选稿显示出来。',branches:[
+      branch('normal','输入与显示',['user','api'],'问题、编辑内容，或后端返回的结果',['user'],'界面里的答案、候选稿或保存状态',[
+        step('input','接收操作','例如：输入“解释一下容器是什么”。'),
+        step('prepare','保留现场','带上本轮问题、选区或当前编辑状态；未同步输入留在本地。'),
+        step('send','发给后端接口','前端通过 HTTP 发命令，通过 SSE 收回答。',{target:'api'}),
+        step('receive','显示返回结果','展示答案、保存结果或候选稿；根据真实结果更新状态。')]),
+      branch('quick','采用选区改写',['api'],'后端返回的候选文字',['api'],'采用后的编辑器正文，另发普通保存请求',[
+        step('candidate','收到候选','候选先显示在选区旁，正式正文还没有替换。'),
+        step('review','由你审阅','可采用、继续调整或取消。',{wait:true}),
+        step('adopt','替换准确选区','使用编辑器保存的位置替换；保留原生撤销。'),
+        step('save','触发普通保存','把采用后的正文和预期版本发给保存接口。',{target:'api'})])
+    ]},
+    api:{purpose:'所有浏览器请求先经过这里；确认是谁在操作，再交给对应业务。',branches:[
+      branch('request','一次业务请求',['ui'],'会话凭据、操作参数和输入内容',['router','notes','memory','files'],'通过检查的账号身份和业务参数',[
+        step('auth','确认登录账号','从会话确定当前用户，后续查询都带账号范围。'),
+        step('validate','检查请求','检查字段、权限与入口限流；Redis 参与限流计数。'),
+        step('dispatch','交给对应入口','聊天交给任务分流；保存、快捷改写、附件走各自接口。'),
+        step('reply','把结果返回前端','正常结果、冲突、错误或流式回答都经接口返回。',{target:'ui'})],
+        '登录失败或参数不合法 → 返回明确错误，停止这次业务操作。')
+    ]},
+    router:{purpose:'只为需要判断意图的请求选择路径；模型提出计划，程序负责验证。',branches:[
+      branch('chat','对话中的任务判断',['api'],'用户的话、近期聊天与页面可用信息',['context','notes','memory'],'校验后的意图、目标和所需资料',[
+        step('receive','接收本轮需求','例如：“把当前这段解释得更通俗”。'),
+        step('ask','请求识别计划','拼识别提示词，请模型提出“回答 / 新建 / 修改 / 记忆”的计划。',{target:'prompt'}),
+        step('validate','程序检查计划','检查字段、目标和模式约束；缺信息就追问。'),
+        step('dispatch','进入具体业务','有效计划交给回答、笔记或记忆服务。')],
+        '必要信息不全 → 追问并等待补充；识别或格式修复失败 → 返回错误，不继续写入。'),
+      branch('library','全库问答的固定路径',['api'],'已选择“全库搜索”的问题',['context'],'固定的本人笔记检索计划',[
+        step('fixed','程序固定计划','直接采用本人知识库检索，无需模型再判断意图。'),
+        step('dispatch','进入笔记问答','交给资料组织与检索；本路径跳过个人记忆。',{target:'context'})])
+    ]},
+    notes:{purpose:'管理正式笔记和候选稿；不同操作走不同分支，候选内容经确认后再保存。',branches:[
+      branch('save','手动保存',['api'],'新正文、笔记 ID、预期版本',['db','index'],'正式正文、历史版本和后台索引任务',[
+        step('accept','接收修改','例如：把一段 Docker 解释改得更清楚。'),
+        step('load','读取当前原文','在当前账号下读取目标笔记。',{target:'db'}),
+        step('version','检查预期版本','比较前端编辑时的版本与当前原文。'),
+        step('commit','保存正文与历史','提交新正文、旧版本和索引任务。',{target:'db'}),
+        step('index','后台更新索引','保存确认先返回；检索片段随后更新。',{target:'index'})],
+        '版本不匹配 → 返回冲突，前端保留修改。跨设备原子并发保护仍待完善，不能据此保证所有并发已解决。'),
+      branch('create','AI 新建',['ui','router'],'标题和写作要求，例如“Docker 学习笔记，先概念后示例”',['db','index'],'确认后的正式笔记；确认前一直是草稿',[
+        step('brief','确认标题与要求','先显示可编辑的创建卡片，由你点击开始。',{wait:true}),
+        step('outline','生成并调整大纲','先建立结构，再由你查看或调整。',{target:'prompt'}),
+        step('generate','按章节生成','把要求和本节上下文交给提示词与模型；可由后台推进。',{target:'model'}),
+        step('draft','保留候选草稿','章节内容和生成状态保存在草稿中。',{target:'db'}),
+        step('review','审阅并确认保存','可编辑或继续处理，明确确认才成为正式笔记。',{wait:true}),
+        step('publish','保存正式笔记','写入正式正文、版本与索引任务。',{target:'db'})],
+        '停止或某节失败 → 保留已生成章节；返回创建卡片不代表全文已经生成。'),
+      branch('preview','AI 修改预览',['api','db'],'原文、修改范围和要求，例如“把这段解释得更通俗”',['db','ui'],'确认后的正文和旧版本；审阅期间只存独立预览',[
+        step('locate','确定原文与范围','按本人笔记、选区或章节确定要改哪里。'),
+        step('generate','生成候选修改','仅将目标原文与要求交给提示词、模型。',{target:'prompt'}),
+        step('check','检查候选结果','校验定位、格式和空结果；不通过不改正式正文。'),
+        step('candidate','保存独立预览','存候选稿与原文指纹，原文暂时保留。',{target:'db'}),
+        step('review','由你审阅','可以修改、继续调整、取消或点击应用。',{wait:true}),
+        step('apply','复查原文后应用','检查版本与重复应用，再写正文、旧版本和索引任务。',{target:'db'})],
+        '审阅期间原文已变化 → 阻止直接应用并保留候选。取消 → 不把候选写进正式正文。'),
+      branch('quick','选区快捷改写',['api'],'选中文字、修改意见和可选的当前候选稿',['ui'],'只返回候选文字，供编辑器审阅和采用',[
+        step('authorize','验证笔记归属','实际选区位置由编辑器持有，后端检查可访问性。'),
+        step('generate','生成限定选区的候选','初次润色或按意见继续调整，不扩大修改范围。',{target:'prompt'}),
+        step('return','返回文字给编辑器','不建立服务器修改预览；采用与撤销发生在前端。',{target:'ui'})],
+        '前端点击采用 → 替换选区，再另走“手动保存”分支。不能把返回候选当成保存成功。')
+    ]},
+    context:{purpose:'决定本次回答具体参考哪些资料，把可用内容和引用组织给模型。',branches:[
+      branch('chat','普通聊天',['router'],'问题和本轮携带的近期聊天',['prompt'],'本轮问题、历史和允许使用的相关记忆',[
+        step('receive','接收回答计划','普通问题不会自动检索所有笔记。'),
+        step('gather','按需准备资料','记忆开启且计划需要时，向记忆管理申请相关事实。',{target:'memory'}),
+        step('send','组织回答输入','把问题、近期聊天和可用记忆交给回答提示词。',{target:'prompt'})],
+        '可选记忆服务失败 → 可以不带记忆继续回答；本轮不把失败当作新的记忆来源。'),
+      branch('note','基于笔记回答',['router','index'],'选区、当前正文或本人笔记的检索片段',['prompt','ui'],'带依据和可查看来源的回答',[
+        step('receive','确定笔记资料来源','区分选区、未保存正文和已保存笔记；全库模式只走库内检索。'),
+        step('retrieve','检索需要的片段','向检索模块申请相关笔记依据。',{target:'index'}),
+        step('evidence','整理依据与引用','将有效片段和来源编号送入回答提示词。',{target:'prompt'}),
+        step('cite','检查回答引用','核对模型使用的引用编号，再返回答案和来源。',{target:'ui'})],
+        '全库没有可用来源 → 说明未找到。本条路径跳过个人记忆召回。')
+    ]},
+    index:{purpose:'把正文整理成可搜索的派生数据，再按问题返回相关片段。',branches:[
+      branch('build','保存后的索引更新',['db'],'已经保存的正文版本与索引任务',['db'],'可重建的片段、词项和向量',[
+        step('claim','领取持久索引任务','保存成功后后台再处理，二者不是同一时点。'),
+        step('chunk','解析并分段','把正文整理成适合检索的片段。'),
+        step('embed','生成片段向量','将片段文本交给嵌入模型。',{target:'model'}),
+        step('publish','写入有效索引','保存片段与向量，同时记录来源版本。',{target:'db'})],
+        '索引是派生数据，可以重建，不能用它覆盖正式正文。'),
+      branch('search','按问题检索',['context'],'问题和当前账号可读取的范围',['context'],'排好序的笔记片段与引用信息',[
+        step('scope','限定账号与范围','只查询本人可访问且来源有效的内容。'),
+        step('recall','多路找候选','查询标题、词项和向量索引。',{target:'db'}),
+        step('rank','融合并排序','合并候选，按配置排序并核对来源版本。'),
+        step('cite','返回片段和来源','让回答模块拿到可用证据。',{target:'context'})])
+    ]},
+    prompt:{purpose:'把当前任务的规则与资料组合成模型消息；目前这些函数仍在业务代码中。',branches:[
+      branch('plan','识别任务的提示',['router'],'用户的话、近期聊天和页面可用信息',['model'],'要求返回结构化计划的模型消息',[
+        step('template','选择识别规则','列出允许的意图、模式限制和输出格式。'),
+        step('fill','填入当前信息','例如：“修改这段” + 当前笔记 ID + 选区预览。'),
+        step('send','交给模型提出计划','返回后仍由程序验证，提示词不代替权限检查。',{target:'model'})]),
+      branch('answer','组织回答的提示',['context'],'问题、近期聊天和本轮允许使用的资料',['model'],'带上下文与引用规则的回答请求',[
+        step('template','选择回答规则','普通对话与严格笔记回答有不同约束。'),
+        step('fill','组合问题与资料','规则 + “容器是什么？” + 相关笔记片段或可用记忆。'),
+        step('send','发送模型消息','模型收到组织后的消息，不会自动读取项目数据库。',{target:'model'})]),
+      branch('write','新建与修改的提示',['notes'],'主题 / 要求，或目标原文与选区',['model'],'范围明确、格式受约束的生成请求',[
+        step('template','选择写作规则','区分新建、大纲、章节、初次修改与继续调整。'),
+        step('fill','拼合本轮输入','规则：“保留原意” + 要求：“更通俗” + 选中原文。'),
+        step('send','交给模型生成候选','候选回到笔记业务检查，不能由提示词直接授权保存。',{target:'model'})])
+    ]},
+    memory:{purpose:'由项目决定哪些来源能保存、哪些事实当前可以被使用。',branches:[
+      branch('write','保存新记忆',['router','context'],'用户本人原话，例如“解释时先给整体图”',['db','worker'],'合法来源和持久待办；此时未必已有整理后的事实',[
+        step('check','先检查能否保存','核对账号、开关、安全规则与重复来源。'),
+        step('queue','保存来源并入队','在项目数据库同一事务写来源与待办。',{target:'db'}),
+        step('process','交由后台整理','后台还要复查规则与来源是否仍有效。',{target:'worker'})],
+        '规则不允许 / 开关关闭 → 不入队。任务完成、取消流水不会因此自动变成个人经历。'),
+      branch('read','读取可用记忆',['context','db'],'查询问题、使用范围和当前来源状态',['context'],'过滤后的相关事实',[
+        step('gate','检查读取条件','看记忆开关、账号范围与来源控制信息。'),
+        step('recall','申请候选事实','通过统一记忆接口查询引擎。',{target:'adapter'}),
+        step('filter','过滤当前不可用项','排除停用、待确认、隐藏、已删来源和不适用事实。'),
+        step('output','交回回答资料','只把可用事实交给资料组织，不直接生成答案。',{target:'context'})],
+        '删除先设置不可读屏障，再清理引擎；清理失败保留重试，旧来源不得复活。')
+    ]},
+    worker:{purpose:'把记忆整理放到持久后台任务里，避免阻塞主回答。',branches:[
+      branch('write','处理记忆待办',['db'],'来源编号、原话、规则版本和当前记忆批次',['adapter','db'],'整理请求和可重试的来源处理状态',[
+        step('claim','领取待办','从数据库领取，而非仅靠进程内存排队。'),
+        step('recheck','再次检查有效性','开关、规则版本、记忆批次或删除状态变化就跳过。',{target:'memory'}),
+        step('send','调用记忆引擎接口','发送有效来源与当前提取规则。',{target:'adapter'}),
+        step('settle','写回处理结果','记录完成、空结果或重试；来源状态仍由项目保存。',{target:'db'})],
+        '当前 worker 随 FastAPI 同进程启动。失败可重试，已过期或已删除的来源不再执行。')
+    ]},
+    adapter:{purpose:'让项目用统一的记忆对象，不需要理解 Hindsight 的原生字段和状态。',branches:[
+      branch('read','召回和管理结果',['memory'],'账号内的记忆查询或管理请求',['memory'],'项目统一的事实、来源或图谱',[
+        step('request','调用引擎接口','把项目请求转换为 Hindsight 所需格式。',{target:'hindsight'}),
+        step('normalize','转换返回字段','原生 text / 状态等转换为项目的 content / status。'),
+        step('respond','交回统一结果','之后仍由记忆管理检查来源与当前可用性。',{target:'memory'})]),
+      branch('write','提交来源原文',['worker'],'原话、来源 ID 和提取规则',['hindsight','worker'],'引擎写入结果或安全错误',[
+        step('request','接收项目契约','调用方无需携带厂商专有字段。'),
+        step('convert','适配到当前引擎','配置账号库并提交来源。',{target:'hindsight'}),
+        step('respond','归一化处理结果','不把厂商原始状态直接交给业务。',{target:'worker'})],
+        '当前正式事实引擎只有 Hindsight；旧 Mem0 索引兼容路径不是可直接互换的第二个正式引擎。')
+    ]},
+    model:{purpose:'接收明确输入并生成计划、文字或向量；项目数据的读写仍由业务代码负责。',branches:[
+      branch('text','计划、回答与写作',['prompt'],'已经拼好的模型消息',['caller'],'结构化计划、回答或候选文字',[
+        step('receive','接收模型消息','看得到的资料来自本轮请求，不会自动看到全部笔记。'),
+        step('generate','按用途生成结果','识别计划、回答和写作是不同调用角色。'),
+        step('respond','回到业务程序校验','可流式返回；生成候选不等于正文已经保存。')]),
+      branch('embed','索引的嵌入模型',['index'],'待检索的正文片段文本',['index'],'对应片段的向量',[
+        step('receive','接收片段文本','不是向聊天模型发送写作提示。'),
+        step('generate','计算向量表示','为后续相似内容检索提供派生数据。'),
+        step('respond','交回索引模块','由索引模块保存向量和来源版本。',{target:'index'})])
+    ]},
+    files:{purpose:'保存附件本体，并把可访问位置和归属记录到项目数据库。',branches:[
+      branch('upload','上传附件',['api'],'文件内容与已认证账号',['db','api'],'磁盘 / 卷里的文件，以及数据库里的位置和归属',[
+        step('validate','检查上传与权限','由附件服务验证请求。'),
+        step('write','写入实际文件','调用文件存储实现，文件本体在磁盘或挂载卷。'),
+        step('metadata','提交文件记录','数据库保存名称、位置、大小和账号归属。',{target:'db'}),
+        step('return','返回访问结果','后续读取附件仍检查权限。',{target:'api'})],
+        '文件与 SQL 不能一起回滚，失败后的清理 / 补偿仍待完善。只交换两步顺序不能消除这个窗口。')
+    ]},
+    runtime:{purpose:'记录一项工作进行到哪里，帮助追踪、等待和恢复；不代替笔记正文。',branches:[
+      branch('run','任务进度与后台执行',['api','notes'],'本轮运行身份、计划或章节生成任务',['db'],'运行状态、图检查点和生成进度',[
+        step('start','建立运行记录','记录本轮 runId 与会话，区别于长期记忆。'),
+        step('checkpoint','保存流程位置','LangGraph 可记录节点和等待位置。'),
+        step('worker','推进后台章节生成','草稿 worker 按实际业务状态执行章节任务。'),
+        step('record','持久化进度','状态、检查点与草稿进度写入项目数据库。',{target:'db'})],
+        '并非所有接口都走 LangGraph。完整执行追踪、任务恢复语义及部分故障窗口仍待完善。')
+    ]},
+    hindsight:{purpose:'按规则把来源原话整理成事实与关系，并提供相关记忆的候选召回。',branches:[
+      branch('write','整理来源',['adapter'],'来源原话、来源 ID 与提取规则',['adapter'],'引擎中的事实、关系和来源原文',[
+        step('receive','接收来源与规则','按当前账号隔离，并使用“要记什么”的提取规则。'),
+        step('extract','整理事实和关系','例如从原话提取“解释偏好：先给整体图”。'),
+        step('store','写入引擎自己的数据库','这里存事实与关系；项目数据库另管来源状态。'),
+        step('return','交回整理结果','可能没有可用事实，也可能需要人工确认。',{target:'adapter'})]),
+      branch('read','召回候选记忆',['adapter'],'该账号内的查询问题',['adapter'],'相关候选事实，尚需项目再次过滤',[
+        step('receive','接收查询','查询只限当前账号库。'),
+        step('query','检索相关事实','从自己保存的事实与关系中召回候选。'),
+        step('return','交给适配器转换','由项目记忆管理决定哪些现在能用。',{target:'adapter'})])
+    ]},
+    db:{purpose:'持久保存项目自己的数据；不同业务读写不同表，不是所有请求的最后一步。',branches:[
+      branch('write','写入项目数据',['notes','runtime','memory','index','files'],'正文 / 草稿，运行进度，规则 / 来源 / 队列，索引或附件元数据',['caller'],'提交成功后的数据与版本信息',[
+        step('prepare','按业务组织写入','正式正文、候选稿、记忆控制和索引用不同表承担职责。'),
+        step('commit','提交数据库事务','成功后才可以确认对应的 SQL 数据已保存。'),
+        step('return','返回提交结果','业务接口再通知前端或继续后台处理。',{target:'api'})],
+        '附件文件本体不在这里；Hindsight 的事实与关系也由引擎自己的数据库保存。'),
+      branch('read','读取项目数据',['notes','context','memory','index'],'带账号范围、目标和条件的查询',['notes','context','memory','index'],'当前业务所需的正文、状态或检索数据',[
+        step('scope','限定账号和目标','通过项目仓储 / 服务按所属账号查询。'),
+        step('query','读取对应的数据表','例如正文版本、来源屏障或检索片段。'),
+        step('return','交回调用方处理','数据库返回资料；业务决定后续检查和流程。')])
+    ]}
+  };
+  const traces={
+    chat:'api/request/auth runtime/run/start runtime/run/record router/chat/receive prompt/plan/fill model/text/generate router/chat/validate context/chat/receive memory/read/gate memory/read/gate adapter/read/request hindsight/read/query adapter/read/normalize memory/read/filter memory/read/output prompt/answer/fill model/text/generate ui/normal/receive',
+    qa:'api/request/auth router/library/fixed context/note/receive index/search/scope index/search/recall index/search/rank context/note/evidence prompt/answer/fill model/text/generate context/note/cite ui/normal/receive',
+    save:'api/request/auth notes/save/accept notes/save/load notes/save/version notes/save/commit db/write/commit ui/normal/receive index/build/claim model/embed/generate index/build/embed index/build/publish',
+    create:'api/request/auth router/chat/receive prompt/plan/fill model/text/generate router/chat/validate notes/create/brief notes/create/brief notes/create/outline notes/create/outline prompt/write/fill model/text/generate notes/create/draft runtime/run/worker runtime/run/record notes/create/review notes/create/review notes/create/publish notes/create/publish db/write/commit ui/normal/receive',
+    preview:'api/request/auth notes/preview/locate notes/preview/locate prompt/write/fill model/text/generate notes/preview/check notes/preview/candidate notes/preview/review notes/preview/review notes/preview/apply notes/preview/apply db/write/commit ui/normal/receive',
+    quick:'api/request/auth notes/quick/authorize prompt/write/fill model/text/generate notes/quick/return ui/quick/review ui/quick/adopt ui/quick/save notes/save/accept notes/save/commit db/write/commit ui/normal/receive',
+    remember:'api/request/auth router/chat/receive prompt/plan/fill model/text/generate router/chat/validate memory/write/check memory/write/check memory/write/queue worker/write/claim worker/write/recheck adapter/write/request hindsight/write/receive hindsight/write/extract adapter/write/respond worker/write/settle worker/write/settle',
+    attachment:'api/request/auth files/upload/write files/upload/metadata db/write/commit ui/normal/receive'
+  };
+  window.NoteFlowMapDetails={modules,traces:Object.fromEntries(Object.entries(traces).map(([key,value])=>[key,value.split(' ').map(s=>{const[module,branch,stage]=s.split('/');return{module,branch,stage};})]))};
+})();
+
+</script>
+<div id="nf-system-map" aria-label="NoteFlow 可展开的系统架构与数据流">
   <header class="map-heading">
     <div><h2>NoteFlow · 系统地图</h2><span class="text-small text-muted">当前实现 · 模块可以展开 · 数据可以沿路看</span></div>
   </header>
@@ -334,65 +594,52 @@
   const count = root.querySelector('#nf-map-count');
   const foot = root.querySelector('#nf-map-foot');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const detailData = window.NoteFlowMapDetails;
+  if(!detailData?.modules || !detailData?.traces) throw new Error('Missing architecture detail data');
   const nodes = [
     { id:'ui', title:'前端工作区', sub:'输入、编辑、审阅与显示', icon:'layout-panel-left', type:'浏览器 · React / Tiptap', row:1, span:'all',
-      steps:['输入问题 / 编辑笔记 / 选择文字','Zustand 保存当前操作与页面状态','HTTP 发命令，SSE 接收流式结果','编辑日志与离线队列保留未同步输入'],
       note:'选区快捷改写的候选先回到编辑器；点击采用后才替换，仍可撤销。浏览器不直接连数据库。',
       sources:['src/store/index.tsx','src/store/persistence.ts','src/services/offlineQueue.ts'] },
     { id:'api', title:'登录检查与业务接口', sub:'验身份、校验请求、分入口', icon:'shield-check', type:'后端 · FastAPI', row:2, span:'all',
-      steps:['检查登录会话与当前账号','按入口校验参数、检查限流','聊天 → 任务分流；保存 → 笔记服务','设置 / 记忆 / 附件 → 对应接口'],
       note:'Redis 保存限流计数，不保存笔记正文。Redis 不可用时有限流内存回退；普通保存不需要模型判断意图。',
       sources:['server/app/deps.py','server/app/routers/agent.py','server/app/routers/notes.py','server/app/main.py'] },
     { id:'router', title:'任务判断与分流', sub:'这次回答、写作，还是管记忆？', icon:'git-branch', type:'后端 · Agent', row:3, span:'all',
-      steps:['对话：识别提示词 → 模型提出计划','程序校验：意图、必填项、可用来源','缺信息 → 追问；有效 → 对应业务','全库搜索：程序固定路径，跳过意图模型'],
       note:'模型只提出计划，程序决定能否执行。选区快捷改写、手动保存和附件上传直接走专用接口。',
       sources:['server/app/services/turn_planner.py','server/app/agent/langgraph_turn.py','server/app/routers/agent.py'] },
     { id:'notes', title:'笔记、草稿与修改', sub:'正式正文与候选稿分开', icon:'file-pen-line', type:'后端 · 笔记业务', row:4, col:1,
-      steps:['手动保存：检查账号与预期版本','新建：大纲 → 分节生成 → 草稿审阅','修改：确定范围 → 独立修改预览','用户确认 → 再检查原文 → 保存版本','保存正式内容，同时安排索引任务'],
       note:'选区快捷改写是例外：只返回候选文字，不写服务器预览。普通保存仍有跨设备并发缺口（UI-45），不能当成已解决。',
       sources:['server/app/routers/notes.py','server/app/routers/drafts.py','server/app/routers/edits.py','server/app/services/note_edit.py'] },
     { id:'context', title:'回答与资料组织', sub:'按本轮需要选择资料', icon:'messages-square', type:'后端 · 只读回答', row:4, col:2,
-      steps:['普通聊天：问题 + 近期聊天','按计划与开关读取相关个人记忆','笔记问答：选区 / 当前正文 / 检索片段','整理资料与引用，交给提示词拼装'],
       note:'当前笔记 / 选区问答与全库问答跳过个人记忆召回；全库没有命中时直接说明未找到。contextScope 硬边界仍待完善（AI-17）。',
       sources:['server/app/agent/langgraph_readonly.py','server/app/services/ai.py','server/app/rag/pipeline/service.py'] },
     { id:'memory', title:'记忆管理', sub:'决定哪些能存、哪些能用', icon:'list-filter', type:'后端 · 项目自己的规则', row:4, col:3,
-      steps:['写入前：账号、开关、安全、重复检查','规则与来源状态保存在项目数据库','保存来源和待办，后台整理事实','读取时排除停用、待确认、已删来源','删除先设不可读屏障，再清理引擎'],
       note:'它是现有后端里的服务，不是另一个 AI。记忆故障可降级普通回答；用户原话才是自动提取输入，任务取消流水不应变成个人经历。',
       sources:['server/app/memory/gateway.py','server/app/memory/service.py','server/app/memory/context.py'] },
     { id:'index', title:'检索与索引', sub:'让保存过的笔记能被找到', icon:'search', type:'后端 · RAG / 索引任务', row:5, col:1,
-      steps:['保存后：后台领取索引任务','解析正文 → 分段 → 生成向量','片段 / 向量写入项目数据库','查询：词项 / 标题 / 向量召回','校验账号、来源版本，返回片段与引用'],
       note:'索引是可重建的派生数据，不能覆盖正式正文。保存成功与索引完成是两个时点；普通列表搜索另有 note_library 路径。',
       sources:['server/app/services/markdown_index.py','server/app/services/index_worker.py','server/app/services/note_library.py','server/app/rag/pipeline/service.py'] },
     { id:'prompt', title:'提示词拼装', sub:'模板 + 本轮资料 → 模型消息', icon:'braces', type:'后端 · 代码内的模板 / 函数', row:5, col:2,
-      steps:['选择识别 / 回答 / 写作对应模板','填入问题、要求、原文或选区','加入本轮允许的资料与记忆','生成模型请求；输出再由程序校验'],
       note:'目前散布在各服务的代码中，图里按职责合并展示。没有独立提示词平台；Git 有历史，独立发布与调用版本关联仍未完成（AI-16）。',
       sources:['server/app/services/turn_planner.py','server/app/services/ai.py','server/app/services/prompts.py','server/app/services/note_edit.py'] },
     { id:'worker', title:'记忆后台任务', sub:'排队后再整理，不阻塞主回答', icon:'list-todo', type:'后端 · 持久队列 / Outbox', row:5, col:3,
-      steps:['从项目数据库领取待办','再查开关、规则版本、来源代数','过期 / 已删任务 → 跳过','有效来源 → 调用统一记忆接口','写回处理状态；失败保留重试'],
       note:'队列在数据库，不是仅放在进程内存。当前 worker 随 FastAPI 同进程启动，尚非独立微服务。',
       sources:['server/app/workers/outbox_worker.py','server/app/services/outbox.py','server/app/memory/gateway.py','server/app/main.py'] },
     { id:'model', title:'AI 模型接口', sub:'识别、回答、写作、生成向量', icon:'sparkles', type:'后端适配 → 外部模型', row:6, col:2,
-      steps:['接收组织好的消息或待嵌入文本','按用途调用聊天 / 写作 / 向量模型','返回文字、结构化计划或向量','业务程序校验结果，不直接授权落库'],
       note:'一次操作可能多次调用模型。模型输出的候选稿不等于正式笔记；普通保存与上传文件不调用 AI。',
       sources:['server/app/providers/','server/app/services/ai.py','server/app/services/turn_planner.py'] },
     { id:'adapter', title:'统一记忆接口', sub:'项目契约 → 引擎适配器', icon:'plug', type:'后端 · MemoryEngine', row:6, col:3,
-      steps:['项目只调用统一的读写 / 修订接口','Hindsight 适配器转换请求与字段','厂商状态 → active / archived 等状态','事实、来源、图谱转换后交回记忆管理'],
       note:'当前正式事实引擎只有 Hindsight。旧 Mem0 是另一条本地事实索引兼容路径，不代表已有可直接切换的第二个正式引擎。',
       sources:['server/app/memory/engine.py','server/app/providers/memory_registry.py','server/app/providers/hindsight.py'] },
     { id:'files', title:'附件服务与文件', sub:'文件本体在磁盘 / 挂载卷', icon:'paperclip', type:'后端服务 + 文件存储', row:7, col:1,
-      steps:['业务接口校验上传与访问','AttachmentService 调用 ObjectStorage','文件本体写入配置的附件目录','元数据与归属写入项目数据库'],
       note:'文件不在正文表里。文件操作与 SQL 不是同一事务；失败补偿仍待完善（UI-46），生产实际附件备份路径也待验收。',
       sources:['server/app/services/attachment_service.py','server/app/services/object_storage.py'] },
     { id:'runtime', title:'任务运行与检查点', sub:'记录运行、等待与生成进度', icon:'route', type:'后端 · LangGraph / Worker', row:7, col:2,
-      steps:['AgentRun 记录本轮业务运行','LangGraph 记录节点与等待检查点','草稿 worker 推进后台章节生成','状态与检查点存入项目数据库'],
       note:'这层协助推进和恢复流程，不拥有笔记正文。并非每个接口都走 LangGraph；完整执行追踪与恢复语义仍待完善（AI-13 / AI-15）。',
       sources:['server/app/agent/','server/app/services/agent_checkpoints.py','server/app/services/draft_worker.py'] },
     { id:'hindsight', title:'Hindsight 记忆引擎', sub:'整理事实、关联关系与召回', icon:'brain', type:'独立服务 + 自己的数据库', row:7, col:3,
-      steps:['接收来源原文与提取规则 mission','提取事实与关系，保存来源原文','事实 / 关系保存在 Hindsight 的数据库','收到查询 → 返回相关候选事实'],
       note:'项目数据库管规则、来源状态和待办；引擎数据库管事实与关系。返回项目后，还要经过记忆管理的可用性过滤。',
       sources:['server/app/providers/hindsight.py','docs/architecture/memory-engine-boundary-2026-10-31.md'] },
     { id:'db', title:'项目数据库 · PostgreSQL', sub:'正文 / 版本 / 草稿 · 会话 / 检查点 · 规则 / 来源 / 队列 · 检索片段 / 向量 · 附件元数据', icon:'database', type:'NoteFlow 自己的数据', row:8, span:'all',
-      steps:['正式资料：笔记正文、版本、草稿、修改预览','对话与运行：会话、运行记录、图检查点','记忆控制：规则、来源状态、持久队列','派生检索：分段、索引、向量，可重建','附件记录：名称、位置、账号归属，不含文件本体'],
       note:'这些可以在同一个 PostgreSQL 里，由不同表承担职责。数据库是被多个模块调用的存储，不是所有请求都只在最后经过的一步。',
       sources:['server/app/models/db.py','server/app/repositories/','server/app/services/agent_checkpoints.py'] }
   ];
@@ -432,7 +679,7 @@
       S('prompt','model','请模型按资料回答','严格笔记回答与引用规则'),
       S('model','context','校验回答引用','核对引用编号，必要时修正输出'),
       S('context','ui','通过 API / SSE 返回','答案 + 可查看的笔记来源') ] },
-    save:{ foot:'保存先返回确认，索引随后完成。普通保存的跨设备原子并发保护仍未解决（UI-45）；这里展示成功路径。', steps:[
+    save:{ foot:'保存先返回确认，索引随后完成。两个设备同时保存时的保护仍待完善；这里展示正常保存路径。', steps:[
       S('ui','api','发送手动编辑内容','正文 + 笔记 ID + 预期 hash / 更新时间'),
       S('api','notes','直接进入保存服务','跳过任务判断与 AI 模型'),
       S('notes','db','读取本人当前正文','按账号 / 笔记定位原文','data'),
@@ -462,7 +709,7 @@
       S('notes','db','提交正式正文与索引任务','候选草稿成为正式笔记；索引随后处理','data'),
       S('db','api','返回提交结果','正式笔记 ID 与内容版本'),
       S('api','ui','打开保存后的笔记','后续可编辑、检索') ] },
-    preview:{ foot:'这条是服务器修改预览路径：原文先不动，确认后才提交。原文变化会阻止应用；SQL 与图授权的故障窗口仍待验收。', steps:[
+    preview:{ foot:'这条是服务器修改预览路径：原文先不动，确认后才提交。原文变化会阻止应用；保存与任务授权之间的异常恢复仍待验收。', steps:[
       S('ui','api','明确请求生成修改预览','目标笔记 / 范围 / 修改要求'),
       S('api','notes','定位本人原文与修改范围','从预览按钮发起，不再走聊天意图判断'),
       S('db','notes','读取原文版本','目标正文、选区或章节','data'),
@@ -486,7 +733,7 @@
       S('ui','ui','点击采用，替换准确选区','编辑器事务，可一步撤销；原文变化则阻止采用'),
       S('ui','api','随后自动保存编辑器内容','普通笔记保存请求，仍带预期版本'),
       S('api','notes','进入普通保存','保留失败 / 冲突时的本地输入'),
-      S('notes','db','提交正文、版本与索引任务','沿用普通保存边界，UI-45 仍待完善','data'),
+      S('notes','db','提交正文、版本与索引任务','采用后走普通保存；多设备同时保存的保护仍待完善','data'),
       S('db','api','返回保存结果','正文提交确认'),
       S('api','ui','显示已保存','后台更新索引') ] },
     remember:{ foot:'显式记忆命令 / 可选自动记忆最终共用管理入口。后台整理完成才有事实；关闭、规则变化或来源删除后，旧任务不得复活数据。', steps:[
@@ -538,6 +785,15 @@
   const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const nodeEls = new Map();
   const buttons = new Map();
+  const detailPanels = new Map();
+  const nodeNames = new Map(nodes.map(n=>[n.id,n.title]));
+  for(const [key,points] of Object.entries(detailData.traces)){
+    if(points.length!==scenarios[key]?.steps.length)throw new Error(`Trace length mismatch: ${key}`);
+    for(const point of points){
+      const b=detailData.modules[point.module]?.branches.find(b=>b.id===point.branch);
+      if(!b?.steps.some(s=>s.id===point.stage))throw new Error(`Unknown detail stage: ${key}/${point.module}/${point.branch}/${point.stage}`);
+    }
+  }
   for (const n of nodes) {
     const section = document.createElement('section');
     section.className = 'map-node';
@@ -546,26 +802,55 @@
     if (n.span) section.dataset.span = n.span;
     if (n.col) section.dataset.col = n.col;
     section.innerHTML = `<div class="map-node-meta text-small text-muted"><span>${esc(n.type)}</span><span data-indicator>＋</span></div>
-      <button type="button" class="btn viz-tile" id="nf-map-node-${n.id}" aria-expanded="false" aria-controls="nf-map-inner-${n.id}" aria-pressed="false"><span>${esc(n.title)}<br><span class="text-small">${esc(n.sub)}</span></span></button>
-      <div class="map-inner text-small" id="nf-map-inner-${n.id}" hidden><ol>${n.steps.map(t=>`<li>${esc(t)}</li>`).join('')}</ol>
-      <details><summary class="cursor-interaction">代码与当前边界</summary><div class="map-source"><span>${esc(n.note)}</span>${n.sources.map(p=>`<code>${esc(p)}</code>`).join('')}</div></details></div>`;
+      <button type="button" class="btn viz-tile" id="nf-map-node-${n.id}" aria-expanded="false" aria-controls="nf-map-inner-${n.id}" aria-pressed="false"><span>${esc(n.title)}<br><span class="text-small">${esc(n.sub)}</span></span></button>`;
     grid.append(section);
     nodeEls.set(n.id,section);
     const button = section.querySelector('button');
     buttons.set(n.id,button);
     button.addEventListener('click',() => {
+      stop();
       animateLayout(() => {
-        if (state.expanded.has(n.id)) state.expanded.delete(n.id); else state.expanded.add(n.id);
+        if (isExpanded(n.id)) closeDetail(n.id); else state.expanded.add(n.id);
         updateExpanded();
       });
+      update();
+      if(isExpanded(n.id))requestReveal(n.id,true);
       saveState();
     });
-    section.querySelector('details').addEventListener('toggle',() => { draw(); });
+    const panel=document.createElement('section');
+    panel.id=`nf-map-inner-${n.id}`;panel.className='map-inner module-detail';panel.dataset.module=n.id;panel.hidden=true;
+    panel.setAttribute('role','region');panel.setAttribute('aria-labelledby',`nf-detail-title-${n.id}`);
+    const content=detailData.modules[n.id];
+    panel.innerHTML=`<header class="detail-heading"><div><span class="detail-kicker">展开 · 上方的${esc(n.title)}</span><h3 id="nf-detail-title-${n.id}">${esc(n.title)}的内部流程</h3><p>${esc(content.purpose)}</p></div><button type="button" class="btn btn-ghost" data-close-detail="${n.id}" aria-label="收起${esc(n.title)}内部流程">收起</button></header>
+      <div class="detail-branches" role="group" aria-label="选择${esc(n.title)}的操作分支">${content.branches.map(b=>`<button type="button" class="btn" data-detail-branch="${b.id}" aria-pressed="false">${esc(b.title)}</button>`).join('')}</div>
+      <div class="detail-live" data-detail-live></div><div data-detail-content></div>
+      <details class="detail-technical"><summary class="cursor-interaction">实现位置与当前限制</summary><div class="map-source"><span>${esc(n.note)}</span>${n.sources.map(p=>`<code>${esc(p)}</code>`).join('')}</div></details>`;
+    grid.append(panel);detailPanels.set(n.id,panel);
+    panel.querySelector('[data-close-detail]').addEventListener('click',()=>{
+      stop();animateLayout(()=>{closeDetail(n.id);updateExpanded();});update();saveState();
+    });
+    for(const branchButton of panel.querySelectorAll('[data-detail-branch]'))branchButton.addEventListener('click',()=>{
+      stop();state.detailBranches[n.id]=branchButton.dataset.detailBranch;state.expanded.add(n.id);
+      animateLayout(()=>updateExpanded());update();saveState();
+    });
+    panel.addEventListener('click',event=>{
+      const portal=event.target.closest('[data-module-link]');if(!portal)return;
+      const id=portal.dataset.moduleLink;if(!nodeEls.has(id))return;
+      stop();state.expanded.add(id);animateLayout(()=>updateExpanded());update();saveState();
+      requestAnimationFrame(()=>{
+        const target=detailPanels.get(id);const reader=root.querySelector('#nf-map-reader');
+        const offset=getComputedStyle(reader).position==='sticky'?reader.getBoundingClientRect().height+28:20;
+        window.scrollTo({top:window.scrollY+target.getBoundingClientRect().top-offset,behavior:reduced.matches||root.dataset.motion==='off'?'instant':'smooth'});
+      });
+    });
+    panel.querySelector('details').addEventListener('toggle',()=>{draw();});
   }
-  let state = { scenario:'overview', step:-1, expanded:new Set(), playing:false, mode:'manual', delayMs:6000 };
+  let state = { scenario:'overview', step:-1, expanded:new Set(), playing:false, mode:'manual', delayMs:6000,autoExpanded:null,detailBranches:{} };
+  let lastFocusKey='';
   let timer = null;
   let layoutFrame = null;
   let packetAnimation = null;
+  let revealTimer = null;
   let lastLineKey = '';
   let lastGeometry = '';
   const stateSender = `nf-map-${Math.random().toString(36).slice(2)}`;
@@ -577,11 +862,68 @@
   };
   const getSteps = () => scenarios[state.scenario].steps;
   const current = () => getSteps()[state.step];
+  const focusPoint = () => detailData.traces[state.scenario]?.[state.step];
+  const isExpanded = id => state.expanded.has(id)||state.autoExpanded===id;
+  function closeDetail(id){state.expanded.delete(id);if(state.autoExpanded===id)state.autoExpanded=null;}
+  function requestReveal(id=focusPoint()?.module,heading=false){
+    clearTimeout(revealTimer);if(!id||!isExpanded(id))return;
+    const key=`${state.scenario}:${state.step}`;
+    revealTimer=setTimeout(()=>{
+      revealTimer=null;if(document.hidden||`${state.scenario}:${state.step}`!==key||!isExpanded(id))return;
+      const panel=detailPanels.get(id),point=focusPoint();
+      const target=heading?panel:panel.querySelector(`[data-stage="${point?.stage}"]`)||panel;
+      const reader=root.querySelector('#nf-map-reader');
+      const offset=getComputedStyle(reader).position==='sticky'?reader.getBoundingClientRect().height+28:20;
+      const r=target.getBoundingClientRect();
+      if(r.top<offset||r.bottom>window.innerHeight-24)window.scrollTo({top:window.scrollY+r.top-offset,behavior:reduced.matches||root.dataset.motion==='off'?'instant':'smooth'});
+    },reduced.matches||root.dataset.motion==='off'?0:400);
+  }
+  function portal(id){
+    const names={user:'你',caller:'调用它的业务模块'};
+    return nodeEls.has(id)?`<button type="button" class="detail-portal" data-module-link="${esc(id)}">${esc(nodeNames.get(id))}<span aria-hidden="true"> ↗</span></button>`:`<span class="detail-portal-label">${esc(names[id]||id)}</span>`;
+  }
+  function renderDetail(id){
+    const panel=detailPanels.get(id), data=detailData.modules[id];
+    const b=data.branches.find(b=>b.id===state.detailBranches[id])||data.branches[0];
+    const point=focusPoint();const matches=point?.module===id&&point.branch===b.id;
+    for(const button of panel.querySelectorAll('[data-detail-branch]'))button.setAttribute('aria-pressed',String(button.dataset.detailBranch===b.id));
+    panel.querySelector('[data-detail-live]').textContent=matches?`正在解释第 ${state.step+1} 步 · ${current().title}`:'独立查看这个分支 · 下方示例用于说明数据形态';
+    if(panel.dataset.branch!==b.id){
+      panel.dataset.branch=b.id;
+      panel.querySelector('[data-detail-content]').innerHTML=`<div class="detail-canvas" role="group" aria-label="${esc(b.title)}的输入、处理与输出">
+        <svg class="detail-wires" aria-hidden="true" focusable="false"></svg>
+        <div class="detail-port" data-flow-port="input"><span class="detail-label">收到什么</span><div class="detail-port-links">${b.from.map(portal).join('')}<span class="detail-port-direction">传来</span></div><p>${esc(b.input)}</p></div>
+        <div class="detail-chain">${b.steps.map((s,i)=>`<div class="inner-step" data-stage="${esc(s.id)}"><div class="inner-step-heading"><span class="inner-step-number">${i+1}</span><strong>${esc(s.title)}</strong><span class="inner-step-now" hidden>本步</span></div><p>${esc(s.body)}</p>${s.wait?'<span class="inner-wait">需要用户确认</span>':''}${s.target?`<div class="inner-dependency">调用 ${portal(s.target)}</div>`:''}</div>`).join('')}</div>
+        <div class="detail-port" data-flow-port="output"><span class="detail-label">交给谁 · 产生什么</span><div class="detail-port-links">${b.to.map(portal).join('')}</div><p>${esc(b.output)}</p></div>
+        </div>${b.aside?`<aside class="detail-alternative"><span>其他结果 / 边界</span><p>${esc(b.aside)}</p></aside>`:''}`;
+    }
+    const activeIndex=matches?b.steps.findIndex(s=>s.id===point.stage):-1;
+    for(const [index,el]of [...panel.querySelectorAll('[data-stage]')].entries()){
+      el.classList.toggle('is-current',index===activeIndex);el.classList.toggle('is-complete',activeIndex>index);
+      el.querySelector('.inner-step-now').hidden=index!==activeIndex;
+      if(index===activeIndex)el.setAttribute('aria-current','step');else el.removeAttribute('aria-current');
+    }
+    panel.dataset.activeIndex=activeIndex;
+  }
+  function layoutDetails(){
+    const mobile=Number(getComputedStyle(grid).getPropertyValue('--map-columns'))===1;
+    let row=1;
+    if(mobile){
+      for(const n of nodes){nodeEls.get(n.id).style.gridRow=String(row++);nodeEls.get(n.id).style.gridColumn='1';if(isExpanded(n.id)){detailPanels.get(n.id).style.gridRow=String(row++);}}
+    }else{
+      for(let tier=1;tier<=8;tier++){
+        const peers=nodes.filter(n=>n.row===tier);
+        for(const n of peers){nodeEls.get(n.id).style.gridRow=String(row);nodeEls.get(n.id).style.gridColumn=n.span?'1 / -1':String(n.col);}
+        row++;
+        for(const n of peers)if(isExpanded(n.id))detailPanels.get(n.id).style.gridRow=String(row++);
+      }
+    }
+  }
   function saveState() {
     if (!window.openai?.setWidgetState) return;
     window.openai.setWidgetState({
-      modelContent:{design:'noteflow-system-map-v2-reading',scenario:state.scenario,step:state.step,mode:state.mode,delayMs:state.delayMs,expandedModules:[...state.expanded]},
-      privateContent:{scenario:state.scenario,step:state.step,mode:state.mode,delayMs:state.delayMs,expanded:[...state.expanded],sender:stateSender}
+      modelContent:{design:'noteflow-system-map-v3-details',scenario:state.scenario,step:state.step,mode:state.mode,delayMs:state.delayMs,expandedModules:[...state.expanded],detailBranches:state.detailBranches},
+      privateContent:{scenario:state.scenario,step:state.step,mode:state.mode,delayMs:state.delayMs,expanded:[...state.expanded],detailBranches:state.detailBranches,sender:stateSender}
     }).catch(()=>{});
   }
   function restore(saved) {
@@ -597,27 +939,37 @@
     state.delayMs = [4000,6000,10000].includes(val.delayMs)?val.delayMs:6000;
     const expanded = val.expanded || val.expandedModules || [];
     state.expanded = new Set(Array.isArray(expanded) ? expanded.filter(id=>nodeEls.has(id)) : []);
+    state.detailBranches=Object.fromEntries(Object.entries(val.detailBranches||{}).filter(([id,b])=>Object.hasOwn(detailData.modules,id)&&detailData.modules[id].branches.some(branch=>branch.id===b)));
+    state.autoExpanded=null;lastFocusKey='';
     updateExpanded(); update();
   }
   function updateExpanded() {
     for (const [id,el] of nodeEls) {
-      const expanded = state.expanded.has(id);
-      el.querySelector('.map-inner').hidden = !expanded;
+      const expanded = isExpanded(id);
+      detailPanels.get(id).hidden = !expanded;
+      if(expanded)renderDetail(id);
       el.querySelector('button').setAttribute('aria-expanded',String(expanded));
       el.querySelector('[data-indicator]').textContent = expanded ? '−' : '＋';
     }
-    fold.disabled = !state.expanded.size;
+    fold.disabled = !state.expanded.size&&!state.autoExpanded;
+    layoutDetails();
   }
   function stop() {
     state.playing = false;
     clearTimeout(timer); timer = null;
     if(packetAnimation)cancelAnimationFrame(packetAnimation);
     packetAnimation=null;
+    clearTimeout(revealTimer);revealTimer=null;
   }
   function update() {
     chooser.value = state.scenario;
     const steps = getSteps();
     const selected = current();
+    const key=`${state.scenario}:${state.step}`;
+    if(lastFocusKey!==key){
+      lastFocusKey=key;const point=focusPoint();
+      animateLayout(()=>{state.autoExpanded=point?.module||null;if(point)state.detailBranches[point.module]=point.branch;updateExpanded();});
+    }else updateExpanded();
     const included = new Set(steps.flatMap(s=>[s.from,s.to]));
     for (const [id,el] of nodeEls) {
       el.dataset.dim = String(state.scenario !== 'overview' && !included.has(id));
@@ -633,7 +985,8 @@
     play.textContent = selected?.waitForUser ? '等待确认' : state.playing ? '暂停' : state.step===steps.length-1 && steps.length ? '重新播放' : state.step>0?'继续播放':'开始播放';
     next.textContent = selected?.waitForUser ? '继续演示' : '下一步';
     count.textContent = !steps.length ? '全貌' : state.step<0 ? `路径 · ${steps.length} 步` : `${state.step+1} / ${steps.length}`;
-    action.textContent = selected?.title || (!steps.length ? '所有模块在同一张图里；连线表示调用或数据依赖。' : '点击下一步，查看数据如何流转。');
+    count.dataset.module=focusPoint()?.module||'';
+    action.textContent = selected ? `${nodeNames.get(focusPoint()?.module)||''} · ${selected.title}` : (!steps.length ? '所有模块在同一张图里；连线表示调用或数据依赖。' : '点击下一步，查看数据如何流转。');
     payload.textContent = selected?.data || '流程演示，不是线上实时追踪';
     reading.textContent = !steps.length ? '选择一种操作，从第一步开始' : selected?.waitForUser
       ? '实际流程在这里等待用户确认 · 点击继续演示后才往下走'
@@ -669,15 +1022,50 @@
     const section=nodeEls.get(id).getBoundingClientRect();
     return {x:r.left-b.left,y:section.top-b.top,w:r.width,h:section.height,cx:r.left-b.left+r.width/2,cy:r.top-b.top+r.height/2};
   }
+  function panelRect(panel){const base=board.getBoundingClientRect(),r=panel.getBoundingClientRect();return{x:r.left-base.left,y:r.top-base.top,w:r.width,h:r.height};}
+  function wrappedConnection(a,b,width,lane){
+    const down=b.cy>a.cy;
+    if(down){
+      const startY=a.y+a.h+3,startTurn=startY+10,endY=b.y-5,endTurn=b.y-18;
+      return `M ${a.cx} ${startY} Q ${a.cx} ${startTurn},${a.cx+Math.sign(lane-a.cx)*12} ${startTurn} L ${lane-Math.sign(lane-a.cx)*12} ${startTurn} Q ${lane} ${startTurn},${lane} ${startTurn+12} L ${lane} ${endTurn-12} Q ${lane} ${endTurn},${lane>width/2?lane-12:lane+12} ${endTurn} L ${b.cx-Math.sign(b.cx-lane)*12} ${endTurn} Q ${b.cx} ${endTurn},${b.cx} ${endY}`;
+    }
+    const startY=a.y-5,startTurn=a.y-18,endY=b.y+b.h+5,endTurn=endY+12;
+    return `M ${a.cx} ${startY} Q ${a.cx} ${startTurn},${a.cx+Math.sign(lane-a.cx)*12} ${startTurn} L ${lane-Math.sign(lane-a.cx)*12} ${startTurn} Q ${lane} ${startTurn},${lane} ${startTurn-12} L ${lane} ${endTurn+12} Q ${lane} ${endTurn},${lane>width/2?lane-12:lane+12} ${endTurn} L ${b.cx-Math.sign(b.cx-lane)*12} ${endTurn} Q ${b.cx} ${endTurn},${b.cx} ${endY}`;
+  }
+  function drawDetails(){
+    for(const[id,panel]of detailPanels){
+      if(panel.hidden)continue;
+      const canvas=panel.querySelector('.detail-canvas'),wires=canvas.querySelector('.detail-wires');
+      const base=canvas.getBoundingClientRect();wires.setAttribute('viewBox',`0 0 ${canvas.clientWidth} ${canvas.clientHeight}`);wires.replaceChildren();
+      const defs=make('defs');for(const status of ['future','complete','current']){
+        const marker=make('marker',{id:`nf-detail-arrow-${id}-${status}`,viewBox:'0 0 8 8',refX:7,refY:4,markerWidth:5,markerHeight:5,orient:'auto'});
+        marker.append(make('path',{d:'M 0 0 L 8 4 L 0 8 Z',class:`detail-arrow-${status}`}));defs.append(marker);
+      }wires.append(defs);
+      const points=[canvas.querySelector('[data-flow-port="input"]'),...canvas.querySelectorAll('[data-stage]'),canvas.querySelector('[data-flow-port="output"]')];
+      const active=Number(panel.dataset.activeIndex);
+      for(let i=0;i<points.length-1;i++){
+        const ar=points[i].getBoundingClientRect(),br=points[i+1].getBoundingClientRect();
+        const a={x:ar.left-base.left,y:ar.top-base.top,w:ar.width,h:ar.height},b={x:br.left-base.left,y:br.top-base.top,w:br.width,h:br.height};
+        let d;
+        if(Math.abs(a.y-b.y)<2){d=`M ${a.x+a.w+3} ${a.y+a.h/2} L ${b.x-5} ${b.y+b.h/2}`;}
+        else{const mid=(a.y+a.h+b.y)/2;d=`M ${a.x+a.w/2} ${a.y+a.h+3} L ${a.x+a.w/2} ${mid} L ${b.x+b.w/2} ${mid} L ${b.x+b.w/2} ${b.y-5}`;}
+        const status=active===i?'current':active>i?'complete':'future';
+        wires.append(make('path',{d,class:`detail-line detail-line-${status}`,'marker-end':`url(#nf-detail-arrow-${id}-${status})`,'data-local-from':i,'data-local-to':i+1}));
+      }
+    }
+  }
   function curve(s,index) {
     const a=coords(s.from), b=coords(s.to), width=board.clientWidth;
-    const mobile=getComputedStyle(grid).gridTemplateColumns.trim().split(/\s+/).length===1;
+    const mobile=Number(getComputedStyle(grid).getPropertyValue('--map-columns'))===1;
     const sourceRow=nodes.find(n=>n.id===s.from).row;
     const targetRow=nodes.find(n=>n.id===s.to).row;
     if(s.from===s.to) {
       const x=a.x+a.w, y=a.cy;
       return `M ${x} ${y-12} C ${Math.min(width-2,x+22)} ${y-32},${Math.min(width-2,x+22)} ${y+32},${x} ${y+12}`;
     }
+    const top=Math.min(a.y+a.h,b.y+b.h),bottom=Math.max(a.y,b.y);
+    const blocked=[...detailPanels.values()].some(panel=>{if(panel.hidden)return false;const r=panelRect(panel);return r.y+r.h>top&&r.y<bottom;});
+    if(blocked)return wrappedConnection(a,b,width,s.kind==='data'?8:width-5);
     if(mobile) {
       const sameNext = nodes.findIndex(n=>n.id===s.to)-nodes.findIndex(n=>n.id===s.from)===1;
       if(sameNext) return `M ${a.cx} ${a.y+a.h+3} L ${b.cx} ${b.y-5}`;
@@ -711,13 +1099,23 @@
       const mid=down?(fromRowEdge+b.y)/2:(fromRowEdge+a.y)/2;
       return `M ${x1} ${y1} L ${x1} ${mid} C ${x1} ${mid},${x2} ${mid},${x2} ${y2}`;
     }
-    const lane=s.to==='ui'||s.from==='memory'||s.from==='hindsight'?width-5:5;
-    if(down) {
-      const startY=a.y+a.h+3,startTurn=startY+10,endY=b.y-5,endTurn=b.y-18;
-      return `M ${a.cx} ${startY} Q ${a.cx} ${startTurn},${a.cx+Math.sign(lane-a.cx)*12} ${startTurn} L ${lane-Math.sign(lane-a.cx)*12} ${startTurn} Q ${lane} ${startTurn},${lane} ${startTurn+12} L ${lane} ${endTurn-12} Q ${lane} ${endTurn},${lane>width/2?lane-12:lane+12} ${endTurn} L ${b.cx-Math.sign(b.cx-lane)*12} ${endTurn} Q ${b.cx} ${endTurn},${b.cx} ${endY}`;
+    return wrappedConnection(a,b,width,s.to==='ui'||s.from==='memory'||s.from==='hindsight'?width-5:5);
+  }
+  function labelPacket(path,selected){
+    const full=selected.data.split(/[；。]/)[0],label=full.length>24?full.slice(0,24)+'…':full;
+    const group=make('g',{class:'wire-payload-label','data-packet-label':label,'visibility':'hidden'});
+    const text=make('text',{x:10,y:16});text.textContent=label;group.append(text);svg.append(group);
+    const width=Math.min(board.clientWidth-16,text.getComputedTextLength()+20),height=24,length=path.getTotalLength();
+    const obstacles=[...nodeEls.values(),...[...detailPanels.values()].filter(panel=>!panel.hidden)].map(el=>panelRect(el));
+    const tries=[.5,.25,.75,.12,.88,.05,.95,...Array.from({length:24},(_,i)=>(i+1)/25)];
+    for(const fraction of tries){
+      const point=path.getPointAtLength(length*fraction),x=Math.max(8,Math.min(point.x-width/2,board.clientWidth-width-8)),y=point.y-height/2;
+      if(y<4||y+height>board.clientHeight-4)continue;
+      if(obstacles.some(r=>x<r.x+r.w+3&&x+width>r.x-3&&y<r.y+r.h+3&&y+height>r.y-3))continue;
+      group.setAttribute('transform',`translate(${x} ${y})`);group.removeAttribute('visibility');
+      const background=make('rect',{x:0,y:0,width,height,rx:6});group.prepend(background);return;
     }
-    const startY=a.y-5,startTurn=a.y-18,endY=b.y+b.h+5,endTurn=endY+12;
-    return `M ${a.cx} ${startY} Q ${a.cx} ${startTurn},${a.cx+Math.sign(lane-a.cx)*12} ${startTurn} L ${lane-Math.sign(lane-a.cx)*12} ${startTurn} Q ${lane} ${startTurn},${lane} ${startTurn-12} L ${lane} ${endTurn+12} Q ${lane} ${endTurn},${lane>width/2?lane-12:lane+12} ${endTurn} L ${b.cx-Math.sign(b.cx-lane)*12} ${endTurn} Q ${b.cx} ${endTurn},${b.cx} ${endY}`;
+    group.remove();
   }
   function draw(animatePacket=true) {
     if(!board.clientWidth) return;
@@ -729,7 +1127,7 @@
     const width=board.clientWidth,height=board.offsetHeight;
     const geometry=`${state.scenario}:${state.step}:${width}:${height}:`+[...nodeEls.keys()].map(id=>{
       const r=coords(id);return [r.x,r.y,r.w,r.h,r.cy].map(v=>Math.round(v*10)).join(',');
-    }).join('|');
+    }).join('|')+'::'+[...detailPanels].filter(([,panel])=>!panel.hidden).map(([id,panel])=>{const r=panelRect(panel);return `${id}/${panel.dataset.branch}/${[r.x,r.y,r.w,r.h].map(v=>Math.round(v*10)).join(',')}`;}).join('|');
     if(geometry===lastGeometry) return;
     lastGeometry=geometry;
     svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
@@ -740,6 +1138,12 @@
       marker.append(make('path',{d:'M 0 0 L 8 4 L 0 8 Z',class:active?'wire-arrow-active':'wire-arrow'})); defs.append(marker);
     }
     svg.append(defs);
+    for(const[id,panel]of detailPanels){
+      if(panel.hidden)continue;const a=coords(id),b=panelRect(panel),x=Math.max(b.x+18,Math.min(a.cx,b.x+b.w-18));
+      const blocked=[...detailPanels.values()].some(other=>{if(other===panel||other.hidden)return false;const r=panelRect(other);return r.y+r.h>a.y+a.h&&r.y<b.y;});
+      const d=blocked?wrappedConnection(a,{...b,cx:x,cy:b.y},width,5):`M ${a.cx} ${a.y+a.h+3} L ${x} ${b.y-5}`;
+      svg.append(make('path',{d,class:'wire-detail','data-detail-owner':id}));
+    }
     const isCurrent=s=>!!selected&&selected.from===s.from&&selected.to===s.to;
     // Draw the selected connection last so shared outer lanes cannot hide it.
     const ordered=all.slice().sort((a,b)=>Number(isCurrent(a))-Number(isCurrent(b)));
@@ -755,7 +1159,7 @@
       hit.addEventListener('click',()=>{
         if(state.scenario!=='overview') {
           const found=steps.findIndex(e=>e.from===s.from&&e.to===s.to);
-          stop(); state.step=found; update(); saveState();
+          stop(); state.step=found; update(); requestReveal();saveState();
         } else { count.textContent='连线';action.textContent=s.title;payload.textContent=s.data; }
       });
       svg.append(hit);
@@ -778,38 +1182,41 @@
           };
           packetAnimation=requestAnimationFrame(tick);
         }
+        labelPacket(path,selected);
       }
     }
     if(selected&&animatePacket) lastLineKey=`${state.scenario}:${state.step}`;
+    drawDetails();
   }
   function advance() {
     if(state.step<getSteps().length-1) state.step++;
     if(state.step===getSteps().length-1 || current()?.waitForUser) stop();
     update();
+    requestReveal();
   }
   function schedule() {
     clearTimeout(timer);
     timer=setTimeout(()=>{if(!state.playing)return;advance();if(state.playing)schedule();else saveState();},state.delayMs);
   }
   chooser.addEventListener('change',()=>{
-    stop();state.scenario=chooser.value;state.step=getSteps().length?0:-1;lastLineKey='';update();saveState();
+    stop();state.scenario=chooser.value;state.step=getSteps().length?0:-1;lastLineKey='';lastFocusKey='';update();requestReveal();saveState();
   });
   play.addEventListener('click',()=>{
     if(state.playing) {stop();update();saveState();return;}
     if(current()?.waitForUser) {stop();update();return;}
     if(state.step>=getSteps().length-1 || state.step<0) state.step=0;
-    state.playing=true;update();schedule();saveState();
+    state.playing=true;lastFocusKey='';update();requestReveal();schedule();saveState();
   });
   next.addEventListener('click',()=>{stop();advance();saveState();});
-  previous.addEventListener('click',()=>{stop();if(state.step>0)state.step--;update();saveState();});
+  previous.addEventListener('click',()=>{stop();if(state.step>0)state.step--;update();requestReveal();saveState();});
   mode.addEventListener('change',()=>{stop();state.mode=mode.value==='auto'?'auto':'manual';update();saveState();});
   speed.addEventListener('change',()=>{
     state.delayMs=[4000,6000,10000].includes(Number(speed.value))?Number(speed.value):6000;
     if(state.playing)schedule();update();saveState();
   });
-  fold.addEventListener('click',()=>{animateLayout(()=>{state.expanded.clear();updateExpanded();});saveState();});
+  fold.addEventListener('click',()=>{stop();animateLayout(()=>{state.expanded.clear();state.autoExpanded=null;updateExpanded();});update();saveState();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.playing){stop();update();}});
-  new ResizeObserver(()=>draw(false)).observe(board);
+  new ResizeObserver(()=>{layoutDetails();draw(false);}).observe(board);
   reduced.addEventListener('change',()=>{if(packetAnimation)cancelAnimationFrame(packetAnimation);packetAnimation=null;draw(false);});
   root.addEventListener('nf:motionchange',()=>{
     if(root.dataset.motion==='off'){

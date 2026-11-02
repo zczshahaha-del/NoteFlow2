@@ -67,7 +67,10 @@
   #nf-system-map .map-key-active { border-top:3px solid var(--map-active); }
   #nf-system-map .map-key-complete { border-top:2px solid var(--viz-series-1); }
   #nf-system-map .map-board { position:relative; }
-  #nf-system-map .map-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); column-gap:calc(var(--font-size-base) * 1.65); row-gap:var(--map-gap); padding:8px 24px 12px; align-items:start; }
+  #nf-system-map .map-grid { --map-columns:3; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); column-gap:calc(var(--font-size-base) * 1.65); row-gap:var(--map-gap); padding:8px 24px 12px; align-items:start; }
+  #nf-system-map .module-detail { grid-column:1/-1; min-width:0; }
+  #nf-system-map .detail-canvas { position:relative; }
+  #nf-system-map .detail-wires { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
   #nf-system-map .map-node { position:relative; min-width:0; display:grid; gap:calc(var(--font-size-base) * .5); transition:opacity .25s ease; }
   #nf-system-map .map-node[data-span="all"] { grid-column:1 / -1; width:65%; justify-self:center; }
   #nf-system-map .map-node[data-node="db"] { width:100%; }
@@ -103,7 +106,7 @@
   #nf-system-map .map-foot { margin-top:calc(var(--font-size-base) * .8); }
   @media (max-width:559px) {
     #nf-system-map { --map-gap:calc(var(--font-size-base) * 2); }
-    #nf-system-map .map-grid { grid-template-columns:minmax(0,1fr); padding-inline:24px; }
+    #nf-system-map .map-grid { --map-columns:1; grid-template-columns:minmax(0,1fr); padding-inline:24px; }
     #nf-system-map .map-node[data-node] { grid-column:1; grid-row:auto; width:100%; }
     #nf-system-map .map-heading { padding-inline-end:90px; }
     #nf-system-map .map-position { min-height:calc(var(--font-size-base) * 7); }
@@ -131,65 +134,52 @@
   const count = root.querySelector('#nf-map-count');
   const foot = root.querySelector('#nf-map-foot');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const detailData = window.NoteFlowMapDetails;
+  if(!detailData?.modules || !detailData?.traces) throw new Error('Missing architecture detail data');
   const nodes = [
     { id:'ui', title:'前端工作区', sub:'输入、编辑、审阅与显示', icon:'layout-panel-left', type:'浏览器 · React / Tiptap', row:1, span:'all',
-      steps:['输入问题 / 编辑笔记 / 选择文字','Zustand 保存当前操作与页面状态','HTTP 发命令，SSE 接收流式结果','编辑日志与离线队列保留未同步输入'],
       note:'选区快捷改写的候选先回到编辑器；点击采用后才替换，仍可撤销。浏览器不直接连数据库。',
       sources:['src/store/index.tsx','src/store/persistence.ts','src/services/offlineQueue.ts'] },
     { id:'api', title:'登录检查与业务接口', sub:'验身份、校验请求、分入口', icon:'shield-check', type:'后端 · FastAPI', row:2, span:'all',
-      steps:['检查登录会话与当前账号','按入口校验参数、检查限流','聊天 → 任务分流；保存 → 笔记服务','设置 / 记忆 / 附件 → 对应接口'],
       note:'Redis 保存限流计数，不保存笔记正文。Redis 不可用时有限流内存回退；普通保存不需要模型判断意图。',
       sources:['server/app/deps.py','server/app/routers/agent.py','server/app/routers/notes.py','server/app/main.py'] },
     { id:'router', title:'任务判断与分流', sub:'这次回答、写作，还是管记忆？', icon:'git-branch', type:'后端 · Agent', row:3, span:'all',
-      steps:['对话：识别提示词 → 模型提出计划','程序校验：意图、必填项、可用来源','缺信息 → 追问；有效 → 对应业务','全库搜索：程序固定路径，跳过意图模型'],
       note:'模型只提出计划，程序决定能否执行。选区快捷改写、手动保存和附件上传直接走专用接口。',
       sources:['server/app/services/turn_planner.py','server/app/agent/langgraph_turn.py','server/app/routers/agent.py'] },
     { id:'notes', title:'笔记、草稿与修改', sub:'正式正文与候选稿分开', icon:'file-pen-line', type:'后端 · 笔记业务', row:4, col:1,
-      steps:['手动保存：检查账号与预期版本','新建：大纲 → 分节生成 → 草稿审阅','修改：确定范围 → 独立修改预览','用户确认 → 再检查原文 → 保存版本','保存正式内容，同时安排索引任务'],
       note:'选区快捷改写是例外：只返回候选文字，不写服务器预览。普通保存仍有跨设备并发缺口（UI-45），不能当成已解决。',
       sources:['server/app/routers/notes.py','server/app/routers/drafts.py','server/app/routers/edits.py','server/app/services/note_edit.py'] },
     { id:'context', title:'回答与资料组织', sub:'按本轮需要选择资料', icon:'messages-square', type:'后端 · 只读回答', row:4, col:2,
-      steps:['普通聊天：问题 + 近期聊天','按计划与开关读取相关个人记忆','笔记问答：选区 / 当前正文 / 检索片段','整理资料与引用，交给提示词拼装'],
       note:'当前笔记 / 选区问答与全库问答跳过个人记忆召回；全库没有命中时直接说明未找到。contextScope 硬边界仍待完善（AI-17）。',
       sources:['server/app/agent/langgraph_readonly.py','server/app/services/ai.py','server/app/rag/pipeline/service.py'] },
     { id:'memory', title:'记忆管理', sub:'决定哪些能存、哪些能用', icon:'list-filter', type:'后端 · 项目自己的规则', row:4, col:3,
-      steps:['写入前：账号、开关、安全、重复检查','规则与来源状态保存在项目数据库','保存来源和待办，后台整理事实','读取时排除停用、待确认、已删来源','删除先设不可读屏障，再清理引擎'],
       note:'它是现有后端里的服务，不是另一个 AI。记忆故障可降级普通回答；用户原话才是自动提取输入，任务取消流水不应变成个人经历。',
       sources:['server/app/memory/gateway.py','server/app/memory/service.py','server/app/memory/context.py'] },
     { id:'index', title:'检索与索引', sub:'让保存过的笔记能被找到', icon:'search', type:'后端 · RAG / 索引任务', row:5, col:1,
-      steps:['保存后：后台领取索引任务','解析正文 → 分段 → 生成向量','片段 / 向量写入项目数据库','查询：词项 / 标题 / 向量召回','校验账号、来源版本，返回片段与引用'],
       note:'索引是可重建的派生数据，不能覆盖正式正文。保存成功与索引完成是两个时点；普通列表搜索另有 note_library 路径。',
       sources:['server/app/services/markdown_index.py','server/app/services/index_worker.py','server/app/services/note_library.py','server/app/rag/pipeline/service.py'] },
     { id:'prompt', title:'提示词拼装', sub:'模板 + 本轮资料 → 模型消息', icon:'braces', type:'后端 · 代码内的模板 / 函数', row:5, col:2,
-      steps:['选择识别 / 回答 / 写作对应模板','填入问题、要求、原文或选区','加入本轮允许的资料与记忆','生成模型请求；输出再由程序校验'],
       note:'目前散布在各服务的代码中，图里按职责合并展示。没有独立提示词平台；Git 有历史，独立发布与调用版本关联仍未完成（AI-16）。',
       sources:['server/app/services/turn_planner.py','server/app/services/ai.py','server/app/services/prompts.py','server/app/services/note_edit.py'] },
     { id:'worker', title:'记忆后台任务', sub:'排队后再整理，不阻塞主回答', icon:'list-todo', type:'后端 · 持久队列 / Outbox', row:5, col:3,
-      steps:['从项目数据库领取待办','再查开关、规则版本、来源代数','过期 / 已删任务 → 跳过','有效来源 → 调用统一记忆接口','写回处理状态；失败保留重试'],
       note:'队列在数据库，不是仅放在进程内存。当前 worker 随 FastAPI 同进程启动，尚非独立微服务。',
       sources:['server/app/workers/outbox_worker.py','server/app/services/outbox.py','server/app/memory/gateway.py','server/app/main.py'] },
     { id:'model', title:'AI 模型接口', sub:'识别、回答、写作、生成向量', icon:'sparkles', type:'后端适配 → 外部模型', row:6, col:2,
-      steps:['接收组织好的消息或待嵌入文本','按用途调用聊天 / 写作 / 向量模型','返回文字、结构化计划或向量','业务程序校验结果，不直接授权落库'],
       note:'一次操作可能多次调用模型。模型输出的候选稿不等于正式笔记；普通保存与上传文件不调用 AI。',
       sources:['server/app/providers/','server/app/services/ai.py','server/app/services/turn_planner.py'] },
     { id:'adapter', title:'统一记忆接口', sub:'项目契约 → 引擎适配器', icon:'plug', type:'后端 · MemoryEngine', row:6, col:3,
-      steps:['项目只调用统一的读写 / 修订接口','Hindsight 适配器转换请求与字段','厂商状态 → active / archived 等状态','事实、来源、图谱转换后交回记忆管理'],
       note:'当前正式事实引擎只有 Hindsight。旧 Mem0 是另一条本地事实索引兼容路径，不代表已有可直接切换的第二个正式引擎。',
       sources:['server/app/memory/engine.py','server/app/providers/memory_registry.py','server/app/providers/hindsight.py'] },
     { id:'files', title:'附件服务与文件', sub:'文件本体在磁盘 / 挂载卷', icon:'paperclip', type:'后端服务 + 文件存储', row:7, col:1,
-      steps:['业务接口校验上传与访问','AttachmentService 调用 ObjectStorage','文件本体写入配置的附件目录','元数据与归属写入项目数据库'],
       note:'文件不在正文表里。文件操作与 SQL 不是同一事务；失败补偿仍待完善（UI-46），生产实际附件备份路径也待验收。',
       sources:['server/app/services/attachment_service.py','server/app/services/object_storage.py'] },
     { id:'runtime', title:'任务运行与检查点', sub:'记录运行、等待与生成进度', icon:'route', type:'后端 · LangGraph / Worker', row:7, col:2,
-      steps:['AgentRun 记录本轮业务运行','LangGraph 记录节点与等待检查点','草稿 worker 推进后台章节生成','状态与检查点存入项目数据库'],
       note:'这层协助推进和恢复流程，不拥有笔记正文。并非每个接口都走 LangGraph；完整执行追踪与恢复语义仍待完善（AI-13 / AI-15）。',
       sources:['server/app/agent/','server/app/services/agent_checkpoints.py','server/app/services/draft_worker.py'] },
     { id:'hindsight', title:'Hindsight 记忆引擎', sub:'整理事实、关联关系与召回', icon:'brain', type:'独立服务 + 自己的数据库', row:7, col:3,
-      steps:['接收来源原文与提取规则 mission','提取事实与关系，保存来源原文','事实 / 关系保存在 Hindsight 的数据库','收到查询 → 返回相关候选事实'],
       note:'项目数据库管规则、来源状态和待办；引擎数据库管事实与关系。返回项目后，还要经过记忆管理的可用性过滤。',
       sources:['server/app/providers/hindsight.py','docs/architecture/memory-engine-boundary-2026-10-31.md'] },
     { id:'db', title:'项目数据库 · PostgreSQL', sub:'正文 / 版本 / 草稿 · 会话 / 检查点 · 规则 / 来源 / 队列 · 检索片段 / 向量 · 附件元数据', icon:'database', type:'NoteFlow 自己的数据', row:8, span:'all',
-      steps:['正式资料：笔记正文、版本、草稿、修改预览','对话与运行：会话、运行记录、图检查点','记忆控制：规则、来源状态、持久队列','派生检索：分段、索引、向量，可重建','附件记录：名称、位置、账号归属，不含文件本体'],
       note:'这些可以在同一个 PostgreSQL 里，由不同表承担职责。数据库是被多个模块调用的存储，不是所有请求都只在最后经过的一步。',
       sources:['server/app/models/db.py','server/app/repositories/','server/app/services/agent_checkpoints.py'] }
   ];
@@ -229,7 +219,7 @@
       S('prompt','model','请模型按资料回答','严格笔记回答与引用规则'),
       S('model','context','校验回答引用','核对引用编号，必要时修正输出'),
       S('context','ui','通过 API / SSE 返回','答案 + 可查看的笔记来源') ] },
-    save:{ foot:'保存先返回确认，索引随后完成。普通保存的跨设备原子并发保护仍未解决（UI-45）；这里展示成功路径。', steps:[
+    save:{ foot:'保存先返回确认，索引随后完成。两个设备同时保存时的保护仍待完善；这里展示正常保存路径。', steps:[
       S('ui','api','发送手动编辑内容','正文 + 笔记 ID + 预期 hash / 更新时间'),
       S('api','notes','直接进入保存服务','跳过任务判断与 AI 模型'),
       S('notes','db','读取本人当前正文','按账号 / 笔记定位原文','data'),
@@ -259,7 +249,7 @@
       S('notes','db','提交正式正文与索引任务','候选草稿成为正式笔记；索引随后处理','data'),
       S('db','api','返回提交结果','正式笔记 ID 与内容版本'),
       S('api','ui','打开保存后的笔记','后续可编辑、检索') ] },
-    preview:{ foot:'这条是服务器修改预览路径：原文先不动，确认后才提交。原文变化会阻止应用；SQL 与图授权的故障窗口仍待验收。', steps:[
+    preview:{ foot:'这条是服务器修改预览路径：原文先不动，确认后才提交。原文变化会阻止应用；保存与任务授权之间的异常恢复仍待验收。', steps:[
       S('ui','api','明确请求生成修改预览','目标笔记 / 范围 / 修改要求'),
       S('api','notes','定位本人原文与修改范围','从预览按钮发起，不再走聊天意图判断'),
       S('db','notes','读取原文版本','目标正文、选区或章节','data'),
@@ -283,7 +273,7 @@
       S('ui','ui','点击采用，替换准确选区','编辑器事务，可一步撤销；原文变化则阻止采用'),
       S('ui','api','随后自动保存编辑器内容','普通笔记保存请求，仍带预期版本'),
       S('api','notes','进入普通保存','保留失败 / 冲突时的本地输入'),
-      S('notes','db','提交正文、版本与索引任务','沿用普通保存边界，UI-45 仍待完善','data'),
+      S('notes','db','提交正文、版本与索引任务','采用后走普通保存；多设备同时保存的保护仍待完善','data'),
       S('db','api','返回保存结果','正文提交确认'),
       S('api','ui','显示已保存','后台更新索引') ] },
     remember:{ foot:'显式记忆命令 / 可选自动记忆最终共用管理入口。后台整理完成才有事实；关闭、规则变化或来源删除后，旧任务不得复活数据。', steps:[
@@ -335,6 +325,15 @@
   const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const nodeEls = new Map();
   const buttons = new Map();
+  const detailPanels = new Map();
+  const nodeNames = new Map(nodes.map(n=>[n.id,n.title]));
+  for(const [key,points] of Object.entries(detailData.traces)){
+    if(points.length!==scenarios[key]?.steps.length)throw new Error(`Trace length mismatch: ${key}`);
+    for(const point of points){
+      const b=detailData.modules[point.module]?.branches.find(b=>b.id===point.branch);
+      if(!b?.steps.some(s=>s.id===point.stage))throw new Error(`Unknown detail stage: ${key}/${point.module}/${point.branch}/${point.stage}`);
+    }
+  }
   for (const n of nodes) {
     const section = document.createElement('section');
     section.className = 'map-node';
@@ -343,26 +342,55 @@
     if (n.span) section.dataset.span = n.span;
     if (n.col) section.dataset.col = n.col;
     section.innerHTML = `<div class="map-node-meta text-small text-muted"><span>${esc(n.type)}</span><span data-indicator>＋</span></div>
-      <button type="button" class="btn viz-tile" id="nf-map-node-${n.id}" aria-expanded="false" aria-controls="nf-map-inner-${n.id}" aria-pressed="false"><span>${esc(n.title)}<br><span class="text-small">${esc(n.sub)}</span></span></button>
-      <div class="map-inner text-small" id="nf-map-inner-${n.id}" hidden><ol>${n.steps.map(t=>`<li>${esc(t)}</li>`).join('')}</ol>
-      <details><summary class="cursor-interaction">代码与当前边界</summary><div class="map-source"><span>${esc(n.note)}</span>${n.sources.map(p=>`<code>${esc(p)}</code>`).join('')}</div></details></div>`;
+      <button type="button" class="btn viz-tile" id="nf-map-node-${n.id}" aria-expanded="false" aria-controls="nf-map-inner-${n.id}" aria-pressed="false"><span>${esc(n.title)}<br><span class="text-small">${esc(n.sub)}</span></span></button>`;
     grid.append(section);
     nodeEls.set(n.id,section);
     const button = section.querySelector('button');
     buttons.set(n.id,button);
     button.addEventListener('click',() => {
+      stop();
       animateLayout(() => {
-        if (state.expanded.has(n.id)) state.expanded.delete(n.id); else state.expanded.add(n.id);
+        if (isExpanded(n.id)) closeDetail(n.id); else state.expanded.add(n.id);
         updateExpanded();
       });
+      update();
+      if(isExpanded(n.id))requestReveal(n.id,true);
       saveState();
     });
-    section.querySelector('details').addEventListener('toggle',() => { draw(); });
+    const panel=document.createElement('section');
+    panel.id=`nf-map-inner-${n.id}`;panel.className='map-inner module-detail';panel.dataset.module=n.id;panel.hidden=true;
+    panel.setAttribute('role','region');panel.setAttribute('aria-labelledby',`nf-detail-title-${n.id}`);
+    const content=detailData.modules[n.id];
+    panel.innerHTML=`<header class="detail-heading"><div><span class="detail-kicker">展开 · 上方的${esc(n.title)}</span><h3 id="nf-detail-title-${n.id}">${esc(n.title)}的内部流程</h3><p>${esc(content.purpose)}</p></div><button type="button" class="btn btn-ghost" data-close-detail="${n.id}" aria-label="收起${esc(n.title)}内部流程">收起</button></header>
+      <div class="detail-branches" role="group" aria-label="选择${esc(n.title)}的操作分支">${content.branches.map(b=>`<button type="button" class="btn" data-detail-branch="${b.id}" aria-pressed="false">${esc(b.title)}</button>`).join('')}</div>
+      <div class="detail-live" data-detail-live></div><div data-detail-content></div>
+      <details class="detail-technical"><summary class="cursor-interaction">实现位置与当前限制</summary><div class="map-source"><span>${esc(n.note)}</span>${n.sources.map(p=>`<code>${esc(p)}</code>`).join('')}</div></details>`;
+    grid.append(panel);detailPanels.set(n.id,panel);
+    panel.querySelector('[data-close-detail]').addEventListener('click',()=>{
+      stop();animateLayout(()=>{closeDetail(n.id);updateExpanded();});update();saveState();
+    });
+    for(const branchButton of panel.querySelectorAll('[data-detail-branch]'))branchButton.addEventListener('click',()=>{
+      stop();state.detailBranches[n.id]=branchButton.dataset.detailBranch;state.expanded.add(n.id);
+      animateLayout(()=>updateExpanded());update();saveState();
+    });
+    panel.addEventListener('click',event=>{
+      const portal=event.target.closest('[data-module-link]');if(!portal)return;
+      const id=portal.dataset.moduleLink;if(!nodeEls.has(id))return;
+      stop();state.expanded.add(id);animateLayout(()=>updateExpanded());update();saveState();
+      requestAnimationFrame(()=>{
+        const target=detailPanels.get(id);const reader=root.querySelector('#nf-map-reader');
+        const offset=getComputedStyle(reader).position==='sticky'?reader.getBoundingClientRect().height+28:20;
+        window.scrollTo({top:window.scrollY+target.getBoundingClientRect().top-offset,behavior:reduced.matches||root.dataset.motion==='off'?'instant':'smooth'});
+      });
+    });
+    panel.querySelector('details').addEventListener('toggle',()=>{draw();});
   }
-  let state = { scenario:'overview', step:-1, expanded:new Set(), playing:false, mode:'manual', delayMs:6000 };
+  let state = { scenario:'overview', step:-1, expanded:new Set(), playing:false, mode:'manual', delayMs:6000,autoExpanded:null,detailBranches:{} };
+  let lastFocusKey='';
   let timer = null;
   let layoutFrame = null;
   let packetAnimation = null;
+  let revealTimer = null;
   let lastLineKey = '';
   let lastGeometry = '';
   const stateSender = `nf-map-${Math.random().toString(36).slice(2)}`;
@@ -374,11 +402,68 @@
   };
   const getSteps = () => scenarios[state.scenario].steps;
   const current = () => getSteps()[state.step];
+  const focusPoint = () => detailData.traces[state.scenario]?.[state.step];
+  const isExpanded = id => state.expanded.has(id)||state.autoExpanded===id;
+  function closeDetail(id){state.expanded.delete(id);if(state.autoExpanded===id)state.autoExpanded=null;}
+  function requestReveal(id=focusPoint()?.module,heading=false){
+    clearTimeout(revealTimer);if(!id||!isExpanded(id))return;
+    const key=`${state.scenario}:${state.step}`;
+    revealTimer=setTimeout(()=>{
+      revealTimer=null;if(document.hidden||`${state.scenario}:${state.step}`!==key||!isExpanded(id))return;
+      const panel=detailPanels.get(id),point=focusPoint();
+      const target=heading?panel:panel.querySelector(`[data-stage="${point?.stage}"]`)||panel;
+      const reader=root.querySelector('#nf-map-reader');
+      const offset=getComputedStyle(reader).position==='sticky'?reader.getBoundingClientRect().height+28:20;
+      const r=target.getBoundingClientRect();
+      if(r.top<offset||r.bottom>window.innerHeight-24)window.scrollTo({top:window.scrollY+r.top-offset,behavior:reduced.matches||root.dataset.motion==='off'?'instant':'smooth'});
+    },reduced.matches||root.dataset.motion==='off'?0:400);
+  }
+  function portal(id){
+    const names={user:'你',caller:'调用它的业务模块'};
+    return nodeEls.has(id)?`<button type="button" class="detail-portal" data-module-link="${esc(id)}">${esc(nodeNames.get(id))}<span aria-hidden="true"> ↗</span></button>`:`<span class="detail-portal-label">${esc(names[id]||id)}</span>`;
+  }
+  function renderDetail(id){
+    const panel=detailPanels.get(id), data=detailData.modules[id];
+    const b=data.branches.find(b=>b.id===state.detailBranches[id])||data.branches[0];
+    const point=focusPoint();const matches=point?.module===id&&point.branch===b.id;
+    for(const button of panel.querySelectorAll('[data-detail-branch]'))button.setAttribute('aria-pressed',String(button.dataset.detailBranch===b.id));
+    panel.querySelector('[data-detail-live]').textContent=matches?`正在解释第 ${state.step+1} 步 · ${current().title}`:'独立查看这个分支 · 下方示例用于说明数据形态';
+    if(panel.dataset.branch!==b.id){
+      panel.dataset.branch=b.id;
+      panel.querySelector('[data-detail-content]').innerHTML=`<div class="detail-canvas" role="group" aria-label="${esc(b.title)}的输入、处理与输出">
+        <svg class="detail-wires" aria-hidden="true" focusable="false"></svg>
+        <div class="detail-port" data-flow-port="input"><span class="detail-label">收到什么</span><div class="detail-port-links">${b.from.map(portal).join('')}<span class="detail-port-direction">传来</span></div><p>${esc(b.input)}</p></div>
+        <div class="detail-chain">${b.steps.map((s,i)=>`<div class="inner-step" data-stage="${esc(s.id)}"><div class="inner-step-heading"><span class="inner-step-number">${i+1}</span><strong>${esc(s.title)}</strong><span class="inner-step-now" hidden>本步</span></div><p>${esc(s.body)}</p>${s.wait?'<span class="inner-wait">需要用户确认</span>':''}${s.target?`<div class="inner-dependency">调用 ${portal(s.target)}</div>`:''}</div>`).join('')}</div>
+        <div class="detail-port" data-flow-port="output"><span class="detail-label">交给谁 · 产生什么</span><div class="detail-port-links">${b.to.map(portal).join('')}</div><p>${esc(b.output)}</p></div>
+        </div>${b.aside?`<aside class="detail-alternative"><span>其他结果 / 边界</span><p>${esc(b.aside)}</p></aside>`:''}`;
+    }
+    const activeIndex=matches?b.steps.findIndex(s=>s.id===point.stage):-1;
+    for(const [index,el]of [...panel.querySelectorAll('[data-stage]')].entries()){
+      el.classList.toggle('is-current',index===activeIndex);el.classList.toggle('is-complete',activeIndex>index);
+      el.querySelector('.inner-step-now').hidden=index!==activeIndex;
+      if(index===activeIndex)el.setAttribute('aria-current','step');else el.removeAttribute('aria-current');
+    }
+    panel.dataset.activeIndex=activeIndex;
+  }
+  function layoutDetails(){
+    const mobile=Number(getComputedStyle(grid).getPropertyValue('--map-columns'))===1;
+    let row=1;
+    if(mobile){
+      for(const n of nodes){nodeEls.get(n.id).style.gridRow=String(row++);nodeEls.get(n.id).style.gridColumn='1';if(isExpanded(n.id)){detailPanels.get(n.id).style.gridRow=String(row++);}}
+    }else{
+      for(let tier=1;tier<=8;tier++){
+        const peers=nodes.filter(n=>n.row===tier);
+        for(const n of peers){nodeEls.get(n.id).style.gridRow=String(row);nodeEls.get(n.id).style.gridColumn=n.span?'1 / -1':String(n.col);}
+        row++;
+        for(const n of peers)if(isExpanded(n.id))detailPanels.get(n.id).style.gridRow=String(row++);
+      }
+    }
+  }
   function saveState() {
     if (!window.openai?.setWidgetState) return;
     window.openai.setWidgetState({
-      modelContent:{design:'noteflow-system-map-v2-reading',scenario:state.scenario,step:state.step,mode:state.mode,delayMs:state.delayMs,expandedModules:[...state.expanded]},
-      privateContent:{scenario:state.scenario,step:state.step,mode:state.mode,delayMs:state.delayMs,expanded:[...state.expanded],sender:stateSender}
+      modelContent:{design:'noteflow-system-map-v3-details',scenario:state.scenario,step:state.step,mode:state.mode,delayMs:state.delayMs,expandedModules:[...state.expanded],detailBranches:state.detailBranches},
+      privateContent:{scenario:state.scenario,step:state.step,mode:state.mode,delayMs:state.delayMs,expanded:[...state.expanded],detailBranches:state.detailBranches,sender:stateSender}
     }).catch(()=>{});
   }
   function restore(saved) {
@@ -394,27 +479,37 @@
     state.delayMs = [4000,6000,10000].includes(val.delayMs)?val.delayMs:6000;
     const expanded = val.expanded || val.expandedModules || [];
     state.expanded = new Set(Array.isArray(expanded) ? expanded.filter(id=>nodeEls.has(id)) : []);
+    state.detailBranches=Object.fromEntries(Object.entries(val.detailBranches||{}).filter(([id,b])=>Object.hasOwn(detailData.modules,id)&&detailData.modules[id].branches.some(branch=>branch.id===b)));
+    state.autoExpanded=null;lastFocusKey='';
     updateExpanded(); update();
   }
   function updateExpanded() {
     for (const [id,el] of nodeEls) {
-      const expanded = state.expanded.has(id);
-      el.querySelector('.map-inner').hidden = !expanded;
+      const expanded = isExpanded(id);
+      detailPanels.get(id).hidden = !expanded;
+      if(expanded)renderDetail(id);
       el.querySelector('button').setAttribute('aria-expanded',String(expanded));
       el.querySelector('[data-indicator]').textContent = expanded ? '−' : '＋';
     }
-    fold.disabled = !state.expanded.size;
+    fold.disabled = !state.expanded.size&&!state.autoExpanded;
+    layoutDetails();
   }
   function stop() {
     state.playing = false;
     clearTimeout(timer); timer = null;
     if(packetAnimation)cancelAnimationFrame(packetAnimation);
     packetAnimation=null;
+    clearTimeout(revealTimer);revealTimer=null;
   }
   function update() {
     chooser.value = state.scenario;
     const steps = getSteps();
     const selected = current();
+    const key=`${state.scenario}:${state.step}`;
+    if(lastFocusKey!==key){
+      lastFocusKey=key;const point=focusPoint();
+      animateLayout(()=>{state.autoExpanded=point?.module||null;if(point)state.detailBranches[point.module]=point.branch;updateExpanded();});
+    }else updateExpanded();
     const included = new Set(steps.flatMap(s=>[s.from,s.to]));
     for (const [id,el] of nodeEls) {
       el.dataset.dim = String(state.scenario !== 'overview' && !included.has(id));
@@ -430,7 +525,8 @@
     play.textContent = selected?.waitForUser ? '等待确认' : state.playing ? '暂停' : state.step===steps.length-1 && steps.length ? '重新播放' : state.step>0?'继续播放':'开始播放';
     next.textContent = selected?.waitForUser ? '继续演示' : '下一步';
     count.textContent = !steps.length ? '全貌' : state.step<0 ? `路径 · ${steps.length} 步` : `${state.step+1} / ${steps.length}`;
-    action.textContent = selected?.title || (!steps.length ? '所有模块在同一张图里；连线表示调用或数据依赖。' : '点击下一步，查看数据如何流转。');
+    count.dataset.module=focusPoint()?.module||'';
+    action.textContent = selected ? `${nodeNames.get(focusPoint()?.module)||''} · ${selected.title}` : (!steps.length ? '所有模块在同一张图里；连线表示调用或数据依赖。' : '点击下一步，查看数据如何流转。');
     payload.textContent = selected?.data || '流程演示，不是线上实时追踪';
     reading.textContent = !steps.length ? '选择一种操作，从第一步开始' : selected?.waitForUser
       ? '实际流程在这里等待用户确认 · 点击继续演示后才往下走'
@@ -466,15 +562,50 @@
     const section=nodeEls.get(id).getBoundingClientRect();
     return {x:r.left-b.left,y:section.top-b.top,w:r.width,h:section.height,cx:r.left-b.left+r.width/2,cy:r.top-b.top+r.height/2};
   }
+  function panelRect(panel){const base=board.getBoundingClientRect(),r=panel.getBoundingClientRect();return{x:r.left-base.left,y:r.top-base.top,w:r.width,h:r.height};}
+  function wrappedConnection(a,b,width,lane){
+    const down=b.cy>a.cy;
+    if(down){
+      const startY=a.y+a.h+3,startTurn=startY+10,endY=b.y-5,endTurn=b.y-18;
+      return `M ${a.cx} ${startY} Q ${a.cx} ${startTurn},${a.cx+Math.sign(lane-a.cx)*12} ${startTurn} L ${lane-Math.sign(lane-a.cx)*12} ${startTurn} Q ${lane} ${startTurn},${lane} ${startTurn+12} L ${lane} ${endTurn-12} Q ${lane} ${endTurn},${lane>width/2?lane-12:lane+12} ${endTurn} L ${b.cx-Math.sign(b.cx-lane)*12} ${endTurn} Q ${b.cx} ${endTurn},${b.cx} ${endY}`;
+    }
+    const startY=a.y-5,startTurn=a.y-18,endY=b.y+b.h+5,endTurn=endY+12;
+    return `M ${a.cx} ${startY} Q ${a.cx} ${startTurn},${a.cx+Math.sign(lane-a.cx)*12} ${startTurn} L ${lane-Math.sign(lane-a.cx)*12} ${startTurn} Q ${lane} ${startTurn},${lane} ${startTurn-12} L ${lane} ${endTurn+12} Q ${lane} ${endTurn},${lane>width/2?lane-12:lane+12} ${endTurn} L ${b.cx-Math.sign(b.cx-lane)*12} ${endTurn} Q ${b.cx} ${endTurn},${b.cx} ${endY}`;
+  }
+  function drawDetails(){
+    for(const[id,panel]of detailPanels){
+      if(panel.hidden)continue;
+      const canvas=panel.querySelector('.detail-canvas'),wires=canvas.querySelector('.detail-wires');
+      const base=canvas.getBoundingClientRect();wires.setAttribute('viewBox',`0 0 ${canvas.clientWidth} ${canvas.clientHeight}`);wires.replaceChildren();
+      const defs=make('defs');for(const status of ['future','complete','current']){
+        const marker=make('marker',{id:`nf-detail-arrow-${id}-${status}`,viewBox:'0 0 8 8',refX:7,refY:4,markerWidth:5,markerHeight:5,orient:'auto'});
+        marker.append(make('path',{d:'M 0 0 L 8 4 L 0 8 Z',class:`detail-arrow-${status}`}));defs.append(marker);
+      }wires.append(defs);
+      const points=[canvas.querySelector('[data-flow-port="input"]'),...canvas.querySelectorAll('[data-stage]'),canvas.querySelector('[data-flow-port="output"]')];
+      const active=Number(panel.dataset.activeIndex);
+      for(let i=0;i<points.length-1;i++){
+        const ar=points[i].getBoundingClientRect(),br=points[i+1].getBoundingClientRect();
+        const a={x:ar.left-base.left,y:ar.top-base.top,w:ar.width,h:ar.height},b={x:br.left-base.left,y:br.top-base.top,w:br.width,h:br.height};
+        let d;
+        if(Math.abs(a.y-b.y)<2){d=`M ${a.x+a.w+3} ${a.y+a.h/2} L ${b.x-5} ${b.y+b.h/2}`;}
+        else{const mid=(a.y+a.h+b.y)/2;d=`M ${a.x+a.w/2} ${a.y+a.h+3} L ${a.x+a.w/2} ${mid} L ${b.x+b.w/2} ${mid} L ${b.x+b.w/2} ${b.y-5}`;}
+        const status=active===i?'current':active>i?'complete':'future';
+        wires.append(make('path',{d,class:`detail-line detail-line-${status}`,'marker-end':`url(#nf-detail-arrow-${id}-${status})`,'data-local-from':i,'data-local-to':i+1}));
+      }
+    }
+  }
   function curve(s,index) {
     const a=coords(s.from), b=coords(s.to), width=board.clientWidth;
-    const mobile=getComputedStyle(grid).gridTemplateColumns.trim().split(/\s+/).length===1;
+    const mobile=Number(getComputedStyle(grid).getPropertyValue('--map-columns'))===1;
     const sourceRow=nodes.find(n=>n.id===s.from).row;
     const targetRow=nodes.find(n=>n.id===s.to).row;
     if(s.from===s.to) {
       const x=a.x+a.w, y=a.cy;
       return `M ${x} ${y-12} C ${Math.min(width-2,x+22)} ${y-32},${Math.min(width-2,x+22)} ${y+32},${x} ${y+12}`;
     }
+    const top=Math.min(a.y+a.h,b.y+b.h),bottom=Math.max(a.y,b.y);
+    const blocked=[...detailPanels.values()].some(panel=>{if(panel.hidden)return false;const r=panelRect(panel);return r.y+r.h>top&&r.y<bottom;});
+    if(blocked)return wrappedConnection(a,b,width,s.kind==='data'?8:width-5);
     if(mobile) {
       const sameNext = nodes.findIndex(n=>n.id===s.to)-nodes.findIndex(n=>n.id===s.from)===1;
       if(sameNext) return `M ${a.cx} ${a.y+a.h+3} L ${b.cx} ${b.y-5}`;
@@ -508,13 +639,23 @@
       const mid=down?(fromRowEdge+b.y)/2:(fromRowEdge+a.y)/2;
       return `M ${x1} ${y1} L ${x1} ${mid} C ${x1} ${mid},${x2} ${mid},${x2} ${y2}`;
     }
-    const lane=s.to==='ui'||s.from==='memory'||s.from==='hindsight'?width-5:5;
-    if(down) {
-      const startY=a.y+a.h+3,startTurn=startY+10,endY=b.y-5,endTurn=b.y-18;
-      return `M ${a.cx} ${startY} Q ${a.cx} ${startTurn},${a.cx+Math.sign(lane-a.cx)*12} ${startTurn} L ${lane-Math.sign(lane-a.cx)*12} ${startTurn} Q ${lane} ${startTurn},${lane} ${startTurn+12} L ${lane} ${endTurn-12} Q ${lane} ${endTurn},${lane>width/2?lane-12:lane+12} ${endTurn} L ${b.cx-Math.sign(b.cx-lane)*12} ${endTurn} Q ${b.cx} ${endTurn},${b.cx} ${endY}`;
+    return wrappedConnection(a,b,width,s.to==='ui'||s.from==='memory'||s.from==='hindsight'?width-5:5);
+  }
+  function labelPacket(path,selected){
+    const full=selected.data.split(/[；。]/)[0],label=full.length>24?full.slice(0,24)+'…':full;
+    const group=make('g',{class:'wire-payload-label','data-packet-label':label,'visibility':'hidden'});
+    const text=make('text',{x:10,y:16});text.textContent=label;group.append(text);svg.append(group);
+    const width=Math.min(board.clientWidth-16,text.getComputedTextLength()+20),height=24,length=path.getTotalLength();
+    const obstacles=[...nodeEls.values(),...[...detailPanels.values()].filter(panel=>!panel.hidden)].map(el=>panelRect(el));
+    const tries=[.5,.25,.75,.12,.88,.05,.95,...Array.from({length:24},(_,i)=>(i+1)/25)];
+    for(const fraction of tries){
+      const point=path.getPointAtLength(length*fraction),x=Math.max(8,Math.min(point.x-width/2,board.clientWidth-width-8)),y=point.y-height/2;
+      if(y<4||y+height>board.clientHeight-4)continue;
+      if(obstacles.some(r=>x<r.x+r.w+3&&x+width>r.x-3&&y<r.y+r.h+3&&y+height>r.y-3))continue;
+      group.setAttribute('transform',`translate(${x} ${y})`);group.removeAttribute('visibility');
+      const background=make('rect',{x:0,y:0,width,height,rx:6});group.prepend(background);return;
     }
-    const startY=a.y-5,startTurn=a.y-18,endY=b.y+b.h+5,endTurn=endY+12;
-    return `M ${a.cx} ${startY} Q ${a.cx} ${startTurn},${a.cx+Math.sign(lane-a.cx)*12} ${startTurn} L ${lane-Math.sign(lane-a.cx)*12} ${startTurn} Q ${lane} ${startTurn},${lane} ${startTurn-12} L ${lane} ${endTurn+12} Q ${lane} ${endTurn},${lane>width/2?lane-12:lane+12} ${endTurn} L ${b.cx-Math.sign(b.cx-lane)*12} ${endTurn} Q ${b.cx} ${endTurn},${b.cx} ${endY}`;
+    group.remove();
   }
   function draw(animatePacket=true) {
     if(!board.clientWidth) return;
@@ -526,7 +667,7 @@
     const width=board.clientWidth,height=board.offsetHeight;
     const geometry=`${state.scenario}:${state.step}:${width}:${height}:`+[...nodeEls.keys()].map(id=>{
       const r=coords(id);return [r.x,r.y,r.w,r.h,r.cy].map(v=>Math.round(v*10)).join(',');
-    }).join('|');
+    }).join('|')+'::'+[...detailPanels].filter(([,panel])=>!panel.hidden).map(([id,panel])=>{const r=panelRect(panel);return `${id}/${panel.dataset.branch}/${[r.x,r.y,r.w,r.h].map(v=>Math.round(v*10)).join(',')}`;}).join('|');
     if(geometry===lastGeometry) return;
     lastGeometry=geometry;
     svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
@@ -537,6 +678,12 @@
       marker.append(make('path',{d:'M 0 0 L 8 4 L 0 8 Z',class:active?'wire-arrow-active':'wire-arrow'})); defs.append(marker);
     }
     svg.append(defs);
+    for(const[id,panel]of detailPanels){
+      if(panel.hidden)continue;const a=coords(id),b=panelRect(panel),x=Math.max(b.x+18,Math.min(a.cx,b.x+b.w-18));
+      const blocked=[...detailPanels.values()].some(other=>{if(other===panel||other.hidden)return false;const r=panelRect(other);return r.y+r.h>a.y+a.h&&r.y<b.y;});
+      const d=blocked?wrappedConnection(a,{...b,cx:x,cy:b.y},width,5):`M ${a.cx} ${a.y+a.h+3} L ${x} ${b.y-5}`;
+      svg.append(make('path',{d,class:'wire-detail','data-detail-owner':id}));
+    }
     const isCurrent=s=>!!selected&&selected.from===s.from&&selected.to===s.to;
     // Draw the selected connection last so shared outer lanes cannot hide it.
     const ordered=all.slice().sort((a,b)=>Number(isCurrent(a))-Number(isCurrent(b)));
@@ -552,7 +699,7 @@
       hit.addEventListener('click',()=>{
         if(state.scenario!=='overview') {
           const found=steps.findIndex(e=>e.from===s.from&&e.to===s.to);
-          stop(); state.step=found; update(); saveState();
+          stop(); state.step=found; update(); requestReveal();saveState();
         } else { count.textContent='连线';action.textContent=s.title;payload.textContent=s.data; }
       });
       svg.append(hit);
@@ -575,38 +722,41 @@
           };
           packetAnimation=requestAnimationFrame(tick);
         }
+        labelPacket(path,selected);
       }
     }
     if(selected&&animatePacket) lastLineKey=`${state.scenario}:${state.step}`;
+    drawDetails();
   }
   function advance() {
     if(state.step<getSteps().length-1) state.step++;
     if(state.step===getSteps().length-1 || current()?.waitForUser) stop();
     update();
+    requestReveal();
   }
   function schedule() {
     clearTimeout(timer);
     timer=setTimeout(()=>{if(!state.playing)return;advance();if(state.playing)schedule();else saveState();},state.delayMs);
   }
   chooser.addEventListener('change',()=>{
-    stop();state.scenario=chooser.value;state.step=getSteps().length?0:-1;lastLineKey='';update();saveState();
+    stop();state.scenario=chooser.value;state.step=getSteps().length?0:-1;lastLineKey='';lastFocusKey='';update();requestReveal();saveState();
   });
   play.addEventListener('click',()=>{
     if(state.playing) {stop();update();saveState();return;}
     if(current()?.waitForUser) {stop();update();return;}
     if(state.step>=getSteps().length-1 || state.step<0) state.step=0;
-    state.playing=true;update();schedule();saveState();
+    state.playing=true;lastFocusKey='';update();requestReveal();schedule();saveState();
   });
   next.addEventListener('click',()=>{stop();advance();saveState();});
-  previous.addEventListener('click',()=>{stop();if(state.step>0)state.step--;update();saveState();});
+  previous.addEventListener('click',()=>{stop();if(state.step>0)state.step--;update();requestReveal();saveState();});
   mode.addEventListener('change',()=>{stop();state.mode=mode.value==='auto'?'auto':'manual';update();saveState();});
   speed.addEventListener('change',()=>{
     state.delayMs=[4000,6000,10000].includes(Number(speed.value))?Number(speed.value):6000;
     if(state.playing)schedule();update();saveState();
   });
-  fold.addEventListener('click',()=>{animateLayout(()=>{state.expanded.clear();updateExpanded();});saveState();});
+  fold.addEventListener('click',()=>{stop();animateLayout(()=>{state.expanded.clear();state.autoExpanded=null;updateExpanded();});update();saveState();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.playing){stop();update();}});
-  new ResizeObserver(()=>draw(false)).observe(board);
+  new ResizeObserver(()=>{layoutDetails();draw(false);}).observe(board);
   reduced.addEventListener('change',()=>{if(packetAnimation)cancelAnimationFrame(packetAnimation);packetAnimation=null;draw(false);});
   root.addEventListener('nf:motionchange',()=>{
     if(root.dataset.motion==='off'){
