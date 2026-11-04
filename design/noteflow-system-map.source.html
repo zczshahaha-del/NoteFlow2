@@ -9,7 +9,7 @@
         <option value="chat">普通聊天：读取个人记忆后回答</option>
         <option value="qa">全库问答：找笔记，再回答</option>
         <option value="save">手动编辑：保存，再更新索引</option>
-        <option value="create">AI 新建：草稿，再确认保存</option>
+        <option value="create">AI 新建笔记</option>
         <option value="preview">AI 修改：预览，再确认应用</option>
         <option value="quick">选区快捷修改：采用，再自动保存</option>
         <option value="remember">保存记忆：检查、排队、整理</option>
@@ -17,6 +17,7 @@
       </select>
     </label>
   </div>
+  <div id="nf-map-reader-start"></div>
   <div class="map-reader" id="nf-map-reader">
   <div class="viz-controls map-controls">
     <div class="viz-row map-step-controls" role="group" aria-label="阅读步骤">
@@ -31,17 +32,22 @@
       </label>
     </div>
   </div>
-  <div class="map-position" aria-live="polite" aria-atomic="true">
-    <span id="nf-map-count" class="text-small text-muted tabular-nums">全貌</span>
-    <span id="nf-map-action">所有模块在同一张图里；连线表示调用或数据依赖。</span>
-    <span id="nf-map-payload" class="text-small text-muted">流程演示，不是线上实时追踪</span>
-    <span id="nf-map-reading" class="text-small text-muted">选择操作后，点击下一步慢慢看</span>
+  <div class="map-position">
+    <div class="map-reading-live" aria-live="polite" aria-atomic="true">
+      <div class="map-step-meta"><span id="nf-map-flow"></span><span id="nf-map-count" class="tabular-nums">全貌</span></div>
+      <div id="nf-map-overview"><strong id="nf-map-action">选择一个操作，沿着数据看</strong><p id="nf-map-payload">每一步会交代数据从哪来、传了什么、到哪去。</p></div>
+      <div id="nf-map-stories" class="map-step-stories" hidden></div>
+    </div>
+    <div id="nf-map-step-footer" class="map-step-footer" hidden>
+      <span id="nf-map-reading" role="status"></span>
+      <button type="button" class="btn btn-ghost" id="nf-map-locate">查看本步内部流程 <span aria-hidden="true">↘</span></button>
+    </div>
   </div>
   </div>
   <div class="map-legend text-small text-muted">
     <span><span class="map-key"></span>调用 / 返回</span>
     <span><span class="map-key map-key-data"></span>读写 / 规则</span>
-    <span><span class="map-key map-key-active"></span>正在看</span>
+    <span><span class="map-key map-key-active"></span>当前数据方向</span>
     <span><span class="map-key map-key-complete"></span>已走过</span>
     <span>点模块展开，点连线看数据</span>
     <button type="button" class="btn btn-ghost" id="nf-map-fold" disabled>收起已展开</button>
@@ -132,6 +138,12 @@
   const action = root.querySelector('#nf-map-action');
   const payload = root.querySelector('#nf-map-payload');
   const count = root.querySelector('#nf-map-count');
+  const reader = root.querySelector('#nf-map-reader');
+  const stories = root.querySelector('#nf-map-stories');
+  const overviewStory = root.querySelector('#nf-map-overview');
+  const flowName = root.querySelector('#nf-map-flow');
+  const locate = root.querySelector('#nf-map-locate');
+  const stepFooter = root.querySelector('#nf-map-step-footer');
   const foot = root.querySelector('#nf-map-foot');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const detailData = window.NoteFlowMapDetails;
@@ -342,7 +354,7 @@
     if (n.span) section.dataset.span = n.span;
     if (n.col) section.dataset.col = n.col;
     section.innerHTML = `<div class="map-node-meta text-small text-muted"><span>${esc(n.type)}</span><span data-indicator>＋</span></div>
-      <button type="button" class="btn viz-tile" id="nf-map-node-${n.id}" aria-expanded="false" aria-controls="nf-map-inner-${n.id}" aria-pressed="false"><span>${esc(n.title)}<br><span class="text-small">${esc(n.sub)}</span></span></button>`;
+      <button type="button" class="btn viz-tile" id="nf-map-node-${n.id}" aria-expanded="false" aria-controls="nf-map-inner-${n.id}"><span>${esc(n.title)}<br><span class="text-small">${esc(n.sub)}</span></span></button>`;
     grid.append(section);
     nodeEls.set(n.id,section);
     const button = section.querySelector('button');
@@ -354,20 +366,25 @@
         updateExpanded();
       });
       update();
-      if(isExpanded(n.id))requestReveal(n.id,true);
+      if(isExpanded(n.id))showPanel(n.id);
       saveState();
     });
     const panel=document.createElement('section');
     panel.id=`nf-map-inner-${n.id}`;panel.className='map-inner module-detail';panel.dataset.module=n.id;panel.hidden=true;
     panel.setAttribute('role','region');panel.setAttribute('aria-labelledby',`nf-detail-title-${n.id}`);
     const content=detailData.modules[n.id];
-    panel.innerHTML=`<header class="detail-heading"><div><span class="detail-kicker">展开 · 上方的${esc(n.title)}</span><h3 id="nf-detail-title-${n.id}">${esc(n.title)}的内部流程</h3><p>${esc(content.purpose)}</p></div><button type="button" class="btn btn-ghost" data-close-detail="${n.id}" aria-label="收起${esc(n.title)}内部流程">收起</button></header>
+    panel.innerHTML=`<header class="detail-heading"><div><span class="detail-kicker">展开 · 上方的${esc(n.title)}</span><h3 id="nf-detail-title-${n.id}" tabindex="-1">${esc(n.title)}的内部流程</h3><p>${esc(content.purpose)}</p></div><div class="detail-actions"><button type="button" class="btn btn-ghost" data-back-to-reader hidden>回到步骤 ↑</button><button type="button" class="btn btn-ghost" data-close-detail="${n.id}" aria-label="收起${esc(n.title)}内部流程">收起</button></div></header>
       <div class="detail-branches" role="group" aria-label="选择${esc(n.title)}的操作分支">${content.branches.map(b=>`<button type="button" class="btn" data-detail-branch="${b.id}" aria-pressed="false">${esc(b.title)}</button>`).join('')}</div>
       <div class="detail-live" data-detail-live></div><div data-detail-content></div>
       <details class="detail-technical"><summary class="cursor-interaction">实现位置与当前限制</summary><div class="map-source"><span>${esc(n.note)}</span>${n.sources.map(p=>`<code>${esc(p)}</code>`).join('')}</div></details>`;
     grid.append(panel);detailPanels.set(n.id,panel);
     panel.querySelector('[data-close-detail]').addEventListener('click',()=>{
       stop();animateLayout(()=>{closeDetail(n.id);updateExpanded();});update();saveState();
+      button.focus();
+    });
+    panel.querySelector('[data-back-to-reader]').addEventListener('click',()=>{
+      locate.focus({preventScroll:true});
+      scrollToElement(root.querySelector('#nf-map-reader-start'),12);
     });
     for(const branchButton of panel.querySelectorAll('[data-detail-branch]'))branchButton.addEventListener('click',()=>{
       stop();state.detailBranches[n.id]=branchButton.dataset.detailBranch;state.expanded.add(n.id);
@@ -377,20 +394,14 @@
       const portal=event.target.closest('[data-module-link]');if(!portal)return;
       const id=portal.dataset.moduleLink;if(!nodeEls.has(id))return;
       stop();state.expanded.add(id);animateLayout(()=>updateExpanded());update();saveState();
-      requestAnimationFrame(()=>{
-        const target=detailPanels.get(id);const reader=root.querySelector('#nf-map-reader');
-        const offset=getComputedStyle(reader).position==='sticky'?reader.getBoundingClientRect().height+28:20;
-        window.scrollTo({top:window.scrollY+target.getBoundingClientRect().top-offset,behavior:reduced.matches||root.dataset.motion==='off'?'instant':'smooth'});
-      });
+      showPanel(id,true);
     });
     panel.querySelector('details').addEventListener('toggle',()=>{draw();});
   }
-  let state = { scenario:'overview', step:-1, expanded:new Set(), playing:false, mode:'manual', delayMs:6000,autoExpanded:null,detailBranches:{} };
-  let lastFocusKey='';
+  let state = { scenario:'overview', step:-1, expanded:new Set(), playing:false, mode:'manual', delayMs:6000,detailBranches:{} };
   let timer = null;
   let layoutFrame = null;
   let packetAnimation = null;
-  let revealTimer = null;
   let lastLineKey = '';
   let lastGeometry = '';
   const stateSender = `nf-map-${Math.random().toString(36).slice(2)}`;
@@ -403,20 +414,20 @@
   const getSteps = () => scenarios[state.scenario].steps;
   const current = () => getSteps()[state.step];
   const focusPoint = () => detailData.traces[state.scenario]?.[state.step];
-  const isExpanded = id => state.expanded.has(id)||state.autoExpanded===id;
-  function closeDetail(id){state.expanded.delete(id);if(state.autoExpanded===id)state.autoExpanded=null;}
-  function requestReveal(id=focusPoint()?.module,heading=false){
-    clearTimeout(revealTimer);if(!id||!isExpanded(id))return;
-    const key=`${state.scenario}:${state.step}`;
-    revealTimer=setTimeout(()=>{
-      revealTimer=null;if(document.hidden||`${state.scenario}:${state.step}`!==key||!isExpanded(id))return;
-      const panel=detailPanels.get(id),point=focusPoint();
-      const target=heading?panel:panel.querySelector(`[data-stage="${point?.stage}"]`)||panel;
-      const reader=root.querySelector('#nf-map-reader');
-      const offset=getComputedStyle(reader).position==='sticky'?reader.getBoundingClientRect().height+28:20;
-      const r=target.getBoundingClientRect();
-      if(r.top<offset||r.bottom>window.innerHeight-24)window.scrollTo({top:window.scrollY+r.top-offset,behavior:reduced.matches||root.dataset.motion==='off'?'instant':'smooth'});
-    },reduced.matches||root.dataset.motion==='off'?0:400);
+  const isExpanded = id => state.expanded.has(id);
+  const closeDetail = id => state.expanded.delete(id);
+  function scrollToElement(target, offset){
+    // Layout coordinates ignore the short entrance animation.
+    let top=0;
+    for(let el=target;el;el=el.offsetParent)top+=el.offsetTop;
+    window.scrollTo({top:top-offset,behavior:reduced.matches||root.dataset.motion==='off'?'instant':'smooth'});
+  }
+  function showPanel(id,moveFocus=false){
+    const panel=detailPanels.get(id);
+    const offset=getComputedStyle(reader).position==='sticky'?reader.offsetHeight+28:20;
+    const top=panel.getBoundingClientRect().top;
+    if(moveFocus)panel.querySelector('h3').focus({preventScroll:true});
+    if(top<offset||top+80>window.innerHeight)scrollToElement(panel,offset);
   }
   function portal(id){
     const names={user:'你',caller:'调用它的业务模块'};
@@ -426,6 +437,7 @@
     const panel=detailPanels.get(id), data=detailData.modules[id];
     const b=data.branches.find(b=>b.id===state.detailBranches[id])||data.branches[0];
     const point=focusPoint();const matches=point?.module===id&&point.branch===b.id;
+    panel.querySelector('[data-back-to-reader]').hidden=!point;
     for(const button of panel.querySelectorAll('[data-detail-branch]'))button.setAttribute('aria-pressed',String(button.dataset.detailBranch===b.id));
     panel.querySelector('[data-detail-live]').textContent=matches?`正在解释第 ${state.step+1} 步 · ${current().title}`:'独立查看这个分支 · 下方示例用于说明数据形态';
     if(panel.dataset.branch!==b.id){
@@ -480,7 +492,6 @@
     const expanded = val.expanded || val.expandedModules || [];
     state.expanded = new Set(Array.isArray(expanded) ? expanded.filter(id=>nodeEls.has(id)) : []);
     state.detailBranches=Object.fromEntries(Object.entries(val.detailBranches||{}).filter(([id,b])=>Object.hasOwn(detailData.modules,id)&&detailData.modules[id].branches.some(branch=>branch.id===b)));
-    state.autoExpanded=null;lastFocusKey='';
     updateExpanded(); update();
   }
   function updateExpanded() {
@@ -491,7 +502,7 @@
       el.querySelector('button').setAttribute('aria-expanded',String(expanded));
       el.querySelector('[data-indicator]').textContent = expanded ? '−' : '＋';
     }
-    fold.disabled = !state.expanded.size&&!state.autoExpanded;
+    fold.disabled = !state.expanded.size;
     layoutDetails();
   }
   function stop() {
@@ -499,21 +510,39 @@
     clearTimeout(timer); timer = null;
     if(packetAnimation)cancelAnimationFrame(packetAnimation);
     packetAnimation=null;
-    clearTimeout(revealTimer);revealTimer=null;
+  }
+  function updateStories(steps){
+    if(stories.dataset.storyScenario!==state.scenario){
+      stories.dataset.storyScenario=state.scenario;
+      const points=detailData.traces[state.scenario]||[];
+      stories.innerHTML=steps.map((step,index)=>{
+        const point=points[index];
+        const branch=detailData.modules[point.module].branches.find(b=>b.id===point.branch);
+        const stage=branch.steps.find(s=>s.id===point.stage);
+        const route=step.from===step.to
+          ? `<span><small>模块内处理</small><strong>${esc(nodeNames.get(step.to))}</strong></span>`
+          : `<span><small>发出</small><strong>${esc(nodeNames.get(step.from))}</strong></span><span class="map-step-arrow" aria-hidden="true">→</span><span><small>接收</small><strong>${esc(nodeNames.get(step.to))}</strong></span>`;
+        return `<article class="map-step-story"><h3>${esc(step.title)}</h3><div class="map-step-route">${route}</div>
+          <p class="map-step-data"><small>${step.from===step.to?'处理内容':'传递内容'}</small> ${esc(step.data)}</p>
+          <div class="map-step-inside"><small>模块内 · ${esc(nodeNames.get(point.module))}</small><p><strong>${esc(stage.title)}</strong></p><p data-stage-description>${esc(stage.body)}</p></div></article>`;
+      }).join('');
+    }
+    for(const [index,story] of [...stories.children].entries()){
+      story.setAttribute('aria-hidden',String(index!==state.step));
+    }
+    stories.hidden=!current();
+    overviewStory.hidden=!!current();
   }
   function update() {
     chooser.value = state.scenario;
     const steps = getSteps();
     const selected = current();
-    const key=`${state.scenario}:${state.step}`;
-    if(lastFocusKey!==key){
-      lastFocusKey=key;const point=focusPoint();
-      animateLayout(()=>{state.autoExpanded=point?.module||null;if(point)state.detailBranches[point.module]=point.branch;updateExpanded();});
-    }else updateExpanded();
+    for(const id of state.expanded)renderDetail(id);
+    root.classList.toggle('is-reading-route',!!selected);
     const included = new Set(steps.flatMap(s=>[s.from,s.to]));
     for (const [id,el] of nodeEls) {
       el.dataset.dim = String(state.scenario !== 'overview' && !included.has(id));
-      buttons.get(id).setAttribute('aria-pressed',String(!!selected && (selected.from===id || selected.to===id)));
+      if(selected?.to===id)el.dataset.receiving='true';else delete el.dataset.receiving;
     }
     play.disabled = !steps.length || !!selected?.waitForUser;
     previous.disabled = !steps.length || state.step<=0;
@@ -526,14 +555,18 @@
     next.textContent = selected?.waitForUser ? '继续演示' : '下一步';
     count.textContent = !steps.length ? '全貌' : state.step<0 ? `路径 · ${steps.length} 步` : `${state.step+1} / ${steps.length}`;
     count.dataset.module=focusPoint()?.module||'';
-    action.textContent = selected ? `${nodeNames.get(focusPoint()?.module)||''} · ${selected.title}` : (!steps.length ? '所有模块在同一张图里；连线表示调用或数据依赖。' : '点击下一步，查看数据如何流转。');
-    payload.textContent = selected?.data || '流程演示，不是线上实时追踪';
-    reading.textContent = !steps.length ? '选择一种操作，从第一步开始' : selected?.waitForUser
-      ? '实际流程在这里等待用户确认 · 点击继续演示后才往下走'
-      : state.step===steps.length-1 ? '已到最后一步，可以用上一步回看'
-      : state.mode==='manual' ? '单步阅读 · 点击下一步才继续'
-      : state.playing ? `自动播放 · 每步 ${state.delayMs/1000} 秒，随时暂停`
-      : '已暂停 · 可以单步查看或继续播放';
+    flowName.textContent = steps.length?chooser.selectedOptions[0].textContent:'';
+    stepFooter.hidden=!selected;
+    if(!selected){
+      action.textContent=steps.length?'点击下一步，从第一步开始':'选择一个操作，沿着数据看';
+      payload.textContent='每一步会交代数据从哪来、传了什么、到哪去。';
+    }
+    updateStories(steps);
+    reading.textContent = selected?.waitForUser ? '等待用户确认'
+      : state.step===steps.length-1 ? '本次操作结束'
+      : state.mode==='manual' ? '单步阅读'
+      : state.playing ? `自动播放 · 每步 ${state.delayMs/1000} 秒`
+      : '自动播放已暂停';
     foot.textContent = scenarios[state.scenario].foot;
     draw();
     root.dispatchEvent(new CustomEvent('nf:readerchange'));
@@ -594,7 +627,7 @@
       }
     }
   }
-  function curve(s,index) {
+  function curve(s) {
     const a=coords(s.from), b=coords(s.to), width=board.clientWidth;
     const mobile=Number(getComputedStyle(grid).getPropertyValue('--map-columns'))===1;
     const sourceRow=nodes.find(n=>n.id===s.from).row;
@@ -641,22 +674,6 @@
     }
     return wrappedConnection(a,b,width,s.to==='ui'||s.from==='memory'||s.from==='hindsight'?width-5:5);
   }
-  function labelPacket(path,selected){
-    const full=selected.data.split(/[；。]/)[0],label=full.length>24?full.slice(0,24)+'…':full;
-    const group=make('g',{class:'wire-payload-label','data-packet-label':label,'visibility':'hidden'});
-    const text=make('text',{x:10,y:16});text.textContent=label;group.append(text);svg.append(group);
-    const width=Math.min(board.clientWidth-16,text.getComputedTextLength()+20),height=24,length=path.getTotalLength();
-    const obstacles=[...nodeEls.values(),...[...detailPanels.values()].filter(panel=>!panel.hidden)].map(el=>panelRect(el));
-    const tries=[.5,.25,.75,.12,.88,.05,.95,...Array.from({length:24},(_,i)=>(i+1)/25)];
-    for(const fraction of tries){
-      const point=path.getPointAtLength(length*fraction),x=Math.max(8,Math.min(point.x-width/2,board.clientWidth-width-8)),y=point.y-height/2;
-      if(y<4||y+height>board.clientHeight-4)continue;
-      if(obstacles.some(r=>x<r.x+r.w+3&&x+width>r.x-3&&y<r.y+r.h+3&&y+height>r.y-3))continue;
-      group.setAttribute('transform',`translate(${x} ${y})`);group.removeAttribute('visibility');
-      const background=make('rect',{x:0,y:0,width,height,rx:6});group.prepend(background);return;
-    }
-    group.remove();
-  }
   function draw(animatePacket=true) {
     if(!board.clientWidth) return;
     const selected=current();
@@ -687,19 +704,20 @@
     const isCurrent=s=>!!selected&&selected.from===s.from&&selected.to===s.to;
     // Draw the selected connection last so shared outer lanes cannot hide it.
     const ordered=all.slice().sort((a,b)=>Number(isCurrent(a))-Number(isCurrent(b)));
-    for(const [i,s] of ordered.entries()) {
+    for(const s of ordered) {
       const inRoute=routeSet.has(`${s.from}|${s.to}`);
       const active=selected&&selected.from===s.from&&selected.to===s.to;
       const complete=!active&&steps.some((step,at)=>at<state.step&&step.from===s.from&&step.to===s.to);
       if(state.scenario!=='overview'&&!inRoute) continue;
-      const d=curve(s,i);
+      const d=curve(s);
       const path=make('path',{d,class:`${s.kind==='data'?'wire-data':''} ${inRoute?'wire-route':''} ${complete?'wire-complete':''} ${active?'wire-active':''}`,'data-from':s.from,'data-to':s.to,'marker-end':`url(#nf-map-arrow-${active?'active':'base'})`});
       svg.append(path);
-      const hit=make('path',{d,class:'wire-hit cursor-interaction','data-tooltip':`${s.title}：${s.data}`});
+      const info=active?selected:s;
+      const hit=make('path',{d,class:'wire-hit cursor-interaction','data-tooltip':`${info.title}：${info.data}`});
       hit.addEventListener('click',()=>{
         if(state.scenario!=='overview') {
           const found=steps.findIndex(e=>e.from===s.from&&e.to===s.to);
-          stop(); state.step=found; update(); requestReveal();saveState();
+          if(!active){stop();state.step=found;update();saveState();}
         } else { count.textContent='连线';action.textContent=s.title;payload.textContent=s.data; }
       });
       svg.append(hit);
@@ -715,14 +733,13 @@
           const started=performance.now();
           const tick=now=>{
             if(!packet.isConnected) {packetAnimation=null;return;}
-            const fraction=Math.min(1,(now-started)/850);
+            const fraction=Math.min(1,(now-started)/1250);
             const p=path.getPointAtLength(length*(fraction*fraction*(3-2*fraction)));
             packet.setAttribute('cx',p.x);packet.setAttribute('cy',p.y);
             if(fraction<1) packetAnimation=requestAnimationFrame(tick); else packetAnimation=null;
           };
           packetAnimation=requestAnimationFrame(tick);
         }
-        labelPacket(path,selected);
       }
     }
     if(selected&&animatePacket) lastLineKey=`${state.scenario}:${state.step}`;
@@ -732,29 +749,40 @@
     if(state.step<getSteps().length-1) state.step++;
     if(state.step===getSteps().length-1 || current()?.waitForUser) stop();
     update();
-    requestReveal();
   }
   function schedule() {
     clearTimeout(timer);
     timer=setTimeout(()=>{if(!state.playing)return;advance();if(state.playing)schedule();else saveState();},state.delayMs);
   }
   chooser.addEventListener('change',()=>{
-    stop();state.scenario=chooser.value;state.step=getSteps().length?0:-1;lastLineKey='';lastFocusKey='';update();requestReveal();saveState();
+    stop();state.scenario=chooser.value;state.step=getSteps().length?0:-1;lastLineKey='';update();saveState();
   });
   play.addEventListener('click',()=>{
     if(state.playing) {stop();update();saveState();return;}
     if(current()?.waitForUser) {stop();update();return;}
     if(state.step>=getSteps().length-1 || state.step<0) state.step=0;
-    state.playing=true;lastFocusKey='';update();requestReveal();schedule();saveState();
+    state.playing=true;update();schedule();saveState();
   });
   next.addEventListener('click',()=>{stop();advance();saveState();});
-  previous.addEventListener('click',()=>{stop();if(state.step>0)state.step--;update();requestReveal();saveState();});
+  previous.addEventListener('click',()=>{stop();if(state.step>0)state.step--;update();saveState();});
+  locate.addEventListener('click',()=>{
+    const point=focusPoint();
+    if(!point)return;
+    stop();
+    animateLayout(()=>{
+      state.expanded.add(point.module);
+      state.detailBranches[point.module]=point.branch;
+      updateExpanded();
+    });
+    update();saveState();
+    showPanel(point.module,true);
+  });
   mode.addEventListener('change',()=>{stop();state.mode=mode.value==='auto'?'auto':'manual';update();saveState();});
   speed.addEventListener('change',()=>{
     state.delayMs=[4000,6000,10000].includes(Number(speed.value))?Number(speed.value):6000;
     if(state.playing)schedule();update();saveState();
   });
-  fold.addEventListener('click',()=>{stop();animateLayout(()=>{state.expanded.clear();state.autoExpanded=null;updateExpanded();});update();saveState();});
+  fold.addEventListener('click',()=>{stop();animateLayout(()=>{state.expanded.clear();updateExpanded();});update();saveState();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.playing){stop();update();}});
   new ResizeObserver(()=>{layoutDetails();draw(false);}).observe(board);
   reduced.addEventListener('change',()=>{if(packetAnimation)cancelAnimationFrame(packetAnimation);packetAnimation=null;draw(false);});

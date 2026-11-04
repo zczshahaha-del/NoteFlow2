@@ -77,11 +77,38 @@
     .tabular-nums {font-variant-numeric:tabular-nums}
     .form-select {display:block;width:100%;max-width:100%;padding:10px 12px;background:var(--surface);color:var(--foreground);border:1px solid var(--border);border-radius:9px;margin-top:8px;font-size:14px}
     #nf-system-map .map-position {position:relative;background:var(--surface);border:1px solid var(--border);border-radius:13px;min-height:0;padding:14px 18px;gap:4px;margin-bottom:15px;box-shadow:var(--shadow)}
-    #nf-system-map .map-reader .map-position {border:0;border-radius:0;box-shadow:none;padding:0;margin:0}
-    #nf-map-reading {color:var(--primary);font-size:11px}
-    #nf-map-count {color:var(--primary);font-weight:600;font-size:11px;letter-spacing:.3px}
-    #nf-map-action {font-weight:500;font-size:14px}
-    #nf-map-payload {font-size:12px}
+    #nf-system-map .map-reader .map-position {border:0;border-radius:0;box-shadow:none;padding:0;margin:0;gap:8px}
+    .map-reading-live {display:grid;gap:10px}
+    .map-step-meta {display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--primary);font-size:12px;font-weight:600}
+    #nf-map-count {color:var(--muted-foreground);white-space:nowrap}
+    #nf-map-action {font-weight:600;font-size:15px}
+    #nf-map-payload {margin-top:4px;color:var(--muted-foreground);font-size:13px}
+    /* Keep the grid at the height of its tallest step without exposing inactive stories. */
+    .map-step-stories {display:grid}
+    .map-step-story {grid-area:1/1;min-width:0}
+    .map-step-story[aria-hidden="true"] {visibility:hidden}
+    .map-step-story h3 {margin:0 0 10px;font-size:17px;line-height:1.4}
+    .map-step-route {display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--accent);color:var(--accent-foreground);border-radius:8px}
+    .map-step-route span {min-width:0}
+    .map-step-route small {display:block;font-size:11px}
+    .map-step-route strong {font-size:13px;font-weight:600}
+    .map-step-arrow {flex:none;color:var(--map-active);font-size:19px}
+    .map-step-data {margin:8px 0 10px;font-size:13px;overflow-wrap:anywhere}
+    .map-step-data small {margin-right:8px;color:var(--muted-foreground);font-size:11px}
+    .map-step-inside {padding:8px 12px;background:var(--canvas);border-radius:8px;font-size:13px;overflow-wrap:anywhere}
+    .map-step-inside small {display:block;color:var(--muted-foreground);font-size:11px;font-weight:600}
+    .map-step-inside strong {display:block;margin:2px 0;font-weight:600}
+    .map-step-footer {display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--border);padding-top:4px}
+    #nf-map-reading {color:var(--muted-foreground);font-size:12px}
+    #nf-map-locate {min-height:34px;padding:6px 8px;color:var(--primary);font-size:12px;white-space:nowrap}
+    #nf-map-next,#nf-map-play {min-width:86px}
+    @media(min-width:701px) {
+      .map-step-story {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.75fr);grid-template-areas:"title title" "route inside" "data inside";column-gap:12px;align-content:start}
+      .map-step-story h3 {grid-area:title}
+      .map-step-route {grid-area:route}
+      .map-step-data {grid-area:data;margin-bottom:0}
+      .map-step-inside {grid-area:inside}
+    }
     #nf-system-map .map-legend {gap:12px 22px;font-size:11px;margin:0 0 20px;padding:0 3px}
     #nf-system-map .map-board {background-color:var(--canvas);background-image:radial-gradient(var(--dot) .7px,transparent .7px);background-size:18px 18px;border:1px solid var(--border);border-radius:20px;padding:22px 8px 18px;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--surface) 70%,transparent)}
     #nf-system-map .map-grid {column-gap:24px;row-gap:36px;padding:8px 24px 12px}
@@ -94,7 +121,7 @@
     #nf-system-map .viz-tile>span {display:block;padding-top:24px;position:relative}
     #nf-system-map .viz-tile .text-small {font-size:11px;font-weight:400;color:var(--muted-foreground);display:inline-block;margin-top:3px}
     #nf-system-map .viz-tile:hover {border-color:color-mix(in srgb,var(--viz-series-1) 55%,var(--border));background:var(--surface);box-shadow:0 4px 20px color-mix(in srgb,var(--viz-series-1) 11%,transparent)}
-    #nf-system-map .viz-tile[aria-pressed="true"] {border-color:var(--map-active);background:color-mix(in srgb,var(--map-active) 5%,var(--surface));box-shadow:0 0 0 3px color-mix(in srgb,var(--map-active) 10%,transparent),var(--shadow)}
+    #nf-system-map .map-node[data-receiving] .viz-tile {border-color:var(--map-active)}
     #nf-system-map .map-node[data-node="db"] .viz-tile {background:color-mix(in srgb,var(--accent) 50%,var(--surface))}
     #nf-system-map .map-inner {background:var(--surface);border-left:2px solid color-mix(in srgb,var(--viz-series-1) 35%,var(--border));padding:14px 12px;border-radius:0 8px 8px 0;font-size:12px;gap:14px;box-shadow:var(--shadow)}
     #nf-system-map .map-inner ol {gap:9px;padding-left:17px}
@@ -106,7 +133,7 @@
     #nf-system-map .detail-kicker {font-size:11px;color:var(--primary)}
     #nf-system-map .detail-heading h3 {font-size:18px;font-weight:600;margin:5px 0 7px;letter-spacing:-.3px}
     #nf-system-map .detail-heading p {font-size:13px;color:var(--muted-foreground);max-width:720px}
-    #nf-system-map .detail-heading>button {flex-shrink:0}
+    #nf-system-map .detail-actions {display:flex;justify-content:end;gap:4px;flex-wrap:wrap}
     #nf-system-map .detail-branches {display:flex;gap:7px;flex-wrap:wrap;margin:18px 0 12px}
     #nf-system-map .detail-branches .btn {font-size:12px;padding:8px 12px}
     #nf-system-map .detail-branches .btn[aria-pressed="true"] {background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
@@ -143,9 +170,6 @@
     #nf-system-map .detail-wires .detail-arrow-complete {fill:var(--viz-series-1)}
     #nf-system-map .detail-wires .detail-arrow-current {fill:var(--map-active)}
     #nf-system-map .map-wires .wire-detail {stroke:var(--viz-series-1);stroke-width:1;stroke-dasharray:3 4;opacity:.6}
-    #nf-system-map .wire-payload-label {pointer-events:none}
-    #nf-system-map .wire-payload-label rect {fill:var(--surface);stroke:color-mix(in srgb,var(--map-active) 50%,var(--border));stroke-width:1}
-    #nf-system-map .wire-payload-label text {font-size:11px;fill:var(--foreground)}
     @keyframes detail-enter {from {transform:translateY(10px)}to{transform:translateY(0)}}
     .is-motion-off .module-detail {animation:none!important}
     #nf-system-map .map-foot {padding:14px 4px 0;font-size:11px;color:var(--muted-foreground)}
@@ -174,7 +198,7 @@
     .is-motion-off .mini b {animation-play-state:paused!important}
     .is-motion-off .mini b {transform:none!important;opacity:.6}
     .is-motion-off .motion-lamp {box-shadow:none;opacity:.45}
-    .viz-tile[aria-pressed="true"] .mini b {animation-duration:1.8s}
+    .is-reading-route .mini b {animation-play-state:paused}
     @keyframes assemble {0%,16%,88%,100%{transform:translateX(0)}40%,64%{transform:translateX(5px)}}
     @keyframes connect {0%,20%,80%,100%{transform:scale(.8);opacity:.45}45%,60%{transform:scale(1.12);opacity:1}}
     @keyframes store {0%,20%,85%,100%{transform:translateY(0)}45%,65%{transform:translateY(2px)}}
@@ -213,6 +237,8 @@
       #nf-system-map .map-step-controls .map-auto-speed select {width:100%;min-height:38px}
       #nf-system-map .map-step-controls button {min-height:44px}
       #nf-system-map .map-step-controls .form-select {font-size:16px;min-height:44px}
+      #nf-map-locate {min-height:44px}
+      .map-step-route {padding:8px;gap:7px}
       #nf-system-map .map-legend {font-size:10px;gap:8px 12px}
       #nf-system-map .viz-tile {min-height:88px}
       #nf-system-map .module-detail {padding:14px}
@@ -230,7 +256,7 @@
     }
     @media(prefers-reduced-motion:reduce) {* {scroll-behavior:auto!important}.mini b,.module-detail {animation:none!important}}
     @media(prefers-color-scheme:dark) {#nf-system-map {--map-active:#ffbb70}}
-    @media(max-height:600px) {#nf-system-map .map-reader {position:relative;top:0}}
+    @media(max-height:680px), (max-width:559px) and (max-height:820px) {#nf-system-map .map-reader {position:relative;top:0}}
   </style>
 </head>
 <body>

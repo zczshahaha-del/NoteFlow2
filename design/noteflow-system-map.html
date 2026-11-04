@@ -138,11 +138,38 @@
     .tabular-nums {font-variant-numeric:tabular-nums}
     .form-select {display:block;width:100%;max-width:100%;padding:10px 12px;background:var(--surface);color:var(--foreground);border:1px solid var(--border);border-radius:9px;margin-top:8px;font-size:14px}
     #nf-system-map .map-position {position:relative;background:var(--surface);border:1px solid var(--border);border-radius:13px;min-height:0;padding:14px 18px;gap:4px;margin-bottom:15px;box-shadow:var(--shadow)}
-    #nf-system-map .map-reader .map-position {border:0;border-radius:0;box-shadow:none;padding:0;margin:0}
-    #nf-map-reading {color:var(--primary);font-size:11px}
-    #nf-map-count {color:var(--primary);font-weight:600;font-size:11px;letter-spacing:.3px}
-    #nf-map-action {font-weight:500;font-size:14px}
-    #nf-map-payload {font-size:12px}
+    #nf-system-map .map-reader .map-position {border:0;border-radius:0;box-shadow:none;padding:0;margin:0;gap:8px}
+    .map-reading-live {display:grid;gap:10px}
+    .map-step-meta {display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--primary);font-size:12px;font-weight:600}
+    #nf-map-count {color:var(--muted-foreground);white-space:nowrap}
+    #nf-map-action {font-weight:600;font-size:15px}
+    #nf-map-payload {margin-top:4px;color:var(--muted-foreground);font-size:13px}
+    /* Keep the grid at the height of its tallest step without exposing inactive stories. */
+    .map-step-stories {display:grid}
+    .map-step-story {grid-area:1/1;min-width:0}
+    .map-step-story[aria-hidden="true"] {visibility:hidden}
+    .map-step-story h3 {margin:0 0 10px;font-size:17px;line-height:1.4}
+    .map-step-route {display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--accent);color:var(--accent-foreground);border-radius:8px}
+    .map-step-route span {min-width:0}
+    .map-step-route small {display:block;font-size:11px}
+    .map-step-route strong {font-size:13px;font-weight:600}
+    .map-step-arrow {flex:none;color:var(--map-active);font-size:19px}
+    .map-step-data {margin:8px 0 10px;font-size:13px;overflow-wrap:anywhere}
+    .map-step-data small {margin-right:8px;color:var(--muted-foreground);font-size:11px}
+    .map-step-inside {padding:8px 12px;background:var(--canvas);border-radius:8px;font-size:13px;overflow-wrap:anywhere}
+    .map-step-inside small {display:block;color:var(--muted-foreground);font-size:11px;font-weight:600}
+    .map-step-inside strong {display:block;margin:2px 0;font-weight:600}
+    .map-step-footer {display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--border);padding-top:4px}
+    #nf-map-reading {color:var(--muted-foreground);font-size:12px}
+    #nf-map-locate {min-height:34px;padding:6px 8px;color:var(--primary);font-size:12px;white-space:nowrap}
+    #nf-map-next,#nf-map-play {min-width:86px}
+    @media(min-width:701px) {
+      .map-step-story {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.75fr);grid-template-areas:"title title" "route inside" "data inside";column-gap:12px;align-content:start}
+      .map-step-story h3 {grid-area:title}
+      .map-step-route {grid-area:route}
+      .map-step-data {grid-area:data;margin-bottom:0}
+      .map-step-inside {grid-area:inside}
+    }
     #nf-system-map .map-legend {gap:12px 22px;font-size:11px;margin:0 0 20px;padding:0 3px}
     #nf-system-map .map-board {background-color:var(--canvas);background-image:radial-gradient(var(--dot) .7px,transparent .7px);background-size:18px 18px;border:1px solid var(--border);border-radius:20px;padding:22px 8px 18px;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--surface) 70%,transparent)}
     #nf-system-map .map-grid {column-gap:24px;row-gap:36px;padding:8px 24px 12px}
@@ -155,7 +182,7 @@
     #nf-system-map .viz-tile>span {display:block;padding-top:24px;position:relative}
     #nf-system-map .viz-tile .text-small {font-size:11px;font-weight:400;color:var(--muted-foreground);display:inline-block;margin-top:3px}
     #nf-system-map .viz-tile:hover {border-color:color-mix(in srgb,var(--viz-series-1) 55%,var(--border));background:var(--surface);box-shadow:0 4px 20px color-mix(in srgb,var(--viz-series-1) 11%,transparent)}
-    #nf-system-map .viz-tile[aria-pressed="true"] {border-color:var(--map-active);background:color-mix(in srgb,var(--map-active) 5%,var(--surface));box-shadow:0 0 0 3px color-mix(in srgb,var(--map-active) 10%,transparent),var(--shadow)}
+    #nf-system-map .map-node[data-receiving] .viz-tile {border-color:var(--map-active)}
     #nf-system-map .map-node[data-node="db"] .viz-tile {background:color-mix(in srgb,var(--accent) 50%,var(--surface))}
     #nf-system-map .map-inner {background:var(--surface);border-left:2px solid color-mix(in srgb,var(--viz-series-1) 35%,var(--border));padding:14px 12px;border-radius:0 8px 8px 0;font-size:12px;gap:14px;box-shadow:var(--shadow)}
     #nf-system-map .map-inner ol {gap:9px;padding-left:17px}
@@ -167,7 +194,7 @@
     #nf-system-map .detail-kicker {font-size:11px;color:var(--primary)}
     #nf-system-map .detail-heading h3 {font-size:18px;font-weight:600;margin:5px 0 7px;letter-spacing:-.3px}
     #nf-system-map .detail-heading p {font-size:13px;color:var(--muted-foreground);max-width:720px}
-    #nf-system-map .detail-heading>button {flex-shrink:0}
+    #nf-system-map .detail-actions {display:flex;justify-content:end;gap:4px;flex-wrap:wrap}
     #nf-system-map .detail-branches {display:flex;gap:7px;flex-wrap:wrap;margin:18px 0 12px}
     #nf-system-map .detail-branches .btn {font-size:12px;padding:8px 12px}
     #nf-system-map .detail-branches .btn[aria-pressed="true"] {background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
@@ -204,9 +231,6 @@
     #nf-system-map .detail-wires .detail-arrow-complete {fill:var(--viz-series-1)}
     #nf-system-map .detail-wires .detail-arrow-current {fill:var(--map-active)}
     #nf-system-map .map-wires .wire-detail {stroke:var(--viz-series-1);stroke-width:1;stroke-dasharray:3 4;opacity:.6}
-    #nf-system-map .wire-payload-label {pointer-events:none}
-    #nf-system-map .wire-payload-label rect {fill:var(--surface);stroke:color-mix(in srgb,var(--map-active) 50%,var(--border));stroke-width:1}
-    #nf-system-map .wire-payload-label text {font-size:11px;fill:var(--foreground)}
     @keyframes detail-enter {from {transform:translateY(10px)}to{transform:translateY(0)}}
     .is-motion-off .module-detail {animation:none!important}
     #nf-system-map .map-foot {padding:14px 4px 0;font-size:11px;color:var(--muted-foreground)}
@@ -235,7 +259,7 @@
     .is-motion-off .mini b {animation-play-state:paused!important}
     .is-motion-off .mini b {transform:none!important;opacity:.6}
     .is-motion-off .motion-lamp {box-shadow:none;opacity:.45}
-    .viz-tile[aria-pressed="true"] .mini b {animation-duration:1.8s}
+    .is-reading-route .mini b {animation-play-state:paused}
     @keyframes assemble {0%,16%,88%,100%{transform:translateX(0)}40%,64%{transform:translateX(5px)}}
     @keyframes connect {0%,20%,80%,100%{transform:scale(.8);opacity:.45}45%,60%{transform:scale(1.12);opacity:1}}
     @keyframes store {0%,20%,85%,100%{transform:translateY(0)}45%,65%{transform:translateY(2px)}}
@@ -274,6 +298,8 @@
       #nf-system-map .map-step-controls .map-auto-speed select {width:100%;min-height:38px}
       #nf-system-map .map-step-controls button {min-height:44px}
       #nf-system-map .map-step-controls .form-select {font-size:16px;min-height:44px}
+      #nf-map-locate {min-height:44px}
+      .map-step-route {padding:8px;gap:7px}
       #nf-system-map .map-legend {font-size:10px;gap:8px 12px}
       #nf-system-map .viz-tile {min-height:88px}
       #nf-system-map .module-detail {padding:14px}
@@ -291,7 +317,7 @@
     }
     @media(prefers-reduced-motion:reduce) {* {scroll-behavior:auto!important}.mini b,.module-detail {animation:none!important}}
     @media(prefers-color-scheme:dark) {#nf-system-map {--map-active:#ffbb70}}
-    @media(max-height:600px) {#nf-system-map .map-reader {position:relative;top:0}}
+    @media(max-height:680px), (max-width:559px) and (max-height:820px) {#nf-system-map .map-reader {position:relative;top:0}}
   </style>
 </head>
 <body>
@@ -344,7 +370,7 @@
     ]},
     router:{purpose:'只为需要判断意图的请求选择路径；模型提出计划，程序负责验证。',branches:[
       branch('chat','对话中的任务判断',['api'],'用户的话、近期聊天与页面可用信息',['context','notes','memory'],'校验后的意图、目标和所需资料',[
-        step('receive','接收本轮需求','例如：“把当前这段解释得更通俗”。'),
+        step('receive','接收本轮需求','读取用户的消息和当前页面信息，准备判断用户想做什么。'),
         step('ask','请求识别计划','拼识别提示词，请模型提出“回答 / 新建 / 修改 / 记忆”的计划。',{target:'prompt'}),
         step('validate','程序检查计划','检查字段、目标和模式约束；缺信息就追问。'),
         step('dispatch','进入具体业务','有效计划交给回答、笔记或记忆服务。')],
@@ -412,7 +438,7 @@
     prompt:{purpose:'把当前任务的规则与资料组合成模型消息；目前这些函数仍在业务代码中。',branches:[
       branch('plan','识别任务的提示',['router'],'用户的话、近期聊天和页面可用信息',['model'],'要求返回结构化计划的模型消息',[
         step('template','选择识别规则','列出允许的意图、模式限制和输出格式。'),
-        step('fill','填入当前信息','例如：“修改这段” + 当前笔记 ID + 选区预览。'),
+        step('fill','填入当前信息','填入本轮消息和近期聊天。有打开的笔记或选区时，也带上对应信息。'),
         step('send','交给模型提出计划','返回后仍由程序验证，提示词不代替权限检查。',{target:'model'})]),
       branch('answer','组织回答的提示',['context'],'问题、近期聊天和本轮允许使用的资料',['model'],'带上下文与引用规则的回答请求',[
         step('template','选择回答规则','普通对话与严格笔记回答有不同约束。'),
@@ -529,7 +555,7 @@
         <option value="chat">普通聊天：读取个人记忆后回答</option>
         <option value="qa">全库问答：找笔记，再回答</option>
         <option value="save">手动编辑：保存，再更新索引</option>
-        <option value="create">AI 新建：草稿，再确认保存</option>
+        <option value="create">AI 新建笔记</option>
         <option value="preview">AI 修改：预览，再确认应用</option>
         <option value="quick">选区快捷修改：采用，再自动保存</option>
         <option value="remember">保存记忆：检查、排队、整理</option>
@@ -537,6 +563,7 @@
       </select>
     </label>
   </div>
+  <div id="nf-map-reader-start"></div>
   <div class="map-reader" id="nf-map-reader">
   <div class="viz-controls map-controls">
     <div class="viz-row map-step-controls" role="group" aria-label="阅读步骤">
@@ -551,17 +578,22 @@
       </label>
     </div>
   </div>
-  <div class="map-position" aria-live="polite" aria-atomic="true">
-    <span id="nf-map-count" class="text-small text-muted tabular-nums">全貌</span>
-    <span id="nf-map-action">所有模块在同一张图里；连线表示调用或数据依赖。</span>
-    <span id="nf-map-payload" class="text-small text-muted">流程演示，不是线上实时追踪</span>
-    <span id="nf-map-reading" class="text-small text-muted">选择操作后，点击下一步慢慢看</span>
+  <div class="map-position">
+    <div class="map-reading-live" aria-live="polite" aria-atomic="true">
+      <div class="map-step-meta"><span id="nf-map-flow"></span><span id="nf-map-count" class="tabular-nums">全貌</span></div>
+      <div id="nf-map-overview"><strong id="nf-map-action">选择一个操作，沿着数据看</strong><p id="nf-map-payload">每一步会交代数据从哪来、传了什么、到哪去。</p></div>
+      <div id="nf-map-stories" class="map-step-stories" hidden></div>
+    </div>
+    <div id="nf-map-step-footer" class="map-step-footer" hidden>
+      <span id="nf-map-reading" role="status"></span>
+      <button type="button" class="btn btn-ghost" id="nf-map-locate">查看本步内部流程 <span aria-hidden="true">↘</span></button>
+    </div>
   </div>
   </div>
   <div class="map-legend text-small text-muted">
     <span><span class="map-key"></span>调用 / 返回</span>
     <span><span class="map-key map-key-data"></span>读写 / 规则</span>
-    <span><span class="map-key map-key-active"></span>正在看</span>
+    <span><span class="map-key map-key-active"></span>当前数据方向</span>
     <span><span class="map-key map-key-complete"></span>已走过</span>
     <span>点模块展开，点连线看数据</span>
     <button type="button" class="btn btn-ghost" id="nf-map-fold" disabled>收起已展开</button>
@@ -592,6 +624,12 @@
   const action = root.querySelector('#nf-map-action');
   const payload = root.querySelector('#nf-map-payload');
   const count = root.querySelector('#nf-map-count');
+  const reader = root.querySelector('#nf-map-reader');
+  const stories = root.querySelector('#nf-map-stories');
+  const overviewStory = root.querySelector('#nf-map-overview');
+  const flowName = root.querySelector('#nf-map-flow');
+  const locate = root.querySelector('#nf-map-locate');
+  const stepFooter = root.querySelector('#nf-map-step-footer');
   const foot = root.querySelector('#nf-map-foot');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const detailData = window.NoteFlowMapDetails;
@@ -802,7 +840,7 @@
     if (n.span) section.dataset.span = n.span;
     if (n.col) section.dataset.col = n.col;
     section.innerHTML = `<div class="map-node-meta text-small text-muted"><span>${esc(n.type)}</span><span data-indicator>＋</span></div>
-      <button type="button" class="btn viz-tile" id="nf-map-node-${n.id}" aria-expanded="false" aria-controls="nf-map-inner-${n.id}" aria-pressed="false"><span>${esc(n.title)}<br><span class="text-small">${esc(n.sub)}</span></span></button>`;
+      <button type="button" class="btn viz-tile" id="nf-map-node-${n.id}" aria-expanded="false" aria-controls="nf-map-inner-${n.id}"><span>${esc(n.title)}<br><span class="text-small">${esc(n.sub)}</span></span></button>`;
     grid.append(section);
     nodeEls.set(n.id,section);
     const button = section.querySelector('button');
@@ -814,20 +852,25 @@
         updateExpanded();
       });
       update();
-      if(isExpanded(n.id))requestReveal(n.id,true);
+      if(isExpanded(n.id))showPanel(n.id);
       saveState();
     });
     const panel=document.createElement('section');
     panel.id=`nf-map-inner-${n.id}`;panel.className='map-inner module-detail';panel.dataset.module=n.id;panel.hidden=true;
     panel.setAttribute('role','region');panel.setAttribute('aria-labelledby',`nf-detail-title-${n.id}`);
     const content=detailData.modules[n.id];
-    panel.innerHTML=`<header class="detail-heading"><div><span class="detail-kicker">展开 · 上方的${esc(n.title)}</span><h3 id="nf-detail-title-${n.id}">${esc(n.title)}的内部流程</h3><p>${esc(content.purpose)}</p></div><button type="button" class="btn btn-ghost" data-close-detail="${n.id}" aria-label="收起${esc(n.title)}内部流程">收起</button></header>
+    panel.innerHTML=`<header class="detail-heading"><div><span class="detail-kicker">展开 · 上方的${esc(n.title)}</span><h3 id="nf-detail-title-${n.id}" tabindex="-1">${esc(n.title)}的内部流程</h3><p>${esc(content.purpose)}</p></div><div class="detail-actions"><button type="button" class="btn btn-ghost" data-back-to-reader hidden>回到步骤 ↑</button><button type="button" class="btn btn-ghost" data-close-detail="${n.id}" aria-label="收起${esc(n.title)}内部流程">收起</button></div></header>
       <div class="detail-branches" role="group" aria-label="选择${esc(n.title)}的操作分支">${content.branches.map(b=>`<button type="button" class="btn" data-detail-branch="${b.id}" aria-pressed="false">${esc(b.title)}</button>`).join('')}</div>
       <div class="detail-live" data-detail-live></div><div data-detail-content></div>
       <details class="detail-technical"><summary class="cursor-interaction">实现位置与当前限制</summary><div class="map-source"><span>${esc(n.note)}</span>${n.sources.map(p=>`<code>${esc(p)}</code>`).join('')}</div></details>`;
     grid.append(panel);detailPanels.set(n.id,panel);
     panel.querySelector('[data-close-detail]').addEventListener('click',()=>{
       stop();animateLayout(()=>{closeDetail(n.id);updateExpanded();});update();saveState();
+      button.focus();
+    });
+    panel.querySelector('[data-back-to-reader]').addEventListener('click',()=>{
+      locate.focus({preventScroll:true});
+      scrollToElement(root.querySelector('#nf-map-reader-start'),12);
     });
     for(const branchButton of panel.querySelectorAll('[data-detail-branch]'))branchButton.addEventListener('click',()=>{
       stop();state.detailBranches[n.id]=branchButton.dataset.detailBranch;state.expanded.add(n.id);
@@ -837,20 +880,14 @@
       const portal=event.target.closest('[data-module-link]');if(!portal)return;
       const id=portal.dataset.moduleLink;if(!nodeEls.has(id))return;
       stop();state.expanded.add(id);animateLayout(()=>updateExpanded());update();saveState();
-      requestAnimationFrame(()=>{
-        const target=detailPanels.get(id);const reader=root.querySelector('#nf-map-reader');
-        const offset=getComputedStyle(reader).position==='sticky'?reader.getBoundingClientRect().height+28:20;
-        window.scrollTo({top:window.scrollY+target.getBoundingClientRect().top-offset,behavior:reduced.matches||root.dataset.motion==='off'?'instant':'smooth'});
-      });
+      showPanel(id,true);
     });
     panel.querySelector('details').addEventListener('toggle',()=>{draw();});
   }
-  let state = { scenario:'overview', step:-1, expanded:new Set(), playing:false, mode:'manual', delayMs:6000,autoExpanded:null,detailBranches:{} };
-  let lastFocusKey='';
+  let state = { scenario:'overview', step:-1, expanded:new Set(), playing:false, mode:'manual', delayMs:6000,detailBranches:{} };
   let timer = null;
   let layoutFrame = null;
   let packetAnimation = null;
-  let revealTimer = null;
   let lastLineKey = '';
   let lastGeometry = '';
   const stateSender = `nf-map-${Math.random().toString(36).slice(2)}`;
@@ -863,20 +900,20 @@
   const getSteps = () => scenarios[state.scenario].steps;
   const current = () => getSteps()[state.step];
   const focusPoint = () => detailData.traces[state.scenario]?.[state.step];
-  const isExpanded = id => state.expanded.has(id)||state.autoExpanded===id;
-  function closeDetail(id){state.expanded.delete(id);if(state.autoExpanded===id)state.autoExpanded=null;}
-  function requestReveal(id=focusPoint()?.module,heading=false){
-    clearTimeout(revealTimer);if(!id||!isExpanded(id))return;
-    const key=`${state.scenario}:${state.step}`;
-    revealTimer=setTimeout(()=>{
-      revealTimer=null;if(document.hidden||`${state.scenario}:${state.step}`!==key||!isExpanded(id))return;
-      const panel=detailPanels.get(id),point=focusPoint();
-      const target=heading?panel:panel.querySelector(`[data-stage="${point?.stage}"]`)||panel;
-      const reader=root.querySelector('#nf-map-reader');
-      const offset=getComputedStyle(reader).position==='sticky'?reader.getBoundingClientRect().height+28:20;
-      const r=target.getBoundingClientRect();
-      if(r.top<offset||r.bottom>window.innerHeight-24)window.scrollTo({top:window.scrollY+r.top-offset,behavior:reduced.matches||root.dataset.motion==='off'?'instant':'smooth'});
-    },reduced.matches||root.dataset.motion==='off'?0:400);
+  const isExpanded = id => state.expanded.has(id);
+  const closeDetail = id => state.expanded.delete(id);
+  function scrollToElement(target, offset){
+    // Layout coordinates ignore the short entrance animation.
+    let top=0;
+    for(let el=target;el;el=el.offsetParent)top+=el.offsetTop;
+    window.scrollTo({top:top-offset,behavior:reduced.matches||root.dataset.motion==='off'?'instant':'smooth'});
+  }
+  function showPanel(id,moveFocus=false){
+    const panel=detailPanels.get(id);
+    const offset=getComputedStyle(reader).position==='sticky'?reader.offsetHeight+28:20;
+    const top=panel.getBoundingClientRect().top;
+    if(moveFocus)panel.querySelector('h3').focus({preventScroll:true});
+    if(top<offset||top+80>window.innerHeight)scrollToElement(panel,offset);
   }
   function portal(id){
     const names={user:'你',caller:'调用它的业务模块'};
@@ -886,6 +923,7 @@
     const panel=detailPanels.get(id), data=detailData.modules[id];
     const b=data.branches.find(b=>b.id===state.detailBranches[id])||data.branches[0];
     const point=focusPoint();const matches=point?.module===id&&point.branch===b.id;
+    panel.querySelector('[data-back-to-reader]').hidden=!point;
     for(const button of panel.querySelectorAll('[data-detail-branch]'))button.setAttribute('aria-pressed',String(button.dataset.detailBranch===b.id));
     panel.querySelector('[data-detail-live]').textContent=matches?`正在解释第 ${state.step+1} 步 · ${current().title}`:'独立查看这个分支 · 下方示例用于说明数据形态';
     if(panel.dataset.branch!==b.id){
@@ -940,7 +978,6 @@
     const expanded = val.expanded || val.expandedModules || [];
     state.expanded = new Set(Array.isArray(expanded) ? expanded.filter(id=>nodeEls.has(id)) : []);
     state.detailBranches=Object.fromEntries(Object.entries(val.detailBranches||{}).filter(([id,b])=>Object.hasOwn(detailData.modules,id)&&detailData.modules[id].branches.some(branch=>branch.id===b)));
-    state.autoExpanded=null;lastFocusKey='';
     updateExpanded(); update();
   }
   function updateExpanded() {
@@ -951,7 +988,7 @@
       el.querySelector('button').setAttribute('aria-expanded',String(expanded));
       el.querySelector('[data-indicator]').textContent = expanded ? '−' : '＋';
     }
-    fold.disabled = !state.expanded.size&&!state.autoExpanded;
+    fold.disabled = !state.expanded.size;
     layoutDetails();
   }
   function stop() {
@@ -959,21 +996,39 @@
     clearTimeout(timer); timer = null;
     if(packetAnimation)cancelAnimationFrame(packetAnimation);
     packetAnimation=null;
-    clearTimeout(revealTimer);revealTimer=null;
+  }
+  function updateStories(steps){
+    if(stories.dataset.storyScenario!==state.scenario){
+      stories.dataset.storyScenario=state.scenario;
+      const points=detailData.traces[state.scenario]||[];
+      stories.innerHTML=steps.map((step,index)=>{
+        const point=points[index];
+        const branch=detailData.modules[point.module].branches.find(b=>b.id===point.branch);
+        const stage=branch.steps.find(s=>s.id===point.stage);
+        const route=step.from===step.to
+          ? `<span><small>模块内处理</small><strong>${esc(nodeNames.get(step.to))}</strong></span>`
+          : `<span><small>发出</small><strong>${esc(nodeNames.get(step.from))}</strong></span><span class="map-step-arrow" aria-hidden="true">→</span><span><small>接收</small><strong>${esc(nodeNames.get(step.to))}</strong></span>`;
+        return `<article class="map-step-story"><h3>${esc(step.title)}</h3><div class="map-step-route">${route}</div>
+          <p class="map-step-data"><small>${step.from===step.to?'处理内容':'传递内容'}</small> ${esc(step.data)}</p>
+          <div class="map-step-inside"><small>模块内 · ${esc(nodeNames.get(point.module))}</small><p><strong>${esc(stage.title)}</strong></p><p data-stage-description>${esc(stage.body)}</p></div></article>`;
+      }).join('');
+    }
+    for(const [index,story] of [...stories.children].entries()){
+      story.setAttribute('aria-hidden',String(index!==state.step));
+    }
+    stories.hidden=!current();
+    overviewStory.hidden=!!current();
   }
   function update() {
     chooser.value = state.scenario;
     const steps = getSteps();
     const selected = current();
-    const key=`${state.scenario}:${state.step}`;
-    if(lastFocusKey!==key){
-      lastFocusKey=key;const point=focusPoint();
-      animateLayout(()=>{state.autoExpanded=point?.module||null;if(point)state.detailBranches[point.module]=point.branch;updateExpanded();});
-    }else updateExpanded();
+    for(const id of state.expanded)renderDetail(id);
+    root.classList.toggle('is-reading-route',!!selected);
     const included = new Set(steps.flatMap(s=>[s.from,s.to]));
     for (const [id,el] of nodeEls) {
       el.dataset.dim = String(state.scenario !== 'overview' && !included.has(id));
-      buttons.get(id).setAttribute('aria-pressed',String(!!selected && (selected.from===id || selected.to===id)));
+      if(selected?.to===id)el.dataset.receiving='true';else delete el.dataset.receiving;
     }
     play.disabled = !steps.length || !!selected?.waitForUser;
     previous.disabled = !steps.length || state.step<=0;
@@ -986,14 +1041,18 @@
     next.textContent = selected?.waitForUser ? '继续演示' : '下一步';
     count.textContent = !steps.length ? '全貌' : state.step<0 ? `路径 · ${steps.length} 步` : `${state.step+1} / ${steps.length}`;
     count.dataset.module=focusPoint()?.module||'';
-    action.textContent = selected ? `${nodeNames.get(focusPoint()?.module)||''} · ${selected.title}` : (!steps.length ? '所有模块在同一张图里；连线表示调用或数据依赖。' : '点击下一步，查看数据如何流转。');
-    payload.textContent = selected?.data || '流程演示，不是线上实时追踪';
-    reading.textContent = !steps.length ? '选择一种操作，从第一步开始' : selected?.waitForUser
-      ? '实际流程在这里等待用户确认 · 点击继续演示后才往下走'
-      : state.step===steps.length-1 ? '已到最后一步，可以用上一步回看'
-      : state.mode==='manual' ? '单步阅读 · 点击下一步才继续'
-      : state.playing ? `自动播放 · 每步 ${state.delayMs/1000} 秒，随时暂停`
-      : '已暂停 · 可以单步查看或继续播放';
+    flowName.textContent = steps.length?chooser.selectedOptions[0].textContent:'';
+    stepFooter.hidden=!selected;
+    if(!selected){
+      action.textContent=steps.length?'点击下一步，从第一步开始':'选择一个操作，沿着数据看';
+      payload.textContent='每一步会交代数据从哪来、传了什么、到哪去。';
+    }
+    updateStories(steps);
+    reading.textContent = selected?.waitForUser ? '等待用户确认'
+      : state.step===steps.length-1 ? '本次操作结束'
+      : state.mode==='manual' ? '单步阅读'
+      : state.playing ? `自动播放 · 每步 ${state.delayMs/1000} 秒`
+      : '自动播放已暂停';
     foot.textContent = scenarios[state.scenario].foot;
     draw();
     root.dispatchEvent(new CustomEvent('nf:readerchange'));
@@ -1054,7 +1113,7 @@
       }
     }
   }
-  function curve(s,index) {
+  function curve(s) {
     const a=coords(s.from), b=coords(s.to), width=board.clientWidth;
     const mobile=Number(getComputedStyle(grid).getPropertyValue('--map-columns'))===1;
     const sourceRow=nodes.find(n=>n.id===s.from).row;
@@ -1101,22 +1160,6 @@
     }
     return wrappedConnection(a,b,width,s.to==='ui'||s.from==='memory'||s.from==='hindsight'?width-5:5);
   }
-  function labelPacket(path,selected){
-    const full=selected.data.split(/[；。]/)[0],label=full.length>24?full.slice(0,24)+'…':full;
-    const group=make('g',{class:'wire-payload-label','data-packet-label':label,'visibility':'hidden'});
-    const text=make('text',{x:10,y:16});text.textContent=label;group.append(text);svg.append(group);
-    const width=Math.min(board.clientWidth-16,text.getComputedTextLength()+20),height=24,length=path.getTotalLength();
-    const obstacles=[...nodeEls.values(),...[...detailPanels.values()].filter(panel=>!panel.hidden)].map(el=>panelRect(el));
-    const tries=[.5,.25,.75,.12,.88,.05,.95,...Array.from({length:24},(_,i)=>(i+1)/25)];
-    for(const fraction of tries){
-      const point=path.getPointAtLength(length*fraction),x=Math.max(8,Math.min(point.x-width/2,board.clientWidth-width-8)),y=point.y-height/2;
-      if(y<4||y+height>board.clientHeight-4)continue;
-      if(obstacles.some(r=>x<r.x+r.w+3&&x+width>r.x-3&&y<r.y+r.h+3&&y+height>r.y-3))continue;
-      group.setAttribute('transform',`translate(${x} ${y})`);group.removeAttribute('visibility');
-      const background=make('rect',{x:0,y:0,width,height,rx:6});group.prepend(background);return;
-    }
-    group.remove();
-  }
   function draw(animatePacket=true) {
     if(!board.clientWidth) return;
     const selected=current();
@@ -1147,19 +1190,20 @@
     const isCurrent=s=>!!selected&&selected.from===s.from&&selected.to===s.to;
     // Draw the selected connection last so shared outer lanes cannot hide it.
     const ordered=all.slice().sort((a,b)=>Number(isCurrent(a))-Number(isCurrent(b)));
-    for(const [i,s] of ordered.entries()) {
+    for(const s of ordered) {
       const inRoute=routeSet.has(`${s.from}|${s.to}`);
       const active=selected&&selected.from===s.from&&selected.to===s.to;
       const complete=!active&&steps.some((step,at)=>at<state.step&&step.from===s.from&&step.to===s.to);
       if(state.scenario!=='overview'&&!inRoute) continue;
-      const d=curve(s,i);
+      const d=curve(s);
       const path=make('path',{d,class:`${s.kind==='data'?'wire-data':''} ${inRoute?'wire-route':''} ${complete?'wire-complete':''} ${active?'wire-active':''}`,'data-from':s.from,'data-to':s.to,'marker-end':`url(#nf-map-arrow-${active?'active':'base'})`});
       svg.append(path);
-      const hit=make('path',{d,class:'wire-hit cursor-interaction','data-tooltip':`${s.title}：${s.data}`});
+      const info=active?selected:s;
+      const hit=make('path',{d,class:'wire-hit cursor-interaction','data-tooltip':`${info.title}：${info.data}`});
       hit.addEventListener('click',()=>{
         if(state.scenario!=='overview') {
           const found=steps.findIndex(e=>e.from===s.from&&e.to===s.to);
-          stop(); state.step=found; update(); requestReveal();saveState();
+          if(!active){stop();state.step=found;update();saveState();}
         } else { count.textContent='连线';action.textContent=s.title;payload.textContent=s.data; }
       });
       svg.append(hit);
@@ -1175,14 +1219,13 @@
           const started=performance.now();
           const tick=now=>{
             if(!packet.isConnected) {packetAnimation=null;return;}
-            const fraction=Math.min(1,(now-started)/850);
+            const fraction=Math.min(1,(now-started)/1250);
             const p=path.getPointAtLength(length*(fraction*fraction*(3-2*fraction)));
             packet.setAttribute('cx',p.x);packet.setAttribute('cy',p.y);
             if(fraction<1) packetAnimation=requestAnimationFrame(tick); else packetAnimation=null;
           };
           packetAnimation=requestAnimationFrame(tick);
         }
-        labelPacket(path,selected);
       }
     }
     if(selected&&animatePacket) lastLineKey=`${state.scenario}:${state.step}`;
@@ -1192,29 +1235,40 @@
     if(state.step<getSteps().length-1) state.step++;
     if(state.step===getSteps().length-1 || current()?.waitForUser) stop();
     update();
-    requestReveal();
   }
   function schedule() {
     clearTimeout(timer);
     timer=setTimeout(()=>{if(!state.playing)return;advance();if(state.playing)schedule();else saveState();},state.delayMs);
   }
   chooser.addEventListener('change',()=>{
-    stop();state.scenario=chooser.value;state.step=getSteps().length?0:-1;lastLineKey='';lastFocusKey='';update();requestReveal();saveState();
+    stop();state.scenario=chooser.value;state.step=getSteps().length?0:-1;lastLineKey='';update();saveState();
   });
   play.addEventListener('click',()=>{
     if(state.playing) {stop();update();saveState();return;}
     if(current()?.waitForUser) {stop();update();return;}
     if(state.step>=getSteps().length-1 || state.step<0) state.step=0;
-    state.playing=true;lastFocusKey='';update();requestReveal();schedule();saveState();
+    state.playing=true;update();schedule();saveState();
   });
   next.addEventListener('click',()=>{stop();advance();saveState();});
-  previous.addEventListener('click',()=>{stop();if(state.step>0)state.step--;update();requestReveal();saveState();});
+  previous.addEventListener('click',()=>{stop();if(state.step>0)state.step--;update();saveState();});
+  locate.addEventListener('click',()=>{
+    const point=focusPoint();
+    if(!point)return;
+    stop();
+    animateLayout(()=>{
+      state.expanded.add(point.module);
+      state.detailBranches[point.module]=point.branch;
+      updateExpanded();
+    });
+    update();saveState();
+    showPanel(point.module,true);
+  });
   mode.addEventListener('change',()=>{stop();state.mode=mode.value==='auto'?'auto':'manual';update();saveState();});
   speed.addEventListener('change',()=>{
     state.delayMs=[4000,6000,10000].includes(Number(speed.value))?Number(speed.value):6000;
     if(state.playing)schedule();update();saveState();
   });
-  fold.addEventListener('click',()=>{stop();animateLayout(()=>{state.expanded.clear();state.autoExpanded=null;updateExpanded();});update();saveState();});
+  fold.addEventListener('click',()=>{stop();animateLayout(()=>{state.expanded.clear();updateExpanded();});update();saveState();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.playing){stop();update();}});
   new ResizeObserver(()=>{layoutDetails();draw(false);}).observe(board);
   reduced.addEventListener('change',()=>{if(packetAnimation)cancelAnimationFrame(packetAnimation);packetAnimation=null;draw(false);});

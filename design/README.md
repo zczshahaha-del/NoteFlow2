@@ -4,7 +4,7 @@
 
 ## 系统地图 · 单页可展开的架构解释
 
-[完整 HTML 页面](noteflow-system-map.html) / [图源稿](noteflow-system-map.source.html) / [子流程数据](noteflow-system-map.details.js) / [页面模板](noteflow-system-map.shell.html) / [说明与验证](../docs/architecture/system-map-interactive-2026-11-03.md)。15 模块、29 分支在同一图展开为“输入 → 处理 → 输出”；笔记的保存、新建、预览、快捷改写分别展示，播放会选择分支并点亮内部环节，可点击模块输入 / 输出继续查看。默认单步，支持返回、慢速、确认暂停、动效与深色。六宽度、全部展开、八条流程106步、内部 / 外部连线与计时回归通过；不连接业务数据，最终理解度和观感待用户验收。
+[完整 HTML 页面](noteflow-system-map.html) / [图源稿](noteflow-system-map.source.html) / [子流程数据](noteflow-system-map.details.js) / [页面模板](noteflow-system-map.shell.html) / [说明与验证](../docs/architecture/system-map-interactive-2026-11-03.md)。15 模块、29 分支在同一图展开为“输入 → 处理 → 输出”。播放时阅读卡显示发送方、接收方、所传数据与内部处理，画布位置固定。点击「查看本步内部流程」可打开对应分支，再用「回到步骤」返回。默认单步，支持回退、慢速、确认暂停、动效与深色。已回归八条流程 106 步、滚动与画布位置、主动定位、三档计时与六种宽度。
 
 ## 笔记归页 · 美学精修候选待评审
 
