@@ -229,8 +229,8 @@
       host.dataset.flowTitle=flow.title;
       host.dataset.flowExample=flow.example;
       host.innerHTML=`<nav class="flow-phases" aria-label="操作的完整阶段">${flow.phases.map((phase,index)=>`<button type="button" data-flow-phase="${index}"><span class="flow-phase-number">${String(index+1).padStart(2,'0')}</span><span><strong>${esc(phase.title)}</strong><small>第 ${index?flow.phases[index-1].end+1:1}–${phase.end} 步</small></span><span class="flow-phase-arrow" aria-hidden="true">→</span></button>`).join('')}</nav>
-        <section class="flow-stage"><header class="flow-stage-heading"><div><h3 data-flow-phase-title></h3><p data-flow-phase-outcome></p></div><span class="flow-stage-count"></span></header>
-          <div class="flow-diagram"><svg class="flow-wires" role="group" aria-label="模块之间的操作流向"></svg><div class="flow-nodes"></div></div><div class="flow-wire-legend"><i></i>当前流向<span>点箭头或模块，查看当前步骤</span></div><div class="flow-step-list" role="group" aria-label="本阶段的具体步骤"></div>
+        <section class="flow-stage"><header class="flow-stage-heading"><h3 data-flow-phase-title></h3></header>
+          <div class="flow-diagram"><svg class="flow-wires" role="group" aria-label="模块之间的操作流向"></svg><div class="flow-nodes"></div></div><div class="flow-step-list" role="group" aria-label="本阶段的具体步骤"></div>
         </section><dialog class="flow-detail-dialog" aria-labelledby="nf-flow-detail-title"><header><h3 id="nf-flow-detail-title"></h3><button type="button" class="btn btn-ghost" data-flow-close aria-label="关闭步骤详情">关闭</button></header><div data-flow-detail-body></div></dialog>`;
       diagram=host.querySelector('.flow-diagram');svg=host.querySelector('.flow-wires');
       dialog=host.querySelector('dialog');
@@ -254,8 +254,7 @@
       diagram.style.setProperty('--flow-max-rows',Math.ceil(maximumNodes/2));
       diagram.style.setProperty('--flow-max-nodes',maximumNodes);
       host.querySelector('[data-flow-phase-title]').textContent=phase.title;
-      host.querySelector('[data-flow-phase-outcome]').textContent=phase.outcome;
-      host.querySelector('.flow-stage-count').textContent=`${ids.length} 个参与模块`;
+      host.querySelector('.flow-stage').setAttribute('aria-label',phase.outcome);
       host.querySelector('.flow-nodes').style.gridAutoRows='';
       host.querySelector('.flow-nodes').innerHTML=ids.map(id=>{
         const purpose=id==='storage'?'保存文件本体，按存储位置读取。':details.modules[id].purpose;

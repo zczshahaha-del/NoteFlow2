@@ -1,6 +1,6 @@
 <div id="nf-system-map" aria-label="NoteFlow 可展开的系统架构与数据流">
   <header class="map-heading">
-    <div><h2>NoteFlow · 系统地图</h2><span class="text-small text-muted">当前实现 · 模块可以展开 · 数据可以沿路看</span></div>
+    <div><h2>NoteFlow · 系统地图</h2></div>
   </header>
   <div class="viz-controls map-scenario-controls">
     <label class="form-label" for="nf-map-scenario">看一次操作
@@ -35,8 +35,8 @@
   </div>
   <div class="map-position">
     <div class="map-reading-live" aria-live="polite" aria-atomic="true">
-      <div class="map-step-meta"><span id="nf-map-flow"></span><span id="nf-map-reading" role="status"></span><span id="nf-map-count" class="tabular-nums">全貌</span></div>
-      <div id="nf-map-overview"><strong id="nf-map-action">选择一个操作，沿着数据看</strong><p id="nf-map-payload">每一步会交代数据从哪来、传了什么、到哪去。</p></div>
+      <div class="map-step-meta"><span id="nf-map-reading" role="status"></span><span id="nf-map-count" class="tabular-nums"></span></div>
+      <div id="nf-map-overview" hidden><strong id="nf-map-action"></strong><p id="nf-map-payload"></p></div>
     </div>
   </div>
   </div>
@@ -44,9 +44,6 @@
   <div class="map-legend text-small text-muted" id="nf-map-legend">
     <span><span class="map-key"></span>调用 / 返回</span>
     <span><span class="map-key map-key-data"></span>读写 / 规则</span>
-    <span><span class="map-key map-key-active"></span>当前数据方向</span>
-    <span><span class="map-key map-key-complete"></span>已走过</span>
-    <span>点模块展开，点连线看数据</span>
     <button type="button" class="btn btn-ghost" id="nf-map-fold" disabled>收起已展开</button>
   </div>
   <div class="map-board" id="nf-map-board">
@@ -137,7 +134,6 @@
   const count = root.querySelector('#nf-map-count');
   const reader = root.querySelector('#nf-map-reader');
   const overviewStory = root.querySelector('#nf-map-overview');
-  const flowName = root.querySelector('#nf-map-flow');
   const foot = root.querySelector('#nf-map-foot');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const detailData = window.NoteFlowMapDetails;
@@ -527,22 +523,17 @@
     next.textContent = selected?.waitForUser ? '继续演示' : '下一步';
     count.textContent = !steps.length ? '全貌' : state.step<0 ? `路径 · ${steps.length} 步` : `${state.step+1} / ${steps.length}`;
     count.dataset.module=focusPoint()?.module||'';
-    flowName.textContent = steps.length?chooser.selectedOptions[0].textContent:'';
-    overviewStory.hidden=!!steps.length;
+    overviewStory.hidden=true;
+    reader.hidden=!steps.length;
+    count.hidden=!steps.length;
     board.hidden=!!steps.length;
     root.querySelector('#nf-map-legend').hidden=!!steps.length;
     root.querySelector('.map-controls').hidden=!steps.length;
     flowView.update(state);
-    if(!selected){
-      action.textContent=steps.length?'点击下一步，从第一步开始':'选择一个操作，沿着数据看';
-      payload.textContent='每一步会交代数据从哪来、传了什么、到哪去。';
-    }
     reading.textContent = selected?.waitForUser ? '等待用户确认'
       : state.step===steps.length-1 ? '本次操作结束'
-      : state.mode==='manual' ? '单步阅读'
-      : state.playing ? `自动播放 · 每步 ${state.delayMs/1000} 秒`
-      : '自动播放已暂停';
-    reading.hidden=!selected;
+      : '';
+    reading.hidden=!selected||!reading.textContent;
     foot.textContent = scenarios[state.scenario].foot;
     draw();
     root.dispatchEvent(new CustomEvent('nf:readerchange'));
@@ -694,7 +685,7 @@
         if(state.scenario!=='overview') {
           const found=steps.findIndex(e=>e.from===s.from&&e.to===s.to);
           if(!active){stop();state.step=found;update();saveState();}
-        } else { count.textContent='连线';action.textContent=s.title;payload.textContent=s.data; }
+        } else { reader.hidden=false;overviewStory.hidden=false;action.textContent=s.title;payload.textContent=s.data; }
       });
       svg.append(hit);
       if(active) {

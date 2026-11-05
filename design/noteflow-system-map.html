@@ -96,8 +96,6 @@
     .brand-mark {width:30px;height:30px;display:grid;grid-template-columns:repeat(2,1fr);gap:4px;transform:rotate(-7deg)}
     .brand-mark i {border-radius:4px;background:var(--primary)}
     .brand-mark i:nth-child(2) {opacity:.55}.brand-mark i:nth-child(3) {opacity:.3}
-    .bar-divider {height:20px;width:1px;background:var(--border);margin:0 5px}
-    .bar-label {font-size:13px;font-weight:400;letter-spacing:0;color:var(--muted-foreground)}
     .bar-actions {display:flex;align-items:center;gap:20px;font-size:12px;color:var(--muted-foreground)}
     .motion-toggle {border:1px solid var(--border);background:var(--surface);border-radius:30px;padding:8px 14px;display:flex;gap:8px;align-items:center;color:var(--foreground);font-size:12px}
     .motion-lamp {width:6px;height:6px;border-radius:50%;background:var(--viz-series-1);box-shadow:0 0 0 4px color-mix(in srgb,var(--viz-series-1) 10%,transparent)}
@@ -110,14 +108,10 @@
     .scenario-link[aria-current="true"] {background:var(--accent);color:var(--accent-foreground);font-weight:600}
     .nav-symbol {font-size:11px;font-weight:500;font-variant-numeric:tabular-nums;width:20px;flex-shrink:0;color:var(--muted-foreground)}
     .scenario-link[aria-current="true"] .nav-symbol {color:var(--accent-foreground)}
-    .sidebar-note {padding:18px 14px 0;border-top:1px solid var(--border);font-size:12px;color:var(--muted-foreground);display:grid;gap:10px}
-    .sidebar-note strong {color:var(--foreground);font-weight:500}
     .atlas-workspace {min-width:0;padding:38px 36px 30px}
     .page-hero {display:flex;justify-content:space-between;gap:24px;align-items:center;margin-bottom:26px}
-    .eyebrow {font-size:10px;letter-spacing:2px;color:var(--muted-foreground);margin-bottom:8px;font-weight:600}
     h1 {font-size:29px;letter-spacing:-1px;font-weight:650;line-height:1.3}
     .hero-description {font-size:13px;color:var(--muted-foreground);margin-top:9px}
-    .hero-note {font-size:11px;color:var(--muted-foreground);border:1px solid var(--border);padding:7px 11px;border-radius:30px;white-space:nowrap;background:var(--surface)}
     #nf-system-map .map-heading {display:none}
     #nf-system-map {--map-active:#b85d14}
     #nf-system-map .map-scenario-controls {display:none}
@@ -159,8 +153,6 @@
     .flow-stage {padding:22px;border:1px solid var(--border);border-radius:18px;background:var(--surface);box-shadow:var(--shadow)}
     .flow-stage-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
     .flow-stage-heading h3 {margin:0;font-size:18px;font-weight:600}
-    .flow-stage-heading p {margin-top:3px;font-size:13px;color:var(--muted-foreground)}
-    .flow-stage-count {font-size:11px;color:var(--muted-foreground);white-space:nowrap}
     .flow-diagram {position:relative;padding:40px 48px;background:var(--canvas);background-image:radial-gradient(var(--dot) .6px,transparent .6px);background-size:18px 18px;border:1px solid var(--border);border-radius:14px;min-height:calc(var(--flow-max-rows) * var(--flow-card-height,220px) + (var(--flow-max-rows) - 1) * 104px + 80px)}
     .flow-nodes {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:104px 136px;align-items:stretch}
     .flow-node {position:relative;z-index:1;display:flex;flex-direction:column;min-width:0;min-height:220px;background:var(--surface);color:var(--foreground);border:1px solid var(--border);border-radius:13px;box-shadow:0 3px 12px #22394f05}
@@ -203,10 +195,7 @@
     .flow-edge-label [aria-current="step"] rect {fill:var(--map-active);stroke:var(--map-active)}
     .flow-edge-label [aria-current="step"] text {fill:var(--surface);font-weight:600}
     .flow-edge-label [role="button"]:focus {outline:2px solid var(--ring);outline-offset:3px}
-    .flow-wire-legend {display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted-foreground);margin:12px 2px 18px}
-    .flow-wire-legend i {width:18px;border-top:2px solid var(--map-active)}
-    .flow-wire-legend>span {margin-left:auto}
-    .flow-step-list {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+    .flow-step-list {margin-top:18px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
     .flow-step-list>button {display:flex;align-items:center;gap:8px;min-height:38px;padding:8px 10px;background:transparent;border:1px solid transparent;border-radius:7px;color:var(--muted-foreground);font-size:12px;text-align:left}
     .flow-step-list>button>span {width:20px;flex:none;font-size:10px;font-variant-numeric:tabular-nums}
     .flow-step-list>button[aria-current="true"] {background:var(--accent);border-color:var(--border);color:var(--primary);font-weight:600}
@@ -243,12 +232,10 @@
       .flow-phases {display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
       .flow-phases strong {font-size:11px}
       .flow-stage {padding:12px;border-radius:13px}
-      .flow-stage-count {font-size:10px}
       .flow-stage-heading h3 {font-size:16px}
       .flow-diagram {padding-inline:24px}
       .flow-step-list {grid-template-columns:1fr}
       .flow-step-list>button {min-height:44px}
-      .flow-wire-legend {font-size:10px}
       .flow-story-footer button {min-height:36px}
     }
     @media(prefers-reduced-motion:reduce) {.flow-module-story {animation:none!important}}
@@ -360,11 +347,11 @@
       .atlas-workspace {padding:28px 20px}
       #nf-system-map .map-scenario-controls {display:block;margin-bottom:14px}
       #nf-system-map .map-scenario-controls>.form-label {display:block;font-size:12px;color:var(--muted-foreground)}
-      #nf-system-map .map-controls {gap:12px}.hero-note {display:none}.bar-actions>span {display:none}
+      #nf-system-map .map-controls {gap:12px}
       #nf-system-map .map-node-meta {font-size:11px}
     }
     @media(max-width:559px) {
-      .site-bar {height:62px;padding:0 18px}.bar-label,.bar-divider {display:none}.site-brand {font-size:16px}
+      .site-bar {height:62px;padding:0 18px}.site-brand {font-size:16px}
       .motion-toggle {font-size:11px;padding:7px 10px}.atlas-workspace {padding:24px 14px}
       h1 {font-size:26px}.page-hero {margin-bottom:20px}
       #nf-system-map .map-board {padding:14px 0;border-radius:14px}
@@ -402,13 +389,13 @@
 </head>
 <body>
   <header class="site-bar">
-    <div class="site-brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>NoteFlow<span class="bar-divider"></span><span class="bar-label">Architecture</span></div>
-    <div class="bar-actions"><span>当前实现 · 交互演示</span><button type="button" class="motion-toggle" id="atlas-motion" aria-pressed="true"><span class="motion-lamp" aria-hidden="true"></span><span>动效开启</span></button></div>
+    <div class="site-brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>NoteFlow</div>
+    <div class="bar-actions"><button type="button" class="motion-toggle" id="atlas-motion" aria-pressed="true"><span class="motion-lamp" aria-hidden="true"></span><span>动效开启</span></button></div>
   </header>
   <main class="atlas-layout">
     <aside class="scenario-sidebar" aria-label="选择演示流程">
-      <div><div class="sidebar-caption">SYSTEM MAP</div><div class="scenario-list"><button type="button" class="scenario-link" data-scenario="overview" aria-current="true"><span class="nav-symbol">◎</span>整个系统</button></div></div>
-      <div><div class="sidebar-caption">沿一次操作看</div><nav class="scenario-list">
+      <div><div class="scenario-list"><button type="button" class="scenario-link" data-scenario="overview" aria-current="true"><span class="nav-symbol">◎</span>整个系统</button></div></div>
+      <div><div class="sidebar-caption">操作</div><nav class="scenario-list">
         <button type="button" class="scenario-link" data-scenario="chat"><span class="nav-symbol">01</span>普通聊天</button>
         <button type="button" class="scenario-link" data-scenario="qa"><span class="nav-symbol">02</span>全库问答</button>
         <button type="button" class="scenario-link" data-scenario="save"><span class="nav-symbol">03</span>手动保存</button>
@@ -418,10 +405,9 @@
         <button type="button" class="scenario-link" data-scenario="remember"><span class="nav-symbol">07</span>保存记忆</button>
         <button type="button" class="scenario-link" data-scenario="attachment"><span class="nav-symbol">08</span>上传附件</button>
       </nav></div>
-      <div class="sidebar-note"><strong>一张图，逐层看</strong><span>点模块，看输入、处理与输出。</span><span>选操作，跟着数据走。</span><span>仅作架构演示<br>不连接你的业务数据</span></div>
     </aside>
     <section class="atlas-workspace" aria-label="交互架构画布">
-      <div class="page-hero"><div><div class="eyebrow">NOTEFLOW / SYSTEM ARCHITECTURE</div><h1>系统架构</h1><p class="hero-description">从一次操作，到回答与保存。</p></div><span class="hero-note">基于代码 · 非实时监控</span></div>
+      <div class="page-hero"><div><h1>系统架构</h1><p class="hero-description" hidden></p></div></div>
       <script>
 // Explanatory examples only. No account data or runtime telemetry is read here.
 (() => {
@@ -854,8 +840,8 @@
       host.dataset.flowTitle=flow.title;
       host.dataset.flowExample=flow.example;
       host.innerHTML=`<nav class="flow-phases" aria-label="操作的完整阶段">${flow.phases.map((phase,index)=>`<button type="button" data-flow-phase="${index}"><span class="flow-phase-number">${String(index+1).padStart(2,'0')}</span><span><strong>${esc(phase.title)}</strong><small>第 ${index?flow.phases[index-1].end+1:1}–${phase.end} 步</small></span><span class="flow-phase-arrow" aria-hidden="true">→</span></button>`).join('')}</nav>
-        <section class="flow-stage"><header class="flow-stage-heading"><div><h3 data-flow-phase-title></h3><p data-flow-phase-outcome></p></div><span class="flow-stage-count"></span></header>
-          <div class="flow-diagram"><svg class="flow-wires" role="group" aria-label="模块之间的操作流向"></svg><div class="flow-nodes"></div></div><div class="flow-wire-legend"><i></i>当前流向<span>点箭头或模块，查看当前步骤</span></div><div class="flow-step-list" role="group" aria-label="本阶段的具体步骤"></div>
+        <section class="flow-stage"><header class="flow-stage-heading"><h3 data-flow-phase-title></h3></header>
+          <div class="flow-diagram"><svg class="flow-wires" role="group" aria-label="模块之间的操作流向"></svg><div class="flow-nodes"></div></div><div class="flow-step-list" role="group" aria-label="本阶段的具体步骤"></div>
         </section><dialog class="flow-detail-dialog" aria-labelledby="nf-flow-detail-title"><header><h3 id="nf-flow-detail-title"></h3><button type="button" class="btn btn-ghost" data-flow-close aria-label="关闭步骤详情">关闭</button></header><div data-flow-detail-body></div></dialog>`;
       diagram=host.querySelector('.flow-diagram');svg=host.querySelector('.flow-wires');
       dialog=host.querySelector('dialog');
@@ -879,8 +865,7 @@
       diagram.style.setProperty('--flow-max-rows',Math.ceil(maximumNodes/2));
       diagram.style.setProperty('--flow-max-nodes',maximumNodes);
       host.querySelector('[data-flow-phase-title]').textContent=phase.title;
-      host.querySelector('[data-flow-phase-outcome]').textContent=phase.outcome;
-      host.querySelector('.flow-stage-count').textContent=`${ids.length} 个参与模块`;
+      host.querySelector('.flow-stage').setAttribute('aria-label',phase.outcome);
       host.querySelector('.flow-nodes').style.gridAutoRows='';
       host.querySelector('.flow-nodes').innerHTML=ids.map(id=>{
         const purpose=id==='storage'?'保存文件本体，按存储位置读取。':details.modules[id].purpose;
@@ -1066,7 +1051,7 @@
 </script>
 <div id="nf-system-map" aria-label="NoteFlow 可展开的系统架构与数据流">
   <header class="map-heading">
-    <div><h2>NoteFlow · 系统地图</h2><span class="text-small text-muted">当前实现 · 模块可以展开 · 数据可以沿路看</span></div>
+    <div><h2>NoteFlow · 系统地图</h2></div>
   </header>
   <div class="viz-controls map-scenario-controls">
     <label class="form-label" for="nf-map-scenario">看一次操作
@@ -1101,8 +1086,8 @@
   </div>
   <div class="map-position">
     <div class="map-reading-live" aria-live="polite" aria-atomic="true">
-      <div class="map-step-meta"><span id="nf-map-flow"></span><span id="nf-map-reading" role="status"></span><span id="nf-map-count" class="tabular-nums">全貌</span></div>
-      <div id="nf-map-overview"><strong id="nf-map-action">选择一个操作，沿着数据看</strong><p id="nf-map-payload">每一步会交代数据从哪来、传了什么、到哪去。</p></div>
+      <div class="map-step-meta"><span id="nf-map-reading" role="status"></span><span id="nf-map-count" class="tabular-nums"></span></div>
+      <div id="nf-map-overview" hidden><strong id="nf-map-action"></strong><p id="nf-map-payload"></p></div>
     </div>
   </div>
   </div>
@@ -1110,9 +1095,6 @@
   <div class="map-legend text-small text-muted" id="nf-map-legend">
     <span><span class="map-key"></span>调用 / 返回</span>
     <span><span class="map-key map-key-data"></span>读写 / 规则</span>
-    <span><span class="map-key map-key-active"></span>当前数据方向</span>
-    <span><span class="map-key map-key-complete"></span>已走过</span>
-    <span>点模块展开，点连线看数据</span>
     <button type="button" class="btn btn-ghost" id="nf-map-fold" disabled>收起已展开</button>
   </div>
   <div class="map-board" id="nf-map-board">
@@ -1143,7 +1125,6 @@
   const count = root.querySelector('#nf-map-count');
   const reader = root.querySelector('#nf-map-reader');
   const overviewStory = root.querySelector('#nf-map-overview');
-  const flowName = root.querySelector('#nf-map-flow');
   const foot = root.querySelector('#nf-map-foot');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const detailData = window.NoteFlowMapDetails;
@@ -1533,22 +1514,17 @@
     next.textContent = selected?.waitForUser ? '继续演示' : '下一步';
     count.textContent = !steps.length ? '全貌' : state.step<0 ? `路径 · ${steps.length} 步` : `${state.step+1} / ${steps.length}`;
     count.dataset.module=focusPoint()?.module||'';
-    flowName.textContent = steps.length?chooser.selectedOptions[0].textContent:'';
-    overviewStory.hidden=!!steps.length;
+    overviewStory.hidden=true;
+    reader.hidden=!steps.length;
+    count.hidden=!steps.length;
     board.hidden=!!steps.length;
     root.querySelector('#nf-map-legend').hidden=!!steps.length;
     root.querySelector('.map-controls').hidden=!steps.length;
     flowView.update(state);
-    if(!selected){
-      action.textContent=steps.length?'点击下一步，从第一步开始':'选择一个操作，沿着数据看';
-      payload.textContent='每一步会交代数据从哪来、传了什么、到哪去。';
-    }
     reading.textContent = selected?.waitForUser ? '等待用户确认'
       : state.step===steps.length-1 ? '本次操作结束'
-      : state.mode==='manual' ? '单步阅读'
-      : state.playing ? `自动播放 · 每步 ${state.delayMs/1000} 秒`
-      : '自动播放已暂停';
-    reading.hidden=!selected;
+      : '';
+    reading.hidden=!selected||!reading.textContent;
     foot.textContent = scenarios[state.scenario].foot;
     draw();
     root.dispatchEvent(new CustomEvent('nf:readerchange'));
@@ -1700,7 +1676,7 @@
         if(state.scenario!=='overview') {
           const found=steps.findIndex(e=>e.from===s.from&&e.to===s.to);
           if(!active){stop();state.step=found;update();saveState();}
-        } else { count.textContent='连线';action.textContent=s.title;payload.textContent=s.data; }
+        } else { reader.hidden=false;overviewStory.hidden=false;action.textContent=s.title;payload.textContent=s.data; }
       });
       svg.append(hit);
       if(active) {
@@ -1792,7 +1768,8 @@
       const description=document.querySelector('.hero-description');
       const current=root.querySelector('#nf-map-operation');
       title.textContent=picker.value==='overview'?'系统架构':current.dataset.flowTitle;
-      description.textContent=picker.value==='overview'?'从一次操作，到回答与保存。':'示例 · '+current.dataset.flowExample;
+      description.hidden=picker.value==='overview';
+      description.textContent=description.hidden?'':'示例 · '+current.dataset.flowExample;
     };
     links.forEach(el=>el.addEventListener('click',()=>{picker.value=el.dataset.scenario;picker.dispatchEvent(new Event('change',{bubbles:true}));sync();}));
     picker.addEventListener('change',sync);
