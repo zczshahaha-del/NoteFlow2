@@ -34,17 +34,13 @@
   </div>
   <div class="map-position">
     <div class="map-reading-live" aria-live="polite" aria-atomic="true">
-      <div class="map-step-meta"><span id="nf-map-flow"></span><span id="nf-map-count" class="tabular-nums">全貌</span></div>
+      <div class="map-step-meta"><span id="nf-map-flow"></span><span id="nf-map-reading" role="status"></span><span id="nf-map-count" class="tabular-nums">全貌</span></div>
       <div id="nf-map-overview"><strong id="nf-map-action">选择一个操作，沿着数据看</strong><p id="nf-map-payload">每一步会交代数据从哪来、传了什么、到哪去。</p></div>
-      <div id="nf-map-stories" class="map-step-stories" hidden></div>
-    </div>
-    <div id="nf-map-step-footer" class="map-step-footer" hidden>
-      <span id="nf-map-reading" role="status"></span>
-      <button type="button" class="btn btn-ghost" id="nf-map-locate">查看本步内部流程 <span aria-hidden="true">↘</span></button>
     </div>
   </div>
   </div>
-  <div class="map-legend text-small text-muted">
+  <section id="nf-map-operation" aria-label="当前操作的模块与数据流" hidden></section>
+  <div class="map-legend text-small text-muted" id="nf-map-legend">
     <span><span class="map-key"></span>调用 / 返回</span>
     <span><span class="map-key map-key-data"></span>读写 / 规则</span>
     <span><span class="map-key map-key-active"></span>当前数据方向</span>
@@ -57,7 +53,7 @@
     <div class="map-grid" id="nf-map-grid"></div>
   </div>
   <footer class="map-foot text-small text-muted">
-    <span id="nf-map-foot">浏览器 → 一个 FastAPI 后端 → 项目数据库、模型服务与 Hindsight。展开只看内部，始终保留全图。</span>
+    <details><summary>本流程的范围与限制</summary><span id="nf-map-foot">浏览器 → 一个 FastAPI 后端 → 项目数据库、模型服务与 Hindsight。</span></details>
   </footer>
 </div>
 <style>
@@ -139,11 +135,8 @@
   const payload = root.querySelector('#nf-map-payload');
   const count = root.querySelector('#nf-map-count');
   const reader = root.querySelector('#nf-map-reader');
-  const stories = root.querySelector('#nf-map-stories');
   const overviewStory = root.querySelector('#nf-map-overview');
   const flowName = root.querySelector('#nf-map-flow');
-  const locate = root.querySelector('#nf-map-locate');
-  const stepFooter = root.querySelector('#nf-map-step-footer');
   const foot = root.querySelector('#nf-map-foot');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const detailData = window.NoteFlowMapDetails;
@@ -383,7 +376,7 @@
       button.focus();
     });
     panel.querySelector('[data-back-to-reader]').addEventListener('click',()=>{
-      locate.focus({preventScroll:true});
+      next.focus({preventScroll:true});
       scrollToElement(root.querySelector('#nf-map-reader-start'),12);
     });
     for(const branchButton of panel.querySelectorAll('[data-detail-branch]'))branchButton.addEventListener('click',()=>{
@@ -486,7 +479,7 @@
     if (val.sender === stateSender) return;
     stop();
     state.scenario = val.scenario;
-    state.step = Number.isInteger(val.step) ? Math.max(-1,Math.min(val.step,getSteps().length-1)) : -1;
+    state.step = getSteps().length ? Math.max(0,Math.min(Number.isInteger(val.step)?val.step:0,getSteps().length-1)) : -1;
     state.mode = val.mode==='auto'?'auto':'manual';
     state.delayMs = [4000,6000,10000].includes(val.delayMs)?val.delayMs:6000;
     const expanded = val.expanded || val.expandedModules || [];
@@ -511,28 +504,6 @@
     if(packetAnimation)cancelAnimationFrame(packetAnimation);
     packetAnimation=null;
   }
-  function updateStories(steps){
-    if(stories.dataset.storyScenario!==state.scenario){
-      stories.dataset.storyScenario=state.scenario;
-      const points=detailData.traces[state.scenario]||[];
-      stories.innerHTML=steps.map((step,index)=>{
-        const point=points[index];
-        const branch=detailData.modules[point.module].branches.find(b=>b.id===point.branch);
-        const stage=branch.steps.find(s=>s.id===point.stage);
-        const route=step.from===step.to
-          ? `<span><small>模块内处理</small><strong>${esc(nodeNames.get(step.to))}</strong></span>`
-          : `<span><small>发出</small><strong>${esc(nodeNames.get(step.from))}</strong></span><span class="map-step-arrow" aria-hidden="true">→</span><span><small>接收</small><strong>${esc(nodeNames.get(step.to))}</strong></span>`;
-        return `<article class="map-step-story"><h3>${esc(step.title)}</h3><div class="map-step-route">${route}</div>
-          <p class="map-step-data"><small>${step.from===step.to?'处理内容':'传递内容'}</small> ${esc(step.data)}</p>
-          <div class="map-step-inside"><small>模块内 · ${esc(nodeNames.get(point.module))}</small><p><strong>${esc(stage.title)}</strong></p><p data-stage-description>${esc(stage.body)}</p></div></article>`;
-      }).join('');
-    }
-    for(const [index,story] of [...stories.children].entries()){
-      story.setAttribute('aria-hidden',String(index!==state.step));
-    }
-    stories.hidden=!current();
-    overviewStory.hidden=!!current();
-  }
   function update() {
     chooser.value = state.scenario;
     const steps = getSteps();
@@ -556,17 +527,21 @@
     count.textContent = !steps.length ? '全貌' : state.step<0 ? `路径 · ${steps.length} 步` : `${state.step+1} / ${steps.length}`;
     count.dataset.module=focusPoint()?.module||'';
     flowName.textContent = steps.length?chooser.selectedOptions[0].textContent:'';
-    stepFooter.hidden=!selected;
+    overviewStory.hidden=!!steps.length;
+    board.hidden=!!steps.length;
+    root.querySelector('#nf-map-legend').hidden=!!steps.length;
+    root.querySelector('.map-controls').hidden=!steps.length;
+    flowView.update(state);
     if(!selected){
       action.textContent=steps.length?'点击下一步，从第一步开始':'选择一个操作，沿着数据看';
       payload.textContent='每一步会交代数据从哪来、传了什么、到哪去。';
     }
-    updateStories(steps);
     reading.textContent = selected?.waitForUser ? '等待用户确认'
       : state.step===steps.length-1 ? '本次操作结束'
       : state.mode==='manual' ? '单步阅读'
       : state.playing ? `自动播放 · 每步 ${state.delayMs/1000} 秒`
       : '自动播放已暂停';
+    reading.hidden=!selected;
     foot.textContent = scenarios[state.scenario].foot;
     draw();
     root.dispatchEvent(new CustomEvent('nf:readerchange'));
@@ -675,7 +650,7 @@
     return wrappedConnection(a,b,width,s.to==='ui'||s.from==='memory'||s.from==='hindsight'?width-5:5);
   }
   function draw(animatePacket=true) {
-    if(!board.clientWidth) return;
+    if(board.hidden||!board.clientWidth) return;
     const selected=current();
     const steps=getSteps();
     const routeSet=new Set(steps.map(s=>`${s.from}|${s.to}`));
@@ -765,18 +740,6 @@
   });
   next.addEventListener('click',()=>{stop();advance();saveState();});
   previous.addEventListener('click',()=>{stop();if(state.step>0)state.step--;update();saveState();});
-  locate.addEventListener('click',()=>{
-    const point=focusPoint();
-    if(!point)return;
-    stop();
-    animateLayout(()=>{
-      state.expanded.add(point.module);
-      state.detailBranches[point.module]=point.branch;
-      updateExpanded();
-    });
-    update();saveState();
-    showPanel(point.module,true);
-  });
   mode.addEventListener('change',()=>{stop();state.mode=mode.value==='auto'?'auto':'manual';update();saveState();});
   speed.addEventListener('change',()=>{
     state.delayMs=[4000,6000,10000].includes(Number(speed.value))?Number(speed.value):6000;
@@ -801,6 +764,7 @@
     if(event.key==='ArrowRight'&&!next.disabled){event.preventDefault();next.click();}
     if(event.key==='ArrowLeft'&&!previous.disabled){event.preventDefault();previous.click();}
   });
+  const flowView=window.NoteFlowOperationView.create({root,scenarios,nodes,details:detailData,selectStep:step=>{stop();state.step=step;update();saveState();}});
   if(window.lucide) window.lucide.createIcons({attrs:{width:16,height:16}});
   update();
   if(window.openai?.widgetState)restore(window.openai.widgetState);

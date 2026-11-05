@@ -83,31 +83,126 @@
     #nf-map-count {color:var(--muted-foreground);white-space:nowrap}
     #nf-map-action {font-weight:600;font-size:15px}
     #nf-map-payload {margin-top:4px;color:var(--muted-foreground);font-size:13px}
-    /* Keep the grid at the height of its tallest step without exposing inactive stories. */
-    .map-step-stories {display:grid}
-    .map-step-story {grid-area:1/1;min-width:0}
-    .map-step-story[aria-hidden="true"] {visibility:hidden}
-    .map-step-story h3 {margin:0 0 10px;font-size:17px;line-height:1.4}
-    .map-step-route {display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--accent);color:var(--accent-foreground);border-radius:8px}
-    .map-step-route span {min-width:0}
-    .map-step-route small {display:block;font-size:11px}
-    .map-step-route strong {font-size:13px;font-weight:600}
-    .map-step-arrow {flex:none;color:var(--map-active);font-size:19px}
-    .map-step-data {margin:8px 0 10px;font-size:13px;overflow-wrap:anywhere}
-    .map-step-data small {margin-right:8px;color:var(--muted-foreground);font-size:11px}
-    .map-step-inside {padding:8px 12px;background:var(--canvas);border-radius:8px;font-size:13px;overflow-wrap:anywhere}
-    .map-step-inside small {display:block;color:var(--muted-foreground);font-size:11px;font-weight:600}
-    .map-step-inside strong {display:block;margin:2px 0;font-weight:600}
-    .map-step-footer {display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--border);padding-top:4px}
-    #nf-map-reading {color:var(--muted-foreground);font-size:12px}
-    #nf-map-locate {min-height:34px;padding:6px 8px;color:var(--primary);font-size:12px;white-space:nowrap}
     #nf-map-next,#nf-map-play {min-width:86px}
-    @media(min-width:701px) {
-      .map-step-story {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.75fr);grid-template-areas:"title title" "route inside" "data inside";column-gap:12px;align-content:start}
-      .map-step-story h3 {grid-area:title}
-      .map-step-route {grid-area:route}
-      .map-step-data {grid-area:data;margin-bottom:0}
-      .map-step-inside {grid-area:inside}
+    #nf-map-reading {font-size:11px;color:var(--muted-foreground);font-weight:400;margin-left:auto}
+    .flow-phases {display:flex;gap:8px;margin-bottom:18px}
+    .flow-phases>button {flex:1;min-width:0;position:relative;display:flex;align-items:center;gap:9px;padding:13px 12px;border:1px solid var(--border);border-radius:12px;color:var(--muted-foreground);background:var(--surface);text-align:left;transition:border-color .2s,background .2s}
+    .flow-phases>button[aria-current="true"] {color:var(--primary);border-color:var(--primary);background:var(--accent)}
+    .flow-phases>button[data-complete="true"] .flow-phase-number {background:var(--accent);color:var(--primary)}
+    .flow-phase-number {display:grid;place-items:center;flex:none;width:27px;height:27px;border-radius:50%;background:var(--muted);font-size:10px;font-variant-numeric:tabular-nums}
+    .flow-phases>button[aria-current="true"] .flow-phase-number {background:var(--primary);color:var(--primary-foreground)}
+    .flow-phases strong {display:block;font-size:12px;font-weight:600}
+    .flow-phases small {display:block;font-size:10px;margin-top:2px}
+    .flow-phase-arrow {margin-left:auto;font-size:15px}
+    .flow-phases>button:last-child .flow-phase-arrow {display:none}
+    .flow-stage {padding:22px;border:1px solid var(--border);border-radius:18px;background:var(--surface);box-shadow:var(--shadow)}
+    .flow-stage-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+    .flow-stage-heading h3 {margin:0;font-size:17px;font-weight:600}
+    .flow-stage-heading p {margin-top:3px;font-size:12px;color:var(--muted-foreground)}
+    .flow-stage-count {font-size:10px;color:var(--muted-foreground);white-space:nowrap}
+    .flow-stage-layout {display:grid;grid-template-columns:minmax(0,1fr) minmax(235px,.65fr);gap:20px;align-items:start}
+    .flow-graph-column {min-width:0}
+    .flow-diagram {position:relative;padding:32px 42px;background:var(--canvas);background-image:radial-gradient(var(--dot) .6px,transparent .6px);background-size:18px 18px;border:1px solid var(--border);border-radius:13px;min-height:calc(var(--flow-max-rows) * 88px + (var(--flow-max-rows) - 1) * 56px + 64px)}
+    .flow-nodes {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:56px 62px;align-items:start}
+    .flow-node {position:relative;z-index:1;display:flex;align-items:center;justify-content:start;gap:9px;width:100%;height:88px;min-width:0;padding:12px;background:var(--surface);color:var(--foreground);border:1px solid var(--border);border-radius:10px;box-shadow:0 3px 12px #22394f05;text-align:left}
+    .flow-node svg {width:20px;height:20px;flex-shrink:0;color:var(--viz-series-1)}
+    .flow-node>span {font-size:12px;font-weight:600;overflow-wrap:anywhere}
+    .flow-node small {display:block;font-weight:400;font-size:9px;color:var(--muted-foreground);margin-top:4px}
+    .flow-node[data-active="true"] {border-color:var(--map-active);box-shadow:0 0 0 2px color-mix(in srgb,var(--map-active) 10%,transparent)}
+    .flow-node[data-active="true"] svg {color:var(--map-active)}
+    .flow-wires {position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+    .flow-edge {fill:none;stroke:var(--border);stroke-width:1.5;stroke-linejoin:round}
+    .flow-edge-done {stroke:var(--viz-series-1)}
+    .flow-edge-current {stroke:var(--map-active);stroke-width:2.6}
+    .flow-edge-component {stroke-dasharray:4 3}
+    .flow-edge-hit {fill:none;stroke:transparent;stroke-width:16;pointer-events:stroke;cursor:pointer}
+    .flow-arrow-base {fill:var(--muted-foreground)}
+    .flow-arrow-done {fill:var(--viz-series-1)}
+    .flow-arrow-current,.flow-packet {fill:var(--map-active)}
+    .flow-edge-label {cursor:pointer;font:10px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .flow-edge-label rect {fill:var(--surface);stroke:var(--border)}
+    .flow-edge-label text {fill:var(--muted-foreground)}
+    .flow-edge-label [aria-current="step"] rect {fill:var(--map-active);stroke:var(--map-active)}
+    .flow-edge-label [aria-current="step"] text {fill:var(--surface);font-weight:600}
+    .flow-edge-label [role="button"]:focus {outline:2px solid var(--ring);outline-offset:3px}
+    .flow-wire-legend {display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted-foreground);margin:10px 2px 16px}
+    .flow-wire-legend i {width:18px;border-top:2px solid var(--map-active)}
+    .flow-wire-legend>span {margin-left:auto}
+    .flow-step-list {display:grid;gap:5px}
+    .flow-step-list>button {display:flex;align-items:center;gap:8px;min-height:34px;padding:6px 9px;background:transparent;border:1px solid transparent;border-radius:7px;color:var(--muted-foreground);font-size:11px;text-align:left}
+    .flow-step-list>button>span {width:20px;flex:none;font-size:10px;font-variant-numeric:tabular-nums}
+    .flow-step-list>button[aria-current="true"] {background:var(--accent);border-color:var(--border);color:var(--primary);font-weight:600}
+    .flow-step-list i {margin-left:auto;font-size:7px;font-style:normal;color:var(--map-active)}
+    .flow-inspector-stack {display:grid;min-width:0;position:sticky;top:148px}
+    .flow-inspector {grid-area:1/1;min-width:0}
+    .flow-inspector[aria-hidden="true"] {visibility:hidden}
+    .flow-inspector-meta {display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--primary);font-size:11px}
+    .flow-wait-tag {border:1px solid color-mix(in srgb,var(--map-active) 25%,var(--border));border-radius:5px;padding:2px 5px;color:var(--map-active);font-size:10px}
+    .flow-inspector h3 {font-size:18px;line-height:1.45;margin:10px 0 7px;letter-spacing:-.3px}
+    .flow-transfer {display:flex;align-items:center;gap:7px;font-size:10px;color:var(--muted-foreground);padding-bottom:18px}
+    .flow-transfer>span:nth-child(2) {color:var(--map-active)}
+    .flow-data-label {display:block;font-size:10px;color:var(--muted-foreground);margin-bottom:5px}
+    .flow-data-in,.flow-treatment {padding:13px 0;border-top:1px solid var(--border)}
+    .flow-inspector p {font-size:13px;line-height:1.65;overflow-wrap:anywhere}
+    .flow-data-out {margin-top:4px;padding:13px;border-radius:10px;background:var(--accent);color:var(--accent-foreground)}
+    .flow-data-out .flow-data-label {color:var(--primary)}
+    .flow-data-out dl {display:grid;gap:7px;margin:12px 0 0;padding-top:10px;border-top:1px solid color-mix(in srgb,var(--primary) 15%,transparent)}
+    .flow-data-out dl>div {display:grid;grid-template-columns:34px minmax(0,1fr);gap:8px;font-size:11px}
+    .flow-data-out dt {color:var(--muted-foreground)}
+    .flow-data-out dd {margin:0;overflow-wrap:anywhere}
+    #nf-system-map.is-reading-route .map-reader {display:flex;align-items:center;justify-content:space-between;gap:16px}
+    #nf-system-map.is-reading-route .map-reader .map-controls {margin:0}
+    #nf-system-map.is-reading-route .map-step-meta {gap:12px}
+    #nf-system-map.is-reading-route .map-position {flex:1}
+    .flow-implementation {border-top:1px solid var(--border);margin-top:20px;padding-top:12px;color:var(--muted-foreground)}
+    .flow-implementation summary {font-size:11px;cursor:pointer}
+    .flow-implementation p {font-size:11px;margin:10px 0}
+    .flow-implementation small {display:block;margin:10px 0 5px;font-size:10px}
+    .flow-implementation code {display:block;font:10px/1.7 ui-monospace,SFMono-Regular,monospace;overflow-wrap:anywhere}
+    @media(max-width:1100px) {
+      #nf-system-map.is-reading-route .map-reader {display:block}
+      #nf-system-map.is-reading-route .map-reader .map-controls {margin-bottom:10px}
+      .flow-stage {padding:16px}
+      .flow-stage-layout {grid-template-columns:minmax(0,1fr) minmax(210px,.6fr);gap:16px}
+      .flow-node {flex-direction:column;align-items:start;justify-content:center;gap:4px;padding:9px}
+      .flow-node small {font-size:8px}
+      .flow-node svg {width:17px;height:17px}
+      .flow-diagram {padding-inline:32px}
+      .flow-nodes {column-gap:44px}
+      .flow-phases>button {padding:10px 8px;gap:6px}
+      .flow-phase-number {width:23px;height:23px}
+      .flow-phase-arrow {display:none}
+    }
+    @media(max-width:820px) {
+      .flow-stage-layout {grid-template-columns:minmax(0,1fr) minmax(220px,.65fr)}
+    }
+    @media(max-width:680px) {
+      .flow-stage-layout {grid-template-columns:1fr}
+      .flow-graph-column {display:contents}
+      .flow-diagram {order:0}
+      .flow-wire-legend {order:1;margin:0}
+      .flow-inspector-stack {position:relative;top:0;order:2}
+      .flow-step-list {order:3}
+      .flow-phases {display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+      .flow-phases strong {font-size:11px}
+      .flow-stage {padding:14px;border-radius:13px}
+      .flow-stage-count {font-size:9px}
+      .flow-stage-heading h3 {font-size:15px}
+      .flow-node {flex-direction:row;align-items:center;padding:10px;gap:8px}
+      .flow-diagram {padding-inline:32px}
+      .flow-node small {font-size:9px}
+      .flow-step-list {grid-template-columns:repeat(2,minmax(0,1fr))}
+      .flow-step-list>button {font-size:10px;min-height:44px}
+      .flow-inspector h3 {font-size:17px}
+    }
+    @media(max-width:380px) {
+      .flow-node {flex-direction:column;align-items:start;gap:4px;padding:7px}
+      .flow-node>span {font-size:11px}
+      .flow-node small {display:none}
+      .flow-stage-heading {gap:6px}
+      .flow-stage-heading p {font-size:11px}
+      .flow-stage-count {white-space:normal;max-width:44px}
+      .flow-step-list {grid-template-columns:1fr}
     }
     #nf-system-map .map-legend {gap:12px 22px;font-size:11px;margin:0 0 20px;padding:0 3px}
     #nf-system-map .map-board {background-color:var(--canvas);background-image:radial-gradient(var(--dot) .7px,transparent .7px);background-size:18px 18px;border:1px solid var(--border);border-radius:20px;padding:22px 8px 18px;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--surface) 70%,transparent)}
@@ -237,8 +332,6 @@
       #nf-system-map .map-step-controls .map-auto-speed select {width:100%;min-height:38px}
       #nf-system-map .map-step-controls button {min-height:44px}
       #nf-system-map .map-step-controls .form-select {font-size:16px;min-height:44px}
-      #nf-map-locate {min-height:44px}
-      .map-step-route {padding:8px;gap:7px}
       #nf-system-map .map-legend {font-size:10px;gap:8px 12px}
       #nf-system-map .viz-tile {min-height:88px}
       #nf-system-map .module-detail {padding:14px}
@@ -288,10 +381,18 @@
   (()=>{
     const root=document.getElementById('nf-system-map');
     const picker=document.getElementById('nf-map-scenario');
-    const links=[...document.querySelectorAll('[data-scenario]')];
-    const sync=()=>links.forEach(el=>el.setAttribute('aria-current',String(el.dataset.scenario===picker.value)));
+    const links=[...document.querySelectorAll('.scenario-link[data-scenario]')];
+    const sync=()=>{
+      links.forEach(el=>el.setAttribute('aria-current',String(el.dataset.scenario===picker.value)));
+      const title=document.querySelector('.page-hero h1');
+      const description=document.querySelector('.hero-description');
+      const current=root.querySelector('#nf-map-operation');
+      title.textContent=picker.value==='overview'?'系统架构':current.dataset.flowTitle;
+      description.textContent=picker.value==='overview'?'从一次操作，到回答与保存。':'示例 · '+current.dataset.flowExample;
+    };
     links.forEach(el=>el.addEventListener('click',()=>{picker.value=el.dataset.scenario;picker.dispatchEvent(new Event('change',{bubbles:true}));sync();}));
     picker.addEventListener('change',sync);
+    root.addEventListener('nf:readerchange',sync);
     const variants={memory:'network',hindsight:'network',adapter:'network',router:'network',db:'stack',files:'stack',notes:'stack',model:'wave'};
     const observer=new IntersectionObserver(entries=>entries.forEach(entry=>entry.target.dataset.awake=String(entry.isIntersecting)),{rootMargin:'80px'});
     for(const node of root.querySelectorAll('.map-node')){
