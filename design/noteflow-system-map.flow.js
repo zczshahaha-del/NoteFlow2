@@ -160,6 +160,7 @@
 
   const attachmentTitles=['接收上传请求','把文件保存到存储','给附件建一条记录','确认附件记录已保存','在页面显示附件'];
   flows.attachment.steps.forEach((step,index)=>{step.title=attachmentTitles[index];});
+  flows.attachment.steps[2].input='架构草图.png 的名称、存储位置、大小与所属账号';
   flows.attachment.steps[1].fields=[['文件','架构草图.png'],['保存到','账号目录 / 附件标识.png']];
   flows.attachment.steps[2].fields=[['名称','架构草图.png'],['位置','账号目录 / 附件标识.png'],['归属','当前账号']];
   flows.create.steps[5].fields=[['标题','Docker 入门'],['要求','先讲概念，再给示例']];
@@ -172,6 +173,16 @@
   flows.quick.steps[3].fields=[['示例候选','容器像给应用一个独立的小房间，里面准备好所需环境。']];
   flows.quick.steps[6].fields=[['编辑器','选区已替换'],['服务端','等待保存确认']];
   flows.remember.steps[7].fields=[['来源','用户明确说出的偏好'],['状态','待后台整理']];
+  const actions={
+    attachment:['上传文件','写入文件','登记信息','提交确认','显示附件'],
+    create:['提出要求','识别任务','组织提示','生成计划','检查计划','提取要求','展示卡片','确认开始','启动草稿','组织写作','生成内容','接收草稿','安排生成','保存进度','审阅草稿','确认保存','检查内容','写入笔记','提交确认','打开笔记'],
+    chat:['发送问题','建立运行','记录状态','判断任务','组织提示','生成计划','检查计划','准备回答','申请记忆','读取规则','统一查询','引擎召回','返回事实','转换字段','过滤记忆','组织回答','生成答案','显示答案'],
+    qa:['发送问题','固定计划','进入问答','检索笔记','查询索引','返回片段','整理依据','组织提示','生成答案','检查引用','显示来源'],
+    save:['提交正文','进入保存','读取原文','检查版本','提交修改','提交确认','显示已保存','领取任务','生成向量','接收向量','更新索引'],
+    preview:['请求修改','确定范围','读取原文','组织提示','生成候选','检查候选','保存预览','审阅预览','确认应用','复查原文','提交修改','提交确认','显示正文'],
+    quick:['提交选区','验证归属','组织提示','改写文字','返回候选','审阅候选','替换选区','发起保存','检查保存','提交正文','保存确认','显示已保存'],
+    remember:['提出偏好','识别任务','组织提示','生成计划','检查计划','提交原话','读取规则','保存待办','领取任务','复查来源','请求整理','保存来源','提取事实','返回事实','整理结果','写回状态']
+  };
 
   const icons = {
     ui: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M9 9v11"/>',
@@ -199,7 +210,7 @@
     const nodeMap = new Map(nodes.map(node=>[node.id,node]));
     const reduced = matchMedia('(prefers-reduced-motion:reduce)');
     let scenario = '', selected = -1, activePhase = -1, packetAnimation = null;
-    let edges = [], diagram, svg, positions = new Map();
+    let edges = [], diagram, svg, positions = new Map(), dialog;
     const ns = 'http://www.w3.org/2000/svg';
     const make = (tag,attrs={}) => {
       const el=document.createElementNS(ns,tag);
@@ -207,7 +218,7 @@
       return el;
     };
     for(const [key,flow] of Object.entries(flows)) {
-      if(flow.steps.length!==scenarios[key].steps.length || flow.phases.at(-1).end!==flow.steps.length)throw new Error(`Walkthrough length mismatch: ${key}`);
+      if(flow.steps.length!==scenarios[key].steps.length || actions[key].length!==flow.steps.length || flow.phases.at(-1).end!==flow.steps.length)throw new Error(`Walkthrough length mismatch: ${key}`);
     }
     const getPhase = step => flows[scenario].phases.findIndex(phase=>step<phase.end);
     const stopPacket = () => {if(packetAnimation)cancelAnimationFrame(packetAnimation);packetAnimation=null;};
@@ -219,15 +230,12 @@
       host.dataset.flowExample=flow.example;
       host.innerHTML=`<nav class="flow-phases" aria-label="操作的完整阶段">${flow.phases.map((phase,index)=>`<button type="button" data-flow-phase="${index}"><span class="flow-phase-number">${String(index+1).padStart(2,'0')}</span><span><strong>${esc(phase.title)}</strong><small>第 ${index?flow.phases[index-1].end+1:1}–${phase.end} 步</small></span><span class="flow-phase-arrow" aria-hidden="true">→</span></button>`).join('')}</nav>
         <section class="flow-stage"><header class="flow-stage-heading"><div><h3 data-flow-phase-title></h3><p data-flow-phase-outcome></p></div><span class="flow-stage-count"></span></header>
-          <div class="flow-stage-layout"><div class="flow-graph-column"><div class="flow-diagram"><svg class="flow-wires" role="group" aria-label="模块之间的操作流向"></svg><div class="flow-nodes"></div></div><div class="flow-wire-legend"><i></i>当前流向<span>点箭头编号或步骤查看</span></div><div class="flow-step-list" role="group" aria-label="本阶段的具体步骤"></div></div>
-          <div class="flow-inspector-stack" aria-live="polite" aria-atomic="true"></div></div></section>`;
+          <div class="flow-diagram"><svg class="flow-wires" role="group" aria-label="模块之间的操作流向"></svg><div class="flow-nodes"></div></div><div class="flow-wire-legend"><i></i>当前流向<span>点箭头或模块，查看当前步骤</span></div><div class="flow-step-list" role="group" aria-label="本阶段的具体步骤"></div>
+        </section><dialog class="flow-detail-dialog" aria-labelledby="nf-flow-detail-title"><header><h3 id="nf-flow-detail-title"></h3><button type="button" class="btn btn-ghost" data-flow-close aria-label="关闭步骤详情">关闭</button></header><div data-flow-detail-body></div></dialog>`;
       diagram=host.querySelector('.flow-diagram');svg=host.querySelector('.flow-wires');
-      host.querySelector('.flow-inspector-stack').innerHTML=flow.steps.map((story,index)=>{
-        const step=scenarios[key].steps[index],point=details.traces[key][index],module=nodeMap.get(point.module);
-        return `<article class="flow-inspector" data-flow-story="${index}" aria-hidden="true"><div class="flow-inspector-meta"><span>第 ${index+1} 步</span>${step.waitForUser?'<span class="flow-wait-tag">等待你确认</span>':''}</div><h3>${esc(story.title||step.title)}</h3><div class="flow-transfer"><span>${esc(shortNames[step.from])}</span><span aria-hidden="true">→</span><span>${esc(shortNames[step.to])}</span></div>
-          <div class="flow-data-in"><span class="flow-data-label">收到</span><p>${esc(story.input)}</p></div><div class="flow-treatment"><span class="flow-data-label">这一步</span><p>${esc(story.action)}</p></div><div class="flow-data-out"><span class="flow-data-label">得到</span><p>${esc(story.output)}</p>${story.fields?`<dl>${story.fields.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>`:''}</div>
-          <details class="flow-implementation"><summary>原因、实现与边界</summary>${story.note?`<p>${esc(story.note)}</p>`:''}<p>${esc(module.note)}</p><small>涉及实现</small>${module.sources.map(source=>`<code>${esc(source)}</code>`).join('')}</details></article>`;
-      }).join('');
+      dialog=host.querySelector('dialog');
+      dialog.querySelector('[data-flow-close]').addEventListener('click',()=>dialog.close());
+      dialog.addEventListener('keydown',event=>event.stopPropagation());
       host.querySelector('.flow-phases').hidden=flow.phases.length===1;
       for(const button of host.querySelectorAll('[data-flow-phase]'))button.addEventListener('click',()=>{
         const index=Number(button.dataset.flowPhase);selectStep(index?flow.phases[index-1].end:0);
@@ -248,13 +256,27 @@
       host.querySelector('[data-flow-phase-title]').textContent=phase.title;
       host.querySelector('[data-flow-phase-outcome]').textContent=phase.outcome;
       host.querySelector('.flow-stage-count').textContent=`${ids.length} 个参与模块`;
-      host.querySelector('.flow-nodes').innerHTML=ids.map((id,i)=>`<button type="button" class="flow-node" data-flow-module="${id}" style="--flow-order:${i}">${icon(id)}<span>${esc(shortNames[id])}<small>${esc(id==='storage'?'磁盘 / 挂载卷':id==='db'?'PostgreSQL':nodeMap.get(id).type.split(' · ').at(0))}</small></span></button>`).join('');
+      host.querySelector('.flow-nodes').style.gridAutoRows='';
+      host.querySelector('.flow-nodes').innerHTML=ids.map(id=>{
+        const purpose=id==='storage'?'保存文件本体，按存储位置读取。':details.modules[id].purpose;
+        const stories=flow.steps.map((story,index)=>{
+          if(scenarios[scenario].steps[index].to!==id)return '';
+          const step=scenarios[scenario].steps[index];
+          return `<article class="flow-module-story" data-flow-story="${index}" aria-label="第 ${index+1} 步 ${esc(story.title||step.title)}" aria-hidden="true">
+            <dl class="flow-story-data"><div><dt>收到</dt><dd>${esc(story.input)}</dd></div><div><dt>处理</dt><dd>${esc(story.action)}</dd></div><div class="flow-story-result"><dt>得到</dt><dd>${esc(story.output)}</dd></div></dl>
+            <div class="flow-story-footer">${step.waitForUser?'<span class="flow-wait-tag">等待你确认</span>':'<span></span>'}<button type="button" data-flow-more="${index}">原因与实现 ↗</button></div></article>`;
+        }).join('');
+        const caption=id==='storage'?'磁盘 / 挂载卷':id==='db'?'PostgreSQL':nodeMap.get(id).type.split(' · ').at(0);
+        return `<section class="flow-node" data-flow-module="${id}" aria-label="${esc(shortNames[id])}"><button type="button" class="flow-node-select" data-flow-select="${id}">${icon(id)}<span>${esc(shortNames[id])}<small data-flow-caption data-default="${esc(caption)}">${esc(caption)}</small></span></button><div class="flow-node-body"><p class="flow-node-purpose">${esc(purpose)}</p>${stories}</div></section>`;
+      }).join('');
       host.querySelector('.flow-step-list').innerHTML=steps.map((step,i)=>`<button type="button" data-flow-step="${start+i}" aria-current="false"><span>${start+i+1}</span>${esc(flow.steps[start+i].title||step.title)}${step.waitForUser?'<i aria-label="等待确认">●</i>':''}</button>`).join('');
       for(const button of host.querySelectorAll('[data-flow-step]'))button.addEventListener('click',()=>selectStep(Number(button.dataset.flowStep)));
-      for(const button of host.querySelectorAll('[data-flow-module]'))button.addEventListener('click',()=>{
-        const id=button.dataset.flowModule;
-        const local=steps.findIndex(step=>step.to===id||(id==='storage'&&step.to==='files'));
-        selectStep(start+(local<0?0:local));
+      for(const button of host.querySelectorAll('[data-flow-select]'))button.addEventListener('click',()=>{
+        const id=button.dataset.flowSelect;
+        if(scenarios[scenario].steps[selected]?.to===id){selectStep(selected);return;}
+        let local=steps.findIndex(step=>step.to===id||(id==='storage'&&step.to==='files'));
+        if(local<0)local=steps.findIndex(step=>step.from===id);
+        selectStep(start+local);
       });
       edges=[];
       for(const [i,step] of steps.entries()){
@@ -268,16 +290,16 @@
       const a=positions.get(edge.from),b=positions.get(edge.to);
       const reverse=edges.some(other=>other.from===edge.to&&other.to===edge.from);
       if(edge.from===edge.to){
-        const x=a.x+a.w,y=a.y+a.h/2;
-        return {d:`M ${x} ${y-14} C ${x+34} ${y-45},${x+34} ${y+45},${x} ${y+14}`,label:[x+25,y]};
+        const x1=a.x+a.w*.32,x2=a.x+a.w*.68,y=a.y+a.h,turn=y+62;
+        return {d:`M ${x1} ${y} L ${x1} ${turn} L ${x2} ${turn} L ${x2} ${y}`,label:[a.x+a.w/2,turn]};
       }
-      if(Math.abs(a.y-b.y)<2&&Math.abs(a.x-b.x)<a.w+100){
-        const right=b.x>a.x,shift=reverse?(right?-17:17):0;
+      if(Math.abs(a.y-b.y)<2&&Math.abs(a.x-b.x)<a.w+180){
+        const right=b.x>a.x,shift=reverse?(right?-32:32):0;
         const x1=right?a.x+a.w:a.x,x2=right?b.x:b.x+b.w,y=a.y+a.h/2+shift;
         return {d:`M ${x1} ${y} L ${x2} ${y}`,label:[(x1+x2)/2,y]};
       }
       const down=b.y>a.y;
-      if(Math.abs(a.x-b.x)<2&&Math.abs(a.y-b.y)<a.h+100){
+      if(Math.abs(a.x-b.x)<2&&Math.abs(a.y-b.y)<a.h+150){
         const shift=reverse?(down?-20:20):0,x=a.x+a.w/2+shift,y1=down?a.y+a.h:a.y,y2=down?b.y:b.y+b.h;
         return {d:`M ${x} ${y1} L ${x} ${y2}`,label:[x,(y1+y2)/2]};
       }
@@ -290,8 +312,13 @@
     function draw(animate=false) {
       stopPacket();if(host.hidden||!diagram?.clientWidth)return;
       const focusedStep=svg.contains(document.activeElement)?document.activeElement.dataset.flowEdgeStep:undefined;
-      const columns=diagram.clientWidth>=600?3:2;
-      host.querySelector('.flow-nodes').style.gridTemplateColumns=`repeat(${columns},minmax(0,1fr))`;
+      const columns=diagram.clientWidth>=1000?3:diagram.clientWidth>=620?2:1;
+      const nodeGrid=host.querySelector('.flow-nodes');
+      nodeGrid.style.gridTemplateColumns=`repeat(${columns},minmax(0,1fr))`;
+      nodeGrid.style.gridAutoRows='';
+      const cardHeight=Math.max(220,...[...nodeGrid.children].map(node=>Math.ceil(node.getBoundingClientRect().height)));
+      nodeGrid.style.gridAutoRows=`${cardHeight}px`;
+      diagram.style.setProperty('--flow-card-height',`${cardHeight}px`);
       diagram.style.setProperty('--flow-max-rows',Math.ceil(Number(diagram.style.getPropertyValue('--flow-max-nodes'))/columns));
       const base=diagram.getBoundingClientRect();positions=new Map();
       for(const el of host.querySelectorAll('[data-flow-module]')){
@@ -314,9 +341,9 @@
         hit.addEventListener('click',()=>selectStep(edge.steps.find(step=>step>=selected)??edge.steps[0]));
         svg.append(hit);
         if(edge.component)continue;
-        const badgeWidth=24,badgeHeight=edge.steps.length*23+1;
-        const candidates=[label,...Array.from({length:25},(_,index)=>{
-          const point=path.getPointAtLength(path.getTotalLength()*(index+1)/26);return[point.x,point.y];
+        const badgeWidth=Math.max(...edge.steps.map(step=>actions[scenario][step].length*12+36)),badgeHeight=edge.steps.length*32-4;
+        const candidates=[label,...Array.from({length:60},(_,index)=>{
+          const point=path.getPointAtLength(path.getTotalLength()*(index+1)/61);return[point.x,point.y];
         })];
         const fits=([x,y])=>{
           if(x-badgeWidth/2<2||x+badgeWidth/2>diagram.clientWidth-2||y-badgeHeight/2<2||y+badgeHeight/2>diagram.clientHeight-2)return false;
@@ -329,9 +356,9 @@
       for(const {x,y,width,height,edge,state} of labels){
         const group=make('g',{class:`flow-edge-label flow-edge-label-${state}`,transform:`translate(${x-width/2} ${y-height/2})`});
         edge.steps.forEach((step,index)=>{
-          const badge=make('g',{transform:`translate(0 ${index*23})`,role:'button',tabindex:'0','data-flow-edge-step':step,'aria-label':`第 ${step+1} 步 ${flows[scenario].steps[step].title||scenarios[scenario].steps[step].title}`});
-          badge.append(make('rect',{x:0,y:0,width:24,height:24,rx:7}));
-          const text=make('text',{x:12,y:16,'text-anchor':'middle'});text.textContent=step+1;badge.append(text);
+          const badge=make('g',{transform:`translate(0 ${index*32})`,role:'button',tabindex:'0','data-flow-edge-step':step,'aria-label':`第 ${step+1} 步 ${flows[scenario].steps[step].title||scenarios[scenario].steps[step].title}`});
+          badge.append(make('rect',{x:0,y:0,width,height:28,rx:7}));
+          const text=make('text',{x:width/2,y:18,'text-anchor':'middle'});text.textContent=`${step+1} ${actions[scenario][step]}`;badge.append(text);
           if(step===selected)badge.setAttribute('aria-current','step');
           badge.addEventListener('click',()=>selectStep(step));
           badge.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();selectStep(step);}});
@@ -358,15 +385,29 @@
     }
     const observer=new ResizeObserver(()=>draw(false));
     host.addEventListener('click',event=>{
-      const summary=event.target.closest('.flow-implementation > summary');
-      if(summary&&!summary.parentElement.open)selectStep(selected);
+      const button=event.target.closest('[data-flow-more]');
+      if(!button)return;
+      const index=Number(button.dataset.flowMore);
+      selectStep(index);
+      const story=flows[scenario].steps[index],point=details.traces[scenario][index],module=nodeMap.get(point.module);
+      dialog.querySelector('h3').textContent=story.title||scenarios[scenario].steps[index].title;
+      dialog.querySelector('[data-flow-detail-body]').innerHTML=`${story.fields?`<dl class="flow-result-fields">${story.fields.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>`:''}${story.note?`<p>${esc(story.note)}</p>`:''}<p>${esc(module.note)}</p><small>涉及实现</small>${module.sources.map(source=>`<code>${esc(source)}</code>`).join('')}`;
+      dialog.showModal();
     });
     root.addEventListener('nf:motionchange',()=>draw(false));
     reduced.addEventListener('change',()=>draw(false));
     document.addEventListener('visibilitychange',()=>{if(document.hidden)stopPacket();});
     return {
+      locate(){
+        const target=host.querySelector('[data-flow-module][data-active="true"]');
+        if(!target)return;
+        const reader=root.querySelector('#nf-map-reader');
+        const offset=getComputedStyle(reader).position==='sticky'?reader.getBoundingClientRect().height+24:20;
+        target.querySelector('.flow-node-select').focus({preventScroll:true});
+        window.scrollTo({top:window.scrollY+target.getBoundingClientRect().top-offset,behavior:reduced.matches||root.dataset.motion==='off'?'instant':'smooth'});
+      },
       update(state){
-        if(state.scenario==='overview'){host.hidden=true;stopPacket();return;}
+        if(state.scenario==='overview'){dialog?.close();host.hidden=true;stopPacket();return;}
         host.hidden=false;
         if(scenario!==state.scenario){if(diagram)observer.unobserve(diagram);build(state.scenario);}
         const phase=getPhase(Math.max(0,state.step));
@@ -378,8 +419,11 @@
         }
         const step=scenarios[scenario].steps[selected];
         for(const button of host.querySelectorAll('[data-flow-module]')){
-          const active=button.dataset.flowModule===step?.to||(button.dataset.flowModule==='storage'&&selected===1);
+          const active=button.dataset.flowModule===step?.to;
           button.dataset.active=String(active);
+          button.querySelector('.flow-node-purpose').setAttribute('aria-hidden',String(active));
+          const caption=button.querySelector('[data-flow-caption]');
+          caption.textContent=active?`第 ${selected+1} 步 · ${flows[scenario].steps[selected].title||step.title}`:caption.dataset.default;
         }
         for(const button of host.querySelectorAll('[data-flow-step]'))button.setAttribute('aria-current',String(Number(button.dataset.flowStep)===selected));
         for(const article of host.querySelectorAll('[data-flow-story]')){

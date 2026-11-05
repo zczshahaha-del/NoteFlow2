@@ -147,7 +147,7 @@
     #nf-map-next,#nf-map-play {min-width:86px}
     #nf-map-reading {font-size:11px;color:var(--muted-foreground);font-weight:400;margin-left:auto}
     .flow-phases {display:flex;gap:8px;margin-bottom:18px}
-    .flow-phases>button {flex:1;min-width:0;position:relative;display:flex;align-items:center;gap:9px;padding:13px 12px;border:1px solid var(--border);border-radius:12px;color:var(--muted-foreground);background:var(--surface);text-align:left;transition:border-color .2s,background .2s}
+    .flow-phases>button {flex:1;min-width:0;display:flex;align-items:center;gap:9px;padding:13px 12px;border:1px solid var(--border);border-radius:12px;color:var(--muted-foreground);background:var(--surface);text-align:left}
     .flow-phases>button[aria-current="true"] {color:var(--primary);border-color:var(--primary);background:var(--accent)}
     .flow-phases>button[data-complete="true"] .flow-phase-number {background:var(--accent);color:var(--primary)}
     .flow-phase-number {display:grid;place-items:center;flex:none;width:27px;height:27px;border-radius:50%;background:var(--muted);font-size:10px;font-variant-numeric:tabular-nums}
@@ -158,19 +158,36 @@
     .flow-phases>button:last-child .flow-phase-arrow {display:none}
     .flow-stage {padding:22px;border:1px solid var(--border);border-radius:18px;background:var(--surface);box-shadow:var(--shadow)}
     .flow-stage-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
-    .flow-stage-heading h3 {margin:0;font-size:17px;font-weight:600}
-    .flow-stage-heading p {margin-top:3px;font-size:12px;color:var(--muted-foreground)}
-    .flow-stage-count {font-size:10px;color:var(--muted-foreground);white-space:nowrap}
-    .flow-stage-layout {display:grid;grid-template-columns:minmax(0,1fr) minmax(235px,.65fr);gap:20px;align-items:start}
-    .flow-graph-column {min-width:0}
-    .flow-diagram {position:relative;padding:32px 42px;background:var(--canvas);background-image:radial-gradient(var(--dot) .6px,transparent .6px);background-size:18px 18px;border:1px solid var(--border);border-radius:13px;min-height:calc(var(--flow-max-rows) * 88px + (var(--flow-max-rows) - 1) * 56px + 64px)}
-    .flow-nodes {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:56px 62px;align-items:start}
-    .flow-node {position:relative;z-index:1;display:flex;align-items:center;justify-content:start;gap:9px;width:100%;height:88px;min-width:0;padding:12px;background:var(--surface);color:var(--foreground);border:1px solid var(--border);border-radius:10px;box-shadow:0 3px 12px #22394f05;text-align:left}
-    .flow-node svg {width:20px;height:20px;flex-shrink:0;color:var(--viz-series-1)}
-    .flow-node>span {font-size:12px;font-weight:600;overflow-wrap:anywhere}
-    .flow-node small {display:block;font-weight:400;font-size:9px;color:var(--muted-foreground);margin-top:4px}
-    .flow-node[data-active="true"] {border-color:var(--map-active);box-shadow:0 0 0 2px color-mix(in srgb,var(--map-active) 10%,transparent)}
-    .flow-node[data-active="true"] svg {color:var(--map-active)}
+    .flow-stage-heading h3 {margin:0;font-size:18px;font-weight:600}
+    .flow-stage-heading p {margin-top:3px;font-size:13px;color:var(--muted-foreground)}
+    .flow-stage-count {font-size:11px;color:var(--muted-foreground);white-space:nowrap}
+    .flow-diagram {position:relative;padding:40px 48px;background:var(--canvas);background-image:radial-gradient(var(--dot) .6px,transparent .6px);background-size:18px 18px;border:1px solid var(--border);border-radius:14px;min-height:calc(var(--flow-max-rows) * var(--flow-card-height,220px) + (var(--flow-max-rows) - 1) * 104px + 80px)}
+    .flow-nodes {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:104px 136px;align-items:stretch}
+    .flow-node {position:relative;z-index:1;display:flex;flex-direction:column;min-width:0;min-height:220px;background:var(--surface);color:var(--foreground);border:1px solid var(--border);border-radius:13px;box-shadow:0 3px 12px #22394f05}
+    .flow-node-select {display:flex;align-items:center;gap:12px;width:100%;height:88px;flex-shrink:0;padding:14px 16px;text-align:left;background:transparent;border:0;border-radius:12px;color:inherit}
+    .flow-node-select:hover {background:var(--canvas)}
+    .flow-node-select svg {width:25px;height:25px;flex-shrink:0;color:var(--viz-series-1)}
+    .flow-node-select>span {font-size:16px;font-weight:600;overflow-wrap:anywhere}
+    .flow-node-select small {display:block;font-size:10px;font-weight:400;color:var(--muted-foreground);margin-top:3px}
+    .flow-node[data-active="true"] {border-color:var(--map-active);box-shadow:0 0 0 3px color-mix(in srgb,var(--map-active) 8%,transparent)}
+    .flow-node[data-active="true"] .flow-node-select svg {color:var(--map-active)}
+    .flow-node[data-active="true"] .flow-node-select {border-radius:12px 12px 0 0}
+    .flow-node-body {display:grid;flex:1;min-width:0;margin:0 16px 12px}
+    .flow-node-purpose,.flow-module-story {grid-area:1/1;min-width:0}
+    .flow-node-purpose {align-self:center;font-size:13px;line-height:1.8;color:var(--muted-foreground);padding-top:0}
+    .flow-node-purpose[aria-hidden="true"] {visibility:hidden}
+    .flow-module-story[aria-hidden="true"] {visibility:hidden}
+    .flow-module-story[aria-hidden="false"] {animation:flow-step-in .18s ease-out}
+    .flow-story-data {display:grid;gap:10px;margin:0;border-top:1px solid var(--border);padding-top:10px}
+    .flow-story-data>div {display:grid;grid-template-columns:26px minmax(0,1fr);gap:9px}
+    .flow-story-data dt {font-size:11px;color:var(--muted-foreground);padding-top:2px}
+    .flow-story-data dd {margin:0;font-size:13px;line-height:1.7;overflow-wrap:anywhere}
+    .flow-story-result {border-top:1px dashed var(--border);padding-top:10px}
+    .flow-story-result dd {color:var(--primary);font-weight:500}
+    .flow-story-footer {display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:8px}
+    .flow-story-footer button {padding:5px 0;background:transparent;border:0;color:var(--muted-foreground);font-size:11px}
+    .flow-story-footer button:hover {color:var(--primary)}
+    .flow-wait-tag {border:1px solid color-mix(in srgb,var(--map-active) 25%,var(--border));border-radius:5px;padding:3px 5px;color:var(--map-active);font-size:10px}
     .flow-wires {position:absolute;inset:0;width:100%;height:100%;overflow:visible}
     .flow-edge {fill:none;stroke:var(--border);stroke-width:1.5;stroke-linejoin:round}
     .flow-edge-done {stroke:var(--viz-series-1)}
@@ -180,91 +197,61 @@
     .flow-arrow-base {fill:var(--muted-foreground)}
     .flow-arrow-done {fill:var(--viz-series-1)}
     .flow-arrow-current,.flow-packet {fill:var(--map-active)}
-    .flow-edge-label {cursor:pointer;font:10px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .flow-edge-label {cursor:pointer;font:11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
     .flow-edge-label rect {fill:var(--surface);stroke:var(--border)}
     .flow-edge-label text {fill:var(--muted-foreground)}
     .flow-edge-label [aria-current="step"] rect {fill:var(--map-active);stroke:var(--map-active)}
     .flow-edge-label [aria-current="step"] text {fill:var(--surface);font-weight:600}
     .flow-edge-label [role="button"]:focus {outline:2px solid var(--ring);outline-offset:3px}
-    .flow-wire-legend {display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted-foreground);margin:10px 2px 16px}
+    .flow-wire-legend {display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted-foreground);margin:12px 2px 18px}
     .flow-wire-legend i {width:18px;border-top:2px solid var(--map-active)}
     .flow-wire-legend>span {margin-left:auto}
-    .flow-step-list {display:grid;gap:5px}
-    .flow-step-list>button {display:flex;align-items:center;gap:8px;min-height:34px;padding:6px 9px;background:transparent;border:1px solid transparent;border-radius:7px;color:var(--muted-foreground);font-size:11px;text-align:left}
+    .flow-step-list {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+    .flow-step-list>button {display:flex;align-items:center;gap:8px;min-height:38px;padding:8px 10px;background:transparent;border:1px solid transparent;border-radius:7px;color:var(--muted-foreground);font-size:12px;text-align:left}
     .flow-step-list>button>span {width:20px;flex:none;font-size:10px;font-variant-numeric:tabular-nums}
     .flow-step-list>button[aria-current="true"] {background:var(--accent);border-color:var(--border);color:var(--primary);font-weight:600}
     .flow-step-list i {margin-left:auto;font-size:7px;font-style:normal;color:var(--map-active)}
-    .flow-inspector-stack {display:grid;min-width:0;position:sticky;top:148px}
-    .flow-inspector {grid-area:1/1;min-width:0}
-    .flow-inspector[aria-hidden="true"] {visibility:hidden}
-    .flow-inspector-meta {display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--primary);font-size:11px}
-    .flow-wait-tag {border:1px solid color-mix(in srgb,var(--map-active) 25%,var(--border));border-radius:5px;padding:2px 5px;color:var(--map-active);font-size:10px}
-    .flow-inspector h3 {font-size:18px;line-height:1.45;margin:10px 0 7px;letter-spacing:-.3px}
-    .flow-transfer {display:flex;align-items:center;gap:7px;font-size:10px;color:var(--muted-foreground);padding-bottom:18px}
-    .flow-transfer>span:nth-child(2) {color:var(--map-active)}
-    .flow-data-label {display:block;font-size:10px;color:var(--muted-foreground);margin-bottom:5px}
-    .flow-data-in,.flow-treatment {padding:13px 0;border-top:1px solid var(--border)}
-    .flow-inspector p {font-size:13px;line-height:1.65;overflow-wrap:anywhere}
-    .flow-data-out {margin-top:4px;padding:13px;border-radius:10px;background:var(--accent);color:var(--accent-foreground)}
-    .flow-data-out .flow-data-label {color:var(--primary)}
-    .flow-data-out dl {display:grid;gap:7px;margin:12px 0 0;padding-top:10px;border-top:1px solid color-mix(in srgb,var(--primary) 15%,transparent)}
-    .flow-data-out dl>div {display:grid;grid-template-columns:34px minmax(0,1fr);gap:8px;font-size:11px}
-    .flow-data-out dt {color:var(--muted-foreground)}
-    .flow-data-out dd {margin:0;overflow-wrap:anywhere}
+    .flow-detail-dialog {width:min(560px,calc(100vw - 32px));max-height:80vh;overflow:auto;background:var(--surface);color:var(--foreground);border:1px solid var(--border);border-radius:16px;padding:22px;box-shadow:0 20px 80px #0003}
+    .flow-detail-dialog::backdrop {background:#14253666;backdrop-filter:blur(3px)}
+    .flow-detail-dialog>header {display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}
+    .flow-detail-dialog h3 {font-size:17px;margin:0}
+    .flow-detail-dialog p {font-size:13px;line-height:1.8;margin:14px 0}
+    .flow-detail-dialog small {display:block;font-size:11px;color:var(--muted-foreground);margin:20px 0 8px}
+    .flow-detail-dialog code {display:block;font:11px/1.8 ui-monospace,SFMono-Regular,monospace;overflow-wrap:anywhere;color:var(--muted-foreground)}
+    .flow-result-fields {display:grid;gap:8px;background:var(--accent);border-radius:9px;padding:12px;margin:0}
+    .flow-result-fields>div {display:grid;grid-template-columns:45px minmax(0,1fr);gap:10px;font-size:12px}
+    .flow-result-fields dt {color:var(--muted-foreground)}
+    .flow-result-fields dd {margin:0;overflow-wrap:anywhere}
     #nf-system-map.is-reading-route .map-reader {display:flex;align-items:center;justify-content:space-between;gap:16px}
     #nf-system-map.is-reading-route .map-reader .map-controls {margin:0}
     #nf-system-map.is-reading-route .map-step-meta {gap:12px}
     #nf-system-map.is-reading-route .map-position {flex:1}
-    .flow-implementation {border-top:1px solid var(--border);margin-top:20px;padding-top:12px;color:var(--muted-foreground)}
-    .flow-implementation summary {font-size:11px;cursor:pointer}
-    .flow-implementation p {font-size:11px;margin:10px 0}
-    .flow-implementation small {display:block;margin:10px 0 5px;font-size:10px}
-    .flow-implementation code {display:block;font:10px/1.7 ui-monospace,SFMono-Regular,monospace;overflow-wrap:anywhere}
+    @keyframes flow-step-in {from{opacity:.4}to{opacity:1}}
+    .is-motion-off .flow-module-story {animation:none!important}
     @media(max-width:1100px) {
       #nf-system-map.is-reading-route .map-reader {display:block}
       #nf-system-map.is-reading-route .map-reader .map-controls {margin-bottom:10px}
       .flow-stage {padding:16px}
-      .flow-stage-layout {grid-template-columns:minmax(0,1fr) minmax(210px,.6fr);gap:16px}
-      .flow-node {flex-direction:column;align-items:start;justify-content:center;gap:4px;padding:9px}
-      .flow-node small {font-size:8px}
-      .flow-node svg {width:17px;height:17px}
-      .flow-diagram {padding-inline:32px}
-      .flow-nodes {column-gap:44px}
+      .flow-node-select {padding:15px;gap:10px}
+      .flow-node-select>span {font-size:15px}
+      .flow-node-body {margin-inline:15px}
       .flow-phases>button {padding:10px 8px;gap:6px}
       .flow-phase-number {width:23px;height:23px}
       .flow-phase-arrow {display:none}
     }
-    @media(max-width:820px) {
-      .flow-stage-layout {grid-template-columns:minmax(0,1fr) minmax(220px,.65fr)}
-    }
     @media(max-width:680px) {
-      .flow-stage-layout {grid-template-columns:1fr}
-      .flow-graph-column {display:contents}
-      .flow-diagram {order:0}
-      .flow-wire-legend {order:1;margin:0}
-      .flow-inspector-stack {position:relative;top:0;order:2}
-      .flow-step-list {order:3}
       .flow-phases {display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
       .flow-phases strong {font-size:11px}
-      .flow-stage {padding:14px;border-radius:13px}
-      .flow-stage-count {font-size:9px}
-      .flow-stage-heading h3 {font-size:15px}
-      .flow-node {flex-direction:row;align-items:center;padding:10px;gap:8px}
-      .flow-diagram {padding-inline:32px}
-      .flow-node small {font-size:9px}
-      .flow-step-list {grid-template-columns:repeat(2,minmax(0,1fr))}
-      .flow-step-list>button {font-size:10px;min-height:44px}
-      .flow-inspector h3 {font-size:17px}
-    }
-    @media(max-width:380px) {
-      .flow-node {flex-direction:column;align-items:start;gap:4px;padding:7px}
-      .flow-node>span {font-size:11px}
-      .flow-node small {display:none}
-      .flow-stage-heading {gap:6px}
-      .flow-stage-heading p {font-size:11px}
-      .flow-stage-count {white-space:normal;max-width:44px}
+      .flow-stage {padding:12px;border-radius:13px}
+      .flow-stage-count {font-size:10px}
+      .flow-stage-heading h3 {font-size:16px}
+      .flow-diagram {padding-inline:24px}
       .flow-step-list {grid-template-columns:1fr}
+      .flow-step-list>button {min-height:44px}
+      .flow-wire-legend {font-size:10px}
+      .flow-story-footer button {min-height:36px}
     }
+    @media(prefers-reduced-motion:reduce) {.flow-module-story {animation:none!important}}
     #nf-system-map .map-legend {gap:12px 22px;font-size:11px;margin:0 0 20px;padding:0 3px}
     #nf-system-map .map-board {background-color:var(--canvas);background-image:radial-gradient(var(--dot) .7px,transparent .7px);background-size:18px 18px;border:1px solid var(--border);border-radius:20px;padding:22px 8px 18px;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--surface) 70%,transparent)}
     #nf-system-map .map-grid {column-gap:24px;row-gap:36px;padding:8px 24px 12px}
@@ -798,6 +785,7 @@
 
   const attachmentTitles=['接收上传请求','把文件保存到存储','给附件建一条记录','确认附件记录已保存','在页面显示附件'];
   flows.attachment.steps.forEach((step,index)=>{step.title=attachmentTitles[index];});
+  flows.attachment.steps[2].input='架构草图.png 的名称、存储位置、大小与所属账号';
   flows.attachment.steps[1].fields=[['文件','架构草图.png'],['保存到','账号目录 / 附件标识.png']];
   flows.attachment.steps[2].fields=[['名称','架构草图.png'],['位置','账号目录 / 附件标识.png'],['归属','当前账号']];
   flows.create.steps[5].fields=[['标题','Docker 入门'],['要求','先讲概念，再给示例']];
@@ -810,6 +798,16 @@
   flows.quick.steps[3].fields=[['示例候选','容器像给应用一个独立的小房间，里面准备好所需环境。']];
   flows.quick.steps[6].fields=[['编辑器','选区已替换'],['服务端','等待保存确认']];
   flows.remember.steps[7].fields=[['来源','用户明确说出的偏好'],['状态','待后台整理']];
+  const actions={
+    attachment:['上传文件','写入文件','登记信息','提交确认','显示附件'],
+    create:['提出要求','识别任务','组织提示','生成计划','检查计划','提取要求','展示卡片','确认开始','启动草稿','组织写作','生成内容','接收草稿','安排生成','保存进度','审阅草稿','确认保存','检查内容','写入笔记','提交确认','打开笔记'],
+    chat:['发送问题','建立运行','记录状态','判断任务','组织提示','生成计划','检查计划','准备回答','申请记忆','读取规则','统一查询','引擎召回','返回事实','转换字段','过滤记忆','组织回答','生成答案','显示答案'],
+    qa:['发送问题','固定计划','进入问答','检索笔记','查询索引','返回片段','整理依据','组织提示','生成答案','检查引用','显示来源'],
+    save:['提交正文','进入保存','读取原文','检查版本','提交修改','提交确认','显示已保存','领取任务','生成向量','接收向量','更新索引'],
+    preview:['请求修改','确定范围','读取原文','组织提示','生成候选','检查候选','保存预览','审阅预览','确认应用','复查原文','提交修改','提交确认','显示正文'],
+    quick:['提交选区','验证归属','组织提示','改写文字','返回候选','审阅候选','替换选区','发起保存','检查保存','提交正文','保存确认','显示已保存'],
+    remember:['提出偏好','识别任务','组织提示','生成计划','检查计划','提交原话','读取规则','保存待办','领取任务','复查来源','请求整理','保存来源','提取事实','返回事实','整理结果','写回状态']
+  };
 
   const icons = {
     ui: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M9 9v11"/>',
@@ -837,7 +835,7 @@
     const nodeMap = new Map(nodes.map(node=>[node.id,node]));
     const reduced = matchMedia('(prefers-reduced-motion:reduce)');
     let scenario = '', selected = -1, activePhase = -1, packetAnimation = null;
-    let edges = [], diagram, svg, positions = new Map();
+    let edges = [], diagram, svg, positions = new Map(), dialog;
     const ns = 'http://www.w3.org/2000/svg';
     const make = (tag,attrs={}) => {
       const el=document.createElementNS(ns,tag);
@@ -845,7 +843,7 @@
       return el;
     };
     for(const [key,flow] of Object.entries(flows)) {
-      if(flow.steps.length!==scenarios[key].steps.length || flow.phases.at(-1).end!==flow.steps.length)throw new Error(`Walkthrough length mismatch: ${key}`);
+      if(flow.steps.length!==scenarios[key].steps.length || actions[key].length!==flow.steps.length || flow.phases.at(-1).end!==flow.steps.length)throw new Error(`Walkthrough length mismatch: ${key}`);
     }
     const getPhase = step => flows[scenario].phases.findIndex(phase=>step<phase.end);
     const stopPacket = () => {if(packetAnimation)cancelAnimationFrame(packetAnimation);packetAnimation=null;};
@@ -857,15 +855,12 @@
       host.dataset.flowExample=flow.example;
       host.innerHTML=`<nav class="flow-phases" aria-label="操作的完整阶段">${flow.phases.map((phase,index)=>`<button type="button" data-flow-phase="${index}"><span class="flow-phase-number">${String(index+1).padStart(2,'0')}</span><span><strong>${esc(phase.title)}</strong><small>第 ${index?flow.phases[index-1].end+1:1}–${phase.end} 步</small></span><span class="flow-phase-arrow" aria-hidden="true">→</span></button>`).join('')}</nav>
         <section class="flow-stage"><header class="flow-stage-heading"><div><h3 data-flow-phase-title></h3><p data-flow-phase-outcome></p></div><span class="flow-stage-count"></span></header>
-          <div class="flow-stage-layout"><div class="flow-graph-column"><div class="flow-diagram"><svg class="flow-wires" role="group" aria-label="模块之间的操作流向"></svg><div class="flow-nodes"></div></div><div class="flow-wire-legend"><i></i>当前流向<span>点箭头编号或步骤查看</span></div><div class="flow-step-list" role="group" aria-label="本阶段的具体步骤"></div></div>
-          <div class="flow-inspector-stack" aria-live="polite" aria-atomic="true"></div></div></section>`;
+          <div class="flow-diagram"><svg class="flow-wires" role="group" aria-label="模块之间的操作流向"></svg><div class="flow-nodes"></div></div><div class="flow-wire-legend"><i></i>当前流向<span>点箭头或模块，查看当前步骤</span></div><div class="flow-step-list" role="group" aria-label="本阶段的具体步骤"></div>
+        </section><dialog class="flow-detail-dialog" aria-labelledby="nf-flow-detail-title"><header><h3 id="nf-flow-detail-title"></h3><button type="button" class="btn btn-ghost" data-flow-close aria-label="关闭步骤详情">关闭</button></header><div data-flow-detail-body></div></dialog>`;
       diagram=host.querySelector('.flow-diagram');svg=host.querySelector('.flow-wires');
-      host.querySelector('.flow-inspector-stack').innerHTML=flow.steps.map((story,index)=>{
-        const step=scenarios[key].steps[index],point=details.traces[key][index],module=nodeMap.get(point.module);
-        return `<article class="flow-inspector" data-flow-story="${index}" aria-hidden="true"><div class="flow-inspector-meta"><span>第 ${index+1} 步</span>${step.waitForUser?'<span class="flow-wait-tag">等待你确认</span>':''}</div><h3>${esc(story.title||step.title)}</h3><div class="flow-transfer"><span>${esc(shortNames[step.from])}</span><span aria-hidden="true">→</span><span>${esc(shortNames[step.to])}</span></div>
-          <div class="flow-data-in"><span class="flow-data-label">收到</span><p>${esc(story.input)}</p></div><div class="flow-treatment"><span class="flow-data-label">这一步</span><p>${esc(story.action)}</p></div><div class="flow-data-out"><span class="flow-data-label">得到</span><p>${esc(story.output)}</p>${story.fields?`<dl>${story.fields.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>`:''}</div>
-          <details class="flow-implementation"><summary>原因、实现与边界</summary>${story.note?`<p>${esc(story.note)}</p>`:''}<p>${esc(module.note)}</p><small>涉及实现</small>${module.sources.map(source=>`<code>${esc(source)}</code>`).join('')}</details></article>`;
-      }).join('');
+      dialog=host.querySelector('dialog');
+      dialog.querySelector('[data-flow-close]').addEventListener('click',()=>dialog.close());
+      dialog.addEventListener('keydown',event=>event.stopPropagation());
       host.querySelector('.flow-phases').hidden=flow.phases.length===1;
       for(const button of host.querySelectorAll('[data-flow-phase]'))button.addEventListener('click',()=>{
         const index=Number(button.dataset.flowPhase);selectStep(index?flow.phases[index-1].end:0);
@@ -886,13 +881,27 @@
       host.querySelector('[data-flow-phase-title]').textContent=phase.title;
       host.querySelector('[data-flow-phase-outcome]').textContent=phase.outcome;
       host.querySelector('.flow-stage-count').textContent=`${ids.length} 个参与模块`;
-      host.querySelector('.flow-nodes').innerHTML=ids.map((id,i)=>`<button type="button" class="flow-node" data-flow-module="${id}" style="--flow-order:${i}">${icon(id)}<span>${esc(shortNames[id])}<small>${esc(id==='storage'?'磁盘 / 挂载卷':id==='db'?'PostgreSQL':nodeMap.get(id).type.split(' · ').at(0))}</small></span></button>`).join('');
+      host.querySelector('.flow-nodes').style.gridAutoRows='';
+      host.querySelector('.flow-nodes').innerHTML=ids.map(id=>{
+        const purpose=id==='storage'?'保存文件本体，按存储位置读取。':details.modules[id].purpose;
+        const stories=flow.steps.map((story,index)=>{
+          if(scenarios[scenario].steps[index].to!==id)return '';
+          const step=scenarios[scenario].steps[index];
+          return `<article class="flow-module-story" data-flow-story="${index}" aria-label="第 ${index+1} 步 ${esc(story.title||step.title)}" aria-hidden="true">
+            <dl class="flow-story-data"><div><dt>收到</dt><dd>${esc(story.input)}</dd></div><div><dt>处理</dt><dd>${esc(story.action)}</dd></div><div class="flow-story-result"><dt>得到</dt><dd>${esc(story.output)}</dd></div></dl>
+            <div class="flow-story-footer">${step.waitForUser?'<span class="flow-wait-tag">等待你确认</span>':'<span></span>'}<button type="button" data-flow-more="${index}">原因与实现 ↗</button></div></article>`;
+        }).join('');
+        const caption=id==='storage'?'磁盘 / 挂载卷':id==='db'?'PostgreSQL':nodeMap.get(id).type.split(' · ').at(0);
+        return `<section class="flow-node" data-flow-module="${id}" aria-label="${esc(shortNames[id])}"><button type="button" class="flow-node-select" data-flow-select="${id}">${icon(id)}<span>${esc(shortNames[id])}<small data-flow-caption data-default="${esc(caption)}">${esc(caption)}</small></span></button><div class="flow-node-body"><p class="flow-node-purpose">${esc(purpose)}</p>${stories}</div></section>`;
+      }).join('');
       host.querySelector('.flow-step-list').innerHTML=steps.map((step,i)=>`<button type="button" data-flow-step="${start+i}" aria-current="false"><span>${start+i+1}</span>${esc(flow.steps[start+i].title||step.title)}${step.waitForUser?'<i aria-label="等待确认">●</i>':''}</button>`).join('');
       for(const button of host.querySelectorAll('[data-flow-step]'))button.addEventListener('click',()=>selectStep(Number(button.dataset.flowStep)));
-      for(const button of host.querySelectorAll('[data-flow-module]'))button.addEventListener('click',()=>{
-        const id=button.dataset.flowModule;
-        const local=steps.findIndex(step=>step.to===id||(id==='storage'&&step.to==='files'));
-        selectStep(start+(local<0?0:local));
+      for(const button of host.querySelectorAll('[data-flow-select]'))button.addEventListener('click',()=>{
+        const id=button.dataset.flowSelect;
+        if(scenarios[scenario].steps[selected]?.to===id){selectStep(selected);return;}
+        let local=steps.findIndex(step=>step.to===id||(id==='storage'&&step.to==='files'));
+        if(local<0)local=steps.findIndex(step=>step.from===id);
+        selectStep(start+local);
       });
       edges=[];
       for(const [i,step] of steps.entries()){
@@ -906,16 +915,16 @@
       const a=positions.get(edge.from),b=positions.get(edge.to);
       const reverse=edges.some(other=>other.from===edge.to&&other.to===edge.from);
       if(edge.from===edge.to){
-        const x=a.x+a.w,y=a.y+a.h/2;
-        return {d:`M ${x} ${y-14} C ${x+34} ${y-45},${x+34} ${y+45},${x} ${y+14}`,label:[x+25,y]};
+        const x1=a.x+a.w*.32,x2=a.x+a.w*.68,y=a.y+a.h,turn=y+62;
+        return {d:`M ${x1} ${y} L ${x1} ${turn} L ${x2} ${turn} L ${x2} ${y}`,label:[a.x+a.w/2,turn]};
       }
-      if(Math.abs(a.y-b.y)<2&&Math.abs(a.x-b.x)<a.w+100){
-        const right=b.x>a.x,shift=reverse?(right?-17:17):0;
+      if(Math.abs(a.y-b.y)<2&&Math.abs(a.x-b.x)<a.w+180){
+        const right=b.x>a.x,shift=reverse?(right?-32:32):0;
         const x1=right?a.x+a.w:a.x,x2=right?b.x:b.x+b.w,y=a.y+a.h/2+shift;
         return {d:`M ${x1} ${y} L ${x2} ${y}`,label:[(x1+x2)/2,y]};
       }
       const down=b.y>a.y;
-      if(Math.abs(a.x-b.x)<2&&Math.abs(a.y-b.y)<a.h+100){
+      if(Math.abs(a.x-b.x)<2&&Math.abs(a.y-b.y)<a.h+150){
         const shift=reverse?(down?-20:20):0,x=a.x+a.w/2+shift,y1=down?a.y+a.h:a.y,y2=down?b.y:b.y+b.h;
         return {d:`M ${x} ${y1} L ${x} ${y2}`,label:[x,(y1+y2)/2]};
       }
@@ -928,8 +937,13 @@
     function draw(animate=false) {
       stopPacket();if(host.hidden||!diagram?.clientWidth)return;
       const focusedStep=svg.contains(document.activeElement)?document.activeElement.dataset.flowEdgeStep:undefined;
-      const columns=diagram.clientWidth>=600?3:2;
-      host.querySelector('.flow-nodes').style.gridTemplateColumns=`repeat(${columns},minmax(0,1fr))`;
+      const columns=diagram.clientWidth>=1000?3:diagram.clientWidth>=620?2:1;
+      const nodeGrid=host.querySelector('.flow-nodes');
+      nodeGrid.style.gridTemplateColumns=`repeat(${columns},minmax(0,1fr))`;
+      nodeGrid.style.gridAutoRows='';
+      const cardHeight=Math.max(220,...[...nodeGrid.children].map(node=>Math.ceil(node.getBoundingClientRect().height)));
+      nodeGrid.style.gridAutoRows=`${cardHeight}px`;
+      diagram.style.setProperty('--flow-card-height',`${cardHeight}px`);
       diagram.style.setProperty('--flow-max-rows',Math.ceil(Number(diagram.style.getPropertyValue('--flow-max-nodes'))/columns));
       const base=diagram.getBoundingClientRect();positions=new Map();
       for(const el of host.querySelectorAll('[data-flow-module]')){
@@ -952,9 +966,9 @@
         hit.addEventListener('click',()=>selectStep(edge.steps.find(step=>step>=selected)??edge.steps[0]));
         svg.append(hit);
         if(edge.component)continue;
-        const badgeWidth=24,badgeHeight=edge.steps.length*23+1;
-        const candidates=[label,...Array.from({length:25},(_,index)=>{
-          const point=path.getPointAtLength(path.getTotalLength()*(index+1)/26);return[point.x,point.y];
+        const badgeWidth=Math.max(...edge.steps.map(step=>actions[scenario][step].length*12+36)),badgeHeight=edge.steps.length*32-4;
+        const candidates=[label,...Array.from({length:60},(_,index)=>{
+          const point=path.getPointAtLength(path.getTotalLength()*(index+1)/61);return[point.x,point.y];
         })];
         const fits=([x,y])=>{
           if(x-badgeWidth/2<2||x+badgeWidth/2>diagram.clientWidth-2||y-badgeHeight/2<2||y+badgeHeight/2>diagram.clientHeight-2)return false;
@@ -967,9 +981,9 @@
       for(const {x,y,width,height,edge,state} of labels){
         const group=make('g',{class:`flow-edge-label flow-edge-label-${state}`,transform:`translate(${x-width/2} ${y-height/2})`});
         edge.steps.forEach((step,index)=>{
-          const badge=make('g',{transform:`translate(0 ${index*23})`,role:'button',tabindex:'0','data-flow-edge-step':step,'aria-label':`第 ${step+1} 步 ${flows[scenario].steps[step].title||scenarios[scenario].steps[step].title}`});
-          badge.append(make('rect',{x:0,y:0,width:24,height:24,rx:7}));
-          const text=make('text',{x:12,y:16,'text-anchor':'middle'});text.textContent=step+1;badge.append(text);
+          const badge=make('g',{transform:`translate(0 ${index*32})`,role:'button',tabindex:'0','data-flow-edge-step':step,'aria-label':`第 ${step+1} 步 ${flows[scenario].steps[step].title||scenarios[scenario].steps[step].title}`});
+          badge.append(make('rect',{x:0,y:0,width,height:28,rx:7}));
+          const text=make('text',{x:width/2,y:18,'text-anchor':'middle'});text.textContent=`${step+1} ${actions[scenario][step]}`;badge.append(text);
           if(step===selected)badge.setAttribute('aria-current','step');
           badge.addEventListener('click',()=>selectStep(step));
           badge.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();selectStep(step);}});
@@ -996,15 +1010,29 @@
     }
     const observer=new ResizeObserver(()=>draw(false));
     host.addEventListener('click',event=>{
-      const summary=event.target.closest('.flow-implementation > summary');
-      if(summary&&!summary.parentElement.open)selectStep(selected);
+      const button=event.target.closest('[data-flow-more]');
+      if(!button)return;
+      const index=Number(button.dataset.flowMore);
+      selectStep(index);
+      const story=flows[scenario].steps[index],point=details.traces[scenario][index],module=nodeMap.get(point.module);
+      dialog.querySelector('h3').textContent=story.title||scenarios[scenario].steps[index].title;
+      dialog.querySelector('[data-flow-detail-body]').innerHTML=`${story.fields?`<dl class="flow-result-fields">${story.fields.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>`:''}${story.note?`<p>${esc(story.note)}</p>`:''}<p>${esc(module.note)}</p><small>涉及实现</small>${module.sources.map(source=>`<code>${esc(source)}</code>`).join('')}`;
+      dialog.showModal();
     });
     root.addEventListener('nf:motionchange',()=>draw(false));
     reduced.addEventListener('change',()=>draw(false));
     document.addEventListener('visibilitychange',()=>{if(document.hidden)stopPacket();});
     return {
+      locate(){
+        const target=host.querySelector('[data-flow-module][data-active="true"]');
+        if(!target)return;
+        const reader=root.querySelector('#nf-map-reader');
+        const offset=getComputedStyle(reader).position==='sticky'?reader.getBoundingClientRect().height+24:20;
+        target.querySelector('.flow-node-select').focus({preventScroll:true});
+        window.scrollTo({top:window.scrollY+target.getBoundingClientRect().top-offset,behavior:reduced.matches||root.dataset.motion==='off'?'instant':'smooth'});
+      },
       update(state){
-        if(state.scenario==='overview'){host.hidden=true;stopPacket();return;}
+        if(state.scenario==='overview'){dialog?.close();host.hidden=true;stopPacket();return;}
         host.hidden=false;
         if(scenario!==state.scenario){if(diagram)observer.unobserve(diagram);build(state.scenario);}
         const phase=getPhase(Math.max(0,state.step));
@@ -1016,8 +1044,11 @@
         }
         const step=scenarios[scenario].steps[selected];
         for(const button of host.querySelectorAll('[data-flow-module]')){
-          const active=button.dataset.flowModule===step?.to||(button.dataset.flowModule==='storage'&&selected===1);
+          const active=button.dataset.flowModule===step?.to;
           button.dataset.active=String(active);
+          button.querySelector('.flow-node-purpose').setAttribute('aria-hidden',String(active));
+          const caption=button.querySelector('[data-flow-caption]');
+          caption.textContent=active?`第 ${selected+1} 步 · ${flows[scenario].steps[selected].title||step.title}`:caption.dataset.default;
         }
         for(const button of host.querySelectorAll('[data-flow-step]'))button.setAttribute('aria-current',String(Number(button.dataset.flowStep)===selected));
         for(const article of host.querySelectorAll('[data-flow-story]')){
@@ -1061,6 +1092,7 @@
       </label>
       <button type="button" class="btn" id="nf-map-prev" disabled>上一步</button>
       <button type="button" class="btn btn-primary" id="nf-map-next" disabled>下一步</button>
+      <button type="button" class="btn btn-ghost" id="nf-map-locate">定位本步 ↓</button>
       <button type="button" class="btn" id="nf-map-play" hidden disabled>开始播放</button>
       <label class="form-label map-auto-speed" for="nf-map-speed" hidden>停留时间
         <select class="form-select" id="nf-map-speed"><option value="4000">每步 4 秒</option><option value="6000" selected>每步 6 秒</option><option value="10000">每步 10 秒</option></select>
@@ -1714,6 +1746,7 @@
     state.playing=true;update();schedule();saveState();
   });
   next.addEventListener('click',()=>{stop();advance();saveState();});
+  root.querySelector('#nf-map-locate').addEventListener('click',()=>{stop();update();flowView.locate();saveState();});
   previous.addEventListener('click',()=>{stop();if(state.step>0)state.step--;update();saveState();});
   mode.addEventListener('change',()=>{stop();state.mode=mode.value==='auto'?'auto':'manual';update();saveState();});
   speed.addEventListener('change',()=>{

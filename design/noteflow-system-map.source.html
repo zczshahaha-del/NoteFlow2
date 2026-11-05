@@ -26,6 +26,7 @@
       </label>
       <button type="button" class="btn" id="nf-map-prev" disabled>上一步</button>
       <button type="button" class="btn btn-primary" id="nf-map-next" disabled>下一步</button>
+      <button type="button" class="btn btn-ghost" id="nf-map-locate">定位本步 ↓</button>
       <button type="button" class="btn" id="nf-map-play" hidden disabled>开始播放</button>
       <label class="form-label map-auto-speed" for="nf-map-speed" hidden>停留时间
         <select class="form-select" id="nf-map-speed"><option value="4000">每步 4 秒</option><option value="6000" selected>每步 6 秒</option><option value="10000">每步 10 秒</option></select>
@@ -739,6 +740,7 @@
     state.playing=true;update();schedule();saveState();
   });
   next.addEventListener('click',()=>{stop();advance();saveState();});
+  root.querySelector('#nf-map-locate').addEventListener('click',()=>{stop();update();flowView.locate();saveState();});
   previous.addEventListener('click',()=>{stop();if(state.step>0)state.step--;update();saveState();});
   mode.addEventListener('change',()=>{stop();state.mode=mode.value==='auto'?'auto':'manual';update();saveState();});
   speed.addEventListener('change',()=>{
