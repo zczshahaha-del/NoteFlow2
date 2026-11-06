@@ -51,6 +51,7 @@ def _env_bool(key: str, default: bool = False) -> bool:
 
 class Config:
     ENVIRONMENT: str = _env("ENVIRONMENT", "development")
+    PROMPT_RELEASE_ROOT: str = _env("PROMPT_RELEASE_ROOT")
     PORT: str = _env("PORT", "8080")
     CORS_ORIGINS: list[str] = [o.strip() for o in _env("CORS_ORIGIN", "http://127.0.0.1:5173,http://localhost:5173").split(",") if o.strip()]
     DB_HOST: str = _env("DB_HOST", "127.0.0.1")
