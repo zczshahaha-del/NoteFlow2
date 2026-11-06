@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import select
 
+from app.services.prompt_templates import render_prompt
 from app.config import cfg
 from app.database import AsyncSessionLocal
 from app.models.db import NoteDraft, NoteDraftSection
@@ -185,10 +186,11 @@ async def _generate_section(draft: NoteDraft, section: NoteDraftSection) -> str:
     from app.services.draft_brief import body_supplement
     generation_request = raw_request + body_supplement(body_instruction)
     provider_context = (
-        "本产品当前可用的模型接口是 DeepSeek 的 OpenAI 兼容 API"
-        f"（base URL: {cfg.DEEPSEEK_BASE_URL}，model: {cfg.DEEPSEEK_MODEL}）。"
-        "凡是需要调用大模型的可运行示例，默认使用这个接口，不要要求用户另备 OpenAI API Key；"
-        "只有在客观比较不同厂商时才提到其他模型。"
+        render_prompt(
+            "drafts/provider-context",
+            base_url=cfg.DEEPSEEK_BASE_URL,
+            model=cfg.DEEPSEEK_MODEL,
+        )
     )
     prompt = build_note_generate_prompt(
         NoteGenerateRequest(
@@ -209,9 +211,7 @@ async def _generate_section(draft: NoteDraft, section: NoteDraftSection) -> str:
             {
                 "role": "system",
                 "content": (
-                    "你是一名中文文档作者。严格遵循当前标题和要求中的文档用途，教案写成教学设计，"
-                    "纪要写成会议记录，教程才按学习路径组织；不把所有文档写成技术课程。"
-                    "保证准确、连贯，不写空泛套话。只返回本节 Markdown 正文。"
+                    render_prompt("drafts/section-system")
                 ),
             },
             {"role": "user", "content": f"{provider_context}\n\n{prompt}"},
@@ -222,26 +222,19 @@ async def _generate_section(draft: NoteDraft, section: NoteDraftSection) -> str:
     if not first_pass.strip():
         raise ValueError("模型返回了空内容")
 
-    review_prompt = f"""
-请作为中文文档编辑，按用户要求的文档用途复核并直接重写下面这一节正文。
-
-文档主题：{draft.topic}
-生成需求（包含最初要求与正文补充，本章单独要求优先）：{generation_request}
-本节目标：{_section_outline(section)}
-运行环境约束：{provider_context}
-
-重点检查事实、逻辑和文档用途是否一致。教案保持教学设计，纪要保持会议记录，不改写成技术课程。
-保留有价值的内容，修掉错误、空话和重复；若原需求包含代码再检查代码。不要编造资料链接或声称已经联网。
-只返回重写后的本节 Markdown，不要解释你的修改过程。
-
-待复核正文：
-{first_pass}
-""".strip()
+    review_prompt = render_prompt(
+        "drafts/review",
+        topic=draft.topic,
+        requirements=generation_request,
+        section_outline=_section_outline(section),
+        provider_context=provider_context,
+        first_pass=first_pass,
+    ).strip()
     reviewed = await _complete_with_retry(
         [
             {
                 "role": "system",
-                "content": "你负责事实复核和文档编辑。遵循当前文档用途与要求，只返回最终 Markdown。",
+                "content": render_prompt("drafts/review-system"),
             },
             {"role": "user", "content": review_prompt},
         ],

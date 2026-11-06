@@ -4,6 +4,7 @@ import json
 import re
 from dataclasses import dataclass
 
+from app.services.prompt_templates import render_prompt
 from app.services.ai import ChatRequest, stream_chat
 from app.services.edit_scope import requests_note, requests_section, requests_rewrite
 
@@ -110,25 +111,12 @@ def _read_edit_result(raw: str, source: str, instruction: str, allow_replacement
 
 
 def _output_contract(allow_replacement: bool) -> str:
-    return """
-默认返回局部替换项 edits，每项 oldText 必须逐字复制当前内容中唯一出现的连续原文（保留 Markdown 和空白），newText 是替换内容。
-未提到的内容不要放进 edits；只要求扩写开头，就只替换开头，不能把整个小节当 oldText。
-插入请复制插入点附近一小段唯一原文作为 oldText，并在 newText 中保留它及新增内容。
-删除局部内容时 newText 为空。所有 oldText 均针对同一份输入，不能重叠。无需修改时 edits 为空数组。
-格式：{"edits":[{"oldText":"精确原文","newText":"修改内容"}],"changeSummary":["具体修改了什么"]}
-""" + ("""
-本次范围允许整体重写（选区、明确整节/全文重写）或单纯插入时，也可返回：
-{"newContent":"该范围的完整新内容","changeSummary":["具体修改了什么"]}
-""" if allow_replacement else "\n本次只允许 edits，不要返回整段 newContent。")
+    suffix = "notes/edit-replacement-contract" if allow_replacement else "notes/edit-patches-only"
+    return render_prompt("notes/edit-output-contract") + render_prompt(suffix)
 
 
 def _selection_contract() -> str:
-    return """
-选区已经由系统准确定位，不需要再查找或复制 oldText。
-仅返回修改后选区的完整文字，不返回 edits，不包含相邻正文、解释或额外标题。
-如果选中的是一句话或标题文字，仅改写这句文字，不生成文章。
-格式：{"newContent":"修改后的选区文字","changeSummary":["具体修改了什么"]}
-"""
+    return render_prompt("notes/edit-selection-contract")
 
 
 async def _generate_validated_result(prompt: str, source: str, instruction: str,
@@ -142,10 +130,7 @@ async def _generate_validated_result(prompt: str, source: str, instruction: str,
                 raise
             # One bounded repair using the same source and scope. Never loosen
             # exact-match checks or switch a local chapter edit to full rewrite.
-            prompt += (
-                "\n上次输出未通过系统校验：" + str(error)
-                + "\n请根据上面的同一份内容重新输出合法 JSON。保持相同修改范围，不要猜测原文，不要输出解释。"
-            )
+            prompt += render_prompt("notes/edit-repair", error=str(error))
     raise AssertionError("unreachable")
 
 
@@ -160,49 +145,27 @@ async def generate_edit_preview(
     memory_context: str = "",
 ) -> EditGenerationResult:
     memory_block = (
-        f"\n长期记忆（只作为默认偏好；用户本次明确要求优先）：\n{memory_context.strip()}\n"
+        render_prompt("notes/edit-memory", memory=memory_context.strip())
         if memory_context and memory_context.strip()
         else ""
     )
     insert_only = target_type == "insert"
     output_contract = (
-        '本次是插入：当前修改范围仅用于确定插入位置，不要重复输出这些原文。'
-        '只返回新增内容：{"newContent":"要插入的新 Markdown","changeSummary":["新增了什么"]}'
+        render_prompt("notes/edit-insert-contract")
         if insert_only else _selection_contract() if target_type == "selection"
         else _output_contract(_allow_replacement(target_type, instruction))
     )
-    prompt = f"""你正在为 NoteFlow 生成正式笔记的 AI 修改预览。
-
-重要规则：
-1. 只能修改“当前修改范围”，不要扩展到其他章节。
-2. 不要直接写回正式笔记，只返回预览结果。
-3. 保持 Markdown 格式、标题层级和原文风格。
-4. 如果 targetType 是 selection，返回修改后的选区内容，不要添加额外标题。
-5. 修改范围是允许操作的边界，不是要求重写全部。只修改用户要求涉及的内容，保留其他段落、代码和子标题；明确要求整节重写时才可重写完整小节。
-6. 如果用户要求删除，newContent 可以为空字符串。
-7. 只返回 JSON，不要包裹代码块，不要输出解释文字。
-
-当前笔记标题：
-{note_title}
-
-targetType：
-{target_type}
-
-是否保持原风格：
-{str(keep_style).lower()}
-
-用户修改要求：
-{instruction}
-{memory_block}
-
-只读参考上下文（不能作为修改目标）：
-{neighbor_context or "无"}
-
-当前修改范围：
-{target_content}
-
-{output_contract}
-"""
+    prompt = render_prompt(
+        "notes/rewrite",
+        note_title=note_title,
+        target_type=target_type,
+        keep_style=str(keep_style).lower(),
+        instruction=instruction,
+        memory_block=memory_block,
+        neighbor_context=neighbor_context or '无',
+        target_content=target_content,
+        output_contract=output_contract,
+    )
     # Insertion stores only added text; apply appends it after the untouched
     # anchor. Feeding the anchor through replacements would duplicate it.
     return await _generate_validated_result(
@@ -221,37 +184,23 @@ async def revise_edit_preview(
     memory_context: str = "",
 ) -> EditGenerationResult:
     memory_block = (
-        f"\n长期记忆（只作为默认偏好；用户本次明确要求优先）：\n{memory_context.strip()}\n"
+        render_prompt("notes/edit-memory", memory=memory_context.strip())
         if memory_context and memory_context.strip()
         else ""
     )
-    prompt = f"""你正在继续调整一个 NoteFlow AI 修改预览。
-
-重要规则：
-1. 基于“当前预览内容”继续调整，不要重新从整篇笔记开始。
-2. 仍然只修改目标范围，不要输出整篇文章主标题。
-3. 保持 Markdown 格式。
-4. 仅调整本次要求涉及的内容。当前预览中已有的手动修改、之前添加的例子和其他段落默认保留；只有本次明确要求替换时才改动。
-5. 只返回 JSON，不要包裹代码块，不要输出解释文字。
-
-当前笔记标题：
-{note_title}
-
-targetType：
-{target_type}
-
-原始内容：
-{original_content}
-
-当前预览内容：
-{current_preview}
-
-用户继续调整要求：
-{instruction}
-{memory_block}
-
-{_selection_contract() if target_type == "selection" else _output_contract(_allow_replacement(target_type, instruction))}
-"""
+    prompt = render_prompt(
+        "notes/refine-preview",
+        note_title=note_title,
+        target_type=target_type,
+        original_content=original_content,
+        current_preview=current_preview,
+        instruction=instruction,
+        memory_block=memory_block,
+        output_contract=(
+            _selection_contract() if target_type == "selection"
+            else _output_contract(_allow_replacement(target_type, instruction))
+        ),
+    )
     return await _generate_validated_result(
         prompt, current_preview, instruction, _allow_replacement(target_type, instruction),
         target_type == "selection",

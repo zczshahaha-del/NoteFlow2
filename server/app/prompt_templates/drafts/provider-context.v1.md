@@ -1,0 +1,1 @@
+本产品当前可用的模型接口是 DeepSeek 的 OpenAI 兼容 API（base URL: {{base_url}}，model: {{model}}）。凡是需要调用大模型的可运行示例，默认使用这个接口，不要要求用户另备 OpenAI API Key；只有在客观比较不同厂商时才提到其他模型。

@@ -8,6 +8,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.services.prompt_templates import render_prompt
 from app.services.ai import ChatMessage, complete_chat
 
 logger = logging.getLogger(__name__)
@@ -433,36 +434,16 @@ def _planner_messages(
     page_state: dict[str, Any] | None,
 ) -> list[dict[str, str]]:
     state = page_state or {}
-    system = f"""
-你是 NoteFlow 的 TurnPlanner。你只生成本轮计划，不回答用户问题。
-
-语义意图只能由你判断：
-- general_chat：普通聊天、知识问答、总结、解释、翻译、基于当前笔记回答。
-- note_create：创建新笔记。
-- note_edit：修改当前笔记或选中文字。
-- memory：明确读取、列出、写入、更新、删除或关闭用户记忆。
-- unknown：确实无法判断用户要做什么。
-
-硬约束：
-1. chat 模式禁止自行使用 knowledge_base；ask_notes 由后端硬路由，不会进入本提示。
-2. clarify 不是意图；缺字段由 Validator 处理。
-3. 当前笔记用 current_note，选中文字用 selected_text，用户记忆用 user_memory。
-4. 用户查询姓名、年龄、身高等个人信息属于 memory/read。
-5. 用户自然陈述稳定个人信息但没有命令管理记忆时，主意图仍按本轮主要任务判断；MemoryWriter 独立处理写入。
-6. memory_scope 表示业务作用域，只能是 global、note_generation、note_editing、note_search、job_search、learning；不能写 semantic。
-7. memory_layers 表示记忆层，只能包含 semantic、episodic。
-8. memory_key 使用规范键，例如 identity.name、profile.age、profile.height、lifestyle.sleep_schedule。
-9. memory_query 是检索语句；memory_types 可在无法给出精确 memory_key 时辅助检索。
-创建文档时：topic 是简洁完整的文档标题，保留作品名称内部的书名号及用户要求的文档形式，例如「《两小儿辩日》教案」，不要只返回课文名。requirements 只整理用户明确提出的写作要求，不重复整句创建命令；未指定年级、课时等不自行补造，没额外要求可为空。教案、纪要、教程等按用户用途理解，不统一改成技术课程。
-10. 只返回符合以下 JSON Schema 的 JSON 对象，不要 markdown：
-{_planner_schema_text()}
-""".strip()
+    system = render_prompt("planner/plan-system", schema=_planner_schema_text()).strip()
     user = (
-        f"mode：{_mode(mode).value}\n"
-        f"current_note_id：{state.get('currentNoteId') or '无'}\n"
-        f"selected_text：{_clean(state.get('selectedText'), 320) or '无'}\n"
-        f"最近聊天：\n{_history_text(history)}\n\n"
-        f"当前消息：\n{question.strip()}"
+        render_prompt(
+            "planner/plan-input",
+            mode=_mode(mode).value,
+            note_id=state.get('currentNoteId') or '无',
+            selection=_clean(state.get('selectedText'), 320) or '无',
+            history=_history_text(history),
+            question=question.strip(),
+        )
     )
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
@@ -479,9 +460,7 @@ def _repair_messages(
         {
             "role": "user",
             "content": (
-                "上一份 JSON 未通过协议校验。"
-                f"错误类型：{type(error).__name__}。"
-                "请严格按照 JSON Schema 修复，只返回完整 JSON 对象。"
+                render_prompt("planner/repair", error_type=type(error).__name__)
             ),
         },
     ]
@@ -593,25 +572,18 @@ def _resume_planner_messages(
     page_state: dict[str, Any] | None,
 ) -> list[dict[str, str]]:
     state = page_state or {}
-    system = f"""
-你是 NoteFlow 的 TurnPlanner。用户正在回答上一轮澄清问题。
-把补充信息合并进原 TurnPlan，不回答用户，也不执行任务。
-
-硬约束：
-1. 保留原 primary_intent，除非原计划是 unknown。
-2. 只补充用户真正提供的字段，不能猜测。
-3. topic 必须是语义主题，不包含“生成、写一份、帮我、创建”等动作词。
-4. 只返回符合以下 JSON Schema 的 JSON 对象：
-{_planner_schema_text()}
-""".strip()
+    system = render_prompt("planner/resume-system", schema=_planner_schema_text()).strip()
     user = (
-        f"current_note_id：{state.get('currentNoteId') or '无'}\n"
-        f"selected_text：{_clean(state.get('selectedText'), 320) or '无'}\n"
-        f"最近聊天：\n{_history_text(history)}\n\n"
-        f"原始用户消息：{_clean(original_question, 600)}\n"
-        f"原 TurnPlan：{json.dumps(plan.model_dump(mode='json'), ensure_ascii=False)}\n"
-        f"本次缺失字段：{json.dumps(plan.missing_fields, ensure_ascii=False)}\n"
-        f"用户补充：{_clean(answer, 600)}"
+        render_prompt(
+            "planner/resume-input",
+            note_id=state.get('currentNoteId') or '无',
+            selection=_clean(state.get('selectedText'), 320) or '无',
+            history=_history_text(history),
+            question=_clean(original_question, 600),
+            plan=json.dumps(plan.model_dump(mode='json'), ensure_ascii=False),
+            missing_fields=json.dumps(plan.missing_fields, ensure_ascii=False),
+            answer=_clean(answer, 600),
+        )
     )
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 

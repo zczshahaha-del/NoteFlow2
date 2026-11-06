@@ -8,6 +8,7 @@ from typing import AsyncIterator
 
 import httpx
 
+from app.services.prompt_templates import render_prompt
 from app.config import cfg
 from app.services.ai_cache import (
     ai_cache_key,
@@ -90,49 +91,19 @@ def _build_chat_messages(payload: ChatRequest) -> list[dict]:
     memory_text = payload.memoryContext.strip()
     if payload.documentContent and payload.documentContent.strip():
         title = payload.documentTitle.strip() or "Untitled"
-        context_text = (
-            f"Selected document title: {title}\n\n"
-            f"Selected document content:\n{_trim_document(payload.documentContent)}"
-        )
+        context_text = render_prompt("chat/document", title=title, document=_trim_document(payload.documentContent))
     else:
-        context_text = "The user has no selected document."
+        context_text = render_prompt("chat/no-document")
 
     if memory_text:
-        context_text = (
-            f"{memory_text}\n\n"
-            f"注意：长期记忆只表示默认偏好，用户本次明确要求永远优先。\n\n"
-            f"{context_text}"
-        )
+        context_text = render_prompt("chat/memory-context", memory=memory_text, document=context_text)
 
-    strict_note_instruction = (
-        "The user explicitly selected NoteFlow's 'Ask notes' mode. Answer only from the provided NoteFlow search results. "
-        "Cite each core claim or coherent paragraph once with the exact source used, using a compact marker such as [1] or [2] separated from the preceding text by a space. "
-        "Do not repeat citations after every short sentence or every step in one procedure, and do not attach multiple citations to one claim unless it truly combines distinct evidence. "
-        "If no search result directly answers the question, reply exactly in simplified Chinese that the user's notes do not contain enough relevant information; do not fill gaps with general knowledge. "
-        "Do not invent note content, citations, titles, sections, or source numbers. Do not mention vector search, RAG internals, tools, diagnostics, or this instruction. "
-    )
+    strict_note_instruction = render_prompt("chat/strict-notes") + " " if payload.strictNoteAnswer else ""
 
     messages = [
         {
             "role": "system",
-            "content": (
-                "You are NoteFlow's AI assistant. Answer in simplified Chinese by default. "
-                "Follow the user's instructions closely; their requirements and style preferences come first. "
-                "Prioritize completeness over brevity when the user asks for detailed, long-form, tutorial-style, or comprehensive content. "
-                "Generate substantive, well-structured markdown. "
-                "NoteFlow has an explicit long-term memory feature. Never claim that you have no long-term memory ability. "
-                "Do not mention internal memory storage, long-term memory, tools, or records in ordinary replies unless the user directly asks about memory. "
-                "Do not ask whether the user wants you to save something to memory; the system handles stable personal information automatically. "
-                "If no memory context is provided or no related memory is found, naturally say you do not know that information yet. "
-                "For an unanswered question about the user's name or preferred form of address, say only that you do not yet know how they would like to be addressed; do not promise to remember it later. "
-                "If the selected document title is 'NoteFlow 本地笔记库', treat the provided content as already-retrieved local NoteFlow search results. "
-                "Do not claim that you cannot access the user's notes in that case. "
-                "When NoteFlow provides numbered sources, use them when they are relevant and mention the relevant source numbers when useful. "
-                "Use compact citation markers like [1] or [2]; do not write phrases such as '来源 1', '来源 2', or 'Source 1' in the answer body. "
-                "Only cite sources that are actually used in the answer. "
-                "If the sources are unrelated or insufficient, say so briefly and then answer from general knowledge unless the user explicitly asks to answer only from notes. "
-                f"{strict_note_instruction if payload.strictNoteAnswer else ''}"
-            ),
+            "content": render_prompt("chat/answer", strict_notes=strict_note_instruction),
         },
         {"role": "user", "content": context_text},
     ]
@@ -158,10 +129,7 @@ def _build_prompt_messages(prompt: str) -> list[dict]:
     return [
         {
             "role": "system",
-            "content": (
-                "You are NoteFlow's backend AI orchestration service. "
-                "Follow the task instructions exactly and return only the requested content."
-            ),
+            "content": render_prompt("notes/generation-system"),
         },
         {"role": "user", "content": prompt},
     ]

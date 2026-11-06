@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import hashlib
 from sqlalchemy import text
+from app.services.prompt_templates import render_prompt
 from app.services.user_settings import get_or_create_user_settings
 
 DEFAULT_MISSION = (
-    "只记录当前用户明确表达的长期偏好、个人背景、持续学习目标。"
-    "保留用户的原意和中文表达，不推测缺失信息。忽略临时修改要求、任务状态、"
-    "代码、引用文章、举例和他人信息。项目专属要求不升级为全局偏好。"
-    "不记录密码、验证码、密钥等敏感信息。遇到矛盾事实不要同时视为确定事实。"
+    render_prompt("memory/default-mission")
 )
 
 

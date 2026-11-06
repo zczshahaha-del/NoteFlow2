@@ -1,0 +1,1 @@
+上一份 JSON 未通过协议校验。错误类型：{{error_type}}。请严格按照 JSON Schema 修复，只返回完整 JSON 对象。
