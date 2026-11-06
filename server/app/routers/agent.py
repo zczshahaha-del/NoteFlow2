@@ -16,7 +16,7 @@ from app.rag.service import RagRequest, configured_rag_service
 from app.repositories.runs import RunRepository
 from app.services.ai import ChatMessage, ChatRequest, stream_chat
 from app.services.context_planner import ContextPlan
-from app.memory.planning import memory_read_plan_from_turn_plan
+from app.memory.planning import broad_memory_read_plan, memory_read_plan_from_turn_plan
 from app.services.runtime_errors import public_error_message
 from app.services.run_service import RunService
 from app.agent.sse import encode_event
@@ -1307,7 +1307,12 @@ async def chat(
                 draft_memory_context = ""
                 draft_memories: list[dict] = []
                 if memory_enabled and context_plan.context_plan.get("read_user_memory"):
-                    _, draft_memories = await _query_memories_for_agent(user.id, payload.question, payload.history)
+                    _, draft_memories = await _query_memories_for_agent(
+                        user.id, payload.question, payload.history,
+                        read_plan=broad_memory_read_plan(
+                            payload.question, scopes=["note_generation", "learning"], reason="draft_context",
+                        ),
+                    )
                     draft_memory_context = _memory_context_from_records(draft_memories)
                 answer = (
                     f"我会为你整理{draft_seed or '这份笔记'}的大纲。"

@@ -103,28 +103,32 @@ class Mem0Provider:
         limit: int = 8,
         metadata_filters: dict[str, str] | None = None,
     ) -> list[MemoryIndexHit]:
-        filters: dict[str, Any] = {"user_id": user_id}
-        if metadata_filters:
-            filters.update(
-                {
-                    str(key): str(value)
-                    for key, value in metadata_filters.items()
-                    if str(key).strip() and str(value).strip()
-                }
-            )
-        result = await self._call(
-            lambda: self._get_client().search(
-                query,
+        filters = {
+            key: value for key, value in (metadata_filters or {}).items()
+            if key in {"noteflow_memory_id", "canonical_key"} and value.strip()
+        }
+        filters["user_id"] = user_id
+
+        def search_projection():
+            client = self._get_client()
+            # Mem0 2.0.0's hybrid scorer treats pgvector cosine distance as
+            # similarity and can discard exact matches. Use the store's
+            # nearest-first order for this already extracted projection.
+            vector = client.embedding_model.embed(query, "search")
+            return client.vector_store.search(
+                query=query, vectors=vector,
                 top_k=max(1, min(limit, 20)),
                 filters=filters,
             )
-        )
-        hits = []
-        for row in _results(result):
-            metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
-            memory_id = str(metadata.get("noteflow_memory_id") or row.get("noteflow_memory_id") or row.get("noteflowMemoryId") or "")
-            hits.append(MemoryIndexHit(memory_id=memory_id, external_id=str(row.get("id") or "")))
-        return hits
+
+        rows = await self._call(search_projection)
+        return [
+            MemoryIndexHit(
+                memory_id=str(row.payload.get("noteflow_memory_id") or row.payload.get("noteflowMemoryId") or ""),
+                external_id=str(row.id),
+            )
+            for row in rows if isinstance(row.payload, dict)
+        ]
 
     async def add(self, *, user_id: str, content: str, metadata: dict | None = None) -> MemoryIndexWrite:
         result = await self._call(

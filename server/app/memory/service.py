@@ -10,7 +10,6 @@ from app.memory.engine import MemoryRecord
 from app.repositories.memories import MemoryRepository
 from app.memory.domain import (
     add_memory_event,
-    build_memory_context,
     clamp_importance,
     find_memories,
     mark_memories_used,
@@ -127,11 +126,12 @@ class MemoryService:
             return memory
 
     async def update(self, user_id: str, memory_id: str, payload) -> UserMemory | MemoryRecord:
-        from app.memory.control import uses_engine
+        from app.memory.control import control, lock_owner, save_control, uses_engine
         if await uses_engine(user_id):
             from app.memory.gateway import MemoryGateway
             return await MemoryGateway().curated(user_id, memory_id, content=payload.content, status=payload.status)
         async with AsyncSessionLocal() as session:
+            await lock_owner(session, user_id)
             memory = await MemoryRepository(session).get(user_id, memory_id)
             if memory is None:
                 raise LookupError("memory not found")
@@ -146,6 +146,8 @@ class MemoryService:
                 if not decision.allowed:
                     raise ValueError(f"memory rejected by safety policy: {decision.reason}")
                 memory.content = content[:2000]
+                settings, state = await control(session, user_id)
+                save_control(settings, {**state, "reviewNewFacts": True})
             if payload.importance is not None:
                 memory.importance = clamp_importance(payload.importance)
             if payload.confidence is not None:
@@ -216,5 +218,8 @@ class MemoryService:
             return memory
 
     async def context(self, user_id: str, *, query: str, scopes: list[str]) -> str:
-        async with AsyncSessionLocal() as session:
-            return await build_memory_context(session, user_id, query=query, scopes=scopes)
+        from app.memory.context import MemoryContextService
+
+        return await MemoryContextService().context(
+            user_id=user_id, requested=True, query=query, scopes=scopes, memory_types=[],
+        )

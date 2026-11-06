@@ -22,10 +22,9 @@ from app.repositories.edits import EditRepository
 from app.repositories.index_jobs import IndexJobRepository
 from app.repositories.notes import NoteRepository
 from app.services.markdown_index import HEADING_RE, index_note_now
-from app.memory.domain import build_memory_context
+from app.memory.context import MemoryContextService
 from app.services.note_edit import EditGenerationError, generate_edit_preview, revise_edit_preview
 from app.services.edit_scope import infer_edit_target, positive_instruction, requests_current_section, requests_section, requests_note
-from app.services.user_settings import is_user_memory_enabled
 from app.agent.write_runtime import initialize_edit_graph, resume_edit_graph
 from app.utils import random_id
 
@@ -76,10 +75,10 @@ async def rewrite_selection(payload: QuickSelectionPayload, user: CurrentUser = 
         raise HTTPException(status_code=400, detail="请先选中要修改的文字。")
     async with AsyncSessionLocal() as session:
         note = await _get_note(session, user.id, payload.noteId)
-        memory_context = ""
-        if await _effective_memory_enabled(session, user.id, payload.memoryEnabled):
-            memory_context = await build_memory_context(session, user.id, query=payload.instruction,
-                scopes=["note_editing"], memory_types=["writing_style", "preference", "constraint"])
+        memory_context = await MemoryContextService().context(
+            user_id=user.id, requested=payload.memoryEnabled, query=payload.instruction,
+            scopes=["note_editing"], memory_types=["writing_style", "preference", "constraint"],
+        )
         instruction = payload.instruction.strip() or "润色选中文字：保留原意，改善表达，不扩写，不添加事实。"
         try:
             if payload.currentDraft is None:
@@ -105,12 +104,6 @@ class RestorePreviewRevisionPayload(BaseModel):
 
 def _dt(value: Optional[datetime]) -> Optional[str]:
     return value.isoformat() if value else None
-
-
-async def _effective_memory_enabled(session, user_id: str, requested: bool) -> bool:
-    if not requested:
-        return False
-    return await is_user_memory_enabled(session, user_id)
 
 
 def _note_out(note: Note) -> dict:
@@ -689,15 +682,12 @@ async def create_edit_preview(
             new_content = ""
             change_summary = ["删除目标范围内容"]
         else:
-            memory_context = ""
-            if await _effective_memory_enabled(session, user.id, payload.memoryEnabled):
-                memory_context = await build_memory_context(
-                    session,
-                    user.id,
-                    query=payload.instruction,
-                    scopes=["note_editing", "note_generation", "learning"],
-                    memory_types=["identity", "personal_info", "interest", "preference", "writing_style", "constraint", "workflow"],
-                )
+            memory_context = await MemoryContextService().context(
+                user_id=user.id, requested=payload.memoryEnabled,
+                query=payload.instruction,
+                scopes=["note_editing", "note_generation", "learning"],
+                memory_types=["identity", "personal_info", "interest", "preference", "writing_style", "constraint", "workflow"],
+            )
             offset = (note.content or "").find(old_content)
             neighbors = target_label
             if target_type != "note" and offset >= 0:
@@ -866,15 +856,12 @@ async def revise_preview(
             raise HTTPException(status_code=409, detail=f"这次要求涉及{target}，当前修改稿已保留。请先应用或放弃当前修改，再从正文选择新的范围。")
         expected_updated_at = preview.updated_at
         original_content = _resolve_selected_content(note.content or "", preview.old_content or "")
-        memory_context = ""
-        if await _effective_memory_enabled(session, user.id, payload.memoryEnabled):
-            memory_context = await build_memory_context(
-                session,
-                user.id,
-                query=payload.instruction,
-                scopes=["note_editing", "note_generation", "learning"],
-                memory_types=["identity", "personal_info", "interest", "preference", "writing_style", "constraint", "workflow"],
-            )
+        memory_context = await MemoryContextService().context(
+            user_id=user.id, requested=payload.memoryEnabled,
+            query=payload.instruction,
+            scopes=["note_editing", "note_generation", "learning"],
+            memory_types=["identity", "personal_info", "interest", "preference", "writing_style", "constraint", "workflow"],
+        )
         try:
             result = await revise_edit_preview(
                 note_title=note.title,

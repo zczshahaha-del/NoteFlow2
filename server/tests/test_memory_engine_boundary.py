@@ -22,8 +22,9 @@ from app.memory.engine import (
     MemoryGraphEdge, MemoryGraphNode, MemoryUnavailable,
 )
 from app.memory.gateway import MemoryGateway
+from app.memory.portability import stage_hindsight_memories
 from app.memory.service import MemoryService
-from app.models.db import Base, IntegrationOutbox, MemorySource, User, UserSettings
+from app.models.db import Base, IntegrationOutbox, MemorySource, User, UserMemory, UserSettings
 from app.providers.memory_registry import MEMORY_ENGINES, configured_engine
 from app.routers import memory_console
 
@@ -108,7 +109,8 @@ class MemoryEngineBoundaryTest(unittest.IsolatedAsyncioTestCase):
         self.sessions = async_sessionmaker(self.database, expire_on_commit=False)
         async with self.database.begin() as connection:
             await connection.run_sync(lambda conn: Base.metadata.create_all(conn, tables=[
-                User.__table__, UserSettings.__table__, MemorySource.__table__, IntegrationOutbox.__table__]))
+                User.__table__, UserSettings.__table__, MemorySource.__table__, IntegrationOutbox.__table__,
+                UserMemory.__table__]))
         async with self.sessions() as session:
             session.add_all([User(id=owner, email=owner + '@local.test', display_name='Synthetic') for owner in ('a', 'b')])
             await session.flush()
@@ -143,6 +145,50 @@ class MemoryEngineBoundaryTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn('图示', context)
         self.assertEqual(get_type_hints(MemoryEngine.list)['return'], list[MemoryFact])
         self.assertEqual({field.name for field in fields(MemoryChanges)}, {'content', 'status', 'reason'})
+
+    async def test_transfer_preview_is_read_only_and_keeps_published_lifecycle(self):
+        source_id = await self.publish("a", "用户偏好小例子。")
+        await self.publish("b", "用户正在学习法语。")
+        async with self.sessions.begin() as session:
+            source = await session.get(MemorySource, source_id)
+            source.engine = "hindsight"
+            source.metadata_json = {"pendingIds": ["review"], "hiddenIds": ["duplicate"]}
+        initial = self.engine.records["a", "fact-1"]
+        self.engine.records.update({
+            ("a", "paused"): {**initial, "body": "用户喜欢长视频。", "enabled": False},
+            ("a", "review"): {**initial, "body": "用户开始学习数据库。", "enabled": False},
+            ("a", "duplicate"): {**initial, "enabled": False},
+        })
+        self.engine.name = "hindsight"
+
+        async def stage(fingerprint=None):
+            async with self.sessions.begin() as session:
+                return await stage_hindsight_memories(
+                    session, user_id="a", engine=self.engine, expected_fingerprint=fingerprint,
+                )
+
+        with patch("app.memory.portability.lock_owner", AsyncMock()):
+            with self.assertRaisesRegex(ValueError, "outstanding"):
+                await stage()
+            async with self.sessions.begin() as session:
+                job = await session.scalar(select(IntegrationOutbox).where(IntegrationOutbox.aggregate_id == source_id))
+                job.status = "processed"
+            preview = await stage()
+            self.assertEqual((preview.active, preview.archived, preview.pending), (1, 1, 1))
+            self.assertEqual(preview.ignored_facts, 1)
+            with self.assertRaisesRegex(ValueError, "preview"):
+                await stage("outdated")
+            async with self.sessions() as session:
+                self.assertEqual(list(await session.scalars(select(UserMemory))), [])
+            self.assertEqual((await stage(preview.fingerprint)).staged, 3)
+            replay = await stage(preview.fingerprint)
+            self.assertEqual((replay.staged, replay.already_staged), (0, 3))
+            async with self.sessions.begin() as session:
+                memories = list(await session.scalars(select(UserMemory)))
+                self.assertTrue(all(row.user_id == "a" and row.source_ref == source_id for row in memories))
+                next(row for row in memories if row.status == "active").content = "用户现在偏好图示。"
+            with self.assertRaisesRegex(ValueError, "Existing local records"):
+                await stage(preview.fingerprint)
 
     async def test_account_source_and_live_curation_filters_do_not_depend_on_native_state(self):
         await self.publish('a', '我喜欢简短例子。')

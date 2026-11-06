@@ -80,6 +80,7 @@ class MemoryRecord:
     expires_at: datetime | None = None
     access_count: int = 0
     provider: str = ""
+    value: str | None = None
 
 
 class MemoryEngine(Protocol):

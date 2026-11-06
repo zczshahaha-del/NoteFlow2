@@ -33,14 +33,18 @@ async def enqueue_memory_sync(
 async def dispatch_outbox(session: AsyncSession, item: IntegrationOutbox) -> None:
     if item.topic == "memory.retain.requested":
         from app.memory.gateway import MemoryGateway
-        await MemoryGateway().process(session, item)
+        from app.models.db import MemorySource
+        from app.providers.memory_registry import configured_engine
+        source = await session.get(MemorySource, item.aggregate_id)
+        if source and source.user_id == item.user_id:
+            await MemoryGateway(configured_engine(source.engine)).process(session, item)
         return
     if item.topic == "memory.source.delete":
         from app.providers.memory_registry import configured_engine
         from app.models.db import MemorySource
         source = await session.get(MemorySource, item.aggregate_id)
         if source and source.user_id == item.user_id and source.status == "deleted":
-            await configured_engine().delete_source(item.user_id, source.id)
+            await configured_engine(source.engine).delete_source(item.user_id, source.id)
         return
     if item.topic == "memory.sync.requested":
         if not item.user_id:
@@ -57,6 +61,8 @@ async def dispatch_outbox(session: AsyncSession, item: IntegrationOutbox) -> Non
         if memory is None:
             return
         provider = legacy_memory_index()
+        if provider is None:
+            return
         operation = str((item.payload or {}).get("operation") or "upsert")
         started = time.perf_counter()
         old_external_id = memory.external_id if memory.external_provider == provider.name else None

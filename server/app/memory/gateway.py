@@ -27,6 +27,7 @@ def record(fact: MemoryFact, source, *, provider: str):
         source=metadata.get("source", "user_message"), scope=metadata.get("scope", "global"),
         created_at=source.created_at, updated_at=fact.updated_at or source.updated_at,
         tags=list(fact.tags), canonical_key=metadata.get("canonicalKey", ""), provider=provider,
+        memory_layer=metadata.get("layer", "semantic"),
     )
 
 
@@ -36,7 +37,9 @@ def public_record(memory):
     names = {"memory_type": "memoryType", "source_ref": "sourceRef", "memory_layer": "layer",
         "canonical_key": "canonicalKey", "created_at": "createdAt", "updated_at": "updatedAt",
         "deleted_at": "deletedAt", "last_used_at": "lastUsedAt", "access_count": "accessCount"}
-    return {names.get(k, k): v.isoformat() if isinstance(v, datetime) else v for k, v in item.items() if k != "expires_at"} | {"value": memory.content}
+    return {names.get(k, k): v.isoformat() if isinstance(v, datetime) else v for k, v in item.items() if k != "expires_at"} | {
+        "value": memory.value if memory.value is not None else memory.content,
+    }
 
 
 class MemoryGateway:
@@ -78,7 +81,8 @@ class MemoryGateway:
         return {s.id: s for s in (await session.scalars(select(MemorySource).where(
             MemorySource.user_id == user_id, MemorySource.status == "stored"))).all()}
 
-    async def read(self, user_id, *, query=None, memory_types=(), scopes=(), limit=50, include_archived=True):
+    async def read(self, user_id, *, query=None, memory_types=(), scopes=(), canonical_keys=(), layers=(),
+                   limit=50, include_archived=True):
         async with AsyncSessionLocal() as session:
             settings, initial_state = await control(session, user_id)
             if query is not None and not settings.memory_enabled:
@@ -106,9 +110,19 @@ class MemoryGateway:
                     continue
                 if (query is not None or not include_archived) and item.status != "active":
                     continue
-                if memory_types and item.memory_type not in memory_types:
+                metadata = source.metadata_json or {}
+                # Older Hindsight facts have no NoteFlow classification. Keep
+                # provider relevance for those records while enforcing known fields.
+                if memory_types and (query is None or metadata.get("memoryType")) and item.memory_type not in memory_types:
                     continue
                 if scopes and item.scope not in {"global", *scopes}:
+                    continue
+                if canonical_keys and item.canonical_key and not any(
+                    item.canonical_key == key or item.canonical_key.startswith(key + ".")
+                    or key.startswith(item.canonical_key + ".") for key in canonical_keys
+                ):
+                    continue
+                if layers and metadata.get("layer") and metadata["layer"] not in layers:
                     continue
                 result.append(item)
             live_sources = await self.sources(session, user_id)
@@ -138,6 +152,7 @@ class MemoryGateway:
             if existing:
                 return None if existing.status in {"deleted", "skipped"} else existing.id
             source = MemorySource(id=random_id(), user_id=user_id, source_key=source_key,
+                engine=self.engine.name,
                 generation=state.get("generation", 0), rule_version=state.get("ruleVersion", 1),
                 metadata_json=metadata or {}, status="queued")
             session.add(source)

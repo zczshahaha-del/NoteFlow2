@@ -9,7 +9,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.db import UserMemory, UserMemoryEvent
-from app.memory.policy import classify_memory_content, filter_eligible_memories
+from app.memory.policy import classify_memory_content
 from app.utils import random_id
 
 MEMORY_TYPES = {
@@ -643,6 +643,7 @@ async def find_memories(
     scopes: Iterable[str] | None = None,
     include_deleted: bool = False,
     limit: int = 20,
+    refresh: bool = False,
 ) -> list[UserMemory]:
     conditions = [UserMemory.user_id == user_id]
     if not include_deleted:
@@ -657,7 +658,10 @@ async def find_memories(
     if normalized_scopes:
         conditions.append(or_(UserMemory.scope.in_(normalized_scopes), UserMemory.scope == "global"))
 
-    result = await session.execute(select(UserMemory).where(and_(*conditions)))
+    statement = select(UserMemory).where(and_(*conditions))
+    if refresh:
+        statement = statement.execution_options(populate_existing=True)
+    result = await session.execute(statement)
     memories = list(result.scalars().all())
 
     normalized_layers = [
@@ -704,39 +708,3 @@ async def mark_memories_used(
             new_content=memory.content,
             reason=reason,
         )
-
-
-async def build_memory_context(
-    session: AsyncSession,
-    user_id: str,
-    *,
-    query: str = "",
-    scopes: Iterable[str] | None = None,
-    memory_types: Iterable[str] | None = None,
-    limit: int = 6,
-) -> str:
-    from app.memory.control import uses_engine
-    if await uses_engine(user_id):
-        from app.memory.context import MemoryContextService
-        return await MemoryContextService().context(user_id=user_id, requested=True, query=query,
-            scopes=list(scopes or []), memory_types=list(memory_types or []))
-    memories = await find_memories(
-        session,
-        user_id,
-        query=query,
-        memory_types=memory_types,
-        scopes=scopes,
-        limit=limit,
-    )
-    active = [memory for memory in memories if memory.status == "active"]
-    active = filter_eligible_memories(active, limit=limit)
-    if not active:
-        return ""
-    lines = [
-        "长期记忆（只作为默认偏好；用户当前明确要求优先级最高）：",
-    ]
-    for index, memory in enumerate(active, start=1):
-        lines.append(
-            f"{index}. [{memory.memory_type}/{memory.scope}/重要度{memory.importance}] {memory.content}"
-        )
-    return "\n".join(lines)

@@ -3,16 +3,17 @@ from __future__ import annotations
 import logging
 import re
 import uuid
+from dataclasses import replace
 from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import desc, select
 
-from app.config import cfg
 from app.database import AsyncSessionLocal
 from app.models.db import ChatMessage as DbChatMessage, UserMemory
 from app.schemas.agent import AgentChatMessageIn
 from app.services.ai import ChatMessage
+from app.memory.engine import MemoryRecord
 from app.memory.domain import (
     add_memory_event,
     candidate_review_tags,
@@ -21,17 +22,16 @@ from app.memory.domain import (
     find_memories,
     is_episodic_memory,
     is_single_value_key,
-    mark_memories_used,
     memory_candidate_status,
     memory_canonical_key,
     memory_value,
     normalize_memory_type,
     normalize_scope,
 )
+from app.memory.context import MemoryContextService
 from app.memory.extraction import MemoryExtractionFailure, extract_memory_candidates_smart
 from app.memory.planning import MemoryReadPlan, broad_memory_read_plan
 from app.memory.policy import filter_eligible_memories
-from app.memory.runtime import resolve_memory_read
 from app.memory.service import MemoryService
 from app.services.outbox import enqueue_memory_sync
 from app.workers.outbox_worker import notify_outbox_worker
@@ -69,7 +69,7 @@ def _memory_out(memory: UserMemory) -> dict:
     }
 
 
-def _format_memory_list(memories: list[UserMemory]) -> str:
+def _format_memory_list(memories: list[UserMemory] | list[MemoryRecord]) -> str:
     if not memories:
         return "现在还没有查到关于你身份、偏好、兴趣或目标的信息。"
     lines = ["查到的信息有："]
@@ -163,7 +163,7 @@ async def auto_save_memory_from_question(
             logger.warning("Implicit memory queue submission failed")
         return []
     try:
-        _, memories = await save_memory_from_question(user_id, question, history)
+        _, memories = await save_memory_from_question(user_id, question, history, explicit=False)
         return memories
     except MemoryExtractionFailure:
         # Implicit memory must never turn an otherwise successful user action
@@ -176,8 +176,10 @@ async def save_memory_from_question(
     user_id: str,
     question: str,
     history: list[AgentChatMessageIn] | None = None,
+    *,
+    explicit: bool = True,
 ) -> tuple[str, list[dict]]:
-    from app.memory.control import uses_engine
+    from app.memory.control import control, lock_owner, uses_engine
     if await uses_engine(user_id):
         from app.memory.gateway import MemoryGateway, public_record
         gateway = MemoryGateway()
@@ -197,7 +199,13 @@ async def save_memory_from_question(
 
     saved: list[dict] = []
     async with AsyncSessionLocal() as db:
+        await lock_owner(db, user_id)
+        settings, state = await control(db, user_id)
+        if not settings.memory_enabled:
+            return "长期记忆已关闭。", []
         for candidate, target_status in storable:
+            if not explicit and state.get("reviewNewFacts"):
+                target_status = "pending"
             memory_type = normalize_memory_type(candidate.memory_type)
             tags = candidate.tags[:12] if target_status == "active" else candidate_review_tags(candidate)
             if target_status == "pending":
@@ -483,39 +491,13 @@ async def query_memories_for_agent(
     history: list[AgentChatMessageIn] | None = None,
     read_plan: MemoryReadPlan | None = None,
 ) -> tuple[str, list[dict]]:
-    from app.memory.control import uses_engine
-    if await uses_engine(user_id):
-        from app.memory.gateway import MemoryGateway, public_record
-        records = await MemoryGateway().read(user_id, query=(read_plan.query or question) if read_plan else question, limit=8)
-        return _format_memory_list(records), [public_record(r) for r in records]
-    # The public Agent path passes the single validated TurnPlan projection.
-    # This broad plan is only for trusted internal/direct callers.
-    read_plan = read_plan or broad_memory_read_plan(
-        question,
-        reason="trusted_direct_memory_read",
-    )
-    async with AsyncSessionLocal() as db:
-        memories = await find_memories(
-            db,
-            user_id,
-            query=read_plan.query or question,
-            memory_types=read_plan.memory_types,
-            canonical_keys=read_plan.canonical_keys,
-            layers=read_plan.layers,
-            scopes=read_plan.scopes,
-            include_deleted=False,
-            limit=read_plan.limit,
-        )
-        active = await resolve_memory_read(
-            db,
-            user_id=user_id,
-            query=read_plan.query or question,
-            candidate_memories=memories,
-            limit=min(read_plan.limit, cfg.MEMORY_CONTEXT_LIMIT),
-        )
-        await mark_memories_used(db, user_id, active, reason=f"read_plan:{read_plan.reason or 'memory_query'}")
-        await db.commit()
-        return _format_memory_list(active), [_memory_out(memory) for memory in active]
+    from app.memory.gateway import public_record
+
+    plan = read_plan or broad_memory_read_plan(question, reason="trusted_direct_memory_read")
+    if not plan.query:
+        plan = replace(plan, query=question)
+    records = await MemoryContextService().recall(user_id, plan, track_use=True)
+    return _format_memory_list(records), [public_record(record) for record in records]
 
 
 def memory_context_from_records(memories: list[dict]) -> str:

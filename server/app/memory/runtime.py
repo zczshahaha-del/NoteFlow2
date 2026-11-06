@@ -21,6 +21,9 @@ async def resolve_memory_read(
     limit: int,
 ) -> list[UserMemory]:
     candidates = filter_eligible_memories(candidate_memories, limit=limit)
+    provider = legacy_memory_index()
+    if provider is None:
+        return candidates
     candidate_ids = [memory.id for memory in candidates]
     metadata_filters: dict[str, str] = {}
     if len(candidate_ids) == 1:
@@ -39,10 +42,10 @@ async def resolve_memory_read(
 
     started = time.perf_counter()
     status, error_code = "success", None
-    mem0_rows: list[MemoryIndexHit] = []
+    index_hits: list[MemoryIndexHit] = []
     try:
         if candidate_ids:
-            mem0_rows = await legacy_memory_index().search(
+            index_hits = await provider.search(
                 user_id=user_id,
                 query=query,
                 limit=limit,
@@ -50,12 +53,11 @@ async def resolve_memory_read(
             )
     except Exception as exc:
         status, error_code = "failed", type(exc).__name__
-        record_metric("memory", "mem0_read", status="failed")
 
-    mem0_ids = [row.memory_id for row in mem0_rows if row.memory_id]
+    ranked_ids = [hit.memory_id for hit in index_hits if hit.memory_id]
     allowed_ids = set(candidate_ids)
-    hard_violation = any(memory_id not in allowed_ids for memory_id in mem0_ids)
-    overlap = len(allowed_ids.intersection(mem0_ids)) / max(1, len(allowed_ids.union(mem0_ids)))
+    hard_violation = any(memory_id not in allowed_ids for memory_id in ranked_ids)
+    overlap = len(allowed_ids.intersection(ranked_ids)) / max(1, len(allowed_ids.union(ranked_ids)))
     session.add(
         MemoryShadowRun(
             id=random_id(),
@@ -63,18 +65,18 @@ async def resolve_memory_read(
             operation="read",
             query_hash=hashlib.sha256(query.encode()).hexdigest(),
             legacy_ids=candidate_ids,
-            mem0_ids=mem0_ids,
+            mem0_ids=ranked_ids,
             overlap_ratio=overlap,
             latency_ms=int((time.perf_counter() - started) * 1000),
             hard_violation=hard_violation,
             status=status,
             error_code=error_code,
-            details={"effectiveProvider": "mem0", "shadow": False, "resultCount": len(mem0_rows)},
+            details={"effectiveProvider": provider.name, "shadow": False, "resultCount": len(index_hits)},
         )
     )
-    record_metric("memory", "mem0_read", status=status)
+    record_metric("memory", f"{provider.name}_read", status=status)
 
-    # Mem0 ranks the already policy-approved relational projection. It must
+    # The index ranks the already policy-approved relational projection. It must
     # never turn a safe, structured read into "no memory" merely because an
     # embedding query ranked unrelated records above the requested fields.
     mapped = {memory.id: memory for memory in candidates}
@@ -82,14 +84,14 @@ async def resolve_memory_read(
     if status == "success":
         ordered_ids = [
             memory_id
-            for memory_id in mem0_ids
+            for memory_id in ranked_ids
             if memory_id in allowed_ids and memory_id not in ordered_ids
         ]
     ordered_ids.extend(memory_id for memory_id in candidate_ids if memory_id not in ordered_ids)
     if not ordered_ids:
         return []
-    if status != "success" or not allowed_ids.intersection(mem0_ids):
-        record_metric("memory", "mem0_read_fallback", status="success")
+    if status != "success" or not allowed_ids.intersection(ranked_ids):
+        record_metric("memory", f"{provider.name}_read_fallback", status="success")
     return filter_eligible_memories(
         [mapped[memory_id] for memory_id in ordered_ids if memory_id in mapped],
         limit=limit,

@@ -63,3 +63,18 @@ flowchart LR
 - 长期语义质量、复杂矛盾、生产容量、完整生产恢复及以前记录的普通笔记并发 / 附件一致性问题仍未闭环。
 
 AI-18 继续标记部分解决；本轮完成的是厂商结果 / 状态不进入治理和界面的子项，并有上述运行证据。代码与接口应整体回退；不存在需要回滚的数据迁移。
+
+## 6. 2026-11-07 正式事实与检索索引分离
+
+聊天、新建笔记和 AI 改写把查询范围交给 `MemoryContextService`。选用 `MEMORY_ENGINE=local` 时，NoteFlow 从 PostgreSQL 读取正式内容、账号归属、来源引用和启用状态。设置 `MEMORY_INDEX_PROVIDER=mem0` 可为已通过治理的记录排序，索引超时或漏查时回落到数据库候选。设置 `none` 可只用 PostgreSQL。`MEMORY_ENGINE=mem0` 继续兼容旧配置。
+
+### 准备切换 Hindsight
+
+1. 备份两边数据。先处理所有待执行和失败的 Hindsight 记忆任务，随后暂停会改动记忆的 API、worker 和后台管理操作。迁移命令需要连接 PostgreSQL 和旧 Hindsight 服务。
+2. 从后端目录运行 `python prepare_hindsight_memory_transfer.py --user-id <账号ID>`。预览只输出各状态的数量和指纹。若有旧数据库记录冲突，先核对归属和内容再决定如何合并。脚本不会替人选取版本。
+3. 对核对过的账号追加 `--apply-fingerprint <预览指纹>` 写入正式事实表。再次执行应显示记录均已准备，写入数量为零。为准备切换的所有账号重复，抽查修订、停用和待确认。隐去的重复项、已删除来源与派生观察不进入新库。
+4. 将 API 和 worker 一起切到 `MEMORY_ENGINE=local`，先验证数据库读取。需要 Mem0 时启用索引配置，使用 `python migrate_memories_to_mem0.py --batch-id <批次> --execute` 重建索引，再检查队列与召回。
+
+旧 Hindsight 仍保留原始数据。切换前须安排旧库退役与删除请求的处理，当前没有反向同步，新库接收写入后直接切回会漏掉这些变更。来源引用随事实复制，原生图谱、来源全文和自定义抽取规则留在旧引擎。默认配置仍为 Hindsight。
+
+本次隔离演练以合成 Hindsight HTTP 响应作为源，使用真实 PostgreSQL 16、Mem0 2.0.0 和 pgvector，向量由本地固定样本提供。验证了预览、旧指纹拒绝、重复执行、状态和账号隔离，以及索引仍有旧值时优先使用数据库中的当前修订。演练发现的余弦距离打分问题已在适配器内修正并复验。真实账号切换与语义质量验收尚未执行。

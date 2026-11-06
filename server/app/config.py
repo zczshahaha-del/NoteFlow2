@@ -111,6 +111,7 @@ class Config:
     MEM0_CIRCUIT_COOLDOWN_SECONDS: int = max(10, _env_int("MEM0_CIRCUIT_COOLDOWN_SECONDS", 120))
     MEMORY_CONTEXT_LIMIT: int = max(3, min(8, _env_int("MEMORY_CONTEXT_LIMIT", 6)))
     MEMORY_ENGINE: str = _env("MEMORY_ENGINE", "hindsight")
+    MEMORY_INDEX_PROVIDER: str = _env("MEMORY_INDEX_PROVIDER", "none")
     HINDSIGHT_URL: str = _env("HINDSIGHT_URL", "http://127.0.0.1:8888").rstrip("/")
     HINDSIGHT_API_KEY: str = _env("HINDSIGHT_API_KEY", "")
     HINDSIGHT_TIMEOUT_SECONDS: int = max(5, _env_int("HINDSIGHT_TIMEOUT_SECONDS", 45))

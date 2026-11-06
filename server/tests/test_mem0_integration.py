@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from app.config import cfg
@@ -19,6 +20,11 @@ from app.services.turn_planner import IntentParameters, PrimaryIntent, TurnPlan
 class FakeMem0:
     def __init__(self):
         self.calls = []
+        self.embedding_model = self
+        self.vector_store = self
+
+    def embed(self, query, action):
+        return [0.1, 0.2]
 
     def add(self, content, **kwargs):
         self.calls.append(("add", content, kwargs))
@@ -26,7 +32,7 @@ class FakeMem0:
 
     def search(self, query, **kwargs):
         self.calls.append(("search", query, kwargs))
-        return {"results": [{"id": "mem0-1", "memory": "偏好", "metadata": {"noteflow_memory_id": "nf-1"}}]}
+        return [SimpleNamespace(id="mem0-1", score=0.0, payload={"noteflow_memory_id": "nf-1"})]
 
     def delete(self, memory_id):
         self.calls.append(("delete", memory_id, {}))
@@ -58,6 +64,8 @@ class MemoryRecord:
 
 
 class UnrelatedMem0Provider:
+    name = "mem0"
+
     async def search(self, **kwargs):
         del kwargs
         return [MemoryIndexHit(memory_id="nf-unrelated", external_id="mem0-unrelated")]
@@ -93,7 +101,7 @@ class Mem0IntegrationTest(unittest.IsolatedAsyncioTestCase):
             user_id="u-1",
             query="我叫什么名字",
             limit=6,
-            metadata_filters={"noteflow_memory_id": "nf-name"},
+            metadata_filters={"noteflow_memory_id": "nf-name", "user_id": "another-account"},
         )
 
         self.assertEqual(

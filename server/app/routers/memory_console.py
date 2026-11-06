@@ -11,6 +11,7 @@ from app.config import cfg
 from app.memory.control import DEFAULT_MISSION, control, lock_owner, save_control, uses_engine
 from app.providers.memory_registry import configured_engine
 from app.memory.gateway import MemoryGateway, public_record
+from app.memory.portability import is_hindsight_copy
 from app.models.db import MemorySource, IntegrationOutbox, UserMemory
 
 router = APIRouter(prefix="/memory-console", tags=["memory-console"])
@@ -96,6 +97,7 @@ async def rules(payload: RuleInput, user: CurrentUser = Depends(console_user)):
 
 @router.post("/preview")
 async def preview(payload: PreviewInput, user: CurrentUser = Depends(console_user)):
+    await require_engine(user.id)
     try:
         return await MemoryGateway().preview(user.id, mission=payload.mission, text=payload.text)
     except ValueError as exc:
@@ -119,6 +121,7 @@ async def impact(memory_id: str, user: CurrentUser = Depends(console_user)):
 
 @router.get("/source/{source_id}")
 async def source(source_id: str, user: CurrentUser = Depends(console_user)):
+    await require_engine(user.id)
     async with AsyncSessionLocal() as session:
         source = await session.scalar(select(MemorySource).where(MemorySource.id == source_id, MemorySource.user_id == user.id))
         if source is None:
@@ -136,7 +139,8 @@ async def legacy(user: CurrentUser = Depends(console_user)):
     async with AsyncSessionLocal() as session:
         rows = (await session.scalars(select(UserMemory).where(UserMemory.user_id == user.id,
             UserMemory.status != "deleted").order_by(UserMemory.created_at))).all()
-        return {"memories": [{**_memory_out(r), "suggested": memory_is_eligible(r) and r.source != "work_memory"} for r in rows]}
+        return {"memories": [{**_memory_out(r), "suggested": memory_is_eligible(r) and r.source != "work_memory"}
+                             for r in rows if not is_hindsight_copy(r)]}
 
 
 class MigrationInput(BaseModel):
@@ -152,6 +156,8 @@ async def import_legacy(payload: MigrationInput, user: CurrentUser = Depends(con
     gateway = MemoryGateway()
     sources = []
     for r in rows:
+        if is_hindsight_copy(r):
+            continue
         source = await gateway.submit(user.id, r.content, source_key="migration:" + r.id,
             metadata={"source": "legacy_import", "memoryType": r.memory_type, "scope": r.scope,
                       "canonicalKey": r.canonical_key, "legacyId": r.id})
