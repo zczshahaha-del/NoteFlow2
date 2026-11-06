@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import cfg
 from app.models.db import IntegrationOutbox, MemoryShadowRun, Note, UserMemory
 from app.memory.policy import memory_is_eligible
-from app.providers.memory_registry import legacy_memory_index
+from app.providers.memory_registry import configured_memory_index, legacy_memory_index
 from app.observability.context import current_trace
 from app.repositories.outbox import OutboxRepository
 from app.utils import random_id
@@ -61,16 +61,18 @@ async def dispatch_outbox(session: AsyncSession, item: IntegrationOutbox) -> Non
         if memory is None:
             return
         provider = legacy_memory_index()
-        if provider is None:
-            return
         operation = str((item.payload or {}).get("operation") or "upsert")
         started = time.perf_counter()
-        old_external_id = memory.external_id if memory.external_provider == provider.name else None
         should_delete = operation == "delete" or not memory_is_eligible(memory)
-        if old_external_id and (should_delete or operation == "upsert"):
-            await provider.delete(user_id=memory.user_id, memory_id=old_external_id)
+        if memory.external_provider and memory.external_id and (should_delete or provider is not None):
+            previous_index = provider if provider is not None and provider.name == memory.external_provider else (
+                configured_memory_index(memory.external_provider)
+            )
+            await previous_index.delete(user_id=memory.user_id, memory_id=memory.external_id)
             memory.external_id = None
             memory.external_provider = None
+        if provider is None:
+            return
         external_id = None
         if not should_delete:
             result = await provider.add(

@@ -11,8 +11,9 @@ from app.config import cfg
 from app.memory.control import DEFAULT_MISSION, control, lock_owner, save_control, uses_engine
 from app.providers.memory_registry import configured_engine
 from app.memory.gateway import MemoryGateway, public_record
-from app.memory.portability import is_hindsight_copy
+from app.memory.portability import copied_source_memories, is_hindsight_copy
 from app.models.db import MemorySource, IntegrationOutbox, UserMemory
+from app.repositories.memories import MemoryRepository
 
 router = APIRouter(prefix="/memory-console", tags=["memory-console"])
 console_user = redis_rate_limit("memory-console", cfg.MEMORY_RATE_LIMIT)
@@ -112,7 +113,16 @@ async def graph(user: CurrentUser = Depends(console_user)):
 
 @router.get("/impact/{memory_id}")
 async def impact(memory_id: str, user: CurrentUser = Depends(console_user)):
-    await require_engine(user.id)
+    if not await uses_engine(user.id):
+        from app.routers.memories import _memory_out
+        async with AsyncSessionLocal() as session:
+            memory = await MemoryRepository(session).get(user.id, memory_id)
+            if memory is None or not is_hindsight_copy(memory) or not memory.source_ref:
+                raise HTTPException(404, "记忆不存在。")
+            records = await copied_source_memories(session, user.id, memory.source_ref)
+            if memory.id not in {record.id for record in records}:
+                raise HTTPException(404, "记忆不存在。")
+            return {"sourceId": memory.source_ref, "memories": [_memory_out(record) for record in records]}
     try:
         return await MemoryGateway().delete_impact(user.id, memory_id)
     except LookupError as exc:
@@ -121,12 +131,14 @@ async def impact(memory_id: str, user: CurrentUser = Depends(console_user)):
 
 @router.get("/source/{source_id}")
 async def source(source_id: str, user: CurrentUser = Depends(console_user)):
-    await require_engine(user.id)
+    managed = await uses_engine(user.id)
     async with AsyncSessionLocal() as session:
-        source = await session.scalar(select(MemorySource).where(MemorySource.id == source_id, MemorySource.user_id == user.id))
-        if source is None:
+        source = await session.scalar(select(MemorySource).where(
+            MemorySource.id == source_id, MemorySource.user_id == user.id, MemorySource.status == "stored",
+        ))
+        if source is None or (not managed and not await copied_source_memories(session, user.id, source_id)):
             raise HTTPException(404, "来源不存在。")
-        document = await configured_engine().document(user.id, source.id)
+        document = await configured_engine().document(user.id, source.id) if managed else None
         return {"id": source.id, "status": source.status, "ruleVersion": source.rule_version,
                 "createdAt": source.created_at.isoformat(),
                 "document": {"id": document.id, "content": document.content} if document else None}

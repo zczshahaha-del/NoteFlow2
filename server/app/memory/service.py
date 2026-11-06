@@ -5,9 +5,10 @@ import json
 from datetime import datetime
 
 from app.database import AsyncSessionLocal
-from app.models.db import UserMemory
+from app.models.db import MemorySource, UserMemory
 from app.memory.engine import MemoryRecord
 from app.repositories.memories import MemoryRepository
+from app.repositories.outbox import OutboxRepository
 from app.memory.domain import (
     add_memory_event,
     clamp_importance,
@@ -23,6 +24,11 @@ from app.services.outbox import enqueue_memory_sync
 from app.workers.outbox_worker import notify_outbox_worker
 from app.services.observability import record_metric
 from app.memory.policy import classify_memory_content
+from app.memory.portability import copied_source_memories, is_hindsight_copy
+
+
+class SourceDeletionConfirmationRequired(ValueError):
+    pass
 
 
 class MemoryService:
@@ -135,6 +141,11 @@ class MemoryService:
             memory = await MemoryRepository(session).get(user_id, memory_id)
             if memory is None:
                 raise LookupError("memory not found")
+            if is_hindsight_copy(memory):
+                if memory.status == "deleted" or memory.deleted_at is not None:
+                    raise LookupError("memory not found")
+                if (payload.status or "").strip() == "deleted":
+                    raise SourceDeletionConfirmationRequired()
             old_content = memory.content
             if payload.memoryType is not None:
                 memory.memory_type = normalize_memory_type(payload.memoryType)
@@ -188,29 +199,42 @@ class MemoryService:
             await session.refresh(memory)
             return memory
 
-    async def delete(self, user_id: str, memory_id: str) -> UserMemory | MemoryRecord:
-        from app.memory.control import uses_engine
+    async def delete(self, user_id: str, memory_id: str, *, confirmed_source: bool = False) -> UserMemory | MemoryRecord:
+        from app.memory.control import lock_owner, uses_engine
         if await uses_engine(user_id):
             from app.memory.gateway import MemoryGateway
             return await MemoryGateway().delete(user_id, memory_id)
         async with AsyncSessionLocal() as session:
+            await lock_owner(session, user_id)
             memory = await MemoryRepository(session).get(user_id, memory_id)
             if memory is None:
                 raise LookupError("memory not found")
-            memory.status = "deleted"
-            memory.deleted_at = datetime.utcnow()
-            add_memory_event(
-                session,
-                memory=memory,
-                user_id=user_id,
-                event_type="deleted",
-                old_content=memory.content,
-                reason="delete_memory",
-            )
-            await enqueue_memory_sync(
-                session, memory_id=memory.id, user_id=user_id,
-                operation="delete", version=self._sync_version(memory),
-            )
+            affected = [memory]
+            if is_hindsight_copy(memory):
+                if not confirmed_source:
+                    raise SourceDeletionConfirmationRequired()
+                source = await session.get(MemorySource, memory.source_ref) if memory.source_ref else None
+                if source is None or source.user_id != user_id or source.status not in {"stored", "deleted"}:
+                    raise LookupError("memory source not found")
+                affected = await copied_source_memories(session, user_id, source.id)
+                source.status = "deleted"
+                await OutboxRepository(session).enqueue(
+                    topic="memory.source.delete", aggregate_type="memory_source",
+                    aggregate_id=source.id, user_id=user_id,
+                    idempotency_key=f"delete-source:{source.id}", payload={}, max_attempts=3,
+                )
+            now = datetime.utcnow()
+            for record in affected:
+                record.status = "deleted"
+                record.deleted_at = now
+                add_memory_event(
+                    session, memory=record, user_id=user_id, event_type="deleted",
+                    old_content=record.content, reason="delete_memory",
+                )
+                await enqueue_memory_sync(
+                    session, memory_id=record.id, user_id=user_id,
+                    operation="delete", version=self._sync_version(record),
+                )
             await session.commit()
             notify_outbox_worker()
             record_metric("memory", "delete")

@@ -975,6 +975,8 @@ try {
   let failSessions = false, failMemorySetting = false;
   const sessionFixture = (id, current) => ({ id, current, userAgent: "Chrome/130 Mac OS X", ipAddress: null, createdAt: "2026-01-01T00:00:00Z", lastSeenAt: "2026-01-01T00:00:00Z", expiresAt: "2027-01-01T00:00:00Z" });
   const memoryFixture = { provider: "reference", sourceRef: "source-ui-test", id: "memory-ui-test", memoryType: "preference", content: "偏好简洁排版", layer: "semantic", importance: 3, status: "pending" };
+  const siblingMemory = { ...memoryFixture, id: "memory-same-source", content: "偏好先看图示", status: "active" };
+  const unrelatedMemory = { ...siblingMemory, id: "memory-other-source", sourceRef: "other-source", content: "正在学习数据库" };
   const accountFetch = async (input, options = {}) => {
     const path = new URL(String(input), "http://127.0.0.1").pathname;
     const method = options.method ?? "GET";
@@ -991,8 +993,8 @@ try {
     else if (path.endsWith("/email-change/request")) data = { message: "验证码已发送", developmentCode: "123456" };
     else if (path.endsWith("/email-change/confirm")) data = { user: { id: "test-user", email: "test@example.com", displayName: "test", emailVerified: true } };
     else if (path === "/api/memory-console") data = { engine: "reference", capabilities: { rules: true, graph: true, sources: true, importLegacy: true }, mission: "用户偏好", ruleVersion: 1, history: [], jobs: [] };
-    else if (path === "/api/memory-console/impact/memory-ui-test") data = { sourceId: "source-ui-test", memories: [memoryFixture] };
-    else if (path === "/api/memories") data = { memories: [memoryFixture] };
+    else if (path === "/api/memory-console/impact/memory-ui-test") data = { sourceId: "source-ui-test", memories: [memoryFixture, siblingMemory] };
+    else if (path === "/api/memories") data = { memories: [memoryFixture, siblingMemory, unrelatedMemory] };
     else if (path === "/api/memories/memory-ui-test") data = { memory: { ...memoryFixture, ...payload, status: method === "DELETE" ? "deleted" : payload?.status ?? "active" } };
     return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
   };
@@ -1115,10 +1117,12 @@ try {
   try {
     await clickAccount(activeSettings().querySelector('button[aria-label="删除记忆"]'));
   } finally { window.confirm = originalMemoryConfirm; }
-  assert.match(confirmedMemoryImpact, /关联的 1 条记忆/);
+  assert.match(confirmedMemoryImpact, /关联的 2 条记忆/);
   assert.ok(apiCalls.some(call => call.path === "/api/memory-console/impact/memory-ui-test"));
   assert.ok(apiCalls.some(call => call.method === "DELETE" && call.search === "?confirmedSource=true"), "Source deletion confirmation is independent of provider name");
   assert.doesNotMatch(activeSettings().textContent, /偏好简洁排版/);
+  assert.doesNotMatch(activeSettings().textContent, /偏好先看图示/);
+  assert.match(activeSettings().textContent, /正在学习数据库/);
   await clickAccount(settingAction("数据管理"));
   assert.ok(settingAction("导出笔记备份")); assert.ok(settingAction("导出完整数据"));
   const downloads = [];

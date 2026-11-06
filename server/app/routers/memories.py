@@ -15,7 +15,8 @@ from app.memory.domain import (
     memory_value,
 )
 from app.memory.extraction import extract_memory_candidates_smart
-from app.memory.service import MemoryService
+from app.memory.portability import is_hindsight_copy
+from app.memory.service import MemoryService, SourceDeletionConfirmationRequired
 
 router = APIRouter(tags=["memories"])
 memory_user = redis_rate_limit("memory", cfg.MEMORY_RATE_LIMIT)
@@ -83,6 +84,7 @@ def _memory_out(memory: UserMemory) -> dict:
         "createdAt": _dt(memory.created_at),
         "updatedAt": _dt(memory.updated_at),
         "deletedAt": _dt(memory.deleted_at),
+        **({"sourceRef": memory.source_ref} if is_hindsight_copy(memory) else {}),
     }
 
 
@@ -186,6 +188,8 @@ async def update_memory(
         memory = await MemoryService().update(user.id, memory_id, payload)
     except LookupError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
+    except SourceDeletionConfirmationRequired as error:
+        raise HTTPException(409, "请先查看删除影响并确认删除整个来源。") from error
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     return {"memory": _memory_out(memory)}
@@ -201,9 +205,11 @@ async def delete_memory(
     if await uses_engine(user.id) and not confirmedSource:
         raise HTTPException(status_code=409, detail="请先查看删除影响并确认删除整个来源。")
     try:
-        memory = await MemoryService().delete(user.id, memory_id)
+        memory = await MemoryService().delete(user.id, memory_id, confirmed_source=confirmedSource)
     except LookupError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
+    except SourceDeletionConfirmationRequired as error:
+        raise HTTPException(409, "请先查看删除影响并确认删除整个来源。") from error
     return {"memory": _memory_out(memory)}
 
 

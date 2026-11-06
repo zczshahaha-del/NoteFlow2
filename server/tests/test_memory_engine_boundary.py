@@ -10,6 +10,7 @@ from dataclasses import fields
 from typing import get_type_hints
 from unittest.mock import AsyncMock, patch
 
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
@@ -23,10 +24,11 @@ from app.memory.engine import (
 )
 from app.memory.gateway import MemoryGateway
 from app.memory.portability import stage_hindsight_memories
-from app.memory.service import MemoryService
-from app.models.db import Base, IntegrationOutbox, MemorySource, User, UserMemory, UserSettings
+from app.memory.service import MemoryService, SourceDeletionConfirmationRequired
+from app.models.db import Base, IntegrationOutbox, MemorySource, User, UserMemory, UserMemoryEvent, UserSettings
 from app.providers.memory_registry import MEMORY_ENGINES, configured_engine
 from app.routers import memory_console
+from app.routers.memories import MemoryUpdatePayload
 
 
 class ReferenceEngine:
@@ -110,7 +112,7 @@ class MemoryEngineBoundaryTest(unittest.IsolatedAsyncioTestCase):
         async with self.database.begin() as connection:
             await connection.run_sync(lambda conn: Base.metadata.create_all(conn, tables=[
                 User.__table__, UserSettings.__table__, MemorySource.__table__, IntegrationOutbox.__table__,
-                UserMemory.__table__]))
+                UserMemory.__table__, UserMemoryEvent.__table__]))
         async with self.sessions() as session:
             session.add_all([User(id=owner, email=owner + '@local.test', display_name='Synthetic') for owner in ('a', 'b')])
             await session.flush()
@@ -189,6 +191,47 @@ class MemoryEngineBoundaryTest(unittest.IsolatedAsyncioTestCase):
                 next(row for row in memories if row.status == "active").content = "用户现在偏好图示。"
             with self.assertRaisesRegex(ValueError, "Existing local records"):
                 await stage(preview.fingerprint)
+
+    async def test_copied_source_deletes_all_siblings_and_cannot_be_revived(self):
+        async with self.sessions.begin() as session:
+            session.add(MemorySource(id="source-a", user_id="a", source_key="source-key", status="stored"))
+            session.add_all([
+                UserMemory(id="hsp-a1", user_id="a", source_ref="source-a", content="用户喜欢短例子。"),
+                UserMemory(id="hsp-a2", user_id="a", source_ref="source-a", content="用户喜欢流程图。", status="pending"),
+                UserMemory(id="ordinary", user_id="a", content="用户正在学习数据库。"),
+                UserMemory(id="hsp-b1", user_id="b", source_ref="source-a", content="用户正在学习法语。"),
+            ])
+        owner = CurrentUser("a", "a@local.test", "Synthetic")
+        stranger = CurrentUser("b", "b@local.test", "Synthetic")
+        service = MemoryService()
+        with (patch.object(cfg, "MEMORY_ENGINE", "local"),
+              patch("app.memory.service.AsyncSessionLocal", self.sessions),
+              patch("app.memory.control.lock_owner", AsyncMock()),
+              patch("app.memory.service.notify_outbox_worker")):
+            impact = await memory_console.impact("hsp-a1", owner)
+            self.assertEqual({item["id"] for item in impact["memories"]}, {"hsp-a1", "hsp-a2"})
+            for record_id in ("hsp-a1", "hsp-b1"):
+                with self.assertRaises(HTTPException) as error:
+                    await memory_console.impact(record_id, stranger)
+                self.assertEqual(error.exception.status_code, 404)
+            with self.assertRaises(SourceDeletionConfirmationRequired):
+                await service.delete("a", "hsp-a1")
+            with self.assertRaises(SourceDeletionConfirmationRequired):
+                await service.update("a", "hsp-a1", MemoryUpdatePayload(status="deleted"))
+            await service.delete("a", "hsp-a1", confirmed_source=True)
+            await service.delete("a", "hsp-a1", confirmed_source=True)
+            with self.assertRaises(LookupError):
+                await service.update("a", "hsp-a2", MemoryUpdatePayload(status="active"))
+        async with self.sessions() as session:
+            self.assertEqual((await session.get(MemorySource, "source-a")).status, "deleted")
+            jobs = list(await session.scalars(select(IntegrationOutbox)))
+            self.assertEqual({(job.topic, job.aggregate_id) for job in jobs}, {
+                ("memory.source.delete", "source-a"),
+                ("memory.sync.requested", "hsp-a1"), ("memory.sync.requested", "hsp-a2"),
+            })
+            self.assertEqual(len(jobs), 3)
+            self.assertEqual((await session.get(UserMemory, "ordinary")).status, "active")
+            self.assertEqual((await session.get(UserMemory, "hsp-b1")).status, "active")
 
     async def test_account_source_and_live_curation_filters_do_not_depend_on_native_state(self):
         await self.publish('a', '我喜欢简短例子。')

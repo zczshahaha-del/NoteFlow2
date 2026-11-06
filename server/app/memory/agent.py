@@ -418,8 +418,10 @@ async def delete_memories_from_question(
     memory_types: list[str] | None = None,
 ) -> tuple[str, list[dict]]:
     from app.memory.control import uses_engine
+    from app.memory.portability import is_hindsight_copy
+    source_confirmation = "请在设置的记忆管理中选择具体记录，查看关联影响后删除；也可以先停用。"
     if await uses_engine(user_id):
-        return "请在设置的记忆管理中选择具体记录，查看关联影响后删除；也可以先停用。", []
+        return source_confirmation, []
     if canonical_keys is not None or memory_types is not None:
         keys = {
             str(item).strip()
@@ -437,6 +439,7 @@ async def delete_memories_from_question(
     if not keys and not types:
         return "没有识别出要删除的具体记忆。", []
     deleted: list[dict] = []
+    needs_confirmation = False
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             select(UserMemory).where(
@@ -447,6 +450,9 @@ async def delete_memories_from_question(
         )
         for memory in result.scalars().all():
             if memory_canonical_key(memory) not in keys and memory.memory_type not in types:
+                continue
+            if is_hindsight_copy(memory):
+                needs_confirmation = True
                 continue
             old_content = memory.content
             memory.status = "deleted"
@@ -463,7 +469,10 @@ async def delete_memories_from_question(
         await db.commit()
     if deleted:
         notify_outbox_worker()
-    return f"已删除 {len(deleted)} 条相关记忆。", deleted
+    summary = f"已删除 {len(deleted)} 条相关记忆。"
+    if needs_confirmation:
+        summary = f"{summary}{source_confirmation}" if deleted else source_confirmation
+    return summary, deleted
 
 
 async def disable_memory_for_user(user_id: str) -> tuple[str, list[dict]]:

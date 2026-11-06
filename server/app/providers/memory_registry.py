@@ -39,6 +39,10 @@ def legacy_memory_index() -> MemoryProvider | None:
     name = cfg.MEMORY_INDEX_PROVIDER if cfg.MEMORY_ENGINE == "local" else "mem0"
     if name == "none":
         return None
+    return configured_memory_index(name)
+
+
+def configured_memory_index(name: str) -> MemoryProvider:
     factory = MEMORY_INDEXES.get(name)
     if factory is None:
         raise MemoryUnavailable("记忆检索配置不可用，请联系维护者。")

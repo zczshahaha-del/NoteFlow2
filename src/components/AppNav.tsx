@@ -431,8 +431,10 @@ export default function AccountMenu({
         if (!window.confirm(`删除此来源及关联的 ${impact.memories.length} 条记忆？\n\n${impact.memories.map((m: UserMemoryRecord) => m.content).join('\n')}\n\n原聊天或笔记不会因此删除。`)) return;
       }
       await deleteMemory(memory.id, Boolean(memory.sourceRef));
-      setMemories((current) => current.filter((item) => item.id !== memory.id));
-      if (editingMemoryId === memory.id) {
+      const removed = (item: UserMemoryRecord) =>
+        item.id === memory.id || Boolean(memory.sourceRef && item.sourceRef === memory.sourceRef);
+      setMemories((current) => current.filter((item) => !removed(item)));
+      if (editingMemoryId === memory.id || memories.some((item) => item.id === editingMemoryId && removed(item))) {
         setEditingMemoryId(null);
         setEditingContent("");
       }

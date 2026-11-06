@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from app.config import cfg
 from app.memory.policy import classify_memory_content, filter_eligible_memories
@@ -128,6 +128,26 @@ class Mem0IntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(memory.external_provider, 'mem0')
         self.assertEqual(memory.provider_metadata['indexEvent'], 'created')
         self.assertEqual(len(session.added), 1)
+
+    async def test_deletion_cleans_the_old_index_even_after_index_is_disabled(self):
+        memory = UserMemory(id="nf-1", user_id="u-1", external_id="old-vector", external_provider="mem0")
+
+        class ProjectionSession(RecordingSession):
+            async def scalar(self, statement):
+                return memory
+
+        delete = AsyncMock()
+        previous_index = SimpleNamespace(delete=delete)
+        item = IntegrationOutbox(topic="memory.sync.requested", user_id="u-1", aggregate_id="nf-1",
+                                 payload={"operation": "delete"})
+        with (patch.object(cfg, "MEMORY_ENGINE", "local"),
+              patch.object(cfg, "MEMORY_INDEX_PROVIDER", "none"),
+              patch("app.services.outbox.configured_memory_index", return_value=previous_index) as resolve):
+            await dispatch_outbox(ProjectionSession(), item)
+        resolve.assert_called_once_with("mem0")
+        delete.assert_awaited_once_with(user_id="u-1", memory_id="old-vector")
+        self.assertIsNone(memory.external_provider)
+        self.assertIsNone(memory.external_id)
 
     async def test_circuit_opens_and_recovers_only_after_cooldown(self):
         breaker = AsyncCircuitBreaker(2, 60, 60)

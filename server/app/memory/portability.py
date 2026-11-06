@@ -16,9 +16,21 @@ from app.memory.gateway import record
 from app.memory.policy import classify_memory_content
 from app.models.db import IntegrationOutbox, MemorySource, User, UserMemory
 
+_COPY_ID_PREFIX = "hsp-"
+
 
 def is_hindsight_copy(memory: UserMemory) -> bool:
-    return memory.id.startswith("hsp-")
+    return memory.id.startswith(_COPY_ID_PREFIX)
+
+
+async def copied_source_memories(session: AsyncSession, user_id: str, source_id: str) -> list[UserMemory]:
+    return list((await session.scalars(select(UserMemory).join(
+        MemorySource, (MemorySource.id == UserMemory.source_ref) & (MemorySource.user_id == UserMemory.user_id),
+    ).where(
+        UserMemory.user_id == user_id, UserMemory.source_ref == source_id,
+        UserMemory.id.startswith(_COPY_ID_PREFIX), UserMemory.status != "deleted",
+        UserMemory.deleted_at.is_(None), MemorySource.status == "stored",
+    ).order_by(UserMemory.created_at, UserMemory.id))).all())
 
 
 @dataclass(frozen=True)
@@ -35,7 +47,7 @@ class MemoryTransferReport:
 
 def _portable_id(user_id: str, source_id: str, fact_id: str) -> str:
     key = json.dumps([user_id, source_id, fact_id], ensure_ascii=False)
-    return "hsp-" + hashlib.sha256(key.encode("utf-8")).hexdigest()[:60]
+    return _COPY_ID_PREFIX + hashlib.sha256(key.encode("utf-8")).hexdigest()[:60]
 
 
 def _utc(value: datetime | None) -> datetime | None:
