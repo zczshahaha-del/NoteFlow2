@@ -149,7 +149,7 @@
       note:'模型只提出计划，程序决定能否执行。选区快捷改写、手动保存和附件上传直接走专用接口。',
       sources:['server/app/services/turn_planner.py','server/app/agent/langgraph_turn.py','server/app/routers/agent.py'] },
     { id:'notes', title:'笔记、草稿与修改', sub:'正式正文与候选稿分开', icon:'file-pen-line', type:'后端 · 笔记业务', row:4, col:1,
-      note:'选区快捷改写是例外：只返回候选文字，不写服务器预览。普通保存仍有跨设备并发缺口（UI-45），不能当成已解决。',
+      note:'选区快捷改写只返回候选文字，采用后走普通保存。普通保存锁定笔记后检查预期版本，冲突时保留本地修改。',
       sources:['server/app/routers/notes.py','server/app/routers/drafts.py','server/app/routers/edits.py','server/app/services/note_edit.py'] },
     { id:'context', title:'回答与资料组织', sub:'按本轮需要选择资料', icon:'messages-square', type:'后端 · 只读回答', row:4, col:2,
       note:'当前笔记 / 选区问答与全库问答跳过个人记忆召回；全库没有命中时直接说明未找到。contextScope 硬边界仍待完善（AI-17）。',

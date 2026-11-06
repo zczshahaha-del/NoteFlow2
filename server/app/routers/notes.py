@@ -235,11 +235,22 @@ async def _ensure_category(session, user_id: str, category_id: Optional[str]):
         raise HTTPException(status_code=404, detail="category not found")
 
 
-async def _get_note(session, user_id: str, note_id: str, include_deleted: bool = False) -> Note:
-    note = await NoteRepository(session).get(user_id, note_id, include_deleted=include_deleted)
+async def _get_note(
+    session, user_id: str, note_id: str, *, include_deleted: bool = False, for_update: bool = False
+) -> Note:
+    note = await NoteRepository(session).get(user_id, note_id, include_deleted=include_deleted, for_update=for_update)
     if note is None:
         raise HTTPException(status_code=404, detail="note not found")
     return note
+
+
+async def _commit_note(session, note: Note) -> dict:
+    await session.flush()
+    await session.refresh(note)
+    # Read this write's revision before another transaction can change the note.
+    result = _note_out(note)
+    await session.commit()
+    return result
 
 
 async def _get_category(
@@ -571,7 +582,7 @@ async def update_note(
     user: CurrentUser = Depends(get_current_user),
 ):
     async with AsyncSessionLocal() as session:
-        note = await _get_note(session, user.id, note_id, include_deleted=True)
+        note = await _get_note(session, user.id, note_id, include_deleted=True, for_update=True)
         if note.deleted_at is not None:
             raise HTTPException(status_code=409, detail="note is deleted")
         category_provided = "categoryId" in payload.model_fields_set
@@ -618,9 +629,7 @@ async def update_note(
         if content_changed:
             await index_note_now(session, note)
 
-        await session.commit()
-        await session.refresh(note)
-        return {"note": _note_out(note)}
+        return {"note": await _commit_note(session, note)}
 
 
 @router.delete("/notes/{note_id}")
@@ -629,7 +638,7 @@ async def delete_note(
     user: CurrentUser = Depends(get_current_user),
 ):
     async with AsyncSessionLocal() as session:
-        note = await _get_note(session, user.id, note_id)
+        note = await _get_note(session, user.id, note_id, for_update=True)
         note.deleted_at = _now()
         await session.commit()
         return {"ok": True}
@@ -641,11 +650,9 @@ async def restore_note(
     user: CurrentUser = Depends(get_current_user),
 ):
     async with AsyncSessionLocal() as session:
-        note = await _get_note(session, user.id, note_id, include_deleted=True)
+        note = await _get_note(session, user.id, note_id, include_deleted=True, for_update=True)
         note.deleted_at = None
-        await session.commit()
-        await session.refresh(note)
-        return {"note": _note_out(note)}
+        return {"note": await _commit_note(session, note)}
 
 
 @router.get("/notes/{note_id}/versions")
@@ -666,7 +673,7 @@ async def restore_note_version(
     user: CurrentUser = Depends(get_current_user),
 ):
     async with AsyncSessionLocal() as session:
-        note = await _get_note(session, user.id, note_id, include_deleted=True)
+        note = await _get_note(session, user.id, note_id, include_deleted=True, for_update=True)
         version = await NoteRepository(session).get_version(user.id, note_id, version_id)
         if version is None:
             raise HTTPException(status_code=404, detail="version not found")
@@ -676,9 +683,7 @@ async def restore_note_version(
         note.content = version.content
         note.deleted_at = None
         await index_note_now(session, note)
-        await session.commit()
-        await session.refresh(note)
-        return {"note": _note_out(note)}
+        return {"note": await _commit_note(session, note)}
 
 
 @router.post("/notes/{note_id}/reindex")
@@ -688,12 +693,11 @@ async def reindex_note(
     user: CurrentUser = Depends(get_current_user),
 ):
     async with AsyncSessionLocal() as session:
-        note = await _get_note(session, user.id, note_id)
+        note = await _get_note(session, user.id, note_id, for_update=True)
         job = await index_note_now(session, note)
-        await session.commit()
-        await session.refresh(note)
+        note_result = await _commit_note(session, note)
         await session.refresh(job)
-        return {"note": _note_out(note), "job": _index_job_out(job)}
+        return {"note": note_result, "job": _index_job_out(job)}
 
 
 @router.get("/notes/{note_id}/outline")

@@ -932,7 +932,7 @@ async def apply_preview(
             }
         if preview.status != "preview":
             raise HTTPException(status_code=409, detail="edit preview is not active")
-        note = await NoteRepository(session).get_active_for_update(user.id, preview.note_id)
+        note = await NoteRepository(session).get(user.id, preview.note_id, for_update=True)
         if note is None:
             raise HTTPException(status_code=404, detail="note not found")
         current_hash = hashlib.sha256((note.content or "").encode()).hexdigest()
@@ -952,13 +952,14 @@ async def apply_preview(
         job = await index_note_now(session, note)
         preview.status = "applied"
         preview.applied_at = datetime.utcnow()
+        await session.refresh(note)
+        note_result = _note_out(note)
         await session.commit()
         await session.refresh(preview)
-        await session.refresh(note)
         await session.refresh(job)
         return {
             "preview": _edit_out(preview),
-            "note": _note_out(note),
+            "note": note_result,
             "job": _index_job_out(job),
         }
 

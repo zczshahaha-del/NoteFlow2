@@ -27,20 +27,23 @@ class NoteRepository(Repository):
             select(Note).where(Note.id == note_id, Note.user_id == user_id, Note.deleted_at.is_(None))
         )
 
-    async def get_active_for_update(self, user_id: str, note_id: str) -> Note | None:
-        user_id = require_user_id(user_id)
-        return await self.session.scalar(
-            select(Note).where(
-                Note.id == note_id, Note.user_id == user_id, Note.deleted_at.is_(None)
-            ).with_for_update()
-        )
-
-    async def get(self, user_id: str, note_id: str, *, include_deleted: bool = False) -> Note | None:
+    async def get(
+        self,
+        user_id: str,
+        note_id: str,
+        *,
+        include_deleted: bool = False,
+        for_update: bool = False,
+    ) -> Note | None:
         user_id = require_user_id(user_id)
         conditions = [Note.id == note_id, Note.user_id == user_id]
         if not include_deleted:
             conditions.append(Note.deleted_at.is_(None))
-        return await self.session.scalar(select(Note).where(and_(*conditions)))
+        statement = select(Note).where(and_(*conditions))
+        if for_update:
+            # Serialize note mutations without blocking foreign-key references.
+            statement = statement.with_for_update(key_share=True).execution_options(populate_existing=True)
+        return await self.session.scalar(statement)
 
     async def list(self, user_id: str, *, include_deleted: bool = False) -> list[Note]:
         user_id = require_user_id(user_id)

@@ -58,8 +58,16 @@ async def create_rag_index_job(
     )
     if existing is not None and not force:
         if existing.status in {"pending", "running", "success"}:
-            if existing.status == "pending":
-                existing.next_attempt_at = None
+            if existing.status == "pending" and existing.next_attempt_at is not None:
+                # Leave a job that a worker is claiming to that worker.
+                pending_job = await session.scalar(
+                    select(NoteIndexJob)
+                    .where(NoteIndexJob.id == existing.id, NoteIndexJob.status == "pending")
+                    .with_for_update(skip_locked=True)
+                    .execution_options(populate_existing=True)
+                )
+                if pending_job is not None:
+                    pending_job.next_attempt_at = None
             return existing
 
     job = NoteIndexJob(

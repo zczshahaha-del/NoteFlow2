@@ -158,15 +158,19 @@ def split_section_chunks(content: str, max_chars: int = MAX_CHUNK_CHARS) -> list
 
 async def create_index_job(session: AsyncSession, note: Note) -> NoteIndexJob:
     source_version = content_hash(getattr(note, "content", "") or "")
+    # A worker may hold a job while updating its note. Queue a fresh job rather
+    # than waiting on that worker from a transaction holding the note lock.
     existing_result = await session.execute(
         select(NoteIndexJob)
         .where(
             NoteIndexJob.note_id == note.id,
             NoteIndexJob.user_id == note.user_id,
             NoteIndexJob.status == "pending",
+            NoteIndexJob.graph_version.is_(None),
         )
         .order_by(NoteIndexJob.created_at.desc())
         .limit(1)
+        .with_for_update(skip_locked=True)
     )
     existing = existing_result.scalar_one_or_none()
     if existing is not None:
