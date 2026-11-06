@@ -157,11 +157,17 @@ class MemoryEngineBoundaryTest(unittest.IsolatedAsyncioTestCase):
             source.metadata_json = {"pendingIds": ["review"], "hiddenIds": ["duplicate"]}
         initial = self.engine.records["a", "fact-1"]
         self.engine.records.update({
+            ("a", "related"): {**initial, "body": "用户属兔。 | Involving: user"},
             ("a", "paused"): {**initial, "body": "用户喜欢长视频。", "enabled": False},
             ("a", "review"): {**initial, "body": "用户开始学习数据库。", "enabled": False},
             ("a", "duplicate"): {**initial, "enabled": False},
         })
         self.engine.name = "hindsight"
+        self.engine.graph_result = MemoryGraph(
+            nodes=tuple(MemoryGraphNode(key, native["body"], source_id)
+                        for (owner, key), native in self.engine.records.items() if owner == "a"),
+            edges=(MemoryGraphEdge("fact-1", "related", "学习方式"), MemoryGraphEdge("related", "review", "主题")),
+        )
 
         async def stage(fingerprint=None):
             async with self.sessions.begin() as session:
@@ -176,18 +182,37 @@ class MemoryEngineBoundaryTest(unittest.IsolatedAsyncioTestCase):
                 job = await session.scalar(select(IntegrationOutbox).where(IntegrationOutbox.aggregate_id == source_id))
                 job.status = "processed"
             preview = await stage()
-            self.assertEqual((preview.active, preview.archived, preview.pending), (1, 1, 1))
+            self.assertEqual((preview.active, preview.archived, preview.pending), (2, 1, 1))
+            self.assertEqual((preview.source_documents, preview.graph_edges), (1, 2))
             self.assertEqual(preview.ignored_facts, 1)
             with self.assertRaisesRegex(ValueError, "preview"):
                 await stage("outdated")
             async with self.sessions() as session:
                 self.assertEqual(list(await session.scalars(select(UserMemory))), [])
-            self.assertEqual((await stage(preview.fingerprint)).staged, 3)
+            self.assertEqual((await stage(preview.fingerprint)).staged, 4)
             replay = await stage(preview.fingerprint)
-            self.assertEqual((replay.staged, replay.already_staged), (0, 3))
+            self.assertEqual((replay.staged, replay.already_staged), (0, 4))
+            owner = CurrentUser("a", "a@local.test", "Synthetic")
+            stranger = CurrentUser("b", "b@local.test", "Synthetic")
+            with patch.object(cfg, "MEMORY_ENGINE", "local"):
+                graph = await memory_console.graph(owner)
+                self.assertEqual(len(graph["nodes"]), 2)
+                self.assertEqual([edge["relation"] for edge in graph["edges"]], ["学习方式"])
+                document = await memory_console.source(source_id, owner)
+                self.assertEqual(document["document"]["content"], "用户偏好小例子。")
+                self.assertFalse((await memory_console.graph(stranger))["nodes"])
+                with self.assertRaises(HTTPException):
+                    await memory_console.source(source_id, stranger)
             async with self.sessions.begin() as session:
                 memories = list(await session.scalars(select(UserMemory)))
                 self.assertTrue(all(row.user_id == "a" and row.source_ref == source_id for row in memories))
+                zodiac = next(row for row in memories if "属兔" in row.content)
+                self.assertEqual(zodiac.canonical_key, "profile.zodiac")
+                zodiac.canonical_key = ""
+            self.assertEqual((await stage(preview.fingerprint)).already_staged, 4)
+            async with self.sessions.begin() as session:
+                memories = list(await session.scalars(select(UserMemory)))
+                self.assertEqual(next(row for row in memories if "属兔" in row.content).canonical_key, "profile.zodiac")
                 next(row for row in memories if row.status == "active").content = "用户现在偏好图示。"
             with self.assertRaisesRegex(ValueError, "Existing local records"):
                 await stage(preview.fingerprint)

@@ -5,9 +5,8 @@ from sqlalchemy import text
 from app.services.prompt_templates import render_prompt
 from app.services.user_settings import get_or_create_user_settings
 
-DEFAULT_MISSION = (
-    render_prompt("memory/default-mission")
-)
+def effective_mission(state: dict) -> str:
+    return state.get("mission") or render_prompt("memory/default-mission")
 
 
 async def lock_owner(session, user_id):

@@ -184,10 +184,15 @@ async def extract_memory_candidates_llm(
     text: str,
     context: str = "global",
     history: list[ChatMessage] | None = None,
+    *,
+    mission: str = "",
 ) -> list[MemoryCandidate]:
     if not text or not text.strip():
         return []
     messages = _build_messages(text, context, history)
+    if mission.strip():
+        scope_rules = render_prompt("memory/extract-mission", mission=mission.strip())
+        messages[0]["content"] += "\n\n" + scope_rules
     try:
         content = await complete_chat(
             messages,
@@ -232,7 +237,9 @@ async def extract_memory_candidates_smart(
     text: str,
     context: str = "global",
     history: list[ChatMessage] | None = None,
+    *,
+    mission: str = "",
 ) -> list[MemoryCandidate]:
     """Compatibility entry point: semantic extraction is model-only."""
 
-    return await extract_memory_candidates_llm(text, context, history)
+    return await extract_memory_candidates_llm(text, context, history, mission=mission)

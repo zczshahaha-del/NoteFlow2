@@ -8,10 +8,12 @@ from app.database import AsyncSessionLocal
 from app.deps import CurrentUser
 from app.deps import redis_rate_limit
 from app.config import cfg
-from app.memory.control import DEFAULT_MISSION, control, lock_owner, save_control, uses_engine
+from app.memory.control import control, effective_mission, lock_owner, save_control, uses_engine
 from app.providers.memory_registry import configured_engine
 from app.memory.gateway import MemoryGateway, public_record
-from app.memory.portability import copied_source_memories, is_hindsight_copy
+from app.memory.portability import (
+    copied_source_memories, is_hindsight_copy, portable_memory_graph, portable_source_document,
+)
 from app.models.db import MemorySource, IntegrationOutbox, UserMemory
 from app.repositories.memories import MemoryRepository
 
@@ -47,8 +49,8 @@ async def overview(user: CurrentUser = Depends(console_user)):
         await session.commit()
         managed = await uses_engine(user.id)
         return {"engine": cfg.MEMORY_ENGINE,
-            "capabilities": {"rules": managed, "graph": managed, "sources": managed, "importLegacy": managed},
-            "mission": state.get("mission", DEFAULT_MISSION),
+            "capabilities": {"rules": True, "graph": True, "sources": True, "importLegacy": managed},
+            "mission": effective_mission(state),
             "ruleVersion": state.get("ruleVersion", 1), "history": state.get("ruleHistory", []),
             "reviewNewFacts": state.get("reviewNewFacts", False),
             "jobs": [{"id": j.id, "sourceId": j.aggregate_id, "status": {"memory_pending": "pending", "memory_processing": "processing"}.get(j.status, j.status),
@@ -82,23 +84,37 @@ async def retry(job_id: str, user: CurrentUser = Depends(console_user)):
 
 @router.put("/rules")
 async def rules(payload: RuleInput, user: CurrentUser = Depends(console_user)):
-    await require_engine(user.id)
+    mission = payload.mission.strip()
+    if not mission:
+        raise HTTPException(400, "请输入记忆规则。")
     async with AsyncSessionLocal() as session:
         await lock_owner(session, user.id)
         settings, state = await control(session, user.id)
         version = state.get("ruleVersion", 1)
         if version != payload.expectedVersion:
             raise HTTPException(409, "规则已更新，请刷新后重试。")
-        await configured_engine().ensure_bank(user.id, payload.mission.strip())
-        history = ([{"version": version, "mission": state.get("mission", DEFAULT_MISSION)}] + state.get("ruleHistory", []))[:10]
-        save_control(settings, {**state, "mission": payload.mission.strip(), "ruleVersion": version + 1, "ruleHistory": history})
+        if await uses_engine(user.id):
+            await configured_engine().ensure_bank(user.id, mission)
+        history = ([{"version": version, "mission": effective_mission(state)}] + state.get("ruleHistory", []))[:10]
+        save_control(settings, {**state, "mission": mission, "ruleVersion": version + 1, "ruleHistory": history})
         await session.commit()
     return {"version": version + 1}
 
 
 @router.post("/preview")
 async def preview(payload: PreviewInput, user: CurrentUser = Depends(console_user)):
-    await require_engine(user.id)
+    if not await uses_engine(user.id):
+        from app.memory.domain import memory_candidate_status
+        from app.memory.extraction import MemoryExtractionFailure, extract_memory_candidates_smart
+        from app.memory.policy import classify_memory_content
+
+        if not payload.mission.strip() or not classify_memory_content(payload.text).allowed:
+            raise HTTPException(400, "请输入规则和适合保存的示例。")
+        try:
+            candidates = await extract_memory_candidates_smart(payload.text, mission=payload.mission)
+        except MemoryExtractionFailure as exc:
+            raise HTTPException(503, str(exc)) from exc
+        return {"facts": [item.content for item in candidates if memory_candidate_status(item) != "rejected"]}
     try:
         return await MemoryGateway().preview(user.id, mission=payload.mission, text=payload.text)
     except ValueError as exc:
@@ -107,8 +123,10 @@ async def preview(payload: PreviewInput, user: CurrentUser = Depends(console_use
 
 @router.get("/graph")
 async def graph(user: CurrentUser = Depends(console_user)):
-    await require_engine(user.id)
-    return await MemoryGateway().graph(user.id)
+    if await uses_engine(user.id):
+        return await MemoryGateway().graph(user.id)
+    async with AsyncSessionLocal() as session:
+        return await portable_memory_graph(session, user.id)
 
 
 @router.get("/impact/{memory_id}")
@@ -138,10 +156,13 @@ async def source(source_id: str, user: CurrentUser = Depends(console_user)):
         ))
         if source is None or (not managed and not await copied_source_memories(session, user.id, source_id)):
             raise HTTPException(404, "来源不存在。")
-        document = await configured_engine().document(user.id, source.id) if managed else None
+        document = portable_source_document(source)
+        if managed:
+            remote = await configured_engine().document(user.id, source.id)
+            document = {"id": remote.id, "content": remote.content} if remote else None
         return {"id": source.id, "status": source.status, "ruleVersion": source.rule_version,
                 "createdAt": source.created_at.isoformat(),
-                "document": {"id": document.id, "content": document.content} if document else None}
+                "document": document}
 
 
 @router.get("/legacy")

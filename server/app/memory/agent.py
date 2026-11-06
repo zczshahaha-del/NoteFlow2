@@ -25,6 +25,7 @@ from app.memory.domain import (
     memory_candidate_status,
     memory_canonical_key,
     memory_value,
+    normalize_canonical_key,
     normalize_memory_type,
     normalize_scope,
 )
@@ -179,7 +180,7 @@ async def save_memory_from_question(
     *,
     explicit: bool = True,
 ) -> tuple[str, list[dict]]:
-    from app.memory.control import control, lock_owner, uses_engine
+    from app.memory.control import control, effective_mission, lock_owner, uses_engine
     if await uses_engine(user_id):
         from app.memory.gateway import MemoryGateway, public_record
         gateway = MemoryGateway()
@@ -188,7 +189,13 @@ async def save_memory_from_question(
             return "没有保存记忆：功能已关闭或内容不适合长期保存。", []
         records = await gateway.wait(user_id, source_id)
         return (f"已保存 {len(records)} 条记忆。" if records else "整理尚未完成或没有形成长期事实，请到记忆管理查看处理状态。"), [public_record(r) for r in records]
-    candidates = await extract_memory_candidates_smart(question, "global", chat_history_for_memory(history))
+    async with AsyncSessionLocal() as db:
+        settings, original_state = await control(db, user_id)
+        if not settings.memory_enabled:
+            return "长期记忆已关闭。", []
+    candidates = await extract_memory_candidates_smart(
+        question, "global", chat_history_for_memory(history), mission=effective_mission(original_state),
+    )
     storable = [
         (candidate, memory_candidate_status(candidate))
         for candidate in candidates
@@ -203,6 +210,9 @@ async def save_memory_from_question(
         settings, state = await control(db, user_id)
         if not settings.memory_enabled:
             return "长期记忆已关闭。", []
+        if (state.get("ruleVersion", 1) != original_state.get("ruleVersion", 1)
+                or state.get("generation", 0) != original_state.get("generation", 0)):
+            return "记忆设置已更新，请重新保存。", []
         for candidate, target_status in storable:
             if not explicit and state.get("reviewNewFacts"):
                 target_status = "pending"
@@ -286,7 +296,7 @@ async def save_memory_from_question(
                     saved.append(_memory_out(existing))
                     continue
 
-            canonical_key = candidate.canonical_key
+            canonical_key = normalize_canonical_key(candidate.canonical_key) if candidate.canonical_key else ""
             existing_for_key: Optional[UserMemory] = None
             if canonical_key and is_single_value_key(canonical_key):
                 existing_result = await db.execute(

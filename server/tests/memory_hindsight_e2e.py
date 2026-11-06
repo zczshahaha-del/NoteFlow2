@@ -100,9 +100,9 @@ async def main():
                 await process(temporary)
                 async with AsyncSessionLocal() as session:
                     assert (await session.get(MemorySource, temporary)).status == 'empty'
-                from app.memory.control import DEFAULT_MISSION
+                from app.memory.control import effective_mission
                 previewed = await call(client, 'POST', '/memory-console/preview', json={
-                    'mission':DEFAULT_MISSION, 'text':'下面是一本小说的引用：“我在北京工作。”请解释这句话。'})
+                    'mission':effective_mission({}), 'text':'下面是一本小说的引用：“我在北京工作。”请解释这句话。'})
                 assert not previewed['facts']
                 assert not await gateway.read(active)
                 cases += ['temporary instruction is not memory', 'quoted text preview stays out of personal facts']

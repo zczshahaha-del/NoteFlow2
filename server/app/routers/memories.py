@@ -14,7 +14,7 @@ from app.memory.domain import (
     memory_layer,
     memory_value,
 )
-from app.memory.extraction import extract_memory_candidates_smart
+from app.memory.extraction import MemoryExtractionFailure, extract_memory_candidates_smart
 from app.memory.portability import is_hindsight_copy
 from app.memory.service import MemoryService, SourceDeletionConfirmationRequired
 
@@ -139,15 +139,14 @@ async def extract_memory(
     payload: MemoryExtractPayload,
     user: CurrentUser = Depends(memory_user),
 ):
-    from app.memory.control import uses_engine
+    from app.memory.control import control, effective_mission, uses_engine
+    from app.database import AsyncSessionLocal
+    async with AsyncSessionLocal() as session:
+        _, state = await control(session, user.id)
     if await uses_engine(user.id):
-        from app.memory.control import DEFAULT_MISSION, control
-        from app.database import AsyncSessionLocal
         from app.memory.gateway import MemoryGateway
-        async with AsyncSessionLocal() as session:
-            _, state = await control(session, user.id)
         try:
-            result = await MemoryGateway().preview(user.id, mission=state.get("mission", DEFAULT_MISSION), text=payload.text)
+            result = await MemoryGateway().preview(user.id, mission=effective_mission(state), text=payload.text)
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
         return {"candidates": [{"content": fact, "memoryType": "personal_info", "canonicalKey": "", "value": fact,
@@ -159,7 +158,12 @@ async def extract_memory(
         for item in payload.history[-8:]
         if isinstance(item, dict)
     ]
-    candidates = await extract_memory_candidates_smart(payload.text, payload.context, history)
+    try:
+        candidates = await extract_memory_candidates_smart(
+            payload.text, payload.context, history, mission=effective_mission(state),
+        )
+    except MemoryExtractionFailure as exc:
+        raise HTTPException(503, str(exc)) from exc
     return {
         "candidates": [_candidate_out(candidate) for candidate in candidates],
         "reason": "" if candidates else "这更像临时要求或普通聊天，不适合作为长期记忆",

@@ -8,7 +8,7 @@ from datetime import datetime
 from sqlalchemy import select
 
 from app.database import AsyncSessionLocal
-from app.memory.control import DEFAULT_MISSION, control, uses_engine, lock_owner, save_control
+from app.memory.control import control, effective_mission, uses_engine, lock_owner, save_control
 from app.memory.engine import MemoryChanges, MemoryEngine, MemoryFact, MemoryRecord
 from app.providers.memory_registry import configured_engine
 from app.memory.policy import classify_memory_content
@@ -176,7 +176,7 @@ class MemoryGateway:
             source.status = "skipped"
             item.payload = {}
             return
-        mission = state.get("mission", DEFAULT_MISSION)
+        mission = effective_mission(state)
         await self.engine.ensure_bank(item.user_id, mission)
         # Retry of a noncommitted source can replace only its own document.
         # Published/curated sources are never reprocessed by this worker.
@@ -240,6 +240,8 @@ class MemoryGateway:
                 for r in rows if r.source_id == source.id and not r.derived and r.status != "unavailable"]}
 
     async def delete(self, user_id, memory_id):
+        from app.memory.portability import clear_portable_source, copied_source_memories
+
         async with AsyncSessionLocal() as session:
             await lock_owner(session, user_id)
             row = await self.engine.get(user_id, memory_id)
@@ -247,9 +249,13 @@ class MemoryGateway:
             if source is None:
                 raise LookupError("memory not found")
             result = record(row, source, provider=self.engine.name)
+            for copy in await copied_source_memories(session, user_id, source.id):
+                copy.status = "deleted"
+                copy.deleted_at = datetime.utcnow()
             # Persist a barrier before touching the engine. Failed external
             # deletion remains hidden and is retried, never reported as success.
             source.status = "deleted"
+            clear_portable_source(source)
             await OutboxRepository(session).enqueue(topic="memory.source.delete", aggregate_type="memory_source",
                 aggregate_id=source.id, user_id=user_id, idempotency_key=f"delete-source:{source.id}", payload={}, max_attempts=3)
             await session.commit()

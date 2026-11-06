@@ -24,7 +24,7 @@ from app.services.outbox import enqueue_memory_sync
 from app.workers.outbox_worker import notify_outbox_worker
 from app.services.observability import record_metric
 from app.memory.policy import classify_memory_content
-from app.memory.portability import copied_source_memories, is_hindsight_copy
+from app.memory.portability import clear_portable_source, copied_source_memories, is_hindsight_copy
 
 
 class SourceDeletionConfirmationRequired(ValueError):
@@ -218,6 +218,7 @@ class MemoryService:
                     raise LookupError("memory source not found")
                 affected = await copied_source_memories(session, user_id, source.id)
                 source.status = "deleted"
+                clear_portable_source(source)
                 await OutboxRepository(session).enqueue(
                     topic="memory.source.delete", aggregate_type="memory_source",
                     aggregate_id=source.id, user_id=user_id,

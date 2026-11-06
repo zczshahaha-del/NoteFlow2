@@ -11,6 +11,7 @@
   "memory/default-mission": "v1",
   "memory/extract": "v1",
   "memory/extract-input": "v1",
+  "memory/extract-mission": "v1",
   "memory/extract-repair": "v1",
   "notes/continue": "v1",
   "notes/default-code": "v1",
