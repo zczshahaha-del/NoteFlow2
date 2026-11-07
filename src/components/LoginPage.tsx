@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, Eye, EyeOff } from "lucide-react";
-import { confirmPasswordReset, requestEmailLoginCode, requestPasswordReset } from "../services/auth";
+import { confirmPasswordReset, EmailCodeRequestError, requestEmailLoginCode, requestPasswordReset } from "../services/auth";
 import type { ClothLoginController, ClothLoginState } from "./login/cloth-login.js";
 import "./login/cloth-login.css";
 
@@ -152,6 +152,10 @@ export default function LoginPage({ onSignIn, onEmailCodeSignIn, onSignUp }: Log
       setFeedback({ text: typeof developmentCode === "string" ? "开发环境验证码已自动填入。" : result.message, error: false, quiet: true });
     } catch (error) {
       if (!mounted.current || version !== sendVersion.current) return;
+      // The server still enforces its resend limit if an upstream request was accepted.
+      if (error instanceof EmailCodeRequestError && (error.status === 502 || error.status === 503)) {
+        deadlines.current.delete(target);
+      }
       setFeedback({ text: authErrorMessage(error, "发送失败，请稍后重试。"), error: true });
     } finally {
       if (mounted.current && version === sendVersion.current) { setSending(false); sendRequest.current = null; }

@@ -19,7 +19,8 @@ const api=window.authTest={calls:[],hold:false,pending:[],fail:false,gateway:fal
 window.fetch=async (url,init={})=>{const body=JSON.parse(init.body||'{}');api.calls.push({url:String(url),body,aborted:false});
 const call=api.calls.at(-1);init.signal?.addEventListener('abort',()=>call.aborted=true);
 if(api.hold)await new Promise(resolve=>api.pending.push(resolve));
-if(api.gateway){api.gateway=false;return new Response('Bad Gateway',{status:502,headers:{'Content-Type':'text/plain'}})}
+if(api.gateway){const status=typeof api.gateway==='number'?api.gateway:502;api.gateway=false;
+return new Response(status===429?'验证码发送较频繁。':'Bad Gateway',{status,headers:{'Content-Type':'text/plain'}})}
 if(api.networkFailure){api.networkFailure=false;throw new TypeError('Failed to fetch')}
 if(api.fail){const detail=typeof api.fail==='string'?api.fail:'合成失败，请重试。';api.fail=false;return new Response(JSON.stringify({detail}),{status:400})}
 return new Response(JSON.stringify(String(url).endsWith('/request')?{message:'验证码已发送，请检查邮箱。',...(String(url).includes('password-reset') || !api.development?{}:{developmentCode:'314159'})}:
@@ -468,14 +469,19 @@ try {
     await page.evaluate(()=>window.authTest.gateway=true);await primary.click();
     await page.getByRole('alert').filter({hasText:'暂时连接不上服务，请稍后重试。'}).waitFor();
     assert.equal(await code.inputValue(),'','a failed send never fills a code or announces success');
-    await compactDelivery();assert.ok(await page.locator('.auth-send').isDisabled(),'an uncertain send still retains cooldown to avoid duplicate mail');
+    await compactDelivery();assert.ok(await page.locator('.auth-send').isEnabled(),'a gateway rejection lets the user retry immediately');
     assert.ok(!(await page.locator('main').innerText()).includes('Bad Gateway'),'raw gateway responses never appear in the UI');
     await shot('gateway-error');
+    await page.evaluate(()=>window.authTest.gateway=429);
+    await page.getByRole('button',{name:'重新发送验证码',exact:true}).click();
+    await page.getByRole('alert').filter({hasText:'验证码发送较频繁'}).waitFor();
+    assert.ok(await page.locator('.auth-send').isDisabled(),'the API rate limit still keeps the resend cooldown');
     await code.fill('123456');await page.evaluate(()=>window.authTest.gateway=true);await primary.click();
     await page.getByRole('alert').filter({hasText:'暂时连接不上服务，请稍后重试。'}).waitFor();assert.equal(await code.inputValue(),'123456','gateway failures preserve the entered code');
     await page.getByRole('button',{name:'返回邮箱',exact:true}).click();await email.fill('offline@example.com');
     await page.evaluate(()=>window.authTest.networkFailure=true);await primary.click();
     await page.getByRole('alert').filter({hasText:'请检查网络后重试'}).waitFor();await compactDelivery();
+    assert.ok(await page.locator('.auth-send').isDisabled(),'an interrupted connection still keeps the resend cooldown');
     reports.push({width,initial,emailFirst:true,explicitRegistration:true,stablePrimaryAcrossEmailCode:true,contentDrivenCardHeight:true,allSecondaryActionsInside:true,purposeIsolation:true,failureRetry:true,cancelStale:true,passwordReset:true,realAuthServicePayloads:true,inCardDelivery:true,gatewayAndNetworkErrors:true,noVisibleRecipient:true,sixDigitsFit:true,quietSuccessAnnouncement:true,importantFeedbackVisible:true,cooldownResend:true,integratedInputFocus:true,nativeAutofillStyle:true,noAutofillCanvasDuplicate:true,autofillPasswordMasked:true,mouseCaretAndDragSelection:true,autofillToManualEditing:true,passwordEyeIcon:true,keyboardFocus:true,nativeValidationRetained:true,forcedColors:true,dark:true,reducedMotion:true,shortViewport:true,longEmail:true,storageDeniedAuthSucceeds:true});
     await context.close();
   }

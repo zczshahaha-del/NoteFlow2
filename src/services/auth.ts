@@ -29,6 +29,12 @@ export interface UserSessionRecord {
   expiresAt: string;
 }
 
+export class EmailCodeRequestError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
 interface AuthPayload {
   email: string;
   password: string;
@@ -112,7 +118,7 @@ export async function requestEmailLoginCode(email: string, purpose: "login" | "r
     body: JSON.stringify({ email, purpose }),
     signal,
   });
-  if (!response.ok) throw new Error(await readApiError(response));
+  if (!response.ok) throw new EmailCodeRequestError(await readApiError(response), response.status);
   return readApiJson<{ message: string; developmentCode?: string }>(response);
 }
 
@@ -202,7 +208,7 @@ export async function requestPasswordReset(email: string, signal?: AbortSignal):
     body: JSON.stringify({ email }),
     signal,
   });
-  if (!response.ok) throw new Error(await readApiError(response));
+  if (!response.ok) throw new EmailCodeRequestError(await readApiError(response), response.status);
   return readApiJson<{ message: string }>(response);
 }
 
