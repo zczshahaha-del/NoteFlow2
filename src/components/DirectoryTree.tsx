@@ -89,6 +89,7 @@ function FolderPicker({
   query,
   onQueryChange,
   onChange,
+  compact = false,
 }: {
   targets: FolderTarget[];
   value: string | null;
@@ -96,6 +97,7 @@ function FolderPicker({
   query: string;
   onQueryChange: (value: string) => void;
   onChange: (value: string | null) => void;
+  compact?: boolean;
 }) {
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const visibleTargets = normalizedQuery
@@ -104,7 +106,7 @@ function FolderPicker({
 
   return (
     <div>
-      <div className="ui-input mb-3 flex h-10 items-center gap-2 px-3 shadow-none">
+      {(!compact || targets.length > 8) && <div className="ui-input mb-3 flex h-10 items-center gap-2 px-3 shadow-none">
         <Search size={14} className="shrink-0 text-jelly-text-muted" strokeWidth={1.8} />
         <input
           value={query}
@@ -122,7 +124,7 @@ function FolderPicker({
             <X size={14} strokeWidth={2} />
           </button>
         )}
-      </div>
+      </div>}
 
       <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
         {visibleTargets.length === 0 ? (
@@ -133,6 +135,22 @@ function FolderPicker({
         ) : (
           visibleTargets.map((target) => {
             const selected = value === target.id;
+            if (compact) return (
+              <button
+                key={target.id ?? "root"}
+                type="button"
+                className={`flex min-h-9 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] ${
+                  selected ? "bg-jelly-blue-pale text-jelly-blue-deep" : "text-jelly-text hover:bg-jelly-bg"
+                }`}
+                aria-pressed={selected}
+                title={target.path}
+                onClick={() => onChange(target.id)}
+              >
+                <Folder size={15} strokeWidth={1.7} className="shrink-0" />
+                <span className="min-w-0 flex-1 truncate">{target.path}</span>
+                {selected && <Check size={16} strokeWidth={2} className="shrink-0" />}
+              </button>
+            );
             const current = currentId !== undefined && currentId === target.id;
             return (
               <button
@@ -520,11 +538,13 @@ export default function DirectoryTree({
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
+  const [newFolderLocationOpen, setNewFolderLocationOpen] = useState(false);
   const [folderPickerQuery, setFolderPickerQuery] = useState("");
   const [movingNode, setMovingNode] = useState<FileNode | null>(null);
   const [moveTargetId, setMoveTargetId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTargetState | null>(null);
   const newMenuRef = useRef<HTMLDivElement>(null);
+  const newFolderLocationRef = useRef<HTMLButtonElement>(null);
   const lastDeleteNodeRef = useRef<FileNode | null>(null);
   const expanded = pinned;
   useEffect(() => {
@@ -552,6 +572,7 @@ export default function DirectoryTree({
     ],
     [treeData]
   );
+  const newFolderPath = allFolderTargets.find((target) => target.id === newFolderParentId)?.path ?? "知识库";
   const movingNodeParentId = useMemo(
     () => movingNode ? findParentFolderId(treeData, movingNode.id) : null,
     [movingNode, treeData]
@@ -594,7 +615,13 @@ export default function DirectoryTree({
     if (!newFolderOpen && !movingNode) return;
 
     function handleEscape(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
+      if (event.key !== "Escape" || event.isComposing) return;
+      if (newFolderOpen && newFolderLocationOpen) {
+        setNewFolderLocationOpen(false);
+        setFolderPickerQuery("");
+        newFolderLocationRef.current?.focus();
+        return;
+      }
       setNewFolderOpen(false);
       setMovingNode(null);
       setFolderPickerQuery("");
@@ -602,7 +629,7 @@ export default function DirectoryTree({
 
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [movingNode, newFolderOpen]);
+  }, [movingNode, newFolderOpen, newFolderLocationOpen]);
 
   useEffect(() => {
     if (!searchShortcutEnabled) return;
@@ -654,6 +681,7 @@ export default function DirectoryTree({
       : null;
     setNewFolderName("");
     setNewFolderParentId(parentId);
+    setNewFolderLocationOpen(false);
     setFolderPickerQuery("");
     setNewFolderOpen(true);
     setNewTooltipOpen(false);
@@ -979,112 +1007,102 @@ export default function DirectoryTree({
 
       {newFolderOpen && expanded && createPortal(
         <div className="fixed inset-0 z-[90] grid place-items-center bg-[#26343d]/20 p-4 backdrop-blur-[2px]">
-          <button
-            type="button"
-            className="absolute inset-0 cursor-default"
-            onClick={() => {
-              setNewFolderOpen(false);
-              setFolderPickerQuery("");
-            }}
-            aria-label="关闭新建文件夹"
-          />
+          <div className="absolute inset-0" aria-hidden="true" onClick={() => setNewFolderOpen(false)} />
           <section
-            className="panel-surface relative z-10 flex max-h-[min(720px,calc(100vh-32px))] w-[min(520px,calc(100vw-32px))] flex-col overflow-hidden shadow-[0_28px_80px_rgba(22,34,45,0.22)]"
+            className="panel-surface relative z-10 flex max-h-[calc(100dvh-32px)] w-[min(420px,calc(100vw-32px))] flex-col overflow-hidden shadow-[0_16px_56px_rgba(22,34,45,0.18)]"
             role="dialog"
             aria-modal="true"
             aria-labelledby="new-folder-title"
           >
-            <header className="flex shrink-0 items-start justify-between gap-4 border-b border-jelly-border px-6 py-5">
-              <div className="flex min-w-0 items-start gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-jelly-blue-pale text-jelly-blue-deep">
-                  <FolderPlus size={19} strokeWidth={1.8} />
-                </span>
-                <div className="min-w-0">
-                  <h2 id="new-folder-title" className="text-[16px] font-semibold text-jelly-text">
-                    新建文件夹
-                  </h2>
-                  <p className="mt-1 text-[12px] leading-5 text-jelly-text-muted">
-                    给知识内容一个清晰的位置，确认后才会创建。
-                  </p>
-                </div>
-              </div>
+            <header className="flex shrink-0 items-center justify-between gap-4 px-6 pb-2 pt-4">
+              <h2 id="new-folder-title" className="text-[16px] font-semibold text-jelly-text">
+                新建文件夹
+              </h2>
               <button
                 type="button"
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-jelly-text-muted transition-colors hover:bg-jelly-blue-pale hover:text-jelly-text"
-                onClick={() => {
-                  setNewFolderOpen(false);
-                  setFolderPickerQuery("");
-                }}
+                onClick={() => setNewFolderOpen(false)}
                 aria-label="关闭新建文件夹"
               >
                 <X size={16} strokeWidth={1.9} />
               </button>
             </header>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-              <label className="mb-2 block text-[12px] font-medium text-jelly-text-soft" htmlFor="new-folder-name">
-                文件夹名称
-              </label>
-              <div className="ui-input flex h-11 items-center gap-2.5 px-3.5 shadow-none">
-                <Folder size={16} className="shrink-0 text-jelly-blue" strokeWidth={1.7} />
+            <div className="min-h-0 overflow-y-auto px-6 pb-5 pt-2">
+              <form id="new-folder-form" onSubmit={(event) => {
+                event.preventDefault();
+                handleCreateFolderConfirm();
+              }}>
+                <label className="mb-2 block text-[13px] font-medium text-jelly-text-soft" htmlFor="new-folder-name">
+                  名称
+                </label>
                 <input
                   id="new-folder-name"
                   value={newFolderName}
                   autoFocus
                   maxLength={120}
                   onChange={(event) => setNewFolderName(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && newFolderName.trim()) {
-                      handleCreateFolderConfirm();
-                    }
-                  }}
-                  placeholder="例如：后端开发"
-                  className="min-w-0 flex-1 bg-transparent text-[14px] text-jelly-text outline-none placeholder:text-jelly-text-muted"
+                  placeholder="输入文件夹名称"
+                  className="ui-input h-10 w-full px-3 text-[14px] outline-none placeholder:text-jelly-text-muted"
                 />
-                <span className="text-[11px] text-jelly-text-muted">{newFolderName.trim().length}/120</span>
-              </div>
+              </form>
 
-              <div className="mb-2 mt-5 flex items-center justify-between gap-3">
-                <p className="text-[12px] font-medium text-jelly-text-soft">创建位置</p>
-                <p className="truncate text-[11px] text-jelly-text-muted">
-                  {allFolderTargets.find((target) => target.id === newFolderParentId)?.path ?? "知识库"}
-                </p>
-              </div>
-              <FolderPicker
-                targets={allFolderTargets}
-                value={newFolderParentId}
-                query={folderPickerQuery}
-                onQueryChange={setFolderPickerQuery}
-                onChange={setNewFolderParentId}
-              />
-            </div>
-
-            <footer className="flex shrink-0 items-center justify-between gap-4 border-t border-jelly-border bg-white/70 px-6 py-4">
-              <p className="min-w-0 truncate text-[11px] text-jelly-text-muted">
-                创建后仍可随时重命名或移动
-              </p>
-              <div className="flex shrink-0 gap-2.5">
+              <div className="mt-4">
                 <button
+                  ref={newFolderLocationRef}
                   type="button"
-                  className="ui-button ui-button-secondary h-9 px-4"
+                  aria-expanded={newFolderLocationOpen}
+                  aria-controls={newFolderLocationOpen ? "new-folder-locations" : undefined}
+                  className="flex min-h-10 w-full items-center gap-3 rounded-lg px-2 text-left text-[13px] transition-colors hover:bg-jelly-blue-pale"
                   onClick={() => {
-                    setNewFolderOpen(false);
+                    setNewFolderLocationOpen(!newFolderLocationOpen);
                     setFolderPickerQuery("");
                   }}
+                >
+                  <span className="shrink-0 font-medium text-jelly-text-soft">位置</span>
+                  <span className="ml-auto flex min-w-0 items-center gap-2 text-jelly-text" title={newFolderPath}>
+                    <Folder size={15} strokeWidth={1.7} className="shrink-0 text-jelly-text-muted" />
+                    <span className="truncate">{newFolderPath}</span>
+                    <ChevronDown size={14} strokeWidth={1.8} className={`shrink-0 text-jelly-text-muted transition-transform ${newFolderLocationOpen ? "rotate-180" : ""}`} />
+                  </span>
+                </button>
+                {newFolderLocationOpen && (
+                  <div id="new-folder-locations" className="mt-1 rounded-xl border border-jelly-border bg-jelly-card p-1">
+                    <FolderPicker
+                      compact
+                      targets={allFolderTargets}
+                      value={newFolderParentId}
+                      query={folderPickerQuery}
+                      onQueryChange={setFolderPickerQuery}
+                      onChange={(id) => {
+                        setNewFolderParentId(id);
+                        setNewFolderLocationOpen(false);
+                        setFolderPickerQuery("");
+                        newFolderLocationRef.current?.focus();
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <footer className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="ui-button px-3.5 text-jelly-text-soft hover:bg-jelly-blue-pale hover:text-jelly-text"
+                  onClick={() => setNewFolderOpen(false)}
                 >
                   取消
                 </button>
                 <button
-                  type="button"
-                  className="ui-button ui-button-primary h-9 gap-1.5 px-4 disabled:cursor-not-allowed disabled:opacity-45"
-                  disabled={!newFolderName.trim()}
-                  onClick={handleCreateFolderConfirm}
+                  type="submit"
+                  form="new-folder-form"
+                  className="ui-button ui-button-primary px-4"
+                  disabled={!newFolderName.trim().replace(/\.md$/i, "")}
                 >
-                  <FolderPlus size={14} strokeWidth={1.9} />
-                  创建文件夹
+                  创建
                 </button>
-              </div>
-            </footer>
+              </footer>
+            </div>
           </section>
         </div>, document.body
       )}

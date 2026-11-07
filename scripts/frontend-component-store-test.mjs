@@ -806,13 +806,44 @@ try {
   await act(async () => {
     newFolderButton.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
   });
-  assert.match(document.body.textContent ?? "", /确认后才会创建/);
-  assert.ok(document.querySelector('[role="dialog"][aria-labelledby="new-folder-title"]'));
-  const closeNewFolder = document.querySelector('button[aria-label="关闭新建文件夹"]');
-  assert.ok(closeNewFolder);
+  const newFolderDialog = document.querySelector('[role="dialog"][aria-labelledby="new-folder-title"]');
+  assert.ok(newFolderDialog);
+  assert.doesNotMatch(newFolderDialog.textContent, /确认后才会创建|创建后仍可随时|0\/120/);
+  const locationButton = newFolderDialog.querySelector('button[aria-expanded]');
+  assert.equal(locationButton.getAttribute("aria-expanded"), "false");
+  assert.equal(newFolderDialog.querySelector('#new-folder-locations'), null);
+  assert.equal(document.activeElement.id, "new-folder-name");
+  assert.ok(newFolderDialog.querySelector('button[type="submit"]').disabled);
+  const { addNode: originalAddNode } = useAppStore.getState();
+  const createdFolders = [];
+  await act(async () => useAppStore.setState({
+    treeData: [note, { id: "folder-parent", type: "folder", name: "全栈开发", children: [
+      { id: "folder-nested", type: "folder", name: "后端", children: [] },
+    ] }],
+    addNode(parentId, node) { createdFolders.push({ parentId, node }); },
+  }));
+  await act(async () => locationButton.click());
+  const locationButtons = () => Array.from(newFolderDialog.querySelectorAll('#new-folder-locations button'));
+  assert.deepEqual(locationButtons().map(button => button.textContent), ["知识库", "全栈开发", "全栈开发 / 后端"]);
+  assert.equal(locationButtons()[0].getAttribute("aria-pressed"), "true");
+  await act(async () => document.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  assert.equal(locationButton.getAttribute("aria-expanded"), "false");
+  await act(async () => locationButton.click());
+  await act(async () => locationButtons()[2].click());
+  assert.equal(locationButton.getAttribute("aria-expanded"), "false");
+  assert.equal(document.activeElement, locationButton);
+  assert.match(locationButton.textContent, /全栈开发 \/ 后端/);
+  const nameInput = newFolderDialog.querySelector('#new-folder-name');
   await act(async () => {
-    closeNewFolder.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+    Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set.call(nameInput, " 后端开发 ");
+    nameInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
   });
+  await act(async () => newFolderDialog.querySelector('button[type="submit"]').click());
+  assert.equal(createdFolders.length, 1);
+  assert.equal(createdFolders[0].parentId, "folder-nested");
+  assert.equal(createdFolders[0].node.name, "后端开发");
+  assert.equal(document.body.contains(newFolderDialog), false);
+  await act(async () => useAppStore.setState({ treeData: [note], addNode: originalAddNode }));
   const fileMenu = directoryContainer.querySelector('button[aria-label="文件操作"]');
   assert.ok(fileMenu);
   await act(async () => {
