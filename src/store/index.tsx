@@ -1058,6 +1058,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
       const assistantMsg: ChatMessage = {
         ...newChatMessageMetadata(),
         role: "assistant",
+        kind: "edit_preview_status",
         text: "请先打开一篇正式笔记，再让我生成修改预览。",
       };
       set((current) => ({ chatMessages: [...current.chatMessages, userMsg, assistantMsg] }));
@@ -1068,6 +1069,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     const assistantMsg: ChatMessage = {
       ...newChatMessageMetadata(),
       role: "assistant",
+      kind: "edit_preview_status",
       text: "我正在生成修改预览，不会直接改正式笔记。",
     };
     set((current) => ({
@@ -1123,6 +1125,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
     const assistantMsg: ChatMessage = {
       ...newChatMessageMetadata(),
       role: "assistant",
+      kind: "edit_preview_status",
       text: "我会基于当前预览继续调整，仍然不会写回正式笔记。",
     };
     set((current) => ({
@@ -1252,6 +1255,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           {
             ...newChatMessageMetadata(),
             role: "assistant",
+            kind: "edit_preview_status",
             text: "修改已应用到正式笔记，并已保存旧版本和更新索引。",
           },
         ],
@@ -1264,7 +1268,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
         ...(current.activeEditPreview?.id === preview.id ? { editPreviewError: text } : {}),
         chatMessages: [
           ...current.chatMessages,
-          { ...newChatMessageMetadata(), role: "assistant", text },
+          { ...newChatMessageMetadata(), role: "assistant", kind: "edit_preview_status", text },
         ],
       }));
     } finally {
@@ -1304,6 +1308,7 @@ export const useAppStore = create<InternalAppState>((set, get) => ({
           {
             ...newChatMessageMetadata(),
             role: "assistant",
+            kind: "edit_preview_status",
             text: "已取消本次修改预览，正式笔记没有变化。",
           },
         ],

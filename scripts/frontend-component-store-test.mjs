@@ -384,7 +384,22 @@ try {
   assert.deepEqual(openedChatSources, [chatSource]);
   await act(async () => conversationContainer.querySelector('.nf-chat-message--user button').click());
   assert.ok(conversationContainer.querySelector('.nf-chat-message--user p.max-h-44'));
-  assert.ok(Array.from(conversationContainer.querySelectorAll('button')).find(button => button.textContent.trim() === "补充理解"));
+  const supplementButton = () => Array.from(conversationContainer.querySelectorAll('button'))
+    .find(button => button.textContent.trim() === "补充理解");
+  assert.ok(supplementButton(), "selected-text answers can still be added to the note");
+  const editNotices = [
+    { text: "我正在生成修改预览，不会直接改正式笔记。" },
+    { text: "无法准确定位所选原文。", kind: "edit_preview_status" },
+    { text: "预览生成失败。", toolTraces: [{ toolName: "note_edit_tool", action: "create_preview", status: "failed" }] },
+    { text: "请求失败，请稍后重试。", streamState: "failed" },
+  ];
+  for (const notice of editNotices) {
+    await act(async () => useAppStore.setState({
+      chatMessages: [{ ...userMessage, attachedSelection }, { ...assistantMessage, ...notice }],
+    }));
+    assert.ok(conversationContainer.textContent.includes(notice.text));
+    assert.equal(supplementButton(), undefined, notice.text);
+  }
   await act(async () => modeTrigger.click());
   await act(async () => conversationContainer.querySelector('[role="option"][aria-selected="false"]').click());
   await changeComposerInput("解释引用");

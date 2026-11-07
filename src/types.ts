@@ -44,6 +44,7 @@ export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   text: string;
+  kind?: "edit_preview_status";
   /** Streaming is client-only; history may restore terminal failure/stop states. */
   streamState?: "streaming" | "completed" | "stopped" | "failed";
   /** Client-only recovery data; never serialized as chat history. */
